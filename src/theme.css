@@ -1246,22 +1246,17 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 .atelier-quoi { font-size: 12.5px; color: var(--text-2); line-height: 1.5; }
 .atelier-besoin { font-size: 11px; color: var(--text-2); opacity: .8; margin-top: 4px; }
 .atelier-besoin::before { content: "▪ "; }
-.atelier-usage { color: var(--accent); white-space: nowrap; }
 /* Une séquence toute faite, et non un support à fabriquer : sa carte a son propre fond, et le dit en toutes lettres. */
 .atelier.atelier-sequence { background: color-mix(in srgb, var(--panel) 80%, #0d9488);
   border-color: color-mix(in srgb, var(--border) 45%, #0d9488); }
 .atelier.atelier-sequence:hover { background: color-mix(in srgb, var(--panel-2) 72%, #0d9488); border-color: #0d9488; }
 .atelier-genre { font-weight: 700; color: color-mix(in srgb, var(--text) 55%, #0d9488); white-space: nowrap; }
 .atelier-sequence .atelier-besoin { opacity: 1; }
-/* Le moment de la séquence où l'atelier est rangé, dans son bandeau. */
-/* Le catalogue par moment : chaque moment reçoit les cartes qu'on y glisse. */
-.zone-moment { margin: 0 -6px 18px; padding: 6px; border-radius: 14px; border: 2px dashed transparent; transition: background .12s, border-color .12s; }
-.zone-moment.survol { background: var(--panel-2); border-color: var(--accent); }
+/* Un encart vide, en pointillés : rien à montrer ici, et ce qu'on peut y faire. */
 .zone-moment-vide { border: 1px dashed var(--border); border-radius: 12px; padding: 18px; font-size: 12.5px; color: var(--text-2); text-align: center; }
-/* Une famille, ou un moment, se plie : la flèche tourne, et la section repliée dit combien d'ateliers elle garde. */
+/* Une famille se plie : la flèche tourne, et la section repliée dit combien d'ateliers elle garde. */
 .famille-catalogue { margin-bottom: 22px; }
 .famille-catalogue:has(> details:not([open])) { margin-bottom: 8px; }
-.zone-moment:has(> details:not([open])) { margin-bottom: 8px; }
 /* Pliée, la section est une carte : l'icône, le nom et ce qu'elle fait sur une ligne, le nombre d'ateliers, la flèche. */
 details.pli-catalogue > summary { cursor: pointer; list-style: none; user-select: none;
   display: grid; grid-template-columns: 40px minmax(0, 1fr) auto 14px; align-items: center; gap: 12px;
@@ -1281,6 +1276,9 @@ details.pli-catalogue[open] .pli-aide { white-space: normal; }
 .pli-nombre { font-size: 11.5px; font-weight: 600; color: var(--text-2); background: var(--panel-2); border-radius: 100px; padding: 2px 9px; white-space: nowrap; }
 .pli-chevron { font-size: 20px; line-height: 1; color: var(--text-2); text-align: center; transition: transform .15s; }
 details.pli-catalogue[open] .pli-chevron { transform: rotate(90deg); }
+/* Dans un domaine, les ateliers vont par moment de la séquence : chaque moment a sa petite étiquette, sur toute la largeur. */
+.ateliers-moment { grid-column: 1 / -1; font-size: 12.5px; font-weight: 700; color: var(--text-2); margin: 6px 0 -4px 2px; }
+.ateliers-moment:first-child { margin-top: 0; }
 /* Une partie de famille — un domaine du programme — se plie aussi, sans carte : son nom, son nombre d'ateliers. */
 details.sous-pli-catalogue { margin: 0 0 14px 4px; }
 details.sous-pli-catalogue:not([open]) { margin-bottom: 4px; }
@@ -1339,7 +1337,6 @@ details.sous-pli-catalogue[open] > summary .pli-chevron { transform: rotate(90de
 .bandeau-modif-ico { font-size: 18px; flex: none; }
 .bandeau-modif-texte { flex: 1; min-width: 220px; }
 .atelier[draggable="true"] { cursor: grab; }
-.atelier.en-vol { opacity: .45; }
 .atelier:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* La feuille de l'atelier : tout ce qui s'imprime, replié en une ligne ; ouvert, ses réglages à plat. */
 .feuille-atelier > summary .meta { font-weight: 400; margin-left: 8px; }

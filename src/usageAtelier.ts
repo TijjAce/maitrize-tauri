@@ -92,8 +92,9 @@ export function usagesDesReglages(reglages: Record<string, string>, ateliers: re
 }
 
 /**
- * Les ateliers rangés par moment, dans l'ordre de la séquence. Un moment sans
- * atelier n'apparaît pas — sauf si on le demande, pour pouvoir y déposer.
+ * Les ateliers rangés par moment, dans l'ordre de la séquence : dans chaque
+ * domaine de Fabriquer. Un moment sans atelier n'apparaît pas, sauf si on le
+ * demande.
  */
 export function rangerParUsage<T extends { id: string }>(
   outils: T[], usages: Record<string, Usage>, avecVides = false,
