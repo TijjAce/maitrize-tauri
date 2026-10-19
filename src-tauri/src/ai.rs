@@ -49,7 +49,41 @@ struct MistralResponse {
 
 #[derive(Deserialize)]
 struct MistralChoice {
-    message: ChatMessage,
+    message: MessageRecu,
+}
+
+/// Le message d'une réponse. Son contenu est une chaîne, ou une liste de
+/// morceaux chez les modèles qui réfléchissent avant de répondre (Mistral
+/// Large 4) : la réflexion (`thinking`), puis la réponse (`text`).
+#[derive(Deserialize)]
+struct MessageRecu {
+    #[serde(default)]
+    content: serde_json::Value,
+}
+
+/// Le texte d'une réponse, sans la réflexion qui le précède ; `None` si le
+/// contenu n'est ni une chaîne ni une liste de morceaux.
+fn texte_du_contenu(contenu: &serde_json::Value) -> Option<String> {
+    match contenu {
+        serde_json::Value::String(s) => Some(s.clone()),
+        serde_json::Value::Array(morceaux) => Some(
+            morceaux
+                .iter()
+                .filter(|m| m.get("type").and_then(|t| t.as_str()) == Some("text"))
+                .filter_map(|m| m.get("text").and_then(|t| t.as_str()))
+                .collect(),
+        ),
+        _ => None,
+    }
+}
+
+/// Le texte du premier choix d'une réponse complète.
+fn texte_de_la_reponse(reponse: MistralResponse) -> Result<String, String> {
+    let message = reponse.choices.into_iter().next().ok_or("Réponse vide de Mistral")?.message;
+    texte_du_contenu(&message.content).ok_or_else(|| {
+        let brut = message.content.to_string();
+        format!("Réponse illisible : {}", brut.chars().take(200).collect::<String>())
+    })
 }
 
 /// Traduit une erreur de l'API en message actionnable.
@@ -338,12 +372,7 @@ pub async fn mistral_chat(
 
     let parsed: MistralResponse = resp.json().await.map_err(|e| format!("Réponse : {e}"))?;
     noter_depense(&db, depense_texte(parsed.usage.as_ref(), &modele));
-    parsed
-        .choices
-        .into_iter()
-        .next()
-        .map(|c| c.message.content)
-        .ok_or_else(|| "Réponse vide de Mistral".into())
+    texte_de_la_reponse(parsed)
 }
 
 /// Interroge le modèle sur une image.
@@ -404,12 +433,7 @@ pub async fn mistral_vision(
 
     let parsed: MistralResponse = resp.json().await.map_err(|e| format!("Réponse : {e}"))?;
     noter_depense(&db, depense_texte(parsed.usage.as_ref(), &modele));
-    parsed
-        .choices
-        .into_iter()
-        .next()
-        .map(|c| c.message.content)
-        .ok_or_else(|| "Réponse vide de Mistral".into())
+    texte_de_la_reponse(parsed)
 }
 
 // ── Recherche sur le web ───────────────────────────────────────────────────
@@ -829,8 +853,13 @@ struct StreamChunk {
 }
 #[derive(Deserialize)]
 struct StreamChoice { delta: Delta }
+/// Pendant la réflexion d'un modèle qui réfléchit, `content` est une liste de
+/// morceaux : on n'en garde que le texte de la réponse.
 #[derive(Deserialize)]
-struct Delta { content: Option<String> }
+struct Delta {
+    #[serde(default)]
+    content: serde_json::Value,
+}
 
 // Une réponse qui ne convient pas s'arrête : l'enseignant la coupe, la
 // connexion se ferme, et Mistral cesse d'écrire — et de compter des tokens.
@@ -908,7 +937,7 @@ pub async fn mistral_chat_stream(
                     }
                     if let Ok(chunk) = serde_json::from_str::<StreamChunk>(data) {
                         noter_depense(&db, depense_texte(chunk.usage.as_ref(), &modele));
-                        if let Some(delta) = chunk.choices.into_iter().next().and_then(|c| c.delta.content) {
+                        if let Some(delta) = chunk.choices.into_iter().next().and_then(|c| texte_du_contenu(&c.delta.content)) {
                             if !delta.is_empty() {
                                 let _ = app.emit("mistral://chunk", ChunkEvt { id: request_id.clone(), delta });
                             }
@@ -1094,6 +1123,46 @@ mod tests_voix {
         assert_ne!(a, fichier_de_la_voix(d, "Je colorie les carrés."));
         assert_eq!(a.extension().and_then(|x| x.to_str()), Some("mp3"));
         assert_eq!(a.parent(), Some(d));
+    }
+}
+
+#[cfg(test)]
+mod tests_reponses {
+    use super::{texte_de_la_reponse, texte_du_contenu, MistralResponse, StreamChunk};
+
+    #[test]
+    fn lit_une_reponse_ordinaire() {
+        let r: MistralResponse = serde_json::from_str(r#"{"choices":[{"message":{"role":"assistant","content":"Bonjour"}}]}"#).unwrap();
+        assert_eq!(texte_de_la_reponse(r).unwrap(), "Bonjour");
+    }
+
+    #[test]
+    fn garde_la_reponse_d_un_modele_qui_reflechit_sans_sa_reflexion() {
+        // Mistral Large 4 répond par morceaux : sa réflexion, puis le texte.
+        let r: MistralResponse = serde_json::from_str(r#"{"choices":[{"message":{"role":"assistant","content":[
+            {"type":"thinking","thinking":[{"type":"text","text":"Je pèse le pour et le contre."}]},
+            {"type":"text","text":"Voici "},{"type":"text","text":"la réponse."}]}}]}"#).unwrap();
+        assert_eq!(texte_de_la_reponse(r).unwrap(), "Voici la réponse.");
+    }
+
+    #[test]
+    fn dit_quand_la_reponse_est_vide_ou_illisible() {
+        let vide: MistralResponse = serde_json::from_str(r#"{"choices":[]}"#).unwrap();
+        assert_eq!(texte_de_la_reponse(vide).unwrap_err(), "Réponse vide de Mistral");
+        let bizarre: MistralResponse = serde_json::from_str(r#"{"choices":[{"message":{"content":42}}]}"#).unwrap();
+        assert!(texte_de_la_reponse(bizarre).unwrap_err().starts_with("Réponse illisible"));
+    }
+
+    #[test]
+    fn un_flux_qui_reflechit_ne_montre_que_la_reponse() {
+        let morceau = |json: &str| {
+            let c: StreamChunk = serde_json::from_str(json).unwrap();
+            c.choices.into_iter().next().and_then(|c| texte_du_contenu(&c.delta.content)).unwrap_or_default()
+        };
+        assert_eq!(morceau(r#"{"choices":[{"delta":{"content":[{"type":"thinking","thinking":[{"type":"text","text":"Hmm"}]}]}}]}"#), "");
+        assert_eq!(morceau(r#"{"choices":[{"delta":{"content":[{"type":"thinking","thinking":[]},{"type":"text","text":"Le"}]}}]}"#), "Le");
+        assert_eq!(morceau(r#"{"choices":[{"delta":{"content":" chat"}}]}"#), " chat");
+        assert_eq!(morceau(r#"{"choices":[{"delta":{}}]}"#), "");
     }
 }
 
