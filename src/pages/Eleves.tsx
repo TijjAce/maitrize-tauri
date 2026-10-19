@@ -11,7 +11,6 @@ import { openCtx } from "../components/ctxmenu";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { DispositifsTab } from "./Dispositifs";
 import { GevaScoTab } from "./GevaSco";
-import { DicteeAtelier } from "../components/DicteeAtelier";
 import { GrilleObservation } from "../components/GrilleObservation";
 import { age, libelleAge } from "../dossier";
 
@@ -190,7 +189,6 @@ function Observations() {
   const { data: commentaires, reload } = useAsync(() => api.commentairesList(eleveId || undefined), [eleveId]);
   const [texte, setTexte] = React.useState("");
   const [type, setType] = React.useState("divers");
-  const [dictee, setDictee] = React.useState(false);
   const [filtre, setFiltre] = React.useState<string | null>(null);
   // Deux façons de regarder un élève : les notes au fil de l'eau, et les
   // temps d'observation décidés à l'avance sur un axe.
@@ -222,14 +220,9 @@ function Observations() {
           <button className={vue === "grille" ? "active" : ""} onClick={() => setVue("grille")}
             title="La grille « Observer » : réussites, difficultés, hypothèses, aménagements, réajustement">👁 Observer</button>
         </div>
-        <button className="btn" disabled={!eleves?.length || vue === "grille"} onClick={() => setDictee(true)}
-          title="Raconter l'atelier à voix haute et répartir les observations par élève">
-          🎙 Dictée d'atelier
-        </button>
       </div>
       {vue === "grille" && <GrilleObservation eleve={eleves?.find((e) => e.id === eleveId) ?? null} />}
       {vue === "notes" && <>
-      {dictee && <DicteeAtelier eleves={eleves ?? []} onClose={() => setDictee(false)} onEnregistre={reload} />}
       <div className="card" style={{ marginBottom: 14 }}>
         <ChoixTypeObservation valeur={type} onChange={setType} />
         <div className="row" style={{ marginTop: 10 }}>

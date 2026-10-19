@@ -434,11 +434,10 @@ pub fn pcm_du_wav(octets: &[u8]) -> R<Vec<f32>> {
 
 // ── Quel moteur, pour quoi ────────────────────────────────────────────────
 //
-// Trois usages, réglés chacun pour soi : les réunions, les observations
-// d'élève (le Dictaphone du téléphone, la dictée d'atelier) et les dictées
-// au micro de l'application. Chacun se transcrit sur cet ordinateur avec le
-// modèle qu'on lui a choisi, ou en ligne — « small » pour une ESS qu'on veut
-// juste, « base » pour les vocaux de la journée, qui ne font pas chauffer.
+// Trois usages : les réunions, les observations d'élève (le Dictaphone du
+// téléphone) et les dictées au micro de l'application. Chacun a son réglage,
+// mais Réglages les écrit ensemble d'un seul choix (demande de l'enseignant,
+// octobre 2026) : sur cet ordinateur avec tel modèle, ou en ligne.
 
 /// Ce à quoi sert une transcription.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

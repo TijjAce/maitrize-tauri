@@ -1268,9 +1268,13 @@ function Transcription() {
   // Du plus juste au plus rapide : on cherche d'ordinaire le premier.
   const modeles = [...(etat?.disponibles ?? [])].reverse();
   const vaut = (u: Usage) => etat?.usages.find(([nom]) => nom === u)?.[1] ?? "";
+  // Un seul choix pour tout (demande de l'enseignant, octobre 2026) : les trois
+  // usages restent dans le code, réglés ensemble. Réglés autrefois chacun pour
+  // soi, ils montrent le premier ; en choisir un les rassemble.
+  const commun = USAGES.map((u) => vaut(u.id)).find(Boolean) ?? "";
 
-  const choisir = async (u: Usage, valeur: string) => {
-    try { await api.settingSet(cleUsage(u), valeur); }
+  const choisir = async (valeur: string) => {
+    try { await Promise.all(USAGES.map((u) => api.settingSet(cleUsage(u.id), valeur))); }
     catch (e) { toast("Réglage non enregistré : " + texteErreur(e), { icone: "⚠️" }); }
     relire();
   };
@@ -1314,31 +1318,24 @@ function Transcription() {
           </ul>
           <p><b>En ligne</b> : l'audio part chez Mistral AI, entreprise française (modèle Voxtral). Rien à télécharger, mais il faut du réseau.</p>
           <p>Rien ne part en ligne sans que vous l'ayez choisi ici : sans modèle sur l'ordinateur, la transcription vous demande d'en télécharger un.</p>
-          <p><b>Observations d'élève</b> : le Dictaphone du téléphone et la dictée d'atelier. <b>Dictées</b> : le micro du cahier journal et de l'assistant.</p>
+          <p>Ce choix vaut pour tout : les réunions, le Dictaphone du téléphone, le micro du cahier journal et de l'assistant.</p>
           <p>Le compte rendu d'une réunion est ensuite rangé par l'IA en ligne, prénoms d'élèves masqués. Pour que rien ne parte, choisissez « Rien en ligne » pendant la réunion.</p>
           {etat?.dossier && <p>Les modèles sont rangés dans <code>{etat.dossier}</code>.</p>}
         </Aide>
       </div>
 
       <div className="transcription-usages">
-        {USAGES.map((u) => {
-          const v = vaut(u.id);
-          return (
-            <React.Fragment key={u.id}>
-              <label htmlFor={`transcription-${u.id}`}>{u.label}</label>
-              <Select id={`transcription-${u.id}`} value={v || "aucun"} disabled={!etat}
-                onChange={(e) => { void choisir(u.id, e.target.value); }}>
-                {!v && <option value="aucun" disabled>Sur cet ordinateur · aucun modèle</option>}
-                {modeles.map(([nom]) => (
-                  <option key={nom} value={nom} disabled={!installes.has(nom)}>
-                    Sur cet ordinateur · {nom}{installes.has(nom) ? "" : " (à télécharger)"}
-                  </option>
-                ))}
-                <option value="ligne">En ligne · Mistral</option>
-              </Select>
-            </React.Fragment>
-          );
-        })}
+        <label htmlFor="transcription-moteur">Transcrire</label>
+        <Select id="transcription-moteur" value={commun || "aucun"} disabled={!etat}
+          onChange={(e) => { void choisir(e.target.value); }}>
+          {!commun && <option value="aucun" disabled>Sur cet ordinateur · aucun modèle</option>}
+          {modeles.map(([nom]) => (
+            <option key={nom} value={nom} disabled={!installes.has(nom)}>
+              Sur cet ordinateur · {nom}{installes.has(nom) ? "" : " (à télécharger)"}
+            </option>
+          ))}
+          <option value="ligne">En ligne · Mistral</option>
+        </Select>
       </div>
 
       <div className="transcription-modeles">

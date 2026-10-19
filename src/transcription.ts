@@ -5,10 +5,10 @@
 // tourne **dans** l'application : l'audio ne sort pas, et une réunion en zone
 // blanche s'écrit quand même — en ESS, c'est ce qui compte le plus.
 //
-// Trois usages, réglés chacun pour soi, avec le modèle de son choix : les
-// réunions, les observations d'élève (le Dictaphone du téléphone, la dictée
-// d'atelier) et les dictées au micro. Le choix se fait côté Rust, qui sait
-// quels modèles sont là (voir `whisper_embarque::choix_de`).
+// Trois usages : les réunions, les observations d'élève (le Dictaphone du
+// téléphone) et les dictées au micro. Réglages les règle ensemble, d'un seul
+// choix (demande de l'enseignant, octobre 2026). Le choix se fait côté Rust,
+// qui sait quels modèles sont là (voir `whisper_embarque::choix_de`).
 //
 // Le reste de l'intelligence (le rangement du compte rendu, la relecture)
 // passe par le service en ligne dans les deux cas : un modèle local de la

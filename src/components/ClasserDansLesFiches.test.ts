@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { lirePropositions, preparerRepartition } from "./DicteeAtelier";
+import { lirePropositions, preparerRepartition } from "./ClasserDansLesFiches";
 import { restaurer } from "../confidentialite";
 import type { Eleve } from "../api";
 
