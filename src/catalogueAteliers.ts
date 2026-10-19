@@ -148,7 +148,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
   },
   {
     id: "maths", libelle: "🔢 Mathématiques",
-    aide: "Du calcul mental, des problèmes à la structure choisie, des cartes, des pistes, et des calculs qui font apparaître un dessin.",
+    aide: "Les nombres, le calcul, les problèmes, les grandeurs et mesures, l'espace et la géométrie, les données — rangés comme les programmes.",
     outils: [
       { id: "martiniere", nom: "Calcul mental", icone: "🧮", cycles: "Cycles 2 et 3",
         quoi: "Un fait numérique ou une procédure à la fois, d'après les programmes : à l'oral (La Martinière) ou en test de fluence." },
@@ -259,6 +259,32 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     ],
   },
 ];
+
+/**
+ * Les mathématiques, rangées comme les programmes et comme les lignes du
+ * tableau des séquences toutes faites : vingt-sept ateliers d'un seul tenant
+ * ne se lisaient plus (demande de l'enseignant, octobre 2026). Dans chaque
+ * domaine, de la maternelle au cycle 3. Les fractions et les décimaux vont
+ * avec les nombres, les motifs de maternelle — des formes qui se suivent —
+ * avec l'espace et la géométrie.
+ */
+export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[] = [
+  { id: "nombres", nom: "Les nombres", outils: ["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "comparer", "oie", "fractions", "numeration"] },
+  { id: "calcul", nom: "Le calcul", outils: ["martiniere", "calcul", "arbre", "posees", "pyramides", "compteEstBon", "coloriage"] },
+  { id: "problemes", nom: "Les problèmes", outils: ["partieTout", "multiplicatifs"] },
+  { id: "grandeurs", nom: "Grandeurs et mesures", outils: ["heure", "monnaie", "mesures"] },
+  { id: "geometrie", nom: "Espace et géométrie", outils: ["motifs", "geometrie", "solides", "deplacements"] },
+  { id: "donnees", nom: "Données", outils: ["donnees"] },
+];
+
+/** Les parties d'une famille, quand elle en a : les domaines des mathématiques ; ce qu'aucun ne range va dans « Autres ». */
+export function partiesDeLaFamille(f: { id: string; outils: Outil[] }): { id: string; nom: string; outils: Outil[] }[] | null {
+  if (f.id !== "maths") return null;
+  const parties = DOMAINES_DES_MATHS.map((d) => ({ id: d.id, nom: d.nom, outils: d.outils.map((id) => f.outils.find((o) => o.id === id)).filter((o): o is Outil => !!o) }));
+  const ranges = new Set(DOMAINES_DES_MATHS.flatMap((d) => d.outils as string[]));
+  const autres = f.outils.filter((o) => !ranges.has(o.id));
+  return [...parties, { id: "autres", nom: "Autres", outils: autres }].filter((p) => p.outils.length > 0);
+}
 
 /**
  * Les familles telles que le catalogue des supports les montre : sans les

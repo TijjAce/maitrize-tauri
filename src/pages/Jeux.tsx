@@ -56,8 +56,8 @@ import { BoutonMesImages, imagePourLePdf } from "../components/MesImages";
 import { gestesDemandes, gestesPourLesJeux, useNombreDeGestes } from "../components/BanqueDeGestes";
 import { estPerso } from "../imagesPerso";
 import { chercherPictos, lireLesSaisies, pictosDesMots } from "../mesPictos";
-import { FAMILLES, FAMILLES_DE_SUPPORTS, ONGLETS, SEQUENCES_TOUTES_FAITES, type Onglet, type Outil } from "../catalogueAteliers";
-import { PliDuCatalogue, iconeEtNom } from "../components/PliDuCatalogue";
+import { FAMILLES, FAMILLES_DE_SUPPORTS, ONGLETS, SEQUENCES_TOUTES_FAITES, partiesDeLaFamille, type Onglet, type Outil } from "../catalogueAteliers";
+import { PliDuCatalogue, SousPliDuCatalogue, iconeEtNom } from "../components/PliDuCatalogue";
 import { CatalogueParCompetence } from "../components/CatalogueParCompetence";
 
 // ── Loto et tableaux à partir des pictogrammes ARASAAC ────────────────────
@@ -200,7 +200,8 @@ export default function Jeux() {
   const plier = (cle: string, plie: boolean) => setPlis(plie ? [...new Set([...plis, cle])] : plis.filter((x) => x !== cle));
   // « Tout replier » vaut pour la lecture du moment : les familles, les moments, ou les groupes de séquences.
   const sectionsLues = rangement === "usage" ? USAGES.map((u) => `moment:${u.id}`)
-    : rangement === "sequences" ? ["sequences:ecole", "sequences:maternelle"] : FAMILLES_DE_SUPPORTS.map((f) => `famille:${f.id}`);
+    : rangement === "sequences" ? ["sequences:ecole", "sequences:maternelle"]
+      : FAMILLES_DE_SUPPORTS.flatMap((f) => [`famille:${f.id}`, ...(partiesDeLaFamille(f) ?? []).map((p) => `famille:${f.id}:${p.id}`)]);
   const toutPlie = sectionsLues.every((c) => plis.includes(c));
   const setOnglet = React.useCallback((o: Onglet | "") => {
     setOngletBrut(o);
@@ -329,14 +330,23 @@ export default function Jeux() {
               </section>
             ))}
           </>
-        ) : FAMILLES_DE_SUPPORTS.map((f) => (
-          <section key={f.id} className="famille-catalogue">
-            <PliDuCatalogue ouvert={!plis.includes(`famille:${f.id}`)} onBasculer={(o) => plier(`famille:${f.id}`, !o)}
-              icone={iconeEtNom(f.libelle)[0]} titre={iconeEtNom(f.libelle)[1]} aide={f.aide} nombre={f.outils.length}>
-              <div className="ateliers">{f.outils.map(carte)}</div>
-            </PliDuCatalogue>
-          </section>
-        ))}
+        ) : FAMILLES_DE_SUPPORTS.map((f) => {
+          // Les mathématiques, par domaine du programme ; chaque domaine se plie aussi.
+          const parties = partiesDeLaFamille(f);
+          return (
+            <section key={f.id} className="famille-catalogue">
+              <PliDuCatalogue ouvert={!plis.includes(`famille:${f.id}`)} onBasculer={(o) => plier(`famille:${f.id}`, !o)}
+                icone={iconeEtNom(f.libelle)[0]} titre={iconeEtNom(f.libelle)[1]} aide={f.aide} nombre={f.outils.length}>
+                {parties ? parties.map((p) => (
+                  <SousPliDuCatalogue key={p.id} ouvert={!plis.includes(`famille:${f.id}:${p.id}`)} onBasculer={(o) => plier(`famille:${f.id}:${p.id}`, !o)}
+                    titre={p.nom} nombre={p.outils.length}>
+                    <div className="ateliers">{p.outils.map(carte)}</div>
+                  </SousPliDuCatalogue>
+                )) : <div className="ateliers">{f.outils.map(carte)}</div>}
+              </PliDuCatalogue>
+            </section>
+          );
+        })}
       </Page>
     );
   }
