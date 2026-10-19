@@ -10,6 +10,7 @@ export const ONGLETS = [
   "carteMentale", "taches",
   "sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction",
   "planClasse", "frise", "paysage",
+  "perso",
 ] as const;
 export type Onglet = typeof ONGLETS[number];
 
@@ -56,6 +57,14 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Les nombres jusqu'à 999 999, les fractions et les décimaux, le calcul, les problèmes, l'algèbre — enveloppes et balances —, la proportionnalité, les grandeurs et la géométrie ; lire, écrire, l'oral, le vocabulaire, la grammaire et la conjugaison ; le Moyen Âge, la monarchie, les explorations, 1789, se nourrir, les inégalités, se déplacer, Internet — en tableau, période par période, avec toutes leurs feuilles." },
       { id: "sequencesCM2", nom: "CM2", icone: "📁", sequence: true, dossier: true,
         quoi: "Les grands nombres, les fractions et les décimaux jusqu'aux millièmes, le calcul, les problèmes, l'algèbre, la proportionnalité, les grandeurs et la géométrie ; lire, écrire, l'oral, le vocabulaire, la grammaire, le passé simple et la phrase complexe ; la République et l'Empire, l'âge industriel, les deux guerres mondiales, la France depuis 1945, le territoire, l'eau douce, l'Union européenne — en tableau, période par période, avec toutes leurs feuilles." },
+    ],
+  },
+  {
+    id: "perso", libelle: "✨ Mes générateurs",
+    aide: "Les générateurs que vous faites faire à l'IA de Mistral, en décrivant le support que vous voulez ; vous les retouchez, avec vos pictos et vos photos.",
+    outils: [
+      { id: "perso", nom: "Créer un générateur avec l'IA", icone: "✨", cycles: "De la maternelle au CM2",
+        quoi: "Décrivez la feuille que vous voulez : l'IA en fait un générateur, que vous retouchez — les mots, les pictos, vos photos, la place des images." },
     ],
   },
   {

@@ -51,7 +51,9 @@ interface AtelierMontre { id: string; nom: string; icone: string; quoi: string; 
 
 const FAMILLES_MONTREES: { id: string; libelle: string; ateliers: AtelierMontre[] }[] = [
   // Les séquences toutes faites ont leur onglet : ici, les seuls supports.
-  ...FAMILLES_DE_SUPPORTS.map((f) => ({ id: f.id, libelle: f.libelle, ateliers: f.outils.map((o) => ({ id: o.id, nom: o.nom, icone: o.icone, quoi: o.quoi, onglet: o.id })) })),
+  // Les générateurs que l'enseignant fait faire à l'IA n'ont pas encore de compétences : ils n'y sont pas.
+  ...FAMILLES_DE_SUPPORTS.filter((f) => f.id !== "perso")
+    .map((f) => ({ id: f.id, libelle: f.libelle, ateliers: f.outils.map((o) => ({ id: o.id, nom: o.nom, icone: o.icone, quoi: o.quoi, onglet: o.id })) })),
   {
     id: "caa", libelle: "💬 Communication",
     ateliers: [
