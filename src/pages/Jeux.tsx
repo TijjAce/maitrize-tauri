@@ -28,6 +28,7 @@ import {
 } from "./AteliersMaths";
 import { CursiveTab, EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { AbaqueTab, BillesTab, SuiteNombresTab } from "./AteliersNumerationCP";
+import { DemiDroiteTab, OrdinauxTab } from "./AteliersReperage";
 import { DonneesTab, MesuresTab, MonnaieTab } from "./AteliersMesures";
 import { ComprehensionTab, LecteurTab, VoixHauteTab } from "./AteliersLecture";
 import { EcrireTab, GrammaireTab, OralTab, OrthographeTab } from "./AteliersFrancais";
@@ -351,6 +352,8 @@ export default function Jeux() {
         : onglet === "billes" ? <BillesTab />
         : onglet === "abaque" ? <AbaqueTab />
         : onglet === "suiteNombres" ? <SuiteNombresTab />
+        : onglet === "demiDroite" ? <DemiDroiteTab />
+        : onglet === "ordinaux" ? <OrdinauxTab />
         : onglet === "comparer" ? <ComparerTab />
         : onglet === "calcul" ? <CartesCalculTab />
         : onglet === "arbre" ? <ArbreCalculTab />

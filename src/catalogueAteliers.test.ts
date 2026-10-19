@@ -12,8 +12,8 @@ describe("le catalogue de Fabriquer", () => {
     expect(new Set(ranges).size).toBe(ranges.length);
     // Les domaines ne nomment que des ateliers du catalogue des supports.
     for (const d of DOMAINES_DES_MATHS) for (const id of d.outils) expect(maths.outils.some((o) => o.id === id), id).toBe(true);
-    // Les billes, l'abaque et la suite des nombres vont avec les nombres, après les cubes.
-    expect(parties[0].outils.map((o) => o.id)).toEqual(["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "comparer", "oie", "fractions", "numeration"]);
+    // Les billes, l'abaque, la suite des nombres, la demi-droite et les ordinaux vont avec les nombres, après les cubes.
+    expect(parties[0].outils.map((o) => o.id)).toEqual(["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "oie", "fractions", "numeration"]);
   });
 
   it("ne découpe que les mathématiques", () => {
