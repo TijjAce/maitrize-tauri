@@ -25,7 +25,78 @@ export type ExerciceReperage =
   | "dd-unites" | "dd-placer" | "dd-lire" | "dd-manquants" | "dd-pas" | "bande-lacunaire" | "dd-evaluation"
   | "ord-file" | "ord-gobelets" | "ord-ecrire" | "ord-devant" | "ord-liste" | "ord-suites" | "ord-suites-evolutives" | "ord-evaluation";
 
-export interface ReglagesReperage { exercice: ExerciceReperage; classe: ClasseReperage }
+export interface ReglagesReperage {
+  exercice: ExerciceReperage;
+  classe: ClasseReperage;
+  /** Le titre de la feuille, quand on en écrit un ; sinon, celui de l'exercice. */
+  titre?: string;
+}
+
+// ── Les deux ateliers de Fabriquer ────────────────────────────────────────
+//
+// « La demi-droite graduée » et « Les nombres ordinaux » fabriquent les
+// feuilles des séquences de la demi-droite et des ordinaux (voir
+// demarchesReperage.ts), qui s'y rouvrent telles qu'elles sont : chaque
+// feuille de séquence a son générateur (demande de l'enseignant, octobre
+// 2026).
+
+export type AtelierReperage = "demiDroite" | "ordinaux";
+
+/** Les exercices de chaque atelier, et les classes où les exemples du programme les placent. */
+export const EXERCICES_REPERAGE: Record<AtelierReperage, { id: ExerciceReperage; classes: ClasseReperage[] }[]> = {
+  demiDroite: [
+    { id: "dd-unites", classes: ["CP", "CE1"] }, { id: "dd-placer", classes: ["CP", "CE1", "CE2"] }, { id: "dd-lire", classes: ["CP", "CE1", "CE2"] },
+    { id: "dd-manquants", classes: ["CP", "CE1", "CE2"] }, { id: "dd-pas", classes: ["CE1", "CE2"] }, { id: "bande-lacunaire", classes: ["CP", "CE1", "CE2"] },
+    { id: "dd-evaluation", classes: ["CP", "CE1", "CE2"] },
+  ],
+  ordinaux: [
+    { id: "ord-file", classes: ["CP", "CE1"] }, { id: "ord-gobelets", classes: ["CP"] }, { id: "ord-ecrire", classes: ["CP", "CE1"] },
+    { id: "ord-devant", classes: ["CP", "CE1"] }, { id: "ord-liste", classes: ["CP", "CE1"] }, { id: "ord-suites", classes: ["CP", "CE1"] },
+    { id: "ord-suites-evolutives", classes: ["CE1"] }, { id: "ord-evaluation", classes: ["CP", "CE1"] },
+  ],
+};
+
+/** Les classes de chaque atelier : la demi-droite du CP au CE2, les ordinaux au CP et au CE1, comme le programme. */
+export const CLASSES_REPERAGE: Record<AtelierReperage, ClasseReperage[]> = { demiDroite: ["CP", "CE1", "CE2"], ordinaux: ["CP", "CE1"] };
+
+export const REGLAGES_DEMI_DROITE: ReglagesReperage = { exercice: "dd-placer", classe: "CP", titre: "" };
+export const REGLAGES_ORDINAUX: ReglagesReperage = { exercice: "ord-file", classe: "CP", titre: "" };
+
+/** L'atelier d'un exercice. */
+export const atelierDeLExercice = (e: ExerciceReperage): AtelierReperage => (e.startsWith("ord-") ? "ordinaux" : "demiDroite");
+
+/** Des réglages lisibles, quoi qu'on ait gardé : une classe de l'atelier, et un exercice qui y a cours. */
+export function reglagesReperageSurs(atelier: AtelierReperage, brut: Partial<ReglagesReperage> | null | undefined): ReglagesReperage {
+  const classes = CLASSES_REPERAGE[atelier];
+  const classe = classes.find((c) => c === brut?.classe) ?? classes[0];
+  const permis = EXERCICES_REPERAGE[atelier].filter((e) => e.classes.includes(classe));
+  const exercice = permis.find((e) => e.id === brut?.exercice)?.id ?? permis[0].id;
+  return { exercice, classe, titre: typeof brut?.titre === "string" ? brut.titre : "" };
+}
+
+/** Le titre d'un exercice, à sa classe : celui que la feuille imprime quand on n'en a pas écrit. */
+export function titreParDefaut(r: Pick<ReglagesReperage, "exercice" | "classe">): string {
+  switch (r.exercice) {
+    case "dd-unites": return "Compter les unités depuis 0";
+    case "dd-placer": return "Placer des nombres sur la demi-droite";
+    case "dd-lire": return "Lire le nombre d'un point";
+    case "dd-manquants": return "Les nombres qui manquent";
+    case "dd-pas": return "Trouver le pas de la graduation";
+    case "bande-lacunaire": return "La bande des nombres";
+    case "dd-evaluation": return "Évaluation — la demi-droite graduée";
+    case "ord-file": return r.classe === "CP" ? "Le train et ses wagons" : "L'arrivée de la course";
+    case "ord-gobelets": return "Sous quel gobelet ?";
+    case "ord-ecrire": return "Écrire les nombres ordinaux";
+    case "ord-devant": return "Devant moi, derrière moi";
+    case "ord-liste": return "Le rang d'un nombre dans une liste";
+    case "ord-suites": return "Les suites qui se répètent";
+    case "ord-suites-evolutives": return "Les suites qui grandissent";
+    case "ord-evaluation": return "Évaluation — les nombres ordinaux";
+  }
+}
+
+/** Le titre de la feuille : celui qu'on a écrit, ou celui de l'exercice. */
+export const titreReperage = (r: ReglagesReperage) => r.titre?.trim() || titreParDefaut(r);
 
 const NOIR = "#1c2233", BLEU = "#2f6fd1", ROUGE = "#d64545", GRIS = "#9aa0b4";
 const COULEURS: { nom: string; hex: string }[] = [
@@ -166,7 +237,7 @@ function feuilleUnites(r: ReglagesReperage, graine: number): string {
   const n = r.classe === "CP" ? 15 : 20;
   const droites: Droite[] = [0, 1].map(() => ({ debut: 0, pas: 1, graduations: n, origine: true, ecrits: [0], majeures: 5, unite: true, points: nommer(tirer(alea, 3, 2, n - 1, [])) }));
   const questions = (d: Droite, corr: boolean) => `<div class="rp-questions">${d.points!.map((p) => `<div><b>${p.nom}</b> est à ${corr ? `<b>${p.g}</b>` : BLANC} unités de 0 : son nombre est ${corr ? `<b>${p.g}</b>` : BLANC}.</div>`).join("")}</div>`;
-  const titre = "Compter les unités depuis 0";
+  const titre = titreReperage(r);
   return `<div class="page">${entete(titre, "Je compte les unités de 0 jusqu'à chaque point. Le nombre du point, c'est le nombre d'unités depuis 0 : je l'écris.")}`
     + droites.map((d) => `<div class="rp-bloc">${svgDroite(d, false)}${questions(d, false)}</div>`).join("") + "</div>"
     + corrige(titre, droites.map((d) => `<div class="rp-bloc">${svgDroite(d, true)}${questions(d, true)}</div>`).join(""));
@@ -175,7 +246,7 @@ function feuilleUnites(r: ReglagesReperage, graine: number): string {
 function feuillePlacer(r: ReglagesReperage, graine: number, combien = 99): string {
   const alea = hasard(graine);
   const droites: Droite[] = droitesDeLaClasse(alea, r.classe).slice(0, combien).map((d) => ({ ...d, aPlacer: nommer(tirer(alea, d.graduations > 10 ? 4 : 3, 1, d.graduations - 1, d.ecrits)) }));
-  const titre = "Placer des nombres sur la demi-droite";
+  const titre = titreReperage(r);
   return `<div class="page">${entete(titre, "Je place chaque nombre sur la demi-droite : à sa graduation, je trace un petit trait et j'écris sa lettre au-dessus.")}`
     + droites.map((d) => `<div class="rp-bloc">${listeDesPoints(d, d.aPlacer!, true)}${svgDroite(d, false)}</div>`).join("") + "</div>"
     + corrige(titre, droites.map((d) => `<div class="rp-bloc">${listeDesPoints(d, d.aPlacer!, true)}${svgDroite(d, true)}</div>`).join(""));
@@ -184,7 +255,7 @@ function feuillePlacer(r: ReglagesReperage, graine: number, combien = 99): strin
 function feuilleLire(r: ReglagesReperage, graine: number): string {
   const alea = hasard(graine);
   const droites: Droite[] = droitesDeLaClasse(alea, r.classe).map((d) => ({ ...d, points: nommer(tirer(alea, d.graduations > 10 ? 4 : 3, 1, d.graduations - 1, d.ecrits)) }));
-  const titre = "Lire le nombre d'un point";
+  const titre = titreReperage(r);
   return `<div class="page">${entete(titre, "J'écris le nombre de chaque point. Je regarde d'abord les nombres écrits, puis de combien on avance d'une graduation à la suivante.")}`
     + droites.map((d) => `<div class="rp-bloc">${svgDroite(d, false)}${listeDesPoints(d, d.points!, false)}</div>`).join("") + "</div>"
     + corrige(titre, droites.map((d) => `<div class="rp-bloc">${svgDroite(d, true)}${listeDesPoints(d, d.points!, true)}</div>`).join(""));
@@ -193,7 +264,7 @@ function feuilleLire(r: ReglagesReperage, graine: number): string {
 function feuilleManquants(r: ReglagesReperage, graine: number): string {
   const alea = hasard(graine);
   const droites: Droite[] = droitesDeLaClasse(alea, r.classe).map((d) => ({ ...d, cases: tirer(alea, d.graduations > 10 ? 5 : 4, 1, d.graduations - 1, d.ecrits) }));
-  const titre = "Les nombres qui manquent";
+  const titre = titreReperage(r);
   return `<div class="page">${entete(titre, "J'écris dans chaque case le nombre de sa graduation.")}`
     + droites.map((d) => `<div class="rp-bloc">${svgDroite(d, false)}</div>`).join("") + "</div>"
     + corrige(titre, droites.map((d) => `<div class="rp-bloc">${svgDroite(d, true)}</div>`).join(""));
@@ -215,7 +286,7 @@ function feuillePas(r: ReglagesReperage, graine: number): string {
     const debut = debutMax < 1 ? 0 : p * entier(alea, 1, debutMax);
     return { debut, pas: p, graduations, origine: debut === 0, ecrits: [voisine, voisine + 1], cases: tirer(alea, 3, 0, graduations, [voisine, voisine + 1]) };
   });
-  const titre = "Trouver le pas de la graduation";
+  const titre = titreReperage(r);
   const ligne = (d: Droite, corr: boolean) => `<div class="rp-bloc">${svgDroite(d, corr)}<div class="rp-points"><span>Le pas : ${corr ? `<b>${fr(d.pas)}</b>` : BLANC}</span></div></div>`;
   return `<div class="page">${entete(titre, "Je cherche de combien on avance d'une graduation à la suivante : c'est le pas. Puis j'écris le nombre de chaque case.")}`
     + droites.map((d) => ligne(d, false)).join("") + "</div>" + corrige(titre, droites.map((d) => ligne(d, true)).join(""));
@@ -241,7 +312,7 @@ const htmlBande = (b: { nombres: number[]; trous: number[] }, corr: boolean) =>
 function feuilleBande(r: ReglagesReperage, graine: number): string {
   const alea = hasard(graine);
   const liste = bandes(alea, r.classe, 6);
-  const titre = "La bande des nombres";
+  const titre = titreReperage(r);
   return `<div class="page">${entete(titre, "J'écris les nombres qui manquent dans chaque bande. Je regarde d'abord de combien on avance d'une case à la suivante.")}`
     + liste.map((b) => htmlBande(b, false)).join("") + "</div>" + corrige(titre, liste.map((b) => htmlBande(b, true)).join(""));
 }
@@ -262,7 +333,7 @@ function feuilleEvaluationDemiDroite(r: ReglagesReperage, graine: number): strin
     + `<div class="rp-bloc">${svgDroite(lire, corr)}${listeDesPoints(lire, lire.points!, corr)}</div>`
     + consigneNumerotee(3, "J'écris dans chaque case le nombre de sa graduation.") + `<div class="rp-bloc">${svgDroite(cases, corr)}</div>`
     + consigneNumerotee(4, "J'écris les nombres qui manquent dans chaque bande.") + liste.map((x) => htmlBande(x, corr)).join("");
-  const titre = "Évaluation — la demi-droite graduée";
+  const titre = titreReperage(r);
   return `<div class="page">${entete(titre, "Je fais les exercices dans l'ordre. Je relis mes réponses.")}${parties(false)}</div>` + corrige(titre, parties(true));
 }
 
@@ -306,7 +377,7 @@ function feuilleFile(r: ReglagesReperage, graine: number): string {
   const alea = hasard(graine);
   if (r.classe !== "CP") {
     const c = course(alea);
-    const titre = "L'arrivée de la course";
+    const titre = titreReperage(r);
     return `<div class="page">${entete(titre, "Vingt coureurs sont arrivés. Le premier arrivé est à gauche, sur la première ligne ; le onzième commence la deuxième ligne. Je réponds aux questions.")}${c(false)}</div>`
       + corrige(titre, c(true));
   }
@@ -323,7 +394,7 @@ function feuilleFile(r: ReglagesReperage, graine: number): string {
     `Le wagon ${FORMES[formes[f2]].du} est le ${corr ? `<b>${ordinalEnLettres(f2 + 1)}</b>` : BLANC} wagon.`,
     `Combien de wagons y a-t-il devant le wagon ${FORMES[formes[f3]].du} ? ${corr ? `<b>${f3}</b>` : BLANC}`,
   ];
-  const titre = "Le train et ses wagons";
+  const titre = titreReperage(r);
   const liste = (corr: boolean) => `<ol class="rp-liste">${questions(corr).map((q) => `<li>${q}</li>`).join("")}</ol>`;
   return `<div class="page">${entete(titre, "La locomotive est devant : le premier wagon est juste derrière elle. Je lis chaque phrase et je fais ce qu'elle demande.")}`
     + `<div class="rp-centre">${svgTrain(formes, new Map())}</div>${liste(false)}</div>`
@@ -351,7 +422,7 @@ function course(alea: () => number): (corr: boolean) => string {
 }
 
 /** Une rangée de dix gobelets, sans sens : on part de la gauche ou de la droite. L'un est déjà vert. */
-function feuilleGobelets(_r: ReglagesReperage, graine: number): string {
+function feuilleGobelets(r: ReglagesReperage, graine: number): string {
   const alea = hasard(graine);
   const g1 = entier(alea, 3, 9), d2 = entier(alea, 2, 5);
   const gauche2 = 11 - d2;
@@ -373,7 +444,7 @@ function feuilleGobelets(_r: ReglagesReperage, graine: number): string {
     `Un autre jeton est sous le ${ordinalEnLettres(d2)} gobelet en partant de la droite : je le colorie en bleu.`,
     `Le gobelet vert est le ${corr ? `<b>${ordinalEnChiffres(v)}</b>` : BLANC} en partant de la gauche, et le ${corr ? `<b>${ordinalEnChiffres(11 - v)}</b>` : BLANC} en partant de la droite.`,
   ];
-  const titre = "Sous quel gobelet ?";
+  const titre = titreReperage(r);
   const liste = (corr: boolean) => `<ol class="rp-liste">${questions(corr).map((q) => `<li>${q}</li>`).join("")}</ol>`;
   return `<div class="page">${entete(titre, "Les gobelets n'ont pas de sens : je regarde d'où l'on part, de la gauche ou de la droite. Je compte à partir de là.")}`
     + `<div class="rp-centre">${svg(false)}</div>${liste(false)}</div>`
@@ -394,7 +465,7 @@ function feuilleEcrire(r: ReglagesReperage, graine: number): string {
       + `<td${enChiffres ? ' class="rp-a-ecrire"' : ""}>${corr && enChiffres ? `<b>${lettres}</b>` : lettres}</td></tr>`;
   }).join("");
   const tableau = (corr: boolean) => `<table class="rp-tableau"><tr><th>En chiffres</th><th>En lettres</th></tr>${lignes(corr)}</table>`;
-  const titre = "Écrire les nombres ordinaux";
+  const titre = titreReperage(r);
   return `<div class="page">${entete(titre, `J'écris chaque rang en lettres, ou en chiffres. Premier s'écrit 1<sup>er</sup> ; les autres prennent un e : 3<sup>e</sup>, troisième.`)}`
     + `${tableau(false)}</div>` + corrige(titre, tableau(true));
 }
@@ -419,7 +490,7 @@ function problemesDeRang(alea: () => number, classe: ClasseReperage, combien: nu
 function feuilleDevant(r: ReglagesReperage, graine: number): string {
   const alea = hasard(graine);
   const pbs = problemesDeRang(alea, r.classe, r.classe === "CP" ? 4 : 4);
-  const titre = "Devant moi, derrière moi";
+  const titre = titreReperage(r);
   const html = (corr: boolean) => pbs.map((p, i) => `<div class="rp-probleme"><b>${i + 1}.</b> ${p.enonce}`
     + (corr ? `<div class="rp-reponse">${p.reponse}</div>` : `<div class="rp-dessiner">Je peux dessiner la file.</div><div class="rp-phrase">Réponse : ${BLANC}</div>`) + "</div>").join("");
   return `<div class="page">${entete(titre, "Je lis le problème. Je dessine la file si j'en ai besoin, puis j'écris la réponse.")}${html(false)}</div>` + corrige(titre, html(true));
@@ -439,7 +510,7 @@ function feuilleListe(r: ReglagesReperage, graine: number): string {
     const k = entier(alea, 2, l.length - 1), j = choisir(alea, [...Array(l.length).keys()].map((x) => x + 1).filter((x) => x !== k));
     return { l, k, j };
   });
-  const titre = "Le rang d'un nombre dans une liste";
+  const titre = titreReperage(r);
   const html = (corr: boolean) => items.map(({ l, k, j }, i) => `<div class="rp-probleme"><b>${i + 1}.</b> La liste : <span class="rp-nombres">${l.map((x) => fr(x)).join(", ")}</span>`
     + `<div>Le nombre ${fr(l[k - 1])} est en ${corr ? `<b>${ordinalEnLettres(k)}</b>` : BLANC} position.</div>`
     + `<div>Le ${ordinalEnLettres(j)} nombre est ${corr ? `<b>${fr(l[j - 1])}</b>` : BLANC}.</div></div>`).join("");
@@ -507,7 +578,7 @@ function grilleDeSuite(s: Suite, corr: boolean, colonnesMax: number): string {
 function feuilleSuites(r: ReglagesReperage, graine: number, evolutives = false): string {
   const alea = hasard(graine);
   const suites = evolutives ? suitesEvolutives() : suitesRepetitives(alea, r.classe);
-  const titre = evolutives ? "Les suites qui grandissent" : "Les suites qui se répètent";
+  const titre = titreReperage(r);
   const html = (corr: boolean) => `<div class="rp-suites${r.classe === "CP" ? "" : " rp-deux"}">` + suites.map((s, i) => `<div class="rp-probleme"><b>${i + 1}.</b> ${question(s)}`
     + grilleDeSuite(s, corr, 10)
     + `<div class="rp-phrase">Réponse : ${corr ? `<b>${reponseDe(s)}</b>` : BLANC}</div></div>`).join("") + "</div>";
@@ -536,7 +607,7 @@ function feuilleEvaluationOrdinaux(r: ReglagesReperage, graine: number): string 
     + `<div class="rp-probleme">${pb.enonce}${corr ? `<div class="rp-reponse">${pb.reponse}</div>` : `<div class="rp-phrase">Réponse : ${BLANC}</div>`}</div>`
     + consigneNumerotee(3, `Je continue la suite jusqu'à la case entourée et je réponds.`)
     + `<div class="rp-probleme">${question(suite)}${grilleDeSuite(suite, corr, 10)}<div class="rp-phrase">Réponse : ${corr ? `<b>${reponseDe(suite)}</b>` : BLANC}</div></div>`;
-  const titre = "Évaluation — les nombres ordinaux";
+  const titre = titreReperage(r);
   return `<div class="page">${entete(titre, "Je fais les exercices dans l'ordre. Je relis mes réponses.")}${parties(false)}</div>` + corrige(titre, parties(true));
 }
 

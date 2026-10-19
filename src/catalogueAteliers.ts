@@ -6,7 +6,7 @@ export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "vilainPetitCanard", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive",
-  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "problemeDuJour", "motifs", "nombres", "cubes", "billes", "abaque", "suiteNombres", "comparer", "calcul", "arbre", "posees", "soustractionPosee", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "donnees", "numeration",
+  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "problemeDuJour", "motifs", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "soustractionPosee", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "donnees", "numeration",
   "carteMentale", "taches",
   "sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction",
   "planClasse", "frise", "paysage",
@@ -178,6 +178,10 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Deux tiges, des jetons verts pour les unités, des rouges pour les dizaines : faire l'échange de dix jetons, lire l'abaque, dessiner les jetons d'un nombre — jusqu'à 99." },
       { id: "suiteNombres", nom: "La suite des nombres", icone: "🔟", cycles: "Cycle 2",
         quoi: "La frise à compléter, juste avant et juste après, ranger, comparer en chiffres, en mots, en abaques et en calots, le nom des nombres, les dizaines et les unités — jusqu'à 100." },
+      { id: "demiDroite", nom: "La demi-droite graduée", icone: "🛤", cycles: "Cycle 2",
+        quoi: "Compter les unités depuis 0, placer un nombre, lire celui d'un point, trouver le pas, les nombres qui manquent, la bande lacunaire — de un en un au CP, de dix en dix et de cent en cent au CE1, de mille en mille au CE2 — et l'évaluation." },
+      { id: "ordinaux", nom: "Les nombres ordinaux", icone: "🥇", cycles: "Cycle 2 (CP, CE1)",
+        quoi: "Le train et ses wagons, sous quel gobelet, l'arrivée de la course, écrire premier et 1er, devant moi et derrière moi, le rang dans une liste, les suites qui se répètent ou qui grandissent — et l'évaluation." },
       { id: "comparer", nom: "Comparer les nombres", icone: "⚖️", cycles: "Cycle 2",
         quoi: "Des cartes de nombres sous plusieurs formes et les signes <, > et = : la bataille, la file des nombres, le nombre caché — et la feuille de jeu." },
       { id: "calcul", nom: "Cartes de calcul", icone: "🃏", cycles: "Cycles 2 et 3",
@@ -269,7 +273,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
  * avec l'espace et la géométrie.
  */
 export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[] = [
-  { id: "nombres", nom: "Les nombres", outils: ["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "comparer", "oie", "fractions", "numeration"] },
+  { id: "nombres", nom: "Les nombres", outils: ["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "oie", "fractions", "numeration"] },
   { id: "calcul", nom: "Le calcul", outils: ["martiniere", "calcul", "arbre", "posees", "pyramides", "compteEstBon", "coloriage"] },
   { id: "problemes", nom: "Les problèmes", outils: ["partieTout", "multiplicatifs"] },
   { id: "grandeurs", nom: "Grandeurs et mesures", outils: ["heure", "monnaie", "mesures"] },

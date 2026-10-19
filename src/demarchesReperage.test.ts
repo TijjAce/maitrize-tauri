@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEMARCHES_REPERAGE, demarcheDuReperage, planDuReperage } from "./demarchesReperage";
-import { htmlReperage, ordinalEnLettres, type ExerciceReperage } from "./reperageNombres";
+import { htmlReperage, ordinalEnLettres, reglagesReperageSurs, titreReperage, type ExerciceReperage } from "./reperageNombres";
 import { periodeDeLaDemarche } from "./sequencesToutesFaites";
 import { periodeProposee } from "./periodesProposees";
 
@@ -34,8 +34,12 @@ describe("la demi-droite graduée et les nombres ordinaux du cycle 2", () => {
       for (let s = 0; s < d.seances.length; s++) expect(plan.feuilles.some((f) => f.seance === s), `${d.id} — séance ${s + 1}`).toBe(true);
       expect(d.seances[d.seances.length - 1].titre, d.id).toBe("Évaluation");
       for (const f of plan.feuilles) {
+        // Chaque feuille vient de son atelier de Fabriquer, qui la refait telle qu'elle est.
+        expect(f.atelier, `${d.id} — ${f.titre}`).toBe(d.id.startsWith("ordinaux") ? "ordinaux" : "demiDroite");
         for (const graine of [1, 2, 3]) {
-          const { html } = f.fabriquer(graine);
+          const { html, refaire } = f.fabriquer(graine);
+          expect(htmlReperage((refaire as Record<string, never>)[f.atelier], graine), `${d.id} — ${f.titre}`).toBe(html);
+          expect(html, `${d.id} — ${f.titre}`).toContain(`<div class="titre">${f.titre}</div>`);
           expect(html, `${d.id} — ${f.titre}`).not.toMatch(/NaN|undefined|Infinity|\[object/);
           expect(html, `${d.id} — ${f.titre}`).toContain('class="page corrige"');
           for (const consigne of html.match(/<div class="regle">[^<]*/g) ?? []) expect(consigne.replace('<div class="regle">', ""), `${d.id} — ${f.titre}`).toMatch(/^(Je |J'|La |Les |Vingt |Dans )/);
@@ -45,6 +49,22 @@ describe("la demi-droite graduée et les nombres ordinaux du cycle 2", () => {
       const classe = d.id.endsWith("cp") ? "CP" : d.id.endsWith("ce1") ? "CE1" : "CE2";
       expect(periodeDeLaDemarche(d.id, classe) ?? periodeProposee(d.id, classe)?.periode, d.id).toBeGreaterThan(0);
     }
+  });
+
+  it("ont leurs deux ateliers dans Fabriquer, qui ne gardent que ce qui a cours à la classe", () => {
+    // Les ordinaux s'arrêtent au CE1 ; le pas de la graduation commence au CE1 ; les gobelets sont du CP, les suites qui grandissent du CE1.
+    expect(reglagesReperageSurs("ordinaux", { classe: "CE2", exercice: "ord-liste" })).toMatchObject({ classe: "CP", exercice: "ord-liste" });
+    expect(reglagesReperageSurs("demiDroite", { classe: "CP", exercice: "dd-pas" })).toMatchObject({ classe: "CP", exercice: "dd-unites" });
+    expect(reglagesReperageSurs("ordinaux", { classe: "CE1", exercice: "ord-gobelets" }).exercice).toBe("ord-file");
+    expect(reglagesReperageSurs("ordinaux", { classe: "CP", exercice: "ord-suites-evolutives" }).exercice).toBe("ord-file");
+    expect(reglagesReperageSurs("demiDroite", { exercice: "ord-file" as never }).exercice).toBe("dd-unites");
+    // Le titre qu'on écrit remplace celui de l'exercice, sur la feuille et sur son corrigé.
+    const r = reglagesReperageSurs("ordinaux", { classe: "CE1", exercice: "ord-file", titre: "La course de jeudi" });
+    expect(titreReperage(r)).toBe("La course de jeudi");
+    const html = htmlReperage(r, 2);
+    expect(html).toContain('<div class="titre">La course de jeudi</div>');
+    expect(html).toContain('<div class="titre">La course de jeudi — corrigé</div>');
+    expect(titreReperage(reglagesReperageSurs("ordinaux", { classe: "CP" }))).toBe("Le train et ses wagons");
   });
 
   it("corrigent juste : les nombres des points, le pas, les rangs et les termes des suites", () => {

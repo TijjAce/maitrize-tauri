@@ -9,12 +9,16 @@
 // (Éduscol, 2021) donne la frise numérique de la classe, d'où vient la
 // demi-droite, et l'aspect ordinal du nombre — « l'ordre dans un rang, une
 // file, une liste » —, en périodes 3 à 5. Chaque séance suit la démarche en
-// quatre temps des livrets ; ses feuilles viennent de reperageNombres.ts.
+// quatre temps des livrets ; ses feuilles viennent des ateliers « La
+// demi-droite graduée » et « Les nombres ordinaux » de Fabriquer
+// (reperageNombres.ts), où chacune se rouvre telle qu'elle est.
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 import type { FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
 import { STYLE_FEUILLE } from "./cartesImprimables";
-import { STYLE_REPERAGE, htmlReperage, type ClasseReperage, type ExerciceReperage } from "./reperageNombres";
+import {
+  STYLE_REPERAGE, atelierDeLExercice, htmlReperage, reglagesReperageSurs, titreReperage, type ClasseReperage, type ExerciceReperage,
+} from "./reperageNombres";
 
 const T1 = "Temps 1 – Définition des objectifs et mise en réussite";
 const T2 = "Temps 2 – Mise en activité des élèves";
@@ -239,18 +243,23 @@ export function demarcheDuReperage(classe: string, comp: string): string | null 
 
 // ── Les feuilles des séances ──────────────────────────────────────────────
 
-/** Une feuille de la séquence : l'atelier « Comparer les nombres » en porte les réglages — le mode dys, ce qui s'imprime. */
-const feuille = (seance: number, titre: string, exercice: ExerciceReperage, classe: ClasseReperage): FeuilleAFabriquer => ({
-  seance, atelier: "comparer", titre,
-  fabriquer: (g) => ({ html: htmlReperage({ exercice, classe }, g), style: STYLE_FEUILLE + STYLE_REPERAGE }),
-});
+/**
+ * Une feuille de la séquence, faite par son atelier de Fabriquer — « La
+ * demi-droite graduée » ou « Les nombres ordinaux » —, qui la rouvre telle
+ * qu'elle est.
+ */
+const feuille = (seance: number, exercice: ExerciceReperage, classe: ClasseReperage): FeuilleAFabriquer => {
+  const atelier = atelierDeLExercice(exercice);
+  const r = reglagesReperageSurs(atelier, { exercice, classe });
+  return { seance, atelier, titre: titreReperage(r), fabriquer: (g) => ({ html: htmlReperage(r, g), style: STYLE_FEUILLE + STYLE_REPERAGE, refaire: { [atelier]: r } }) };
+};
 
 const PLANS: Record<string, { feuilles: FeuilleAFabriquer[]; materiel: string[] }> = {
   "demi-droite-cp": {
     feuilles: [
-      feuille(0, "Compter les unités depuis 0", "dd-unites", "CP"), feuille(1, "Les nombres qui manquent", "dd-manquants", "CP"),
-      feuille(2, "Placer des nombres sur la demi-droite", "dd-placer", "CP"), feuille(3, "Lire le nombre d'un point", "dd-lire", "CP"),
-      feuille(4, "La bande des nombres", "bande-lacunaire", "CP"), feuille(5, "Évaluation — la demi-droite graduée", "dd-evaluation", "CP"),
+      feuille(0, "dd-unites", "CP"), feuille(1, "dd-manquants", "CP"),
+      feuille(2, "dd-placer", "CP"), feuille(3, "dd-lire", "CP"),
+      feuille(4, "bande-lacunaire", "CP"), feuille(5, "dd-evaluation", "CP"),
     ],
     materiel: [
       "La frise numérique de la classe ; une grande demi-droite au tableau ou au sol, une bande-unité",
@@ -263,10 +272,10 @@ const PLANS: Record<string, { feuilles: FeuilleAFabriquer[]; materiel: string[] 
   },
   "demi-droite-ce1": {
     feuilles: [
-      feuille(0, "Compter les unités depuis 0", "dd-unites", "CE1"), feuille(1, "Trouver le pas de la graduation", "dd-pas", "CE1"),
-      feuille(2, "Placer des nombres sur la demi-droite", "dd-placer", "CE1"), feuille(3, "Lire le nombre d'un point", "dd-lire", "CE1"),
-      feuille(3, "Les nombres qui manquent", "dd-manquants", "CE1"), feuille(4, "La bande des nombres", "bande-lacunaire", "CE1"),
-      feuille(5, "Évaluation — la demi-droite graduée", "dd-evaluation", "CE1"),
+      feuille(0, "dd-unites", "CE1"), feuille(1, "dd-pas", "CE1"),
+      feuille(2, "dd-placer", "CE1"), feuille(3, "dd-lire", "CE1"),
+      feuille(3, "dd-manquants", "CE1"), feuille(4, "bande-lacunaire", "CE1"),
+      feuille(5, "dd-evaluation", "CE1"),
     ],
     materiel: [
       "La règle graduée de chacun ; une demi-droite de un en un au tableau",
@@ -279,9 +288,9 @@ const PLANS: Record<string, { feuilles: FeuilleAFabriquer[]; materiel: string[] 
   },
   "demi-droite-ce2": {
     feuilles: [
-      feuille(0, "Trouver le pas de la graduation", "dd-pas", "CE2"), feuille(1, "Placer des nombres sur la demi-droite", "dd-placer", "CE2"),
-      feuille(2, "Lire le nombre d'un point", "dd-lire", "CE2"), feuille(3, "Les nombres qui manquent", "dd-manquants", "CE2"),
-      feuille(3, "La bande des nombres", "bande-lacunaire", "CE2"), feuille(4, "Évaluation — la demi-droite graduée", "dd-evaluation", "CE2"),
+      feuille(0, "dd-pas", "CE2"), feuille(1, "dd-placer", "CE2"),
+      feuille(2, "dd-lire", "CE2"), feuille(3, "dd-manquants", "CE2"),
+      feuille(3, "bande-lacunaire", "CE2"), feuille(4, "dd-evaluation", "CE2"),
     ],
     materiel: [
       "Des portions de demi-droite au tableau ; les ardoises",
@@ -293,10 +302,10 @@ const PLANS: Record<string, { feuilles: FeuilleAFabriquer[]; materiel: string[] 
   },
   "ordinaux-cp": {
     feuilles: [
-      feuille(0, "Le train et ses wagons", "ord-file", "CP"), feuille(1, "Écrire les nombres ordinaux", "ord-ecrire", "CP"),
-      feuille(2, "Sous quel gobelet ?", "ord-gobelets", "CP"), feuille(3, "Devant moi, derrière moi", "ord-devant", "CP"),
-      feuille(4, "Le rang d'un nombre dans une liste", "ord-liste", "CP"), feuille(5, "Les suites qui se répètent", "ord-suites", "CP"),
-      feuille(6, "Évaluation — les nombres ordinaux", "ord-evaluation", "CP"),
+      feuille(0, "ord-file", "CP"), feuille(1, "ord-ecrire", "CP"),
+      feuille(2, "ord-gobelets", "CP"), feuille(3, "ord-devant", "CP"),
+      feuille(4, "ord-liste", "CP"), feuille(5, "ord-suites", "CP"),
+      feuille(6, "ord-evaluation", "CP"),
     ],
     materiel: [
       "La cour ou le couloir, pour former des files ; des crayons de couleur",
@@ -310,10 +319,10 @@ const PLANS: Record<string, { feuilles: FeuilleAFabriquer[]; materiel: string[] 
   },
   "ordinaux-ce1": {
     feuilles: [
-      feuille(0, "L'arrivée de la course", "ord-file", "CE1"), feuille(0, "Écrire les nombres ordinaux", "ord-ecrire", "CE1"),
-      feuille(1, "Devant moi, derrière moi", "ord-devant", "CE1"), feuille(2, "Le rang d'un nombre dans une liste", "ord-liste", "CE1"),
-      feuille(3, "Les suites qui se répètent", "ord-suites", "CE1"), feuille(4, "Les suites qui grandissent", "ord-suites-evolutives", "CE1"),
-      feuille(5, "Évaluation — les nombres ordinaux", "ord-evaluation", "CE1"),
+      feuille(0, "ord-file", "CE1"), feuille(0, "ord-ecrire", "CE1"),
+      feuille(1, "ord-devant", "CE1"), feuille(2, "ord-liste", "CE1"),
+      feuille(3, "ord-suites", "CE1"), feuille(4, "ord-suites-evolutives", "CE1"),
+      feuille(5, "ord-evaluation", "CE1"),
     ],
     materiel: [
       "Une course d'EPS et les dossards ; des crayons de couleur",
