@@ -93,10 +93,11 @@ export function chercherAteliers(
 }
 
 /**
- * Comment le catalogue se lit : les supports par famille d'ateliers, par moment de la séquence, ou depuis les compétences
- * des programmes ; ou, à part, les séquences toutes faites (demande de l'enseignant, octobre 2026).
+ * Comment le catalogue se lit : les supports par domaine — chacun rangé par moment de la séquence —, ou depuis les
+ * compétences des programmes ; ou, à part, les séquences toutes faites (demandes de l'enseignant, octobre 2026). Le
+ * domaine et le moment, d'abord deux lectures, n'en font plus qu'une : « par domaine, et à l'intérieur par moment ».
  */
-type Rangement = "famille" | "usage" | "competence" | "sequences";
+type Rangement = "famille" | "competence" | "sequences";
 
 /** Les séquences toutes faites, en deux groupes : du CP au CE2, et en maternelle. */
 const SEQUENCES_DE_MATERNELLE = SEQUENCES_TOUTES_FAITES.filter((o) => /cycle 1/i.test(o.cycles ?? ""));
@@ -109,56 +110,59 @@ const compteDesSequences = (outils: Outil[]) => {
 };
 const RANGEMENT_MEMORISE = "fabriquer:rangement";
 
-/** Les sections repliées du catalogue — « famille:maths », « moment:rituel » —, gardées sur cet ordinateur. */
+/** Les sections repliées du catalogue — « famille:maths », « famille:maths:calcul » —, gardées sur cet ordinateur. */
 const lirePlis = (brut: unknown): string[] => (Array.isArray(brut) ? brut.filter((x): x is string => typeof x === "string") : []);
 
 const ONGLET_MEMORISE = "fabriquer:onglet";
 
-/** Le type de donnée d'une carte qu'on glisse d'un moment à l'autre. */
-const TYPE_ATELIER = "text/x-maitrize-atelier";
-
 /**
- * Un atelier, tel qu'on le voit avant d'entrer : ce qu'il fabrique, et le
- * moment où il est rangé. La carte se glisse d'un moment à l'autre ; le clic
- * droit range aussi, pour qui ne glisse pas.
+ * Un atelier, tel qu'on le voit avant d'entrer : ce qu'il fabrique, pour qui.
+ * Le moment où il est rangé, l'étiquette de son groupe le dit ; le clic droit
+ * le range dans un autre.
  */
-function CarteAtelier({ o, usage, onOuvrir, onRanger, enVol, onVol }: {
+function CarteAtelier({ o, usage, onOuvrir, onRanger }: {
   o: Outil; usage?: Usage; onOuvrir: () => void;
-  /** Ranger l'atelier dans un moment ; absent, la carte ne se glisse pas. */
+  /** Ranger l'atelier dans un moment ; absent, le clic droit ne propose rien. */
   onRanger?: (usage: Usage) => void;
-  enVol?: boolean; onVol?: (enVol: boolean) => void;
 }) {
-  // Une séquence toute faite n'est pas le support d'un moment : elle dit ce qu'elle est, à la place.
-  const moment = usage && !o.sequence ? descriptionDe(usage) : null;
   const besoin = [o.cycles, o.pictos ? "pictogrammes ARASAAC" : ""].filter(Boolean).join(" · ");
   return (
-    <div role="button" tabIndex={0} className={`atelier${o.sequence ? " atelier-sequence" : ""}${enVol ? " en-vol" : ""}`} onClick={onOuvrir}
+    <div role="button" tabIndex={0} className={`atelier${o.sequence ? " atelier-sequence" : ""}`} onClick={onOuvrir}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOuvrir(); } }}
-      draggable={Boolean(onRanger)}
-      onDragStart={onRanger ? (e) => {
-        e.dataTransfer.setData(TYPE_ATELIER, o.id);
-        e.dataTransfer.effectAllowed = "move";
-        onVol?.(true);
-      } : undefined}
-      onDragEnd={onRanger ? () => onVol?.(false) : undefined}
       onContextMenu={onRanger ? (e) => openCtx(e, USAGES.map((u) => ({
         label: `Ranger dans ${u.nom}${u.id === usage ? " ✓" : ""}`, icon: u.ico, onClick: () => onRanger(u.id),
-      }))) : undefined}
-      title={onRanger ? "Glissez la carte vers un autre moment pour la ranger, ou clic droit" : undefined}>
+      }))) : undefined}>
       <span className="atelier-icone">{o.icone}</span>
       <span className="atelier-nom">{o.nom}</span>
       <span className="atelier-quoi">{o.quoi}</span>
-      {(besoin || moment || o.sequence) && (
+      {(besoin || o.sequence) && (
         <span className="atelier-besoin">
           {o.sequence && (
             <span className="atelier-genre" title={o.dossier ? "Des séquences, leurs séances et toutes leurs feuilles, prêtes : chacune se crée d'un clic" : "Ses séances et toutes leurs feuilles, prêtes : on la crée d'un clic"}>
               {o.dossier ? "📁 Séquences toutes faites" : "📚 Séquence toute faite"}{besoin ? " · " : ""}
             </span>
           )}
-          {besoin}{besoin && moment ? " · " : ""}
-          {moment && <span className="atelier-usage" title={`${moment.aide} — ${moment.quand}.`}>{moment.ico} {moment.nom}</span>}
+          {besoin}
         </span>
       )}
+    </div>
+  );
+}
+
+/**
+ * Les ateliers d'un domaine, par moment de la séquence, dans l'ordre où on
+ * les vit : manipulation, entraînement, réinvestissement, rituel. Chaque
+ * moment a sa petite étiquette, en tête de ses cartes.
+ */
+function CartesParMoment({ outils, usages, carte }: { outils: Outil[]; usages: Record<string, Usage>; carte: (o: Outil) => React.ReactNode }) {
+  return (
+    <div className="ateliers">
+      {rangerParUsage(outils, usages).map(({ usage: u, outils: liste }) => (
+        <React.Fragment key={u.id}>
+          <div className="ateliers-moment" title={`${u.quand} — ${u.aide}`}>{u.ico} {u.nom}</div>
+          {liste.map(carte)}
+        </React.Fragment>
+      ))}
     </div>
   );
 }
@@ -177,9 +181,6 @@ export default function Jeux() {
   const [inventaireOuvert, setInventaireOuvert] = React.useState(false);
   // Le moment de la séquence où chaque atelier est rangé, et la façon de lire le catalogue.
   const { usages, changer } = useUsagesDesAteliers(ONGLETS);
-  // La carte qu'on glisse, et le moment survolé.
-  const [enVol, setEnVol] = React.useState<Onglet | "">("");
-  const [survol, setSurvol] = React.useState<Usage | "">("");
   const ranger = (id: Onglet, usage: Usage) => {
     if (usages[id] === usage) return;
     changer(id, usage);
@@ -189,7 +190,8 @@ export default function Jeux() {
   const [rangement, setRangementBrut] = React.useState<Rangement>(() => {
     try {
       const lu = localStorage.getItem(RANGEMENT_MEMORISE);
-      return lu === "usage" || lu === "competence" || lu === "sequences" ? lu : "famille";
+      // L'ancienne lecture « par moment » est devenue celle par domaine, rangée par moment.
+      return lu === "competence" || lu === "sequences" ? lu : "famille";
     } catch { return "famille"; }
   });
   const setRangement = (r: Rangement) => {
@@ -198,9 +200,8 @@ export default function Jeux() {
   };
   const [plis, setPlis] = useMemoire<string[]>("plis", lirePlis);
   const plier = (cle: string, plie: boolean) => setPlis(plie ? [...new Set([...plis, cle])] : plis.filter((x) => x !== cle));
-  // « Tout replier » vaut pour la lecture du moment : les familles, les moments, ou les groupes de séquences.
-  const sectionsLues = rangement === "usage" ? USAGES.map((u) => `moment:${u.id}`)
-    : rangement === "sequences" ? ["sequences:ecole", "sequences:maternelle"]
+  // « Tout replier » vaut pour la lecture du moment : les familles et leurs domaines, ou les groupes de séquences.
+  const sectionsLues = rangement === "sequences" ? ["sequences:ecole", "sequences:maternelle"]
       : FAMILLES_DE_SUPPORTS.flatMap((f) => [`famille:${f.id}`, ...(partiesDeLaFamille(f) ?? []).map((p) => `famille:${f.id}:${p.id}`)]);
   const toutPlie = sectionsLues.every((c) => plis.includes(c));
   const setOnglet = React.useCallback((o: Onglet | "") => {
@@ -242,11 +243,8 @@ export default function Jeux() {
   // ── Devant les ateliers ──
   if (!onglet) {
     const carte = (o: Outil) => <CarteAtelier key={o.id} o={o} usage={usages[o.id]} onOuvrir={() => setOnglet(o.id)} />;
-    // Dans le catalogue par moment, les cartes se glissent d'un moment à l'autre.
-    const carteMobile = (o: Outil) => (
-      <CarteAtelier key={o.id} o={o} usage={usages[o.id]} onOuvrir={() => setOnglet(o.id)}
-        onRanger={(u) => ranger(o.id, u)} enVol={enVol === o.id} onVol={(v) => { setEnVol(v ? o.id : ""); if (!v) setSurvol(""); }} />
-    );
+    // Un support se range dans un autre moment d'un clic droit ; une séquence toute faite n'a pas de moment.
+    const carteRangeable = (o: Outil) => <CarteAtelier key={o.id} o={o} usage={usages[o.id]} onOuvrir={() => setOnglet(o.id)} onRanger={(u) => ranger(o.id, u)} />;
     return (
       <Page titre="Fabriquer" sous="Jeux et feuilles à imprimer : langage, sons, lecture et écriture, mathématiques — du cycle 1 au cycle 3"
         actions={<button className="btn ghost sm" onClick={() => setInventaireOuvert(true)}
@@ -261,17 +259,16 @@ export default function Jeux() {
               aria-label={rangement === "competence" ? "Chercher une compétence" : "Chercher un atelier"} style={{ flex: "1 1 260px", maxWidth: 420 }} />
           )}
           <div className="seg" role="group" aria-label="Le catalogue">
-            <button className={rangement === "famille" ? "active" : ""} onClick={() => setRangement("famille")}>Par famille</button>
-            <button className={rangement === "usage" ? "active" : ""} onClick={() => setRangement("usage")}
-              title="Découverte, entraînement, réinvestissement, rituel : le moment de la séquence que sert chaque atelier">Par moment de la séquence</button>
+            <button className={rangement === "famille" ? "active" : ""} onClick={() => setRangement("famille")}>Par domaine</button>
             <button className={rangement === "competence" ? "active" : ""} onClick={() => setRangement("competence")}
               title="Les compétences des programmes, et les ateliers qui travaillent chacune">Par compétence</button>
             <button className={rangement === "sequences" ? "active" : ""} onClick={() => setRangement("sequences")}
               title="À part des supports : des séquences prêtes, leurs séances et toutes leurs feuilles">📚 Séquences toutes faites</button>
           </div>
-          {rangement === "usage" && !recherche.trim() && (
-            <Aide titre="Ranger par moment" vers="droite">
-              <p>Glissez une carte d'un moment à l'autre pour ranger l'atelier — ou clic droit sur la carte. Le rangement suit sur l'autre ordinateur.</p>
+          {rangement === "famille" && (
+            <Aide titre="Par domaine, puis par moment" vers="droite">
+              <p>Dans chaque domaine, les ateliers vont par moment de la séquence : la manipulation, en début de séquence ; l'entraînement, après la leçon ;
+                le réinvestissement, en fin de séquence ; le rituel, chaque jour. Un clic droit sur une carte la range dans un autre moment ; le rangement suit sur l'autre ordinateur.</p>
             </Aide>
           )}
           {(rangement === "sequences" || !recherche.trim()) && rangement !== "competence" && (
@@ -297,41 +294,12 @@ export default function Jeux() {
           <CatalogueParCompetence recherche={recherche} onOuvrir={setOnglet} />
         ) : recherche.trim() ? (
           trouves.length ? (
-            <div className="ateliers">{trouves.map(carte)}</div>
+            <CartesParMoment outils={trouves} usages={usages} carte={carteRangeable} />
           ) : (
             <Empty icone="🔍" titre="Aucun atelier" sous="Essayez « loto », « problèmes », « sons », « rituel »…" />
           )
-        ) : rangement === "usage" ? (
-          <>
-            {rangerParUsage(FAMILLES_DE_SUPPORTS.flatMap((f) => f.outils), usages, true).map(({ usage, outils }) => (
-              <section key={usage.id} className={`zone-moment${survol === usage.id ? " survol" : ""}`} aria-label={usage.nom}
-                onDragOver={(e) => {
-                  if (!enVol) return;
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
-                  if (survol !== usage.id) setSurvol(usage.id);
-                }}
-                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setSurvol((s) => (s === usage.id ? "" : s)); }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const id = (e.dataTransfer.getData(TYPE_ATELIER) || enVol) as Onglet | "";
-                  setSurvol("");
-                  setEnVol("");
-                  if (id) ranger(id, usage.id);
-                }}>
-                <PliDuCatalogue ouvert={!plis.includes(`moment:${usage.id}`)} onBasculer={(o) => plier(`moment:${usage.id}`, !o)}
-                  icone={usage.ico} titre={usage.nom} aide={`${usage.quand} — ${usage.aide}`} nombre={outils.length}>
-                  {outils.length ? (
-                    <div className="ateliers">{outils.map(carteMobile)}</div>
-                  ) : (
-                    <div className="zone-moment-vide">Aucun atelier ici — glissez-en un.</div>
-                  )}
-                </PliDuCatalogue>
-              </section>
-            ))}
-          </>
         ) : FAMILLES_DE_SUPPORTS.map((f) => {
-          // Les mathématiques, par domaine du programme ; chaque domaine se plie aussi.
+          // Les mathématiques, par domaine du programme ; chaque domaine se plie aussi. Dans chacun, les ateliers vont par moment.
           const parties = partiesDeLaFamille(f);
           return (
             <section key={f.id} className="famille-catalogue">
@@ -340,9 +308,9 @@ export default function Jeux() {
                 {parties ? parties.map((p) => (
                   <SousPliDuCatalogue key={p.id} ouvert={!plis.includes(`famille:${f.id}:${p.id}`)} onBasculer={(o) => plier(`famille:${f.id}:${p.id}`, !o)}
                     titre={p.nom} nombre={p.outils.length}>
-                    <div className="ateliers">{p.outils.map(carte)}</div>
+                    <CartesParMoment outils={p.outils} usages={usages} carte={carteRangeable} />
                   </SousPliDuCatalogue>
-                )) : <div className="ateliers">{f.outils.map(carte)}</div>}
+                )) : <CartesParMoment outils={f.outils} usages={usages} carte={carteRangeable} />}
               </PliDuCatalogue>
             </section>
           );
