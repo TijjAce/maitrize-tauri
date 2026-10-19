@@ -865,6 +865,9 @@ pub(crate) fn migrate(conn: &Connection) {
     // entrée par ligne : c'est ce qu'on écrit, et c'est ce qui se fusionne.
     conn.execute("ALTER TABLE projets ADD COLUMN mots TEXT NOT NULL DEFAULT ''", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN phrases TEXT NOT NULL DEFAULT ''", []).ok();
+    // Une classe à plusieurs niveaux tient une progression par niveau. Les
+    // progressions d'avant n'en ont pas : elles valent pour tous les niveaux.
+    conn.execute("ALTER TABLE progressions_annuelle ADD COLUMN niveau TEXT NOT NULL DEFAULT ''", []).ok();
     migrer_documents_eleve(conn);
 
     // Élèves présents sur un créneau (organisation IME, groupes restreints).

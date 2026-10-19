@@ -2,12 +2,20 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import {
-  api, ProgrammationFinale, ProgressionAnnuelle, EdtTypique, Sequence, Ami, Eleve, anneeScolaireActuelle, MATIERES,
-  HEURES_PROGRAMME, couleurHex, couleurPourMatiere, newId, telechargerTexte,
+  api, ProgrammationFinale, EdtTypique, Sequence, Ami, Eleve, anneeScolaireActuelle, MATIERES, NIVEAUX_SCOLAIRES,
+  HEURES_PROGRAMME, couleurHex, couleurPourMatiere, getMatiereOverrides, matiereDuDomaine, newId, telechargerTexte,
 } from "../api";
 import { Empty, Input, Select, Modal, ColorPicker, useAsync, useSegmentNav, useHistorique, useOngletDemande } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
+import { Aide } from "../components/Aide";
+import { chargerVacances, periodesDeLAnnee, type PeriodeDeClasse } from "../vacances";
+import { isoJour } from "../dates";
+import {
+  avecCase, casesDeLaColonne, cleCase, copieDesColonnes, datesDeLaSemaine, deplacerColonne, enJson, lireEtat, memeEtat,
+  niveauxAffiches, nombreDeSemaines, progressionDe, remettreColonne, sansColonne, semainesDeLaPeriode, sourcesDeColonnes,
+  titreConnu, titresProposes, TOUS_NIVEAUX, type Colonne, type EtatProg, type GroupeDeTitres, type SourceDeColonnes,
+} from "../progressionAnnuelle";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { COULEURS, choisirCouleurMatiere, teinteSequence } from "../api";
 import { printHTML, escapeHtml } from "../print";
@@ -78,11 +86,15 @@ function DomaineLabel({ label, onChange }: { label: string; onChange: (v: string
   );
 }
 
-function imprimerProgression(annee: string, periode: number, colonnes: { id: string; titre: string }[], cellules: Record<string, string>) {
-  const head = `<tr><th>Semaine</th>${colonnes.map((c) => `<th>${escapeHtml(c.titre)}</th>`).join("")}</tr>`;
-  const rows = Array.from({ length: NB_SEMAINES }, (_, i) => i + 1).map((sem) =>
-    `<tr><td><b>S${sem}</b></td>${colonnes.map((c) => `<td>${escapeHtml(cellules[`w${sem}_${c.id}`] ?? "")}</td>`).join("")}</tr>`).join("");
-  printHTML(`Progression ${annee} P${periode}`, `<h1>Progression annuelle — ${escapeHtml(annee)} · Période ${periode}</h1><table>${head}${rows}</table>`);
+/** La progression affichée, à imprimer : son niveau, ses semaines datées, les retours à la ligne des cases. */
+function imprimerProgression(annee: string, niveau: string, periode: number, colonnes: { id: string; titre: string; teinte: string }[],
+  cellules: Record<string, string>, semaines: { numero: number; dates: string }[]) {
+  const head = `<tr><th>Semaine</th>${colonnes.map((c) => `<th style="border-top:4px solid ${c.teinte}">${escapeHtml(c.titre)}</th>`).join("")}</tr>`;
+  const rows = semaines.map((s) =>
+    `<tr><td><b>S${s.numero}</b>${s.dates ? `<br><small>${escapeHtml(s.dates)}</small>` : ""}</td>${colonnes.map((c) =>
+      `<td>${escapeHtml(cellules[cleCase(s.numero, c.id)] ?? "").replace(/\n/g, "<br>")}</td>`).join("")}</tr>`).join("");
+  const sous = [annee, niveau || TOUS_NIVEAUX, `Période ${periode}`].map(escapeHtml).join(" · ");
+  printHTML(`Progression ${annee} ${niveau || TOUS_NIVEAUX} P${periode}`, `<h1>Progression — ${sous}</h1><table>${head}${rows}</table>`);
 }
 
 function imprimerProgrammation(annee: string, lignes: Ligne[]) {
@@ -157,64 +169,187 @@ export default function Organisation() {
 
 interface AnneeProps { annee: string; setAnnee: (a: string) => void }
 
-// ── Progression annuelle : semaines × colonnes (domaines/matières) ──────────
-interface Colonne { id: string; titre: string; couleur: string }
-const NB_SEMAINES = 8;
+// ── Progression annuelle : par niveau et par période, semaines × colonnes ──
+//
+// Une classe à plusieurs niveaux tient une progression par niveau dans la
+// même année ; celles d'avant, sans niveau, valent pour tous. Les colonnes
+// se tirent des matières et domaines de Réglages et des intitulés de
+// l'emploi du temps, et en prennent la couleur.
+//
+// Rien de ce qu'on tape ne doit se perdre : chaque écriture n'envoie que
+// l'écart avec ce que l'écran montrait (voir `progression_annuelle_ecrire`),
+// une à la fois par progression, et l'écran relit ce qui arrive d'un autre
+// ordinateur dès qu'il n'a plus rien en route.
+
+interface Cible { annee: string; niveau: string; periode: number }
+const cleCible = (c: Cible) => `${c.annee}|${c.niveau}|${c.periode}`;
+
+/** Les écritures d'une progression : ce que la base a déjà, ce qui reste à envoyer. */
+interface Ecrivain { envoye: EtatProg; aEnvoyer: EtatProg | null; actif: boolean }
 
 function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
   const { data, reload } = useAsync(() => api.progressionsAnnuelleList(), []);
+  const liste = React.useMemo(() => data ?? [], [data]);
   const [periode, setPeriode] = React.useState(1);
-  const prog = data?.find((p) => p.annee === annee && p.periode === periode);
-  const [editCol, setEditCol] = React.useState<Colonne | null>(null);
+  const [niveau, setNiveau] = React.useState("");
+  const [ajoutes, setAjoutes] = React.useState<string[]>([]);
+  const [niveauxClasse, setNiveauxClasse] = React.useState<string[]>([]);
+  React.useEffect(() => { api.settingGet("niveauClasse").then((v) => setNiveauxClasse(lireNiveaux(v))).catch(() => {}); }, []);
+  const niveaux = niveauxAffiches(NIVEAUX_SCOLAIRES, niveauxClasse, liste, annee, ajoutes);
+  const cible: Cible = { annee, niveau, periode };
+  const cle = cleCible(cible);
+  const prog = progressionDe(liste, annee, niveau, periode);
 
-  // Colonnes + cellules en un seul bloc, avec annuler/rétablir (⌘Z / Ctrl+Z, ⌘⇧Z / Ctrl+Y).
-  type EtatProg = { colonnes: Colonne[]; cellules: Record<string, string> };
-  const { present: etat, reset: chargerEtat, commit } = useHistorique<EtatProg>({ colonnes: [], cellules: {} }, (next) => {
-    const p: ProgressionAnnuelle = prog
-      ? { ...prog, colonnesJson: JSON.stringify(next.colonnes), cellulesJson: JSON.stringify(next.cellules) }
-      : { id: newId(), annee, periode, colonnesJson: JSON.stringify(next.colonnes), cellulesJson: JSON.stringify(next.cellules) };
-    api.progressionAnnuelleSave(p).then(() => { if (!prog) reload(); });
-  });
-  const colonnes = etat.colonnes;
-  const cellules = etat.cellules;
-  const persister = (cols: Colonne[], cells: Record<string, string>) => commit({ colonnes: cols, cellules: cells });
-
+  // Les titres proposés, et la couleur qu'ils donnent à leur colonne.
+  const [sources, setSources] = React.useState<GroupeDeTitres[]>([{ groupe: "Matières", titres: MATIERES }]);
   React.useEffect(() => {
-    let cols: Colonne[] = []; let cells: Record<string, string> = {};
-    try { cols = prog ? JSON.parse(prog.colonnesJson) : []; } catch { /* */ }
-    try { cells = prog ? JSON.parse(prog.cellulesJson) : {}; } catch { /* */ }
-    chargerEtat({ colonnes: cols, cellules: cells });
-  }, [prog?.id, periode]);
+    let vivant = true;
+    Promise.all([api.referentielsList().catch(() => []), api.edtTypiqueList().catch(() => [])]).then(([refs, edts]) => {
+      const domaines = refs.filter((r) => r.actif).flatMap((r) => {
+        try { return ((JSON.parse(r.donnees)?.domaines ?? []) as { titre?: string }[]).map((d) => d.titre ?? ""); } catch { return []; }
+      });
+      const duPlanning = edts.flatMap((e) => { try { return (JSON.parse(e.slotsJson) as SlotEdt[]).map((s) => s.titre ?? ""); } catch { return []; } });
+      const choisis = Object.keys(getMatiereOverrides()).filter((m) => !MATIERES.includes(m) && !matiereDuDomaine(m));
+      const intitules = [...new Set([...duPlanning, ...choisis].map((t) => t.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
+      if (vivant) setSources([{ groupe: "Matières", titres: MATIERES }, { groupe: "Domaines de vos référentiels", titres: domaines }, { groupe: "Emploi du temps", titres: intitules }]);
+    });
+    return () => { vivant = false; };
+  }, []);
+  const teinte = (c: Colonne) => couleurHex[titreConnu(sources, c.titre) ? couleurPourMatiere(c.titre) : c.couleur] ?? couleurHex.blue;
 
-  const ajouterCol = () => { const c = { id: newId(), titre: "Domaine", couleur: "blue" }; setEditCol(c); };
+  // Les semaines de la période, datées quand le calendrier de la zone est connu.
+  const [periodesCal, setPeriodesCal] = React.useState<PeriodeDeClasse[]>([]);
+  React.useEffect(() => {
+    let vivant = true;
+    chargerVacances(isoJour(new Date())).then((v) => { if (vivant) setPeriodesCal(periodesDeLAnnee(v, parseInt(annee.slice(0, 4), 10))); })
+      .catch(() => { if (vivant) setPeriodesCal([]); });
+    return () => { vivant = false; };
+  }, [annee]);
+  const periodeCal = periodesCal.find((p) => p.numero === periode);
+  const semainesCal = periodeCal ? semainesDeLaPeriode(periodeCal) : [];
+
+  // Colonnes + cases en un seul bloc, avec annuler/rétablir (⌘Z / Ctrl+Z, ⌘⇧Z / Ctrl+Y).
+  const ecrivains = React.useRef(new Map<string, Ecrivain>());
+  const affichee = React.useRef("");
+  const { present: etat, reset: afficher, commit } = useHistorique<EtatProg>({ colonnes: [], cellules: {} }, (suivant) => envoyer(cibleRef.current, suivant));
+  const etatRef = React.useRef(etat); etatRef.current = etat;
+  const cibleRef = React.useRef(cible); cibleRef.current = cible;
+  const dataRef = React.useRef(liste); dataRef.current = liste;
+
+  const ecrivain = (c: Cible): Ecrivain => {
+    const k = cleCible(c);
+    let w = ecrivains.current.get(k);
+    if (!w) {
+      w = { envoye: lireEtat(progressionDe(dataRef.current, c.annee, c.niveau, c.periode)), aEnvoyer: null, actif: false };
+      ecrivains.current.set(k, w);
+    }
+    return w;
+  };
+  const occupe = (w?: Ecrivain) => !!w && (w.actif || w.aEnvoyer !== null);
+
+  /** Envoie la dernière version, une écriture à la fois : les versions intermédiaires se fondent dans la suivante. */
+  const vider = async (c: Cible, w: Ecrivain) => {
+    w.actif = true;
+    try {
+      while (w.aEnvoyer) {
+        const version = w.aEnvoyer;
+        if (memeEtat(version, w.envoye)) { w.aEnvoyer = null; break; }
+        await api.progressionAnnuelleEcrire(c.annee, c.niveau, c.periode, enJson(w.envoye), enJson(version));
+        w.envoye = version;
+        if (w.aEnvoyer === version) w.aEnvoyer = null;
+      }
+    } catch (err) {
+      // Ce qui n'est pas parti reste à envoyer : la prochaine saisie le reprend.
+      toast(`Progression non enregistrée : ${String(err)}`, { icone: "⚠️" });
+    } finally {
+      w.actif = false;
+    }
+    if (!occupe(w)) reload();
+  };
+  function envoyer(c: Cible, suivant: EtatProg) {
+    const w = ecrivain(c);
+    w.aEnvoyer = suivant;
+    if (!w.actif) void vider(c, w);
+  }
+  /** Modifie une progression, affichée ou non (l'annulation d'une suppression peut arriver après un changement de période). */
+  const modifier = (c: Cible, f: (e: EtatProg) => EtatProg) => {
+    if (cleCible(c) === cleCible(cibleRef.current)) { commit(f(etatRef.current)); return; }
+    const w = ecrivain(c);
+    envoyer(c, f(w.aEnvoyer ?? w.envoye));
+  };
+
+  // Afficher la progression choisie, puis ce qui arrive d'ailleurs — jamais pendant que nos écritures partent.
+  React.useEffect(() => {
+    if (!data) return;
+    const w = ecrivain(cible);
+    if (affichee.current !== cle) {
+      affichee.current = cle;
+      afficher(occupe(w) ? (w.aEnvoyer ?? w.envoye) : lireEtat(prog));
+      if (!occupe(w)) w.envoye = lireEtat(prog);
+      return;
+    }
+    if (occupe(w)) return;
+    const recu = lireEtat(prog);
+    w.envoye = recu;
+    if (!memeEtat(recu, etatRef.current)) afficher(recu);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, cle]);
+
+  const { colonnes, cellules } = etat;
+  const nb = nombreDeSemaines(semainesCal.length, cellules);
+  const semaines = Array.from({ length: nb }, (_, i) => {
+    const s = semainesCal[i];
+    return { numero: i + 1, dates: s ? datesDeLaSemaine(s) : "" };
+  });
+
+  const [editCol, setEditCol] = React.useState<{ colonne: Colonne; nouvelle: boolean } | null>(null);
+  const ajouterCol = () => setEditCol({ colonne: { id: newId(), titre: "", couleur: "blue" }, nouvelle: true });
   const validerCol = (c: Colonne) => {
-    const exists = colonnes.some((x) => x.id === c.id);
-    persister(exists ? colonnes.map((x) => x.id === c.id ? c : x) : [...colonnes, c], cellules);
+    const existe = colonnes.some((x) => x.id === c.id);
+    commit({ colonnes: existe ? colonnes.map((x) => (x.id === c.id ? c : x)) : [...colonnes, c], cellules });
     setEditCol(null);
   };
-  const supprimerCol = (id: string) => {
-    const cells = { ...cellules };
-    Object.keys(cells).forEach((k) => { if (k.endsWith("_" + id)) delete cells[k]; });
-    persister(colonnes.filter((c) => c.id !== id), cells);
+  const supprimerCol = (c: Colonne) => {
+    const ici = { ...cible };
+    const place = colonnes.findIndex((x) => x.id === c.id);
+    const cases = casesDeLaColonne(etat, c.id);
+    const n = Object.keys(cases).length;
+    commit(sansColonne(etat, c.id));
+    setEditCol(null);
+    toastAnnulable(`Colonne « ${c.titre || "sans titre"} » supprimée${n ? `, avec ${n} case${n > 1 ? "s" : ""}` : ""}.`,
+      () => modifier(ici, (e) => remettreColonne(e, c, place, cases)));
   };
-  const setCell = (sem: number, colId: string, v: string) =>
-    persister(colonnes, { ...cellules, [`w${sem}_${colId}`]: v });
+  const menuCol = (e: React.MouseEvent, c: Colonne) => {
+    const i = colonnes.findIndex((x) => x.id === c.id);
+    openCtx(e, [
+      { label: "Modifier…", icon: "✏️", onClick: () => setEditCol({ colonne: c, nouvelle: false }) },
+      ...(i > 0 ? [{ label: "Déplacer à gauche", icon: "←", onClick: () => commit(deplacerColonne(etat, c.id, -1)) }] : []),
+      ...(i < colonnes.length - 1 ? [{ label: "Déplacer à droite", icon: "→", onClick: () => commit(deplacerColonne(etat, c.id, 1)) }] : []),
+      { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: () => supprimerCol(c) },
+    ]);
+  };
+  const setCase = (semaine: number, colonne: string, texte: string) => commit(avecCase(etat, semaine, colonne, texte));
+
+  const ajouterNiveau = (e: React.MouseEvent) => {
+    const libres = NIVEAUX_SCOLAIRES.filter((n) => !niveaux.includes(n));
+    openCtx(e, libres.map((n) => ({ label: n, onClick: () => { setAjoutes((a) => [...a, n]); setNiveau(n); } })));
+  };
+  const reprises = colonnes.length === 0 ? sourcesDeColonnes(liste, annee, niveau, periode) : [];
+  const reprendre = (src: SourceDeColonnes) => commit({ colonnes: copieDesColonnes(src.colonnes, newId), cellules });
 
   // ── Export / Import JSON (format compatible app native) ───────────────
-  // L'année est neutralisée à l'export (champ vide) : à l'import on assigne
-  // toujours la période/année actuellement affichée (« atterrit là où je suis »),
-  // comme dans l'app native — pratique pour partager en travail de cycle.
+  // L'année est neutralisée à l'export (champ vide) : à l'import, le tableau
+  // atterrit sur l'année, le niveau et la période affichés, comme dans l'app
+  // native — pratique pour partager en travail de cycle.
   const fileRef = React.useRef<HTMLInputElement>(null);
   const exporter = () => {
+    const { colonnesJson, cellulesJson } = enJson(etat);
     const bundle = {
       version: 4, type: "progression", dateExport: new Date().toISOString(), appVersion: "tauri",
-      progressionsAnnuelles: [{
-        id: prog?.id ?? newId(), annee: "", periode,
-        colonnesJSON: JSON.stringify(colonnes), cellulesJSON: JSON.stringify(cellules),
-      }],
+      progressionsAnnuelles: [{ id: prog?.id ?? newId(), annee: "", periode, niveau, colonnesJSON: colonnesJson, cellulesJSON: cellulesJson }],
     };
     const d = new Date().toISOString().slice(0, 10);
-    telechargerTexte(`Progression_${annee}_P${periode}_${d}.json`, JSON.stringify(bundle, null, 2));
+    telechargerTexte(`Progression_${annee}_${niveau || "tous-niveaux"}_P${periode}_${d}.json`, JSON.stringify(bundle, null, 2));
   };
   const importer = async (file: File) => {
     try {
@@ -226,71 +361,163 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
       if (dtos.length === 0) throw new Error();
       // On privilégie le tableau correspondant à la période affichée, sinon le premier.
       const dto = dtos.find((d) => d.periode === periode) ?? dtos[0];
-      const cols: Colonne[] = JSON.parse(dto.colonnesJSON || "[]");
-      const cells: Record<string, string> = JSON.parse(dto.cellulesJSON || "{}");
-      if (!Array.isArray(cols)) throw new Error();
-      persister(cols, cells); // atterrit sur la période actuellement affichée
+      const recu = lireEtat({ colonnesJson: dto.colonnesJSON || "[]", cellulesJson: dto.cellulesJSON || "{}" });
+      if (recu.colonnes.length === 0) throw new Error();
+      if (colonnes.length > 0 && !(await confirmer("Remplacer la progression affichée par celle du fichier ?", { oui: "Remplacer", danger: true }))) return;
+      commit(recu);
     } catch { toast("Fichier de progression invalide.", { icone: "⚠️" }); }
   };
+
+  const dates = periodeCal ? `${datesDeLaSemaine({ numero: 0, debut: periodeCal.debut, fin: periodeCal.fin })} · ${semainesCal.length} semaines` : "";
+  const aImprimer = colonnes.map((c) => ({ ...c, teinte: teinte(c) }));
 
   return (
     <>
       <div className="toolbar">
         <AnneeSelect annee={annee} setAnnee={setAnnee} />
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {[1, 2, 3, 4, 5].map((p) => <PeriodeChip key={p} p={p} selected={periode === p} onClick={() => setPeriode(p)} />)}
+        <div className="seg" role="group" aria-label="Niveau">
+          {niveaux.map((n) => (
+            <button key={n || "tous"} className={niveau === n ? "active" : ""} aria-pressed={niveau === n} onClick={() => setNiveau(n)}>
+              {n || TOUS_NIVEAUX}
+            </button>
+          ))}
+          <button title="Ajouter un niveau" aria-label="Ajouter un niveau" onClick={ajouterNiveau}>＋</button>
         </div>
         <div className="spacer" />
         <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: "none" }}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = ""; }} />
-        <button className="btn" onClick={() => imprimerProgression(annee, periode, colonnes, cellules)} disabled={colonnes.length === 0}>🖨 PDF</button>
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) void importer(f); e.target.value = ""; }} />
+        <button className="btn" onClick={() => imprimerProgression(annee, niveau, periode, aImprimer, cellules, semaines)} disabled={colonnes.length === 0}>🖨 PDF</button>
         <button className="btn" onClick={exporter} disabled={colonnes.length === 0}>⬇️ Exporter</button>
         <button className="btn" onClick={() => fileRef.current?.click()}>⬆️ Importer</button>
         <button className="btn primary" onClick={ajouterCol}>+ Colonne</button>
       </div>
-      {colonnes.length === 0 ? <Empty icone="📅" titre="Progression vide" sous="Ajoutez des colonnes (domaines/matières) puis remplissez par semaine." /> :
-        <div style={{ overflowX: "auto" }}>
-          <table className="tbl compact">
-            <thead><tr><th style={{ width: 70 }}>Semaine</th>
-              {colonnes.map((c) => (
-                <th key={c.id} style={{ minWidth: 150 }}>
-                  <span className="dot" style={{ background: couleurHex[c.couleur], display: "inline-block", width: 8, height: 8, borderRadius: "50%", marginRight: 6 }} />
-                  {c.titre}
-                  <button className="btn ghost sm" onClick={() => setEditCol(c)} aria-label="Modifier">✏️</button>
-                  <button className="btn ghost sm" onClick={() => supprimerCol(c.id)} aria-label="Supprimer">🗑</button>
-                </th>
-              ))}
-            </tr></thead>
+      <div className="prog-periodes">
+        {[1, 2, 3, 4, 5].map((p) => <PeriodeChip key={p} p={p} selected={periode === p} onClick={() => setPeriode(p)} />)}
+        {dates && <span className="meta">{dates}</span>}
+      </div>
+      {colonnes.length === 0 ? (
+        <div className="prog-vide">
+          <Empty icone="📅" titre={`Progression ${niveau || TOUS_NIVEAUX} · P${periode} vide`} sous="Ajoutez des colonnes, puis remplissez semaine par semaine." />
+          <div className="prog-vide-actions">
+            {reprises.map((s) => (
+              <button key={s.libelle} className="btn" onClick={() => reprendre(s)}>
+                Reprendre les colonnes de {s.libelle} ({s.colonnes.map((c) => c.titre).join(", ")})
+              </button>
+            ))}
+            <button className="btn primary" onClick={ajouterCol}>+ Colonne</button>
+          </div>
+        </div>
+      ) : (
+        <div className="prog-cadre">
+          <table className="prog-tableau">
+            <colgroup><col style={{ width: 96 }} />{colonnes.map((c) => <col key={c.id} />)}</colgroup>
+            <thead>
+              <tr>
+                <th className="prog-semaine">Semaine</th>
+                {colonnes.map((c) => (
+                  <th key={c.id} onContextMenu={(e) => menuCol(e, c)}>
+                    <div className="prog-entete" style={{ "--couleur": teinte(c) } as React.CSSProperties}>
+                      <button className="prog-titre" onClick={() => setEditCol({ colonne: c, nouvelle: false })} title="Modifier la colonne">
+                        {c.titre || "Sans titre"}
+                      </button>
+                      <button className="prog-plus" aria-label={`Actions de la colonne ${c.titre}`} onClick={(e) => menuCol(e, c)}>⋯</button>
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
             <tbody>
-              {Array.from({ length: NB_SEMAINES }, (_, i) => i + 1).map((sem) => (
-                <tr key={sem}>
-                  <td style={{ fontWeight: 700, color: "var(--text-2)" }}>S{sem}</td>
+              {semaines.map((s) => (
+                <tr key={s.numero}>
+                  <td className="prog-semaine"><b>S{s.numero}</b>{s.dates && <span>{s.dates}</span>}</td>
                   {colonnes.map((c) => (
-                    <td key={c.id}><input className="input" value={cellules[`w${sem}_${c.id}`] ?? ""}
-                      onChange={(e) => setCell(sem, c.id, e.target.value)} /></td>
+                    <td key={c.id} className="prog-case" style={{ "--couleur": teinte(c) } as React.CSSProperties}>
+                      <CaseProgression valeur={cellules[cleCase(s.numero, c.id)] ?? ""} onChange={(v) => setCase(s.numero, c.id, v)}
+                        libelle={`${c.titre}, semaine ${s.numero}`} />
+                    </td>
                   ))}
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>}
-      {editCol && <ColonneForm colonne={editCol} onClose={() => setEditCol(null)} onValider={validerCol} />}
+        </div>
+      )}
+      {editCol && <ColonneForm colonne={editCol.colonne} nouvelle={editCol.nouvelle} sources={sources} teinte={teinte}
+        onClose={() => setEditCol(null)} onValider={validerCol} onSupprimer={editCol.nouvelle ? undefined : () => supprimerCol(editCol.colonne)} />}
     </>
   );
 }
 
-function ColonneForm({ colonne, onClose, onValider }: { colonne: Colonne; onClose: () => void; onValider: (c: Colonne) => void }) {
+/** Une case de la progression : elle s'agrandit avec ce qu'on écrit, rien n'est jamais coupé. */
+function CaseProgression({ valeur, onChange, libelle }: { valeur: string; onChange: (v: string) => void; libelle: string }) {
+  const ref = React.useRef<HTMLTextAreaElement>(null);
+  // La hauteur du texte, bordures comprises : la case les compte dans sa hauteur.
+  const ajuster = React.useCallback(() => {
+    const el = ref.current;
+    if (el) { el.style.height = "auto"; el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`; }
+  }, []);
+  React.useLayoutEffect(ajuster, [valeur, ajuster]);
+  // Une colonne de plus rétrécit les autres : le texte passe à la ligne, la case doit grandir.
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    // La première mesure ajuste aussi : la largeur a pu changer entre le rendu et l'observation.
+    let largeur = -1;
+    const obs = new ResizeObserver(() => { if (el.clientWidth !== largeur) { largeur = el.clientWidth; ajuster(); } });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [ajuster]);
+  return <textarea ref={ref} rows={1} value={valeur} spellCheck={false} aria-label={libelle} onChange={(e) => onChange(e.target.value)} />;
+}
+
+/** Une colonne : son titre se tire des matières, domaines et intitulés de l'emploi du temps, dont elle prend la couleur. */
+function ColonneForm({ colonne, nouvelle, sources, teinte, onClose, onValider, onSupprimer }: {
+  colonne: Colonne; nouvelle: boolean; sources: GroupeDeTitres[]; teinte: (c: Colonne) => string;
+  onClose: () => void; onValider: (c: Colonne) => void; onSupprimer?: () => void;
+}) {
   const [c, setC] = React.useState<Colonne>(colonne);
+  const connu = titreConnu(sources, c.titre);
+  const groupes = titresProposes(sources, connu ? "" : c.titre);
+  const valider = () => c.titre.trim() && onValider({ ...c, titre: c.titre.trim() });
   return (
-    <Modal titre="Colonne" onClose={onClose}
-      footer={<><button className="btn" onClick={onClose}>Annuler</button><button className="btn primary" onClick={() => onValider(c)}>Valider</button></>}>
-      <div className="field"><label>Titre</label>
-        <Select value={MATIERES.includes(c.titre) ? c.titre : "__autre"} onChange={(e) => e.target.value !== "__autre" && setC({ ...c, titre: e.target.value })}>
-          {MATIERES.map((m) => <option key={m}>{m}</option>)}<option value="__autre">Autre (libre)…</option>
-        </Select>
-        <Input style={{ marginTop: 6 }} value={c.titre} onChange={(e) => setC({ ...c, titre: e.target.value })} />
+    <Modal titre={nouvelle ? "Nouvelle colonne" : "Colonne"} onClose={onClose}
+      footer={<>
+        {onSupprimer && <button className="btn danger" style={{ marginRight: "auto" }} onClick={onSupprimer}>Supprimer</button>}
+        <button className="btn" onClick={onClose}>Annuler</button>
+        <button className="btn primary" disabled={!c.titre.trim()} onClick={valider}>Valider</button>
+      </>}>
+      <div className="field">
+        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          Titre
+          <Aide titre="D'où viennent les titres" vers="droite">
+            <p>Des matières et des domaines de Réglages › Personnalisation, et des intitulés de votre emploi du temps.
+              La colonne en prend la couleur : la changer là-bas la change ici. Un titre écrit à la main garde la couleur choisie ici.</p>
+          </Aide>
+        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="prog-pastille" style={{ background: teinte(c) }} />
+          <Input autoFocus value={c.titre} placeholder="Une matière, un domaine, un intitulé…" onChange={(e) => setC({ ...c, titre: e.target.value })}
+            onKeyDown={(e) => { if (e.key === "Enter") valider(); }} />
+        </div>
       </div>
-      <div className="field"><label>Couleur</label><ColorPicker value={c.couleur} onChange={(col) => setC({ ...c, couleur: col })} /></div>
+      <div className="prog-titres">
+        {groupes.map((g) => (
+          <div key={g.groupe}>
+            <div className="prog-titres-groupe">{g.groupe}</div>
+            <div className="prog-titres-liste">
+              {g.titres.map((t) => (
+                <button key={t} className={`chip${t === c.titre ? " actif" : ""}`} onClick={() => setC({ ...c, titre: t })}>
+                  <span className="dot" style={{ background: couleurHex[couleurPourMatiere(t)] }} />{t}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+        {groupes.length === 0 && <div className="meta">Aucun titre de vos listes ne contient « {c.titre} » : il sera gardé tel quel.</div>}
+      </div>
+      {!connu && c.titre.trim() && (
+        <div className="field"><label>Couleur</label><ColorPicker value={c.couleur} onChange={(col) => setC({ ...c, couleur: col })} /></div>
+      )}
     </Modal>
   );
 }

@@ -1006,7 +1006,9 @@ pub fn note_competence_save(db: State<Db>, note: NoteCompetence) -> R<NoteCompet
 #[tauri::command]
 pub fn progressions_annuelle_list(db: State<Db>) -> R<Vec<ProgressionAnnuelle>> {
     let c = db.lock();
-    let mut st = c.prepare("SELECT * FROM progressions_annuelle ORDER BY annee,periode").map_err(e)?;
+    // À année, niveau et période égaux, la plus ancienne d'abord : c'est elle
+    // que l'écran montre, et elle que `ecrire_progression` complète.
+    let mut st = c.prepare("SELECT * FROM progressions_annuelle ORDER BY annee, niveau, periode, rowid").map_err(e)?;
     let rows = st.query_map([], ProgressionAnnuelle::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
@@ -1015,11 +1017,173 @@ pub fn progressions_annuelle_list(db: State<Db>) -> R<Vec<ProgressionAnnuelle>> 
 pub fn progression_annuelle_save(db: State<Db>, p: ProgressionAnnuelle) -> R<ProgressionAnnuelle> {
     let c = db.lock();
     c.execute(
-        "INSERT INTO progressions_annuelle (id,annee,periode,colonnes_json,cellules_json)
-         VALUES (?1,?2,?3,?4,?5) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, periode = excluded.periode, colonnes_json = excluded.colonnes_json, cellules_json = excluded.cellules_json",
-        params![p.id, p.annee, p.periode, p.colonnes_json, p.cellules_json],
+        "INSERT INTO progressions_annuelle (id,annee,periode,colonnes_json,cellules_json,niveau)
+         VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, periode = excluded.periode, colonnes_json = excluded.colonnes_json, cellules_json = excluded.cellules_json, niveau = excluded.niveau",
+        params![p.id, p.annee, p.periode, p.colonnes_json, p.cellules_json, p.niveau],
     ).map_err(e)?;
     Ok(p)
+}
+
+/// Une progression telle que l'écran la voit : ses colonnes et ses cases, en JSON.
+#[derive(serde::Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct EtatProgression {
+    #[serde(default)]
+    pub colonnes_json: String,
+    #[serde(default)]
+    pub cellules_json: String,
+}
+
+/// Les colonnes après une modification de l'écran, fusionnées avec celles de la base.
+///
+/// La fusion garde ce que l'écran n'a pas touché — une colonne arrivée d'un
+/// autre ordinateur entre-temps — ; l'ordre est celui de l'écran, qui seul
+/// peut avoir déplacé une colonne. Celles qu'il ne connaît pas restent après.
+fn fusionner_colonnes(ici: &str, avant: &str, apres: &str) -> String {
+    let fusion = crate::journal::fusionner_reglage(ici, avant, apres, true).unwrap_or_else(|| apres.to_string());
+    let (Ok(serde_json::Value::Array(mut colonnes)), Ok(serde_json::Value::Array(ecran))) =
+        (serde_json::from_str::<serde_json::Value>(&fusion), serde_json::from_str::<serde_json::Value>(apres))
+    else {
+        return fusion;
+    };
+    let id = |v: &serde_json::Value| v.get("id").and_then(|i| i.as_str()).map(str::to_string);
+    let rang: std::collections::HashMap<String, usize> = ecran.iter().enumerate().filter_map(|(k, v)| id(v).map(|i| (i, k))).collect();
+    colonnes.sort_by_key(|v| id(v).and_then(|i| rang.get(&i).copied()).unwrap_or(usize::MAX));
+    serde_json::Value::Array(colonnes).to_string()
+}
+
+/// Écrit une modification de la progression d'une année, d'un niveau et d'une période.
+///
+/// L'écran envoie ce qu'il montrait avant et ce qu'il montre après : seul
+/// l'écart s'écrit. Une case remplie sur un autre ordinateur, et reçue
+/// pendant qu'on tapait ici, reste donc dans la base au lieu d'être écrasée
+/// par un écran qui ne l'avait pas encore. La progression se crée à la
+/// première écriture, une seule fois : chercher puis créer sous le même
+/// verrou évite les doublons que deux écritures rapprochées fabriquaient.
+pub(crate) fn ecrire_progression(
+    c: &rusqlite::Connection,
+    annee: &str,
+    niveau: &str,
+    periode: i64,
+    avant: &EtatProgression,
+    apres: &EtatProgression,
+) -> rusqlite::Result<ProgressionAnnuelle> {
+    let existante = c
+        .query_row(
+            "SELECT * FROM progressions_annuelle WHERE annee = ?1 AND niveau = ?2 AND periode = ?3 ORDER BY rowid LIMIT 1",
+            params![annee, niveau, periode],
+            ProgressionAnnuelle::from_row,
+        )
+        .optional()?;
+    let (id, colonnes_ici, cellules_ici) = match existante {
+        Some(p) => (p.id, p.colonnes_json, p.cellules_json),
+        None => (new_id(), "[]".to_string(), "{}".to_string()),
+    };
+    let ou_vide = |s: &str, vide: &str| if s.trim().is_empty() { vide.to_string() } else { s.to_string() };
+    let colonnes = fusionner_colonnes(&colonnes_ici, &ou_vide(&avant.colonnes_json, "[]"), &ou_vide(&apres.colonnes_json, "[]"));
+    let cellules = crate::journal::fusionner_reglage(&cellules_ici, &ou_vide(&avant.cellules_json, "{}"), &ou_vide(&apres.cellules_json, "{}"), true)
+        .unwrap_or_else(|| ou_vide(&apres.cellules_json, "{}"));
+    let p = ProgressionAnnuelle {
+        id, annee: annee.to_string(), periode, colonnes_json: colonnes, cellules_json: cellules, niveau: niveau.to_string(),
+    };
+    c.execute(
+        "INSERT INTO progressions_annuelle (id,annee,periode,colonnes_json,cellules_json,niveau)
+         VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(id) DO UPDATE SET colonnes_json = excluded.colonnes_json, cellules_json = excluded.cellules_json",
+        params![p.id, p.annee, p.periode, p.colonnes_json, p.cellules_json, p.niveau],
+    )?;
+    Ok(p)
+}
+
+#[cfg(test)]
+mod tests_progression {
+    use super::{ecrire_progression, EtatProgression};
+
+    fn base() -> rusqlite::Connection {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        c
+    }
+    fn etat(colonnes: &str, cellules: &str) -> EtatProgression {
+        EtatProgression { colonnes_json: colonnes.into(), cellules_json: cellules.into() }
+    }
+    fn cases(c: &rusqlite::Connection, niveau: &str) -> serde_json::Value {
+        let s: String = c.query_row(
+            "SELECT cellules_json FROM progressions_annuelle WHERE niveau = ?1", [niveau], |r| r.get(0),
+        ).unwrap();
+        serde_json::from_str(&s).unwrap()
+    }
+    const EPS: &str = r#"[{"id":"c1","titre":"EPS","couleur":"red"}]"#;
+
+    #[test]
+    fn la_premiere_ecriture_cree_la_progression_une_seule_fois() {
+        let c = base();
+        let vide = etat("[]", "{}");
+        let p1 = ecrire_progression(&c, "2026-2027", "", 1, &vide, &etat(EPS, "{}")).unwrap();
+        let p2 = ecrire_progression(&c, "2026-2027", "", 1, &etat(EPS, "{}"), &etat(EPS, r#"{"w1_c1":"Courir"}"#)).unwrap();
+        assert_eq!(p1.id, p2.id);
+        let n: i64 = c.query_row("SELECT COUNT(*) FROM progressions_annuelle", [], |r| r.get(0)).unwrap();
+        assert_eq!(n, 1, "deux écritures rapprochées ne doivent pas fabriquer deux progressions");
+        assert_eq!(cases(&c, "")["w1_c1"], "Courir");
+    }
+
+    #[test]
+    fn une_case_arrivee_d_ailleurs_n_est_pas_ecrasee_par_l_ecran() {
+        let c = base();
+        ecrire_progression(&c, "2026-2027", "", 1, &etat("[]", "{}"), &etat(EPS, r#"{"w1_c1":"Courir"}"#)).unwrap();
+        // Un autre ordinateur remplit la semaine 2 ; l'écran d'ici ne l'a pas encore.
+        c.execute(r#"UPDATE progressions_annuelle SET cellules_json = '{"w1_c1":"Courir","w2_c1":"Sauter"}'"#, []).unwrap();
+        ecrire_progression(&c, "2026-2027", "", 1,
+            &etat(EPS, r#"{"w1_c1":"Courir"}"#), &etat(EPS, r#"{"w1_c1":"Courir vite"}"#)).unwrap();
+        let v = cases(&c, "");
+        assert_eq!(v["w1_c1"], "Courir vite", "la modification de l'écran s'écrit");
+        assert_eq!(v["w2_c1"], "Sauter", "la case reçue reste");
+        // Vider une case la retire.
+        ecrire_progression(&c, "2026-2027", "", 1,
+            &etat(EPS, r#"{"w1_c1":"Courir vite"}"#), &etat(EPS, "{}")).unwrap();
+        let v = cases(&c, "");
+        assert!(v.get("w1_c1").is_none(), "{v}");
+        assert_eq!(v["w2_c1"], "Sauter");
+    }
+
+    #[test]
+    fn chaque_niveau_a_sa_progression() {
+        let c = base();
+        ecrire_progression(&c, "2026-2027", "CP", 1, &etat("[]", "{}"), &etat(EPS, r#"{"w1_c1":"Ramper"}"#)).unwrap();
+        ecrire_progression(&c, "2026-2027", "CE1", 1, &etat("[]", "{}"), &etat(EPS, r#"{"w1_c1":"Grimper"}"#)).unwrap();
+        assert_eq!(cases(&c, "CP")["w1_c1"], "Ramper");
+        assert_eq!(cases(&c, "CE1")["w1_c1"], "Grimper");
+    }
+
+    #[test]
+    fn l_ordre_des_colonnes_est_celui_de_l_ecran_et_une_colonne_venue_d_ailleurs_reste() {
+        let c = base();
+        let deux = r#"[{"id":"c1","titre":"EPS","couleur":"red"},{"id":"c2","titre":"Rituel","couleur":"indigo"}]"#;
+        ecrire_progression(&c, "2026-2027", "", 1, &etat("[]", "{}"), &etat(deux, "{}")).unwrap();
+        // Une troisième colonne arrive d'un autre ordinateur.
+        c.execute(
+            r#"UPDATE progressions_annuelle SET colonnes_json = '[{"id":"c1","titre":"EPS","couleur":"red"},{"id":"c2","titre":"Rituel","couleur":"indigo"},{"id":"c3","titre":"Français","couleur":"blue"}]'"#,
+            [],
+        ).unwrap();
+        // L'écran, qui ne la connaît pas, échange les deux siennes.
+        let inverse = r#"[{"id":"c2","titre":"Rituel","couleur":"indigo"},{"id":"c1","titre":"EPS","couleur":"red"}]"#;
+        let p = ecrire_progression(&c, "2026-2027", "", 1, &etat(deux, "{}"), &etat(inverse, "{}")).unwrap();
+        let ids: Vec<String> = serde_json::from_str::<Vec<serde_json::Value>>(&p.colonnes_json).unwrap()
+            .iter().map(|x| x["id"].as_str().unwrap().to_string()).collect();
+        assert_eq!(ids, vec!["c2", "c1", "c3"]);
+    }
+}
+
+#[tauri::command]
+pub fn progression_annuelle_ecrire(
+    db: State<Db>,
+    annee: String,
+    niveau: String,
+    periode: i64,
+    avant: EtatProgression,
+    apres: EtatProgression,
+) -> R<ProgressionAnnuelle> {
+    let c = db.lock();
+    ecrire_progression(&c, &annee, &niveau, periode, &avant, &apres).map_err(e)
 }
 
 #[tauri::command]

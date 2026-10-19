@@ -277,6 +277,8 @@ export interface NoteCompetence {
 
 export interface ProgressionAnnuelle {
   id: string; annee: string; periode: number; colonnesJson: string; cellulesJson: string;
+  /** Le niveau qu'elle suit (« CP »…) ; vide, elle vaut pour tous les niveaux. */
+  niveau: string;
 }
 
 export interface ProgrammationFinale {
@@ -615,6 +617,14 @@ export const api = {
   progressionsAnnuelleList: () => invoke<ProgressionAnnuelle[]>("progressions_annuelle_list"),
   progressionAnnuelleSave: (p: ProgressionAnnuelle) =>
     invoke<ProgressionAnnuelle>("progression_annuelle_save", { p }),
+  /**
+   * Écrit l'écart entre ce que l'écran montrait (`avant`) et ce qu'il montre
+   * (`apres`) : une case arrivée d'ailleurs entre-temps reste. Crée la
+   * progression à la première écriture, une seule fois.
+   */
+  progressionAnnuelleEcrire: (annee: string, niveau: string, periode: number,
+    avant: { colonnesJson: string; cellulesJson: string }, apres: { colonnesJson: string; cellulesJson: string }) =>
+    invoke<ProgressionAnnuelle>("progression_annuelle_ecrire", { annee, niveau, periode, avant, apres }),
   programmationsFinaleList: () => invoke<ProgrammationFinale[]>("programmations_finale_list"),
   programmationFinaleSave: (p: ProgrammationFinale) =>
     invoke<ProgrammationFinale>("programmation_finale_save", { p }),
