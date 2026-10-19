@@ -34,3 +34,20 @@ export function PliDuCatalogue({ ouvert, onBasculer, icone, titre, aide, nombre,
     </details>
   );
 }
+
+/** Une partie d'une famille — un domaine du programme —, qui se plie aussi, plus discrète : son nom et son nombre d'ateliers. */
+export function SousPliDuCatalogue({ ouvert, onBasculer, titre, nombre, children }: {
+  ouvert: boolean; onBasculer: (ouvert: boolean) => void; titre: string; nombre: number; children: React.ReactNode;
+}) {
+  return (
+    <details className="sous-pli-catalogue" open={ouvert}
+      onToggle={(e) => { const o = e.currentTarget.open; if (o !== ouvert) onBasculer(o); }}>
+      <summary>
+        <span className="pli-chevron" aria-hidden="true">›</span>
+        <b>{titre}</b>
+        <span className="pli-nombre">{`${nombre} atelier${nombre > 1 ? "s" : ""}`}</span>
+      </summary>
+      {children}
+    </details>
+  );
+}
