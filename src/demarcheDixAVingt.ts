@@ -14,13 +14,18 @@
 // La séquence sert « Connaitre la valeur des chiffres en fonction de leur
 // position (unités, dizaines) », la compétence de sa séance 4 ; elle se
 // place sous « Les nombres jusqu'à 59 », en période 2, où le manuel la met.
-// Ses feuilles viennent de nombresDixAVingt.ts ; la séance de la dizaine
-// prend aussi une feuille de l'atelier « Nombres en cubes ».
+// Ses feuilles viennent des ateliers « Billes et calots », « L'abaque » et
+// « La suite des nombres » (voir numerationCP.ts), à ses réglages : chacune
+// se rouvre dans le sien. La séance de la dizaine prend aussi une feuille de
+// l'atelier « Nombres en cubes » ; l'évaluation n'est qu'à la séquence.
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 import type { FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
 import { STYLE_FEUILLE } from "./cartesImprimables";
-import { STYLE_DIX_A_VINGT, htmlDixAVingt, type FeuilleDixAVingt } from "./nombresDixAVingt";
+import {
+  STYLE_NUMERATION_CP, htmlAbaque, htmlBilles, htmlEvaluationDixAVingt, htmlSuite, reglagesAbaqueSurs, reglagesBillesSurs, reglagesSuiteSurs,
+  titreAbaque, titreBilles, titreSuite, type ReglagesAbaque, type ReglagesBilles, type ReglagesSuite,
+} from "./numerationCP";
 
 export const DEMARCHE_DIX_A_VINGT = "nombres-10-20-cp";
 
@@ -51,7 +56,7 @@ export const NOMBRES_DE_10_A_20: Demarche = {
       sauront("dire, lire et écrire les nombres jusqu'à 9, les ranger, et les décomposer en deux parties : 7, c'est 4 et 3, ou 5 et 2."), 40, [
         ph(T1, "5 min", "Des collections de 1 à 9 objets, montrées un court instant : « Combien ? » On écrit le nombre sur l'ardoise.",
           "Part de ce qui a été fait en grande section : c'est la liaison GS-CP."),
-        ph(T2, "20 min", "Par deux, une boîte de neuf jetons au plus : l'un en cache une partie dans sa main, l'autre dit combien sont cachés ; on dit « cinq et quatre, c'est neuf ». Puis la feuille « Jusqu'à 9 : combien de billes ? ».",
+        ph(T2, "20 min", "Par deux, une boîte de neuf jetons au plus : l'un en cache une partie dans sa main, l'autre dit combien sont cachés ; on dit « cinq et quatre, c'est neuf ». Puis les feuilles « Combien de billes ? » et « Deux tas de billes ».",
           "Fait dire les décompositions ; on vérifie en ouvrant la main."),
         ph(T3, "10 min", "Ce qu'on retient : toutes les façons de faire 7, 8 et 9 en deux parties ; les nombres de 1 à 9 rangés sur la frise de la classe."),
         ph(T4, "5 min", "Dictée de nombres jusqu'à 9 sur l'ardoise ; « Montrez-moi six avec vos doigts, de deux façons. »"),
@@ -90,7 +95,7 @@ export const NOMBRES_DE_10_A_20: Demarche = {
     seance("Jusqu'à 20 : comparer et ranger",
       sauront("comparer deux nombres jusqu'à 20 en s'appuyant sur la dizaine et les unités, ranger des nombres et dire celui qui vient juste avant ou juste après."), 40, [
         ph(T1, "5 min", "Deux abaques au tableau, 15 et 13 : « Lequel montre le plus grand nombre ? Comment le savoir sans compter tous les jetons ? » Même dizaine : on regarde les unités."),
-        ph(T2, "20 min", "La feuille « Comparer et ranger jusqu'à 20 » : des paires en chiffres, puis en abaques, en calots et billes, en mots ; ranger cinq nombres.",
+        ph(T2, "20 min", "La feuille « Comparer et ranger de 10 à 20 » : des paires en chiffres, puis en abaques, en calots et billes, en mots ; ranger cinq nombres.",
           "Le matériel reste à disposition pour vérifier ; fait justifier : « 17, c'est une dizaine et sept unités ; 14, une dizaine et quatre. »"),
         ph(T3, "10 min", "Ce qu'on retient : de 10 à 19, chaque nombre a une dizaine ; pour comparer, on regarde les unités. 20, c'est deux dizaines."),
         ph(T4, "5 min", "Le nombre mystère : « Je suis juste après 17. » « J'ai une dizaine et cinq unités. » Dictée de nombres jusqu'à 20."),
@@ -106,20 +111,31 @@ export const NOMBRES_DE_10_A_20: Demarche = {
 
 // ── Les feuilles des séances ──────────────────────────────────────────────
 
-/** Une feuille de la séquence : l'atelier « Nombres en cubes » en porte les réglages — le mode dys, ce qui s'imprime. */
-const feuille = (seance: number, titre: string, quoi: FeuilleDixAVingt): FeuilleAFabriquer => ({
-  seance, atelier: "cubes", titre,
-  fabriquer: (g) => ({ html: htmlDixAVingt(quoi, g), style: STYLE_FEUILLE + STYLE_DIX_A_VINGT }),
-});
+const STYLE = STYLE_FEUILLE + STYLE_NUMERATION_CP;
+
+/** Une feuille d'un atelier, à ses réglages : le titre qu'elle imprime, et de quoi la refaire dans l'atelier. */
+const billes = (seance: number, brut: Partial<ReglagesBilles>): FeuilleAFabriquer => {
+  const r = reglagesBillesSurs(brut);
+  return { seance, atelier: "billes", titre: titreBilles(r), fabriquer: (g) => ({ html: htmlBilles(r, g), style: STYLE, refaire: { billes: r } }) };
+};
+const abaque = (seance: number, brut: Partial<ReglagesAbaque>): FeuilleAFabriquer => {
+  const r = reglagesAbaqueSurs(brut);
+  return { seance, atelier: "abaque", titre: titreAbaque(r), fabriquer: (g) => ({ html: htmlAbaque(r, g), style: STYLE, refaire: { abaque: r } }) };
+};
+const suite = (seance: number, brut: Partial<ReglagesSuite>): FeuilleAFabriquer => {
+  const r = reglagesSuiteSurs(brut);
+  return { seance, atelier: "suiteNombres", titre: titreSuite(r), fabriquer: (g) => ({ html: htmlSuite(r, g), style: STYLE, refaire: { suiteNombres: r } }) };
+};
 
 const FEUILLES: FeuilleAFabriquer[] = [
-  feuille(0, "Jusqu'à 9 : combien de billes ?", "jusqua-9"),
-  feuille(1, "Un paquet de dix", "paquet-de-dix"),
-  feuille(2, "De 10 à 16 : le nom et l'écriture", "dix-a-seize"),
-  feuille(3, "Combien de billes ?", "billes-dispersees"), feuille(3, "Qui a gagné ?", "billes-et-calots"),
-  feuille(3, "L'abaque à deux tiges", "abaque"), feuille(3, "La frise jusqu'à 20", "frise-20"),
-  feuille(4, "Comparer et ranger jusqu'à 20", "comparer-20"),
-  feuille(5, "Évaluation — les nombres de 10 à 20", "evaluation"),
+  billes(0, { exercice: "compter", de: 4, a: 9, nombre: 6 }), billes(0, { exercice: "deux", de: 6, a: 9, nombre: 4 }),
+  billes(1, { exercice: "paquets", de: 12, a: 19, nombre: 3 }),
+  suite(2, { exercices: ["relier", "dizaines", "dessiner"], de: 10, a: 16 }),
+  // La séance du manuel : les trois cartes de billes, qui a gagné, l'abaque, la frise.
+  billes(3, { exercice: "compter", de: 17, a: 19, nombre: 3 }), billes(3, { exercice: "partie", de: 10, a: 20, nombre: 4 }),
+  abaque(3, { parties: ["echange", "lire", "dessiner"], de: 10, a: 20, nombre: 4 }), suite(3, { exercices: ["manquants", "voisins"], de: 1, a: 20 }),
+  suite(4, { exercices: ["plusGrand", "formes", "ranger"], de: 10, a: 20 }),
+  { seance: 5, atelier: "billes", titre: "Évaluation — les nombres de 10 à 20", fabriquer: (g) => ({ html: htmlEvaluationDixAVingt(g), style: STYLE }) },
 ];
 
 /** Ce qu'il faut préparer, séance par séance ; les feuilles sont nommées après. */

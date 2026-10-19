@@ -16,6 +16,7 @@ const { feuilleRattachee, planDesFeuilles } = await import("./feuillesDesSequenc
 const { RECETTES } = await import("./fichesAutonomie");
 const { REGLAGES_COMPARER, htmlComparer, paquet, reglagesComparerSurs } = await import("./comparerNombres");
 const { REGLAGES_CUBES, exercicesCubes, htmlCubes, reglagesCubesSurs } = await import("./cubesNumeration");
+const N = await import("./numerationCP");
 const J = await import("./jeuxMaths");
 const { REGLAGES_MARTINIERE, calculsMartiniere, htmlMartiniere } = await import("./martiniere");
 const { REGLAGES_POSEES, htmlOperationsPosees } = await import("./operationsPosees");
@@ -55,6 +56,9 @@ const lu = <T extends object>(defaut: T, brut: unknown): T => ({ ...defaut, ...(
 const ATELIERS: Record<string, (m: Memoires, g: number) => string> = {
   comparer: (m, g) => { const r = reglagesComparerSurs(lu(REGLAGES_COMPARER, m.comparer)); return htmlComparer(paquet(r, g), r); },
   cubes: (m, g) => { const r = reglagesCubesSurs(lu(REGLAGES_CUBES, m.cubes)); return htmlCubes(exercicesCubes(r, g), r, g); },
+  billes: (m, g) => N.htmlBilles(N.reglagesBillesSurs(lu(N.REGLAGES_BILLES, m.billes)), g),
+  abaque: (m, g) => N.htmlAbaque(N.reglagesAbaqueSurs(lu(N.REGLAGES_ABAQUE, m.abaque)), g),
+  suiteNombres: (m, g) => N.htmlSuite(N.reglagesSuiteSurs(lu(N.REGLAGES_SUITE, m.suiteNombres)), g),
   nombres: (m) => { const r = lu(J.REGLAGES_NOMBRES, m.cartesNombres); return J.htmlCartesNombres(J.cartesNombres(r), r); },
   oie: (m, g) => J.htmlJeuDeLOie(lu(J.REGLAGES_OIE, m.jeuDeLOie), g),
   martiniere: (m, g) => { const r = lu(REGLAGES_MARTINIERE, m.martiniere); return htmlMartiniere(calculsMartiniere(r, g), r); },
