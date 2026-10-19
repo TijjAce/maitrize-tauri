@@ -12,7 +12,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useDictee, mmss } from "../dictee";
 import { toast } from "../components/Toaster";
-import { DicteeAtelier } from "../components/DicteeAtelier";
+import { ClasserDansLesFiches } from "../components/ClasserDansLesFiches";
 import { STYLE_DOCUMENT_IA, SUGGESTIONS_DOCUMENT, consigneDocument, feuilleDeLaReponse } from "../documentIa";
 import { enregistrerEnPdf, enregistrerEnWord } from "../exportsDocument";
 import { MiseEnPageReponse } from "../components/MiseEnPageReponse";
@@ -479,8 +479,7 @@ export default function Assistant() {
           onFermer={() => setARetoucher(null)} onGarder={(html) => garderRetouche(aRetoucher, html)} onBureau={feuilleSurLeBureau} />
       )}
       {aClasser !== null && (
-        <DicteeAtelier eleves={eleves ?? []} texteInitial={aClasser}
-          titre="👧 Classer dans les fiches élèves"
+        <ClasserDansLesFiches eleves={eleves ?? []} texte={aClasser}
           onClose={() => setAClasser(null)}
           onEnregistre={() => toast("Consultez Élèves → Observations.", { icone: "👧" })} />
       )}

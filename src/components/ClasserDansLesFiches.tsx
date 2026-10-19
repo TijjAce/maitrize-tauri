@@ -2,15 +2,16 @@ import React from "react";
 import { api, Eleve, ChatMessage, MODELE_TACHES, TYPES_OBSERVATION, newId, nowIso } from "../api";
 import { Modal, Field, Input, Select, Textarea } from "./ui";
 import { toast } from "./Toaster";
-import { useDictee, mmss } from "../dictee";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import { nomsAMasquer } from "../nomsAMasquer";
 
-// ── Dictée d'atelier ──────────────────────────────────────────────────────
+// ── Classer dans les fiches élèves ────────────────────────────────────────
 //
-// Après un atelier, l'enseignant raconte à voix haute ce que chacun a fait ;
-// l'app transcrit, répartit les observations par élève, et les propose à la
-// validation avant de les écrire dans les fiches.
+// Un texte déjà écrit — une réponse de l'assistant — se range par élève :
+// l'app répartit les observations et les propose à la validation avant de
+// les écrire dans les fiches. La dictée d'atelier, qui partait d'un
+// enregistrement au micro, est retirée (demande de l'enseignant, octobre
+// 2026) ; reste ce classement.
 //
 // Rien n'est enregistré sans relecture : une observation portée au dossier
 // d'un élève engage l'enseignant, et une attribution automatique se trompe de
@@ -98,38 +99,19 @@ export function preparerRepartition(eleves: Eleve[], transcription: string, autr
   return { messages: promptRepartition(table.map((r) => r.marqueur), texte), table };
 }
 
-export function DicteeAtelier({ eleves, onClose, onEnregistre, texteInitial, titre }: {
+export function ClasserDansLesFiches({ eleves, texte, onClose, onEnregistre }: {
   eleves: Eleve[];
+  /** Le texte à ranger, modifiable avant la répartition. */
+  texte: string;
   onClose: () => void;
   onEnregistre: () => void;
-  /** Texte déjà écrit ailleurs (assistant) : on saute l'enregistrement. */
-  texteInitial?: string;
-  titre?: string;
 }) {
-  type Etape = "consentement" | "enregistrement" | "texte" | "relecture";
-  const [etape, setEtape] = React.useState<Etape>(texteInitial ? "texte" : "consentement");
+  type Etape = "texte" | "relecture";
+  const [etape, setEtape] = React.useState<Etape>("texte");
   const [occupe, setOccupe] = React.useState("");
-  const [transcription, setTranscription] = React.useState(texteInitial ?? "");
+  const [transcription, setTranscription] = React.useState(texte);
   const [props, setProps] = React.useState<Proposition[]>([]);
   const [type, setType] = React.useState("divers");
-
-  // Ce qu'on raconte d'un atelier finit dans le dossier des élèves : le réglage des observations.
-  const dictee = useDictee("observations");
-
-  const demarrer = async () => {
-    const erreur = await dictee.demarrer();
-    if (erreur) { toast(erreur, { icone: "🎙" }); return; }
-    setEtape("enregistrement");
-  };
-
-  const arreter = async () => {
-    setOccupe("Transcription en cours…");
-    const { texte, erreur } = await dictee.arreter();
-    setOccupe("");
-    if (erreur) toast("Transcription impossible : " + erreur, { icone: "⚠️" });
-    else setTranscription(texte);
-    setEtape("texte"); // le texte reste saisissable à la main
-  };
 
   const repartir = async () => {
     if (!transcription.trim()) return;
@@ -172,18 +154,11 @@ export function DicteeAtelier({ eleves, onClose, onEnregistre, texteInitial, tit
   const maj = (id: string, patch: Partial<Proposition>) =>
     setProps((l) => l.map((p) => (p.id === id ? { ...p, ...patch } : p)));
 
-  const fermer = () => { dictee.annuler(); onClose(); };
   const retenues = props.filter((p) => p.garder).length;
 
   return (
-    <Modal titre={titre ?? "🎙 Dictée d'atelier"} onClose={fermer} footer={
+    <Modal titre="👧 Classer dans les fiches élèves" onClose={onClose} footer={
       <>
-        {etape === "texte" && (
-          <button className="btn" onClick={() => {
-            setTranscription("");
-            if (!texteInitial) setEtape("consentement");
-          }}>↺ Recommencer</button>
-        )}
         {etape === "relecture" && (
           <button className="btn" onClick={() => setEtape("texte")}>← Revenir au texte</button>
         )}
@@ -199,59 +174,16 @@ export function DicteeAtelier({ eleves, onClose, onEnregistre, texteInitial, tit
             Enregistrer {retenues > 0 ? `(${retenues})` : ""}
           </button>
         )}
-        <button className="btn" onClick={fermer}>Fermer</button>
+        <button className="btn" onClick={onClose}>Fermer</button>
       </>
     }>
-      {etape === "consentement" && (
-        <>
-          <p style={{ marginTop: 0, fontSize: 13.5, lineHeight: 1.55 }}>
-            Racontez ce que chaque élève a fait pendant l'atelier. L'application transcrit,
-            range les observations par élève, et vous les soumet avant de les écrire.
-          </p>
-          <div className="card" style={{ background: "var(--panel-2)", fontSize: 13, lineHeight: 1.55 }}>
-            <b>Ce qui sort de votre ordinateur</b>
-            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
-              {dictee.ici
-                ? <li>L'enregistrement est transcrit <b>sur cet ordinateur</b> : il n'en sort pas.</li>
-                : <li>L'enregistrement part chez <b>Mistral AI</b>, entreprise française, pour être transcrit.
-                  S'il contient des prénoms d'élèves, ils sont transmis.</li>}
-              <li>Pour la répartition, le texte part chez Mistral <b>sans aucun nom d'élève</b> : chaque élève
-                  cité y devient [P1], [P2]…, et les prénoms reviennent sur cet ordinateur. Ni noms de famille,
-                  ni dates de naissance, ni INE, ni dossiers.</li>
-              <li>L'audio n'est jamais enregistré sur le disque et n'est pas conservé après la
-                  transcription.</li>
-            </ul>
-          </div>
-          <p style={{ fontSize: 12.5, color: "var(--text-2)" }}>
-            Si cela ne convient pas à votre cadre, saisissez vos observations à la main dans
-            l'onglet Observations : rien n'est alors transmis.
-          </p>
-          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-            <button className="btn primary" onClick={demarrer}>🎙 J'ai compris, démarrer</button>
-            <button className="btn" onClick={() => setEtape("texte")}>Écrire au lieu de dicter</button>
-          </div>
-        </>
-      )}
-
-      {etape === "enregistrement" && (
-        <div style={{ textAlign: "center", padding: "18px 0" }}>
-          <div style={{ fontSize: 44 }}>🔴</div>
-          <div style={{ fontSize: 28, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{mmss(dictee.secondes)}</div>
-          <p style={{ color: "var(--text-2)", fontSize: 13 }}>
-            Enregistrement en cours. Nommez chaque élève par son prénom.
-          </p>
-          <button className="btn primary" onClick={arreter} disabled={!!occupe}>⏹ Terminer et transcrire</button>
-        </div>
-      )}
-
       {etape === "texte" && (
         <>
-          <Field label="Ce qui a été dit (modifiable)">
-            <Textarea rows={9} value={transcription} onChange={(e) => setTranscription(e.target.value)}
-              placeholder="Ex. : Amandine a réussi le tri des couleurs seule. Aloïs a eu besoin d'aide pour tenir les ciseaux…" />
+          <Field label="Le texte à ranger (modifiable)">
+            <Textarea rows={9} value={transcription} onChange={(e) => setTranscription(e.target.value)} />
           </Field>
           <p style={{ fontSize: 12.5, color: "var(--text-2)", margin: 0 }}>
-            Relisez avant de répartir : la transcription se trompe parfois sur les prénoms.
+            Relisez avant de répartir : vérifiez que chaque élève est cité par son prénom.
           </p>
         </>
       )}

@@ -953,7 +953,7 @@ pub async fn mistral_chat_stream(
     Ok(())
 }
 
-// ── Transcription audio (dictée d'atelier) ───────────────────────────────
+// ── Transcription audio en ligne (dictées, Dictaphone, réunions) ─────────
 //
 // L'audio part chez Mistral (Voxtral) et n'est jamais écrit sur le disque :
 // il arrive en mémoire depuis la fenêtre, part dans la requête, et disparaît.

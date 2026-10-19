@@ -4,8 +4,8 @@ import { messageMicro, useEcoute } from "./ecoute";
 import { choixIci, paroleMinimale, plafondDuMorceau, type Usage } from "./transcription";
 
 // ── Dictée ────────────────────────────────────────────────────────────────
-// Enregistrement micro puis transcription, partagés par la dictée d'atelier,
-// le cahier journal et l'assistant. L'audio ne touche jamais le disque.
+// Enregistrement micro puis transcription, partagés par le cahier journal et
+// l'assistant. L'audio ne touche jamais le disque.
 //
 // Où il est transcrit dépend de l'ordinateur, comme pour les vocaux du
 // téléphone. Avec un modèle installé, tout se passe ici : on prend les
