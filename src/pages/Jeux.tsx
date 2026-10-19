@@ -55,7 +55,11 @@ import { CartesATachesTab } from "./AteliersCartes";
 import { CodeLectureTab, CodePhraseTab, FonctionTab, ModelisationTab, PriseDeParoleTab, ResolutionTab, SequentielTab } from "./AteliersAides";
 import { FriseTab, PaysageTab, PlanClasseTab } from "./AteliersHistoireGeo";
 import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
-import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
+import { chargerPicto, usePictoImage, usePictoImages } from "../components/ChoixPicto";
+import { ApercuFeuille } from "../components/ApercuFeuille";
+import { ApercuExemple, useMotsExemple } from "../components/Exemple";
+import { MOTS_EXEMPLE } from "../exemplesDesAteliers";
+import { STYLE_APERCU_JEUX, htmlApercuJeu, type JeuDImages } from "../apercuJeux";
 import { BoutonMesImages, imagePourLePdf } from "../components/MesImages";
 import { gestesDemandes, gestesPourLesJeux, useNombreDeGestes } from "../components/BanqueDeGestes";
 import { estPerso } from "../imagesPerso";
@@ -703,6 +707,12 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
   const [occupe, setOccupe] = React.useState(false);
   const minimum = gen.minimum(options);
   const parPlanche = options.colonnes * options.lignes;
+  // La première planche, comme le PDF la fera ; sans images choisies, celle d'un exemple — les animaux de la ferme.
+  const exemple = useMotsExemple(MOTS_EXEMPLE.jeux, !selection.length);
+  const exempleChoisi = React.useMemo(() => (exemple ?? []).flatMap((m) => (m.id != null ? [{ id: m.id, mot: m.mot, fichier: "" }] : [])), [exemple]);
+  const montrees = selection.length ? selection : exempleChoisi;
+  const imagesApercu = usePictoImages(montrees.map((p) => p.id));
+  const apercu = React.useMemo(() => htmlApercuJeu(gen.id as JeuDImages, montrees, options, imagesApercu), [gen.id, montrees, options, imagesApercu]);
   const conseille = imagesConseillees(parPlanche, options.planches);
   const [jusqua, setJusqua] = React.useState(12);
   const completer = () => {
@@ -928,8 +938,10 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
             </div>
             {!selection.length ? (
               <div style={{ marginTop: 10 }}>
-                <Empty icone="🎴" titre="Aucune image pour l'instant"
-                  sous="Cochez des images d'un thème, écrivez une liste de mots, cherchez, ou ajoutez les vôtres : elles se rangent ici." />
+                {apercu
+                  ? <ApercuExemple onPrendre={() => setSelection(exempleChoisi)}><ApercuFeuille html={apercu} style={STYLE_APERCU_JEUX} /></ApercuExemple>
+                  : <Empty icone="🎴" titre="Aucune image pour l'instant"
+                      sous="Cochez des images d'un thème, écrivez une liste de mots, cherchez, ou ajoutez les vôtres : elles se rangent ici." />}
               </div>
             ) : (
               <div className="loto-grille">
@@ -945,6 +957,14 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
               </div>
             )}
           </div>
+
+          {/* ── La première planche, telle que le PDF la fera ── */}
+          {selection.length > 0 && apercu && (
+            <div className="card" style={{ marginBottom: 14 }}>
+              <h3 style={{ marginTop: 0 }}>{gen.id === "imagier" ? "La première page" : "La première planche"}</h3>
+              <ApercuFeuille html={apercu} style={STYLE_APERCU_JEUX} />
+            </div>
+          )}
 
           {/* ── Imprimer ── */}
           <div className="card">

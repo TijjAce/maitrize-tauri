@@ -7,6 +7,8 @@ import { useReglages } from "../components/useMemoire";
 import { usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
+import { ApercuExemple, useMotsExemple } from "../components/Exemple";
+import { MOTS_A_SYLLABES } from "../exemplesDesAteliers";
 import { useBanqueDeGestes } from "../components/BanqueDeGestes";
 import type { MotImage } from "../jeuxSons";
 import { estPerso } from "../imagesPerso";
@@ -175,16 +177,22 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
   // Le mot dont on change le dessin, par sa place dans la liste.
   const [aRedessiner, setARedessiner] = React.useState<number | null>(null);
   const cibles = React.useMemo(() => syllabesCibles(r.syllabes), [r.syllabes]);
-  const pictos = usePictoImages(mots.map((m) => m.id).filter((x): x is number => x != null));
+  // Sans mots, ceux d'un exemple où l'on entend ces syllabes : ce que donnera la feuille.
+  const motsExemple = React.useMemo(() => MOTS_A_SYLLABES.filter((m) => trousPossibles(m, cibles).length > 0).slice(0, 8), [cibles]);
+  const exemple = useMotsExemple(motsExemple, banque && !mots.length && cibles.length > 0);
+  const montres = mots.length ? mots : exemple ?? [];
+  const pictos = usePictoImages(montres.map((m) => m.id).filter((x): x is number => x != null));
 
-  const lignes = React.useMemo(() => mots.map((m) => {
+  const ligneDe = React.useCallback((m: MotImage) => {
     const texte = ecritureDuMot(m.mot);
     return { m, texte, trous: trousPossibles(m.mot, cibles), image: m.id != null ? pictos[m.id] : undefined };
-  }), [mots, cibles, pictos]);
-  const prets: MotATrou[] = React.useMemo(() => lignes.flatMap((l) => {
+  }, [cibles, pictos]);
+  const lignes = React.useMemo(() => mots.map(ligneDe), [mots, ligneDe]);
+  const lignesMontrees = React.useMemo(() => (mots.length ? lignes : montres.map(ligneDe)), [mots.length, lignes, montres, ligneDe]);
+  const prets: MotATrou[] = React.useMemo(() => lignesMontrees.flatMap((l) => {
     const trou = l.trous[choix[l.texte] ?? 0] ?? l.trous[0];
     return trou && l.image ? [{ mot: l.m.mot, texte: l.texte, trou, image: l.image, id: l.m.id }] : [];
-  }), [lignes, choix]);
+  }), [lignesMontrees, choix]);
   const sansSyllabe = lignes.filter((l) => !l.trous.length).map((l) => l.texte);
   // Tant que les images se lisent, on ne dit pas qu'un mot n'en a pas.
   const sansDessin = lignes.filter((l) => l.trous.length && l.m.id == null).map((l) => l.texte);
@@ -308,7 +316,7 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
             </Field>
           )}
           <div className="meta" style={{ fontSize: 12.5, marginTop: 6 }}>
-            {prets.length
+            {mots.length && prets.length
               ? `${prets.length} mot${prets.length > 1 ? "s" : ""}, ${feuilles} feuille${feuilles > 1 ? "s" : ""} avec le corrigé.`
               : !cibles.length ? "Écrivez les syllabes à retrouver." : "Ajoutez des mots où l'on entend ces syllabes."}
             {entete && gestes.pret && !gestes.images[entete.son] && (
@@ -317,10 +325,12 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
             {sansSyllabe.length > 0 && <span style={{ color: "var(--orange)" }}> Sans ces syllabes, donc écarté{sansSyllabe.length > 1 ? "s" : ""} : {sansSyllabe.join(", ")}.</span>}
             {sansDessin.length > 0 && <span style={{ color: "var(--orange)" }}> Sans dessin, donc écarté{sansDessin.length > 1 ? "s" : ""} : {sansDessin.join(", ")}.</span>}
           </div>
-          <Boutons atelier="syllabeManquante" titre="La syllabe qui manque" html={html} style={STYLE_GESTES + STYLE_SYLLABES} peut={prets.length > 0}
+          <Boutons atelier="syllabeManquante" titre="La syllabe qui manque" html={html} style={STYLE_GESTES + STYLE_SYLLABES} peut={mots.length > 0 && prets.length > 0}
             onTirage={() => setGraine(graineAuHasard())} />
         </>}
-        droite={<ApercuFeuille html={html} style={STYLE_GESTES + STYLE_SYLLABES} />}
+        droite={!mots.length && prets.length
+          ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_GESTES + STYLE_SYLLABES} /></ApercuExemple>
+          : <ApercuFeuille html={html} style={STYLE_GESTES + STYLE_SYLLABES} />}
       />
       {recherche && <MotsDeLaBanque cibles={cibles} deja={deja} onClose={() => setRecherche(false)} onAjouter={ajouterDeLaBanque} />}
       {aRedessiner != null && mots[aRedessiner] && (

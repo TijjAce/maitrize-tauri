@@ -7,6 +7,7 @@ import { confirmer } from "../components/confirmer";
 import { chargerImages, usePictoImages } from "../components/ChoixPicto";
 import { CasePicto } from "../components/CasePicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
+import { ApercuExemple } from "../components/Exemple";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { CasesFeuille, useOptionsFeuille } from "../components/OptionsFeuille";
 import { useCompetencesAtelier } from "../components/CompetencesAtelier";
@@ -43,13 +44,18 @@ export function SuitesTab({ banque }: { banque: boolean }) {
   const [suite, setSuite] = React.useState("");
   const [enSequence, setEnSequence] = React.useState(false);
   const [competences] = useCompetencesAtelier(ATELIER);
-  const ids = React.useMemo(() => idsDes(r.etapes), [r.etapes]);
+  // Moins de deux images : la première suite toute prête de la classe, en exemple — ce que donnera la vôtre.
+  const exemple = suitesPour(r.niveau)[0];
+  const enExemple = etapesPleines(r).length < 2 && r.forme !== "evaluation" && !!exemple;
+  const montre = React.useMemo(() => (enExemple ? { ...r, etapes: exemple.etapes.map((e) => ({ id: e.id, mot: e.mot })), titre: r.titre || exemple.libelle } : r),
+    [r, enExemple, exemple]);
+  const ids = React.useMemo(() => idsDes(montre.etapes), [montre.etapes]);
   const images = usePictoImages(ids);
   const manque = cequiManque(r);
-  const html = React.useMemo(() => htmlSuites(r, images, hasard(graine)), [r, images, graine]);
+  const html = React.useMemo(() => htmlSuites(montre, images, hasard(graine)), [montre, images, graine]);
   const titre = r.titre.trim() || nomDeLaForme(r.forme);
   // L'impression attend les images, et mêle comme l'aperçu.
-  const feuilleImprimee = async () => htmlSuites(r, await chargerImages(ids), hasard(graine));
+  const feuilleImprimee = async () => htmlSuites(r, await chargerImages(idsDes(r.etapes)), hasard(graine));
   const imprimer = async () => {
     try { await imprimerAtelier(ATELIER, titre, await feuilleImprimee(), STYLE_FEUILLE + STYLE_SUITES); }
     catch (e) { toast(String(e), { icone: "⚠️" }); }
@@ -179,6 +185,8 @@ export function SuitesTab({ banque }: { banque: boolean }) {
       <div style={{ minWidth: 0 }}>
         {n >= 2 || r.forme === "evaluation"
           ? <ApercuFeuille html={html} style={STYLE_SUITES} />
+          : enExemple
+          ? <ApercuExemple onPrendre={() => maj({ etapes: montre.etapes, titre: montre.titre })}><ApercuFeuille html={html} style={STYLE_SUITES} /></ApercuExemple>
           : <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>
               Posez les images dans l'ordre de l'histoire — des pictos, des photos de la classe en activité, ou les illustrations d'un album
               prises au téléphone —, ou prenez une suite toute prête : « Se laver les mains » en petite section, « Le bonhomme de neige » en grande.

@@ -3,6 +3,7 @@ import { api, newId, nowIso } from "../api";
 import { cleDesCompetences, objectifsDesAteliers } from "../ateliersCompetences";
 import { Aide, AideEnLigne } from "../components/Aide";
 import { ApercuFeuille } from "../components/ApercuFeuille";
+import { ApercuExemple } from "../components/Exemple";
 import { ChoixPicto, usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import { avecLesPictos, creerAvecLIA, enregistrerGenerateur, pictosPourLesMots, retoucherAvecLIA, supprimerGenerateur, useGenerateursPerso } from "../components/GenerateursPerso";
 import { toast, toastAnnulable } from "../components/Toaster";
@@ -13,7 +14,7 @@ import { useGraine } from "../modifierFeuille";
 import { cleImage, type PictoPose } from "../supportsVisuels";
 import { USAGES, type Usage } from "../usageAtelier";
 import {
-  BLOCS_PERSO, BORNES_COMBIEN, CLASSES_PERSO, CONSIGNE_ORDRE_A_DECOUPER, LARGEUR_PLANCHE, STYLE_GENERATEURS_PERSO, blocVide, ceQuiManque, htmlGenerateurPerso, imagesDeLaRecette, memeImagePartout,
+  BLOCS_PERSO, BORNES_COMBIEN, CLASSES_PERSO, CONSIGNE_ORDRE_A_DECOUPER, EXEMPLE_DE_GENERATEUR, LARGEUR_PLANCHE, generateurSur, STYLE_GENERATEURS_PERSO, blocVide, ceQuiManque, htmlGenerateurPerso, imagesDeLaRecette, memeImagePartout,
   motsSansImage, nomDuBloc, placeDansLaPlanche, poserPartout,
   type Affichage, type BlocPerso, type BlocPlanche, type GenerateurPerso, type SorteAvecCombien, type SorteDeBloc,
 } from "../generateursPerso";
@@ -405,8 +406,17 @@ export function GenerateurPersoTab({ banque }: { banque: boolean }) {
     return () => window.clearTimeout(t);
   }, [g]); // eslint-disable-line react-hooks/exhaustive-deps
   const [graine, setGraine] = useGraine();
-  const images = usePictoImages(g ? imagesDeLaRecette(g) : []);
-  const html = React.useMemo(() => (g ? htmlGenerateurPerso(g, graine, images) : ""), [g, graine, images]);
+  // Aucun générateur ouvert : celui d'un exemple, ce que donne une recette.
+  const [exemple, setExemple] = React.useState<GenerateurPerso | null>(null);
+  React.useEffect(() => {
+    if (g || exemple) return;
+    let vivant = true;
+    avecLesPictos(generateurSur(EXEMPLE_DE_GENERATEUR), null).then((x) => { if (vivant) setExemple(x); }).catch(() => {});
+    return () => { vivant = false; };
+  }, [g, exemple]);
+  const montre = g ?? exemple;
+  const images = usePictoImages(montre ? imagesDeLaRecette(montre) : []);
+  const html = React.useMemo(() => (montre ? htmlGenerateurPerso(montre, graine, images) : ""), [montre, graine, images]);
   const [retouche, setRetouche] = React.useState("");
   const [attente, setAttente] = React.useState(false);
   const [ajout, setAjout] = React.useState<SorteDeBloc>("relier");
@@ -427,8 +437,17 @@ export function GenerateurPersoTab({ banque }: { banque: boolean }) {
   };
 
   if (!g) {
+    const partirDeLExemple = async () => {
+      if (!exemple) return;
+      const maintenant = nowIso();
+      const x: GenerateurPerso = { ...exemple, id: newId(), demande: "", cree: maintenant, modifie: maintenant };
+      await enregistrerGenerateur(x);
+      ouvrir(x);
+    };
     return <Colonnes gauche={<Creation generateurs={generateurs} onOuvrir={ouvrir} />}
-      droite={<div className="gp-apercu-vide">La feuille s'affichera ici, avec son corrigé.</div>} />;
+      droite={exemple
+        ? <ApercuExemple onPrendre={() => void partirDeLExemple()}><ApercuFeuille html={html} style={STYLE_GENERATEURS_PERSO} /></ApercuExemple>
+        : <div className="gp-apercu-vide">La feuille s'affichera ici, avec son corrigé.</div>} />;
   }
 
   // Une retouche refait toute la recette : on peut revenir à la version d'avant.

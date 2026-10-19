@@ -8,6 +8,8 @@ import { toast } from "../components/Toaster";
 import { chargerImages, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
+import { ApercuExemple, useMotsExemple } from "../components/Exemple";
+import { MOTS_EXEMPLE } from "../exemplesDesAteliers";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { CasesFeuille } from "../components/OptionsFeuille";
@@ -53,9 +55,12 @@ export const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string;
 export function EtiquettesTab({ banque }: { banque: boolean }) {
   const [mots, setMots] = React.useState<MotImage[]>([]);
   const [r, maj] = useReglages("etiquettes", REGLAGES_ETIQUETTES);
+  // Sans mots, la feuille d'un exemple : ce que donnera la vôtre.
+  const exemple = useMotsExemple(MOTS_EXEMPLE.etiquettes, !mots.length);
+  const montres = mots.length ? mots : exemple ?? [];
   const ids = mots.map((m) => m.id).filter((x): x is number => x != null);
-  const images = usePictoImages(r.pictos ? ids : []);
-  const html = React.useMemo(() => htmlEtiquettes(mots, images, r), [mots, images, r]);
+  const images = usePictoImages(r.pictos ? montres.map((m) => m.id).filter((x): x is number => x != null) : []);
+  const html = React.useMemo(() => htmlEtiquettes(montres, images, r), [montres, images, r]);
   const imprimer = async () => {
     try {
       const im = r.pictos ? await chargerImages(ids) : {};
@@ -94,6 +99,7 @@ export function EtiquettesTab({ banque }: { banque: boolean }) {
       </div>
       <div style={{ minWidth: 0 }}>
         {mots.length ? <ApercuFeuille html={html} style={STYLE_ETIQUETTES} />
+          : montres.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_ETIQUETTES} /></ApercuExemple>
           : <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>Ajoutez les mots de la séquence : ils s'afficheront tels qu'ils s'imprimeront.</div>}
       </div>
     </div>
@@ -576,15 +582,18 @@ export function OmbresTab({ banque }: { banque: boolean }) {
   const [mots, setMots] = React.useState<MotImage[]>([]);
   const [r, maj] = useReglages("ombres", REGLAGES_OMBRES);
   const [graine, setGraine] = useGraine();
-  const ids = mots.map((m) => m.id).filter((x): x is number => x != null);
+  // Sans images, la feuille d'un exemple : ce que donnera la vôtre.
+  const exemple = useMotsExemple(MOTS_EXEMPLE.ombres, banque && !mots.length);
+  const montres = mots.length ? mots : exemple ?? [];
+  const ids = montres.map((m) => m.id).filter((x): x is number => x != null);
   const { images, ombres, pret } = useImagesEtOmbres(ids, r.grise);
   // Une image et son ombre, dès que les deux sont prêtes ; un mot sans image n'a pas d'ombre.
-  const items = React.useMemo(() => mots.flatMap((m): ImageOmbre[] =>
-    (m.id != null && images[m.id] && ombres[m.id] ? [{ id: m.id, mot: m.mot, image: images[m.id], ombre: ombres[m.id] }] : [])), [mots, images, ombres]);
+  const items = React.useMemo(() => montres.flatMap((m): ImageOmbre[] =>
+    (m.id != null && images[m.id] && ombres[m.id] ? [{ id: m.id, mot: m.mot, image: images[m.id], ombre: ombres[m.id] }] : [])), [montres, images, ombres]);
   const html = React.useMemo(() => htmlOmbres(items, r, graine), [items, r, graine]);
   // Un mot que la banque n'a pas, une image qui ne se lit plus : ils restent dans la liste, sans ombre.
-  const sansImage = pret ? mots.length - items.length : 0;
-  const peut = pret && items.length >= OMBRES_MINIMUM;
+  const sansImage = pret && mots.length ? mots.length - items.length : 0;
+  const peut = pret && mots.length > 0 && items.length >= OMBRES_MINIMUM;
   const feuilles = feuillesDOmbres(items.length, r);
   return (
     <Colonnes
@@ -612,12 +621,13 @@ export function OmbresTab({ banque }: { banque: boolean }) {
         <Coche on={r.legendes} libelle="Écrire le mot sous l'image et sous son ombre" onChange={(v) => maj({ legendes: v })} />
         <Coche on={r.grise} libelle="Des ombres grises : moins d'encre, même forme" onChange={(v) => maj({ grise: v })} />
         <div className="meta" style={{ fontSize: 12.5, marginTop: 6 }}>
-          {!pret ? "Les ombres se dessinent…" : `${items.length} image${items.length > 1 ? "s" : ""}, ${feuilles} feuille${feuilles > 1 ? "s" : ""}.`}
+          {!mots.length ? null : !pret ? "Les ombres se dessinent…" : `${items.length} image${items.length > 1 ? "s" : ""}, ${feuilles} feuille${feuilles > 1 ? "s" : ""}.`}
           {sansImage > 0 && <span style={{ color: "var(--orange)" }}> {sansImage} mot{sansImage > 1 ? "s" : ""} sans image : pas d'ombre pour {sansImage > 1 ? "eux" : "lui"}.</span>}
         </div>
         <Boutons atelier="ombres" titre="Le jeu des ombres" html={html} style={STYLE_OMBRES} peut={peut} onTirage={() => setGraine(graineAuHasard())} />
       </>}
-      droite={items.length ? <ApercuFeuille html={html} style={STYLE_OMBRES} />
+      droite={items.length && mots.length ? <ApercuFeuille html={html} style={STYLE_OMBRES} />
+        : items.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_OMBRES} /></ApercuExemple>
         : <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>Ajoutez au moins deux images — des mots de la banque, un thème, ou vos propres images : chacune aura son ombre.</div>}
     />
   );

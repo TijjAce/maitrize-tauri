@@ -8,6 +8,7 @@ import { confirmer } from "../components/confirmer";
 import { ChoixPicto, chargerImages, usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
+import { ApercuExemple, motsAvecImages } from "../components/Exemple";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { CasesFeuille, useOptionsFeuille } from "../components/OptionsFeuille";
 import { useCompetencesAtelier } from "../components/CompetencesAtelier";
@@ -107,12 +108,28 @@ export function CategoriserTab({ banque }: { banque: boolean }) {
   const [occupe, setOccupe] = React.useState(false);
   const [enSequence, setEnSequence] = React.useState(false);
   const [competences] = useCompetencesAtelier(ATELIER);
-  const ids = React.useMemo(() => idsDesImages(categories), [categories]);
+  const jeux = jeuxPour(r.niveau);
+  const avecImages = categories.some((c) => c.mots.length);
+  // Sans images, les catégories toutes prêtes de la classe, en exemple : ce que donnera le jeu choisi.
+  const jeuExemple = jeux[0];
+  const [exemple, setExemple] = React.useState<{ id: string; categories: Categorie[] } | null>(null);
+  React.useEffect(() => {
+    if (avecImages || !jeuExemple || exemple?.id === jeuExemple.id) return;
+    let vivant = true;
+    motsAvecImages(motsDuJeu(jeuExemple)).then((mots) => {
+      const parMot: Record<string, number> = {};
+      for (const m of mots) if (m.id != null) parMot[m.mot.toLowerCase()] = m.id;
+      if (vivant) setExemple({ id: jeuExemple.id, categories: categoriesDuJeu(jeuExemple, parMot) });
+    }).catch(() => {});
+    return () => { vivant = false; };
+  }, [avecImages, jeuExemple?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const enExemple = !avecImages && exemple?.id === jeuExemple?.id ? exemple : null;
+  const montre = React.useMemo(() => (enExemple ? { ...r, categories: enExemple.categories } : r), [r, enExemple]);
+  const ids = React.useMemo(() => idsDesImages(montre.categories), [montre]);
   const images = usePictoImages(ids);
   const manque = cequiManque(r);
-  const html = React.useMemo(() => htmlCategoriser(r, images, hasard(graine)), [r, images, graine]);
+  const html = React.useMemo(() => htmlCategoriser(montre, images, hasard(graine)), [montre, images, graine]);
   const titre = nomDeLaForme(r.forme);
-  const jeux = jeuxPour(r.niveau);
 
   const changerCategorie = (i: number, c: Categorie) => maj({ categories: categories.map((x, k) => (k === i ? c : x)) });
   const prendreLeJeu = async () => {
@@ -132,14 +149,13 @@ export function CategoriserTab({ banque }: { banque: boolean }) {
     } catch (e) { toast(String(e), { icone: "⚠️" }); } finally { setOccupe(false); }
   };
   // L'impression attend toutes les images, et mêle les cartes comme l'aperçu.
-  const feuilleImprimee = async () => htmlCategoriser(r, await chargerImages(ids), hasard(graine));
+  const feuilleImprimee = async () => htmlCategoriser(r, await chargerImages(idsDesImages(categories)), hasard(graine));
   const imprimer = async () => {
     try { await imprimerAtelier(ATELIER, titre, await feuilleImprimee(), STYLE_FEUILLE + STYLE_CATEGORISER); }
     catch (e) { toast(String(e), { icone: "⚠️" }); }
   };
   const jeuChoisi = jeux.find((x) => x.id === jeu);
   const melange = ["tri", "intrus", "loto", "appelle", "mistigri"].includes(r.forme);
-  const avecImages = categories.some((c) => c.mots.length);
   // Ce que le pli règle, dit sur sa ligne : on sait ce qui sortira sans l'ouvrir.
   const nommable = r.forme === "tri" || r.forme === "loto" || r.forme === "appelle";
   const legendable = !["affiche", "evaluation", "familles"].includes(r.forme);
@@ -256,6 +272,8 @@ export function CategoriserTab({ banque }: { banque: boolean }) {
       <div style={{ minWidth: 0 }}>
         {avecImages
           ? <ApercuFeuille html={html} style={STYLE_CATEGORISER} />
+          : enExemple
+          ? <ApercuExemple onPrendre={() => { maj({ categories: enExemple.categories }); setOuverte(-1); }}><ApercuFeuille html={html} style={STYLE_CATEGORISER} /></ApercuExemple>
           : <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>
               Prenez des catégories toutes prêtes — les exemples de la fiche Éduscol, comme « S'habiller ou cuisiner » en petite section ou
               « Les animaux à poils, à plumes, à écailles, à carapace » en grande —, ou composez les vôtres : un nom, et ses images.

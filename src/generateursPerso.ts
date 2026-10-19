@@ -290,6 +290,23 @@ export function blocVide(sorte: SorteDeBloc): BlocPerso {
   }
 }
 
+// ── L'exemple ─────────────────────────────────────────────────────────────
+
+/**
+ * Le générateur d'exemple : ce que donne une recette avant qu'on ait rien
+ * demandé (voir exemplesDesAteliers.ts). Il se prend sans l'IA.
+ */
+export const EXEMPLE_DE_GENERATEUR = {
+  nom: "Les animaux de la ferme", icone: "🐣", quoi: "Relier chaque animal à son petit, compter, cocher la bonne image.", classe: "GS", moment: "entrainement",
+  blocs: [
+    { sorte: "relier", consigne: "Je relie chaque animal à son petit.", paires: [["chat", "chaton"], ["vache", "veau"], ["poule", "poussin"], ["chien", "chiot"], ["cheval", "poulain"], ["mouton", "agneau"]], combien: 4, affichage: "les-deux" },
+    { sorte: "compter", consigne: "Je compte les animaux. J'écris combien il y en a.", elements: ["poule", "canard", "lapin"], min: 2, max: 8, combien: 3 },
+    { sorte: "choisir", consigne: "Je coche la bonne image.", items: [
+      { question: "Qui pond des œufs ?", bonne: "poule", autres: ["chat", "chien"] },
+      { question: "Qui donne du lait ?", bonne: "vache", autres: ["cheval", "lapin"] }], combien: 2, affichage: "les-deux" },
+  ],
+};
+
 // ── Les générateurs gardés ────────────────────────────────────────────────
 
 /** Le réglage qui les garde, partagé entre les ordinateurs de l'enseignant. */
