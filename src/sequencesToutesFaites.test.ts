@@ -189,7 +189,8 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(periodeProposee("reproduire-cp", "CP")!.periode).toBe(5);
     expect(periodeProposee("parite-ce1", "CE1")!.periode).toBe(2);
     expect(periodeProposee("parite-ce1", "CE2")).toBeNull();
-  });
+    // Toutes les séquences, à chaque classe : quatre secondes sur le Mac, plus de cinq sur les machines de GitHub.
+  }, 60_000);
 
   it("gardent les périodes choisies telles qu'on peut s'y fier", () => {
     expect(lirePeriodes('{"heure-cp:CP":4,"x:CE1":7,"y:CE2":"2","z:CP":2.5,"w:CE1":1}')).toEqual({ "heure-cp:CP": 4, "w:CE1": 1 });
@@ -285,7 +286,7 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
       }
     }
     expect(n).toBeGreaterThan(1000);
-  });
+  }, 60_000);
 
   it("visent une compétence du programme du cycle 2, de leur discipline et à leur classe", () => {
     let francaisEtHistoire = 0, trouvees = 0;
