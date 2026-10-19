@@ -184,16 +184,68 @@ pub fn fichiers_dir() -> PathBuf {
     dir
 }
 
-pub fn open() -> Connection {
+/// Ouvre la base, la met au niveau de cette `version` de l'application.
+pub fn open(version: &str) -> Connection {
     let path = data_dir().join("maitrize.sqlite3");
     let conn = Connection::open(path).expect("ouverture base SQLite");
     conn.pragma_update(None, "journal_mode", "WAL").ok();
     conn.pragma_update(None, "foreign_keys", "ON").ok();
+    // Une nouvelle version touche à la base par ses migrations : on la copie
+    // d'abord telle qu'elle était, et l'on peut toujours y revenir.
+    copie_avant_changement_de_version(&conn, version, &sauvegardes_dir());
+    // Les migrations d'un seul coup : coupées en route (panne, plantage),
+    // elles ne laissent pas une base à moitié migrée.
+    let en_transaction = conn.execute_batch("BEGIN IMMEDIATE").is_ok();
     migrate(&conn);
+    if en_transaction {
+        if let Err(err) = conn.execute_batch("COMMIT") {
+            crate::commands::diag_ecrire(format!("MIGRATIONS : validation impossible ({err})"));
+        }
+    }
     crate::journal::creer_table(&conn);
     crate::journal::poser_declencheurs(&conn, &identifiant_machine(&conn));
     crate::seed::seed_referentiels(&conn);
+    conn.execute("INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)", [CLE_VERSION_BASE, version]).ok();
     conn
+}
+
+/// La version de l'application qui a ouvert la base en dernier : un réglage
+/// de ce poste, qui ne voyage pas.
+pub const CLE_VERSION_BASE: &str = "versionDeLaBase";
+
+/// Copie la base dans `dossier` avant qu'une autre version ne l'ouvre ; rend
+/// le nom de la copie, ou rien s'il n'y avait pas lieu.
+///
+/// Une base neuve n'a rien à protéger. La même version qui se rouvre non
+/// plus : en développement, la version ne change pas d'un lancement à l'autre.
+pub(crate) fn copie_avant_changement_de_version(conn: &Connection, version: &str, dossier: &std::path::Path) -> Option<String> {
+    let a_des_reglages = conn
+        .query_row("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'settings'", [], |r| r.get::<_, i64>(0))
+        .map(|n| n > 0)
+        .unwrap_or(false);
+    if !a_des_reglages {
+        return None;
+    }
+    let precedente: Option<String> =
+        conn.query_row("SELECT valeur FROM settings WHERE cle = ?1", [CLE_VERSION_BASE], |r| r.get(0)).ok();
+    if precedente.as_deref() == Some(version) {
+        return None;
+    }
+    std::fs::create_dir_all(dossier).ok();
+    let nom = format!("maitrize-{}-avant-v{version}-{}.sqlite3", jour_iso(), chrono::Local::now().format("%H%M%S"));
+    match conn.execute("VACUUM INTO ?1", [dossier.join(&nom).to_string_lossy().as_ref()]) {
+        Ok(_) => {
+            crate::commands::diag_ecrire(format!(
+                "COPIE AVANT MISE À JOUR {nom} (base ouverte jusqu'ici par {})",
+                precedente.map(|v| format!("v{v}")).unwrap_or_else(|| "une version plus ancienne".into())
+            ));
+            Some(nom)
+        }
+        Err(err) => {
+            crate::commands::diag_ecrire(format!("COPIE AVANT MISE À JOUR IMPOSSIBLE : {err}"));
+            None
+        }
+    }
 }
 
 /**
@@ -296,20 +348,29 @@ pub fn copie_de_securite(conn: &Connection, motif: &str) -> Result<String, Strin
     Ok(nom)
 }
 
-/// Ne garde que les copies les plus récentes.
-fn purger_sauvegardes(dir: &std::path::Path) {
+/// Copies faites avant une opération ou une mise à jour, gardées à part des copies de chaque jour.
+const COPIES_DE_SECURITE_GARDEES: usize = 10;
+
+/// Ne garde que les copies les plus récentes : sept copies de chaque jour, et
+/// dix copies faites avant une opération ou une mise à jour.
+///
+/// Les deux se comptaient ensemble : un jour de restaurations ou d'imports
+/// faisait partir des jours de copie, justement ceux d'avant le problème.
+pub(crate) fn purger_sauvegardes(dir: &std::path::Path) {
     let Ok(entrees) = std::fs::read_dir(dir) else { return };
-    let mut fichiers: Vec<PathBuf> = entrees
+    let (mut du_jour, mut de_securite): (Vec<PathBuf>, Vec<PathBuf>) = entrees
         .flatten()
         .map(|e| e.path())
         .filter(|p| p.file_name().and_then(|n| n.to_str())
             .is_some_and(|n| n.starts_with("maitrize-") && n.ends_with(".sqlite3")))
-        .collect();
-    if fichiers.len() <= SAUVEGARDES_GARDEES { return; }
-    // Le nom porte la date ISO : l'ordre alphabétique est l'ordre chronologique.
-    fichiers.sort();
-    for vieux in &fichiers[..fichiers.len() - SAUVEGARDES_GARDEES] {
-        std::fs::remove_file(vieux).ok();
+        .partition(|p| p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.len() == "maitrize-AAAA-MM-JJ.sqlite3".len()));
+    for (fichiers, gardees) in [(&mut du_jour, SAUVEGARDES_GARDEES), (&mut de_securite, COPIES_DE_SECURITE_GARDEES)] {
+        if fichiers.len() <= gardees { continue; }
+        // Le nom porte la date ISO : l'ordre alphabétique est l'ordre chronologique.
+        fichiers.sort();
+        for vieux in &fichiers[..fichiers.len() - gardees] {
+            std::fs::remove_file(vieux).ok();
+        }
     }
 }
 
@@ -398,6 +459,59 @@ mod tests_synchro {
 #[cfg(test)]
 pub(crate) fn migrer_pour_test(conn: &Connection) {
     migrate(conn);
+}
+
+#[cfg(test)]
+mod tests_copies {
+    use super::*;
+
+    fn dossier(nom: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("maitrize-copies-{nom}-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+    fn copies(d: &std::path::Path) -> Vec<String> {
+        let mut v: Vec<String> = std::fs::read_dir(d).unwrap().flatten().map(|e| e.file_name().to_string_lossy().to_string()).collect();
+        v.sort();
+        v
+    }
+
+    #[test]
+    fn une_nouvelle_version_copie_la_base_avant_de_la_migrer_une_seule_fois() {
+        let d = dossier("version");
+        let c = Connection::open_in_memory().unwrap();
+        // Base neuve : rien à protéger.
+        assert_eq!(copie_avant_changement_de_version(&c, "1.6.33", &d), None);
+        migrate(&c);
+        c.execute("INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, '1.6.32')", [CLE_VERSION_BASE]).unwrap();
+        // La même version qui se rouvre : pas de copie.
+        assert_eq!(copie_avant_changement_de_version(&c, "1.6.32", &d), None);
+        // Une nouvelle version : une copie, ouvrable telle quelle.
+        let nom = copie_avant_changement_de_version(&c, "1.6.33", &d).expect("une copie");
+        assert!(nom.contains("avant-v1.6.33"), "{nom}");
+        let copie = Connection::open(d.join(&nom)).unwrap();
+        let version: String = copie.query_row("SELECT valeur FROM settings WHERE cle = ?1", [CLE_VERSION_BASE], |r| r.get(0)).unwrap();
+        assert_eq!(version, "1.6.32", "la copie est la base d'avant");
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn les_copies_de_securite_ne_prennent_pas_la_place_des_copies_de_chaque_jour() {
+        let d = dossier("purge");
+        for j in 1..=9 {
+            std::fs::write(d.join(format!("maitrize-2026-10-{j:02}.sqlite3")), b"x").unwrap();
+        }
+        for k in 1..=12 {
+            std::fs::write(d.join(format!("maitrize-2026-10-09-avant-import-1000{k:02}.sqlite3")), b"x").unwrap();
+        }
+        purger_sauvegardes(&d);
+        let restent = copies(&d);
+        let jours = restent.iter().filter(|n| n.len() == "maitrize-AAAA-MM-JJ.sqlite3".len()).count();
+        assert_eq!(jours, SAUVEGARDES_GARDEES, "{restent:?}");
+        assert_eq!(restent.len() - jours, COPIES_DE_SECURITE_GARDEES, "{restent:?}");
+        assert!(restent.contains(&"maitrize-2026-10-03.sqlite3".to_string()), "les sept derniers jours restent");
+        std::fs::remove_dir_all(&d).ok();
+    }
 }
 
 pub(crate) fn migrate(conn: &Connection) {

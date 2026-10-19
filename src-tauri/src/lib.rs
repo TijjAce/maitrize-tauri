@@ -45,7 +45,10 @@ pub fn run() {
         habituel(info);
     }));
 
-    let conn = db::open();
+    // La version de l'application, connue avant d'ouvrir la base : une
+    // nouvelle version la copie avant de la migrer (voir `db::open`).
+    let contexte = tauri::generate_context!();
+    let conn = db::open(&contexte.package_info().version.to_string());
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -202,7 +205,7 @@ pub fn run() {
             telephone::telephone_code, telephone::telephone_code_ordinateur, telephone::telephone_code_appliquer,
             telephone::telephone_oublier, telephone::telephone_relever, telephone::telephone_relever_pages, telephone::telephone_publier_journal,
         ])
-        .build(tauri::generate_context!())
+        .build(contexte)
         .expect("error while running tauri application")
         .run(|_app, evenement| {
             // Une fermeture normale laisse sa marque : sans elle, la session
