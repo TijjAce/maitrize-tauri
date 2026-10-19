@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { api, couleurHex, couleurPourMatiere, newId, texteErreur, type Eleve, type ProgrammationFinale, type Sequence } from "../api";
+import { api, couleurHex, couleurPourMatiere, type Eleve, type Sequence } from "../api";
+import { useCollectionParEcart } from "../ecritureParEcart";
 import { Empty, TextareaAuto, useAsync } from "./ui";
 import { toast } from "./Toaster";
 import { confirmer } from "./confirmer";
@@ -273,22 +274,21 @@ function ChoixEleves({ ancre, objectif, groupes, eleves, onBasculer, onFermer }:
 export function ProgrammationIme({ annee }: { annee: string }) {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const { data: progs, reload } = useAsync(() => api.programmationsFinaleList(), []);
-  const ligne = progs?.find((p) => p.annee === annee && p.niveau === "ime");
-  const [prog, setProg] = React.useState<Prog>(vide());
-  // Vrai une fois la programmation enregistrée relue : rien ne s'y ajoute avant,
-  // sans quoi on l'écraserait avec une programmation vide.
-  const [lue, setLue] = React.useState(false);
+  // Elle vit dans une ligne à part, marquée « ime », et s'écrit par écart : un
+  // objectif ajouté sur un autre ordinateur reste quand on en coche un ici.
+  // `lue` : vrai une fois la programmation enregistrée relue — rien ne s'y
+  // ajoute avant, sans quoi on l'écraserait avec une programmation vide.
+  const { present: prog, commit: persister, pret: lue } = useCollectionParEcart<Prog>({
+    cle: annee, lecture: progs, vide: vide(), relire: reload, echec: "Programmation non enregistrée", clavier: false,
+    enBase: (k) => { const l = progs?.find((p) => p.annee === k && p.niveau === "ime"); return l ? lire(l.lignesJson) : vide(); },
+    ecrire: (k, avant, apres) => api.programmationFinaleEcrire(k, true, ecrire(avant), ecrire(apres)),
+  });
   const [filtre, setFiltre] = React.useState("");
   // La grille qui a quoi, fermée tant qu'on ne la demande pas.
   const [elevesOuverts, setElevesOuverts] = React.useState(false);
   const [competencePour, setCompetencePour] = React.useState<string>("");
   const [nouveau, setNouveau] = React.useState("");
   const [choixSequence, setChoixSequence] = React.useState(false);
-
-  React.useEffect(() => {
-    setProg(ligne ? lire(ligne.lignesJson) : vide());
-    if (progs) setLue(true);
-  }, [ligne?.id, ligne?.lignesJson, !!progs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Le cahier journal de l'année : les séquences citées sur ses créneaux.
   const debutAnnee = Number(annee.slice(0, 4));
@@ -298,17 +298,6 @@ export function ProgrammationIme({ annee }: { annee: string }) {
   const { data: sequences } = useAsync(() => api.sequencesList(), []);
   const { data: seances } = useAsync(() => api.seancesList(), []);
   const { data: vacances } = useAsync(() => chargerVacances(isoJour(new Date())), []);
-
-  /** Enregistre la programmation : elle vit dans une ligne à part, marquée « ime ». */
-  const persister = (suite: Prog) => {
-    setProg(suite);
-    const p: ProgrammationFinale = ligne
-      ? { ...ligne, lignesJson: ecrire(suite) }
-      : { id: newId(), annee, lignesJson: ecrire(suite), niveau: "ime", enseignant: "", estImportee: false };
-    api.programmationFinaleSave(p)
-      .then(() => { if (!ligne) reload(); })
-      .catch((e) => toast("Programmation non enregistrée : " + texteErreur(e), { icone: "⚠️" }));
-  };
 
   // Ce que le cahier journal a fait travailler depuis la dernière visite entre
   // dans la programmation : l'objectif naît, ou gagne ces élèves et cette période.

@@ -322,7 +322,7 @@ export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList = [
  * - Raccourcis : ⌘Z / Ctrl+Z (annuler), ⌘⇧Z / Ctrl+Y (rétablir), ignorés quand
  *   le focus est dans un champ de saisie (l'annulation native du champ prime).
  */
-export function useHistorique<T>(initial: T, persist: (v: T) => void) {
+export function useHistorique<T>(initial: T, persist: (v: T) => void, clavier = true) {
   const persistRef = React.useRef(persist);
   persistRef.current = persist;
   const [present, setPresent] = React.useState<T>(initial);
@@ -354,6 +354,7 @@ export function useHistorique<T>(initial: T, persist: (v: T) => void) {
   }, []);
 
   React.useEffect(() => {
+    if (!clavier) return;
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
       const t = e.target as HTMLElement | null;
@@ -364,7 +365,7 @@ export function useHistorique<T>(initial: T, persist: (v: T) => void) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo]);
+  }, [undo, redo, clavier]);
 
   return { present, reset, commit, undo, redo };
 }

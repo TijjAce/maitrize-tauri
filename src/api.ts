@@ -626,6 +626,12 @@ export const api = {
     avant: { colonnesJson: string; cellulesJson: string }, apres: { colonnesJson: string; cellulesJson: string }) =>
     invoke<ProgressionAnnuelle>("progression_annuelle_ecrire", { annee, niveau, periode, avant, apres }),
   programmationsFinaleList: () => invoke<ProgrammationFinale[]>("programmations_finale_list"),
+  /** Écrit l'écart de la programmation de l'année (celle de la classe, ou par élève si `ime`) : une ligne arrivée d'ailleurs reste. */
+  programmationFinaleEcrire: (annee: string, ime: boolean, avant: string, apres: string) =>
+    invoke<ProgrammationFinale>("programmation_finale_ecrire", { annee, ime, avant, apres }),
+  /** Écrit l'écart de l'emploi du temps de l'année : un créneau posé ailleurs reste. */
+  edtTypiqueEcrire: (annee: string, avant: string, apres: string) =>
+    invoke<EdtTypique>("edt_typique_ecrire", { annee, avant, apres }),
   programmationFinaleSave: (p: ProgrammationFinale) =>
     invoke<ProgrammationFinale>("programmation_finale_save", { p }),
   programmationFinaleDelete: (id: string) => invoke<void>("programmation_finale_delete", { id }),

@@ -24,6 +24,7 @@
 
 use rusqlite::{params, Connection, Transaction};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 /// Tables dont les lignes voyagent d'une machine à l'autre.
 ///
@@ -710,15 +711,18 @@ fn fusionner_champs(
 }
 
 /// Les champs qui rangent une collection en JSON : les cases d'une
-/// progression, ses colonnes.
+/// progression et ses colonnes, les lignes d'une programmation, les
+/// créneaux d'un emploi du temps.
 ///
 /// Fusionnés champ par champ, ils se transmettaient d'un bloc : deux
 /// ordinateurs qui remplissaient chacun une case de la même progression,
-/// et l'une des deux disparaissait des deux côtés. On les fusionne élément
-/// par élément, comme les réglages qui contiennent une collection.
+/// ou ajoutaient chacun un créneau, et l'un des deux disparaissait des deux
+/// côtés. On les fusionne élément par élément (`fusion_trois`).
 const COLLECTIONS_JSON: &[(&str, &str)] = &[
     ("progressions_annuelle", "colonnes_json"),
     ("progressions_annuelle", "cellules_json"),
+    ("programmations_finale", "lignes_json"),
+    ("edt_typique", "slots_json"),
 ];
 
 /// Fusionne, élément par élément, les collections JSON que l'entrant a modifiées.
@@ -741,13 +745,148 @@ fn fusionner_collections(
         if *t != table || !touches_entrant.contains(*champ) {
             continue;
         }
-        let texte = |v: &serde_json::Value| v.get(*champ).and_then(|x| x.as_str()).map(str::to_string);
-        let (Some(ici), Some(recu)) = (texte(locale), texte(entrant)) else { continue };
-        let base = texte(&avant).unwrap_or_default();
-        if let (Some(fusion), Some(o)) = (fusionner_reglage(&ici, &base, &recu, entrant_gagne), sortie.as_object_mut()) {
-            o.insert((*champ).to_string(), serde_json::Value::String(fusion));
+        let json = |v: &serde_json::Value| {
+            v.get(*champ).and_then(|x| x.as_str()).and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
+        };
+        let (Some(ici), Some(recu)) = (json(locale), json(entrant)) else { continue };
+        let fusion = fusion_trois(&ici, json(&avant).as_ref(), &recu, entrant_gagne);
+        if let Some(o) = sortie.as_object_mut() {
+            o.insert((*champ).to_string(), serde_json::Value::String(fusion.to_string()));
         }
     }
+}
+
+/// Fusion à trois d'une valeur JSON : `ici`, ce que nous avons ; `avant`, ce
+/// que l'autre côté avait au départ (inconnu à la création) ; `apres`, ce
+/// qu'il a maintenant.
+///
+/// - Ce qu'un seul côté a changé est gardé.
+/// - Deux objets se fusionnent clé par clé, deux listes d'éléments
+///   identifiés (`id`) élément par élément, jusque dans chaque élément :
+///   deux champs différents d'une même ligne se gardent tous les deux.
+/// - Une liste de valeurs simples se fusionne comme un ensemble : ce que
+///   chacun a ajouté entre, ce que chacun a retiré s'en va.
+/// - Ce que les deux ont changé différemment revient au gagnant
+///   (`entrant_gagne` : l'autre côté).
+pub(crate) fn fusion_trois(ici: &Value, avant: Option<&Value>, apres: &Value, entrant_gagne: bool) -> Value {
+    if ici == apres || avant == Some(apres) {
+        return ici.clone();
+    }
+    if avant == Some(ici) {
+        return apres.clone();
+    }
+    match (ici, apres) {
+        (Value::Object(nos), Value::Object(leurs)) => {
+            let socle = avant.and_then(|v| v.as_object());
+            let mut sortie = serde_json::Map::new();
+            for (k, notre) in nos {
+                let base = socle.and_then(|m| m.get(k));
+                match leurs.get(k) {
+                    Some(leur) => {
+                        sortie.insert(k.clone(), fusion_trois(notre, base, leur, entrant_gagne));
+                    }
+                    // Absente chez eux : ajoutée ici, ou retirée là-bas — elle ne
+                    // reste alors que si nous l'avons retouchée et l'emportons.
+                    None => {
+                        if base.map(|b| b != notre && !entrant_gagne).unwrap_or(true) {
+                            sortie.insert(k.clone(), notre.clone());
+                        }
+                    }
+                }
+            }
+            for (k, leur) in leurs {
+                if !nos.contains_key(k) && socle.and_then(|m| m.get(k)).map(|b| b != leur && entrant_gagne).unwrap_or(true) {
+                    sortie.insert(k.clone(), leur.clone());
+                }
+            }
+            Value::Object(sortie)
+        }
+        (Value::Array(a), Value::Array(b)) => match (elements_identifies(a), elements_identifies(b)) {
+            (Some(nos), Some(leurs)) => {
+                let socle = avant.and_then(|v| v.as_array()).and_then(|x| elements_identifies(x));
+                fusionner_liste(&nos, socle.as_deref(), &leurs, entrant_gagne)
+            }
+            _ if a.iter().chain(b).all(|x| !x.is_object() && !x.is_array()) => fusionner_ensemble(a, avant.and_then(|v| v.as_array()), b),
+            _ => if entrant_gagne { apres.clone() } else { ici.clone() },
+        },
+        _ => if entrant_gagne { apres.clone() } else { ici.clone() },
+    }
+}
+
+/// Les éléments d'une liste, par identifiant ; rien si l'un d'eux n'en a pas.
+fn elements_identifies(liste: &[Value]) -> Option<Vec<(String, &Value)>> {
+    liste.iter().map(|x| x.get("id").and_then(|i| i.as_str()).map(|i| (i.to_string(), x))).collect()
+}
+
+/// Une liste de valeurs simples, vue comme un ensemble : les ajouts des deux côtés, sans les retraits de l'un ni de l'autre.
+fn fusionner_ensemble(nos: &[Value], socle: Option<&Vec<Value>>, leurs: &[Value]) -> Value {
+    let vide = Vec::new();
+    let socle = socle.unwrap_or(&vide);
+    let retire = |x: &Value, cote: &[Value]| socle.contains(x) && !cote.contains(x);
+    let mut sortie: Vec<Value> = Vec::new();
+    for x in nos.iter().chain(leurs) {
+        if !sortie.contains(x) && !retire(x, nos) && !retire(x, leurs) {
+            sortie.push(x.clone());
+        }
+    }
+    Value::Array(sortie)
+}
+
+/// Vrai si `liste` range autrement que `socle` les éléments qu'ils ont en commun.
+fn reordonne(liste: &[String], socle: &[String]) -> bool {
+    let communs = |l: &[String], autre: &[String]| l.iter().filter(|k| autre.contains(k)).cloned().collect::<Vec<_>>();
+    communs(liste, socle) != communs(socle, liste)
+}
+
+/// L'ordre de `premiere` ; chaque élément que seule `seconde` a vient avant
+/// son plus proche suivant déjà placé, ou à la fin s'il n'en a pas — une
+/// ligne ajoutée sous un domaine reste sous ce domaine.
+fn ordre_fusionne(premiere: &[String], seconde: &[String], gardes: &std::collections::HashSet<String>) -> Vec<String> {
+    let mut ordre: Vec<String> = premiere.iter().filter(|k| gardes.contains(*k)).cloned().collect();
+    for (i, k) in seconde.iter().enumerate() {
+        if !gardes.contains(k) || ordre.contains(k) {
+            continue;
+        }
+        let place = seconde[i + 1..].iter().find_map(|s| ordre.iter().position(|x| x == s)).unwrap_or(ordre.len());
+        ordre.insert(place, k.clone());
+    }
+    ordre
+}
+
+/// Deux listes d'éléments identifiés, fusionnées élément par élément.
+///
+/// L'ordre est celui du côté qui a déplacé des éléments ; si les deux
+/// l'ont fait, celui du gagnant.
+fn fusionner_liste(nos: &[(String, &Value)], socle: Option<&[(String, &Value)]>, leurs: &[(String, &Value)], entrant_gagne: bool) -> Value {
+    use std::collections::{HashMap, HashSet};
+    let base: HashMap<&str, &Value> = socle.unwrap_or(&[]).iter().map(|(k, v)| (k.as_str(), *v)).collect();
+    let chez_eux: HashMap<&str, &Value> = leurs.iter().map(|(k, v)| (k.as_str(), *v)).collect();
+    let chez_nous: HashSet<&str> = nos.iter().map(|(k, _)| k.as_str()).collect();
+    let mut gardes: HashMap<String, Value> = HashMap::new();
+    for (k, notre) in nos {
+        let b = base.get(k.as_str()).copied();
+        match chez_eux.get(k.as_str()) {
+            Some(leur) => { gardes.insert(k.clone(), fusion_trois(notre, b, leur, entrant_gagne)); }
+            None => if b.map(|b| b != *notre && !entrant_gagne).unwrap_or(true) { gardes.insert(k.clone(), (*notre).clone()); },
+        }
+    }
+    for (k, leur) in leurs {
+        if !chez_nous.contains(k.as_str()) && base.get(k.as_str()).map(|b| b != leur && entrant_gagne).unwrap_or(true) {
+            gardes.insert(k.clone(), (*leur).clone());
+        }
+    }
+    let ids = |l: &[(String, &Value)]| l.iter().map(|(k, _)| k.clone()).collect::<Vec<_>>();
+    let (ordre_nos, ordre_leurs) = (ids(nos), ids(leurs));
+    let leurs_d_abord = match socle {
+        None => entrant_gagne,
+        Some(s) => {
+            let s = ids(s);
+            reordonne(&ordre_leurs, &s) && (!reordonne(&ordre_nos, &s) || entrant_gagne)
+        }
+    };
+    let cles: HashSet<String> = gardes.keys().cloned().collect();
+    let ordre = if leurs_d_abord { ordre_fusionne(&ordre_leurs, &ordre_nos, &cles) } else { ordre_fusionne(&ordre_nos, &ordre_leurs, &cles) };
+    Value::Array(ordre.into_iter().filter_map(|k| gardes.remove(&k)).collect())
 }
 
 /// Les colonnes d'une table, avec ce qu'elles exigent.
@@ -1753,6 +1892,38 @@ mod tests {
         assert!(tb.contains("rituel"), "l'ajout de A doit survivre chez B : {tb}");
         assert!(tb.contains("ateliers"), "celui de B doit rester : {tb}");
         assert_eq!(ta, tb, "les deux machines doivent afficher le même texte");
+    }
+
+    #[test]
+    fn la_fusion_a_trois_garde_ce_que_chacun_a_change() {
+        let j = |s: &str| -> Value { serde_json::from_str(s).unwrap() };
+        // Deux champs d'une même ligne, chacun de son côté.
+        let base = j(r#"[{"id":"a","p1":"","p2":""}]"#);
+        let ici = j(r#"[{"id":"a","p1":"Lecture","p2":""}]"#);
+        let recu = j(r#"[{"id":"a","p1":"","p2":"Écriture"}]"#);
+        assert_eq!(fusion_trois(&ici, Some(&base), &recu, true), j(r#"[{"id":"a","p1":"Lecture","p2":"Écriture"}]"#));
+        // Le même champ : au gagnant.
+        let ici = j(r#"[{"id":"a","p1":"Ici","p2":""}]"#);
+        let recu = j(r#"[{"id":"a","p1":"Là-bas","p2":""}]"#);
+        assert_eq!(fusion_trois(&ici, Some(&base), &recu, true)[0]["p1"], "Là-bas");
+        assert_eq!(fusion_trois(&ici, Some(&base), &recu, false)[0]["p1"], "Ici");
+        // Une liste de valeurs simples est un ensemble : les ajouts restent, les retraits partent.
+        let base = j(r#"{"periodes":[1,2]}"#);
+        let ici = j(r#"{"periodes":[1,2,3]}"#);
+        let recu = j(r#"{"periodes":[2]}"#);
+        assert_eq!(fusion_trois(&ici, Some(&base), &recu, true), j(r#"{"periodes":[2,3]}"#));
+        // Retirée d'un côté, retouchée de l'autre : elle ne revient que si le retoucheur gagne.
+        let base = j(r#"[{"id":"a","t":"x"},{"id":"b","t":"y"}]"#);
+        let ici = j(r#"[{"id":"a","t":"x"}]"#);
+        let recu = j(r#"[{"id":"a","t":"x"},{"id":"b","t":"y modifié"}]"#);
+        assert_eq!(fusion_trois(&ici, Some(&base), &recu, true).as_array().unwrap().len(), 2);
+        assert_eq!(fusion_trois(&ici, Some(&base), &recu, false).as_array().unwrap().len(), 1);
+        // Un déplacement d'un côté et un ajout de l'autre : les deux se voient.
+        let base = j(r#"[{"id":"a"},{"id":"b"},{"id":"c"}]"#);
+        let ici = j(r#"[{"id":"c"},{"id":"a"},{"id":"b"}]"#);
+        let recu = j(r#"[{"id":"a"},{"id":"n"},{"id":"b"},{"id":"c"}]"#);
+        let ids: Vec<String> = fusion_trois(&ici, Some(&base), &recu, true).as_array().unwrap().iter().map(|x| x["id"].as_str().unwrap().to_string()).collect();
+        assert_eq!(ids, vec!["c", "a", "n", "b"]);
     }
 
     /// Deux ordinateurs remplissent chacun une case de la même progression :

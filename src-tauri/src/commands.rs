@@ -1034,22 +1034,18 @@ pub struct EtatProgression {
     pub cellules_json: String,
 }
 
-/// Les colonnes après une modification de l'écran, fusionnées avec celles de la base.
+/// Une collection JSON modifiée par un écran, fusionnée avec ce que la base a.
 ///
-/// La fusion garde ce que l'écran n'a pas touché — une colonne arrivée d'un
-/// autre ordinateur entre-temps — ; l'ordre est celui de l'écran, qui seul
-/// peut avoir déplacé une colonne. Celles qu'il ne connaît pas restent après.
-fn fusionner_colonnes(ici: &str, avant: &str, apres: &str) -> String {
-    let fusion = crate::journal::fusionner_reglage(ici, avant, apres, true).unwrap_or_else(|| apres.to_string());
-    let (Ok(serde_json::Value::Array(mut colonnes)), Ok(serde_json::Value::Array(ecran))) =
-        (serde_json::from_str::<serde_json::Value>(&fusion), serde_json::from_str::<serde_json::Value>(apres))
-    else {
-        return fusion;
-    };
-    let id = |v: &serde_json::Value| v.get("id").and_then(|i| i.as_str()).map(str::to_string);
-    let rang: std::collections::HashMap<String, usize> = ecran.iter().enumerate().filter_map(|(k, v)| id(v).map(|i| (i, k))).collect();
-    colonnes.sort_by_key(|v| id(v).and_then(|i| rang.get(&i).copied()).unwrap_or(usize::MAX));
-    serde_json::Value::Array(colonnes).to_string()
+/// Ce que l'écran a changé depuis `avant` l'emporte ; le reste garde la
+/// valeur de la base, où une case, une ligne ou un créneau arrivés d'un
+/// autre ordinateur entre-temps restent. L'ordre est celui de l'écran s'il
+/// a déplacé quelque chose.
+fn fusionner_ecran(ici: &str, avant: &str, apres: &str) -> String {
+    let lire = |s: &str| serde_json::from_str::<serde_json::Value>(s).ok();
+    match (lire(ici), lire(apres)) {
+        (Some(i), Some(a)) => crate::journal::fusion_trois(&i, lire(avant).as_ref(), &a, true).to_string(),
+        _ => apres.to_string(),
+    }
 }
 
 /// Écrit une modification de la progression d'une année, d'un niveau et d'une période.
@@ -1080,9 +1076,8 @@ pub(crate) fn ecrire_progression(
         None => (new_id(), "[]".to_string(), "{}".to_string()),
     };
     let ou_vide = |s: &str, vide: &str| if s.trim().is_empty() { vide.to_string() } else { s.to_string() };
-    let colonnes = fusionner_colonnes(&colonnes_ici, &ou_vide(&avant.colonnes_json, "[]"), &ou_vide(&apres.colonnes_json, "[]"));
-    let cellules = crate::journal::fusionner_reglage(&cellules_ici, &ou_vide(&avant.cellules_json, "{}"), &ou_vide(&apres.cellules_json, "{}"), true)
-        .unwrap_or_else(|| ou_vide(&apres.cellules_json, "{}"));
+    let colonnes = fusionner_ecran(&colonnes_ici, &ou_vide(&avant.colonnes_json, "[]"), &ou_vide(&apres.colonnes_json, "[]"));
+    let cellules = fusionner_ecran(&cellules_ici, &ou_vide(&avant.cellules_json, "{}"), &ou_vide(&apres.cellules_json, "{}"));
     let p = ProgressionAnnuelle {
         id, annee: annee.to_string(), periode, colonnes_json: colonnes, cellules_json: cellules, niveau: niveau.to_string(),
     };
@@ -1189,7 +1184,8 @@ pub fn progression_annuelle_ecrire(
 #[tauri::command]
 pub fn programmations_finale_list(db: State<Db>) -> R<Vec<ProgrammationFinale>> {
     let c = db.lock();
-    let mut st = c.prepare("SELECT * FROM programmations_finale ORDER BY annee").map_err(e)?;
+    // La plus ancienne d'abord : c'est elle que l'écran montre et qu'`ecrire_programmation` complète.
+    let mut st = c.prepare("SELECT * FROM programmations_finale ORDER BY annee, rowid").map_err(e)?;
     let rows = st.query_map([], ProgrammationFinale::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
@@ -1205,6 +1201,38 @@ pub fn programmation_finale_save(db: State<Db>, p: ProgrammationFinale) -> R<Pro
     Ok(p)
 }
 
+/// Écrit une modification de la programmation de l'année : celle de la
+/// classe, ou celle par élève (`ime`). Comme pour la progression, seul
+/// l'écart avec ce que l'écran montrait s'écrit, et la programmation se
+/// crée une seule fois.
+pub(crate) fn ecrire_programmation(c: &rusqlite::Connection, annee: &str, ime: bool, avant: &str, apres: &str) -> rusqlite::Result<ProgrammationFinale> {
+    let sql = if ime {
+        "SELECT * FROM programmations_finale WHERE annee = ?1 AND niveau = 'ime' ORDER BY rowid LIMIT 1"
+    } else {
+        "SELECT * FROM programmations_finale WHERE annee = ?1 AND est_importee = 0 AND niveau <> 'ime' ORDER BY rowid LIMIT 1"
+    };
+    let existante = c.query_row(sql, params![annee], ProgrammationFinale::from_row).optional()?;
+    let vide = if ime { "{}" } else { "[]" };
+    let mut p = existante.unwrap_or_else(|| ProgrammationFinale {
+        id: new_id(), annee: annee.to_string(), lignes_json: vide.to_string(),
+        niveau: if ime { "ime".into() } else { String::new() }, enseignant: String::new(), est_importee: false,
+    });
+    let avant = if avant.trim().is_empty() { vide } else { avant };
+    p.lignes_json = fusionner_ecran(&p.lignes_json, avant, apres);
+    c.execute(
+        "INSERT INTO programmations_finale (id,annee,lignes_json,niveau,enseignant,est_importee)
+         VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(id) DO UPDATE SET lignes_json = excluded.lignes_json",
+        params![p.id, p.annee, p.lignes_json, p.niveau, p.enseignant, p.est_importee as i64],
+    )?;
+    Ok(p)
+}
+
+#[tauri::command]
+pub fn programmation_finale_ecrire(db: State<Db>, annee: String, ime: bool, avant: String, apres: String) -> R<ProgrammationFinale> {
+    let c = db.lock();
+    ecrire_programmation(&c, &annee, ime, &avant, &apres).map_err(e)
+}
+
 #[tauri::command]
 pub fn programmation_finale_delete(db: State<Db>, id: String) -> R<()> {
     let c = db.lock();
@@ -1215,7 +1243,8 @@ pub fn programmation_finale_delete(db: State<Db>, id: String) -> R<()> {
 #[tauri::command]
 pub fn edt_typique_list(db: State<Db>) -> R<Vec<EdtTypique>> {
     let c = db.lock();
-    let mut st = c.prepare("SELECT * FROM edt_typique ORDER BY annee").map_err(e)?;
+    // Le plus ancien d'abord : c'est lui que l'écran montre et qu'`ecrire_emploi_du_temps` complète.
+    let mut st = c.prepare("SELECT * FROM edt_typique ORDER BY annee, rowid").map_err(e)?;
     let rows = st.query_map([], EdtTypique::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
@@ -1228,6 +1257,95 @@ pub fn edt_typique_save(db: State<Db>, edt: EdtTypique) -> R<EdtTypique> {
         params![edt.id, edt.annee, edt.slots_json],
     ).map_err(e)?;
     Ok(edt)
+}
+
+/// Écrit une modification de l'emploi du temps de l'année, par écart : un
+/// créneau posé sur un autre ordinateur entre-temps reste.
+pub(crate) fn ecrire_emploi_du_temps(c: &rusqlite::Connection, annee: &str, avant: &str, apres: &str) -> rusqlite::Result<EdtTypique> {
+    let existant = c
+        .query_row("SELECT * FROM edt_typique WHERE annee = ?1 ORDER BY rowid LIMIT 1", params![annee], EdtTypique::from_row)
+        .optional()?;
+    let mut edt = existant.unwrap_or_else(|| EdtTypique { id: new_id(), annee: annee.to_string(), slots_json: "[]".into() });
+    let avant = if avant.trim().is_empty() { "[]" } else { avant };
+    edt.slots_json = fusionner_ecran(&edt.slots_json, avant, apres);
+    c.execute(
+        "INSERT INTO edt_typique (id,annee,slots_json) VALUES (?1,?2,?3) ON CONFLICT(id) DO UPDATE SET slots_json = excluded.slots_json",
+        params![edt.id, edt.annee, edt.slots_json],
+    )?;
+    Ok(edt)
+}
+
+#[tauri::command]
+pub fn edt_typique_ecrire(db: State<Db>, annee: String, avant: String, apres: String) -> R<EdtTypique> {
+    let c = db.lock();
+    ecrire_emploi_du_temps(&c, &annee, &avant, &apres).map_err(e)
+}
+
+#[cfg(test)]
+mod tests_ecritures_par_ecart {
+    use super::{ecrire_emploi_du_temps, ecrire_programmation};
+
+    fn base() -> rusqlite::Connection {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        c
+    }
+    fn json(s: &str) -> serde_json::Value { serde_json::from_str(s).unwrap() }
+
+    #[test]
+    fn une_ligne_ajoutee_ailleurs_reste_quand_l_ecran_modifie_une_autre_ligne() {
+        let c = base();
+        let depart = r#"[{"id":"d1","estDomaine":true,"label":"Français"},{"id":"l1","estDomaine":false,"label":"Lecture","p1":""}]"#;
+        let p1 = ecrire_programmation(&c, "2026-2027", false, "[]", depart).unwrap();
+        // Un autre ordinateur ajoute une activité sous « Français ».
+        let ailleurs = r#"[{"id":"d1","estDomaine":true,"label":"Français"},{"id":"l2","estDomaine":false,"label":"Écriture"},{"id":"l1","estDomaine":false,"label":"Lecture","p1":""}]"#;
+        c.execute("UPDATE programmations_finale SET lignes_json = ?1", [ailleurs]).unwrap();
+        // L'écran, qui ne la connaît pas, remplit P1 de « Lecture ».
+        let ecran = r#"[{"id":"d1","estDomaine":true,"label":"Français"},{"id":"l1","estDomaine":false,"label":"Lecture","p1":"Albums"}]"#;
+        let p2 = ecrire_programmation(&c, "2026-2027", false, depart, ecran).unwrap();
+        assert_eq!(p1.id, p2.id, "une seule programmation de classe");
+        let v = json(&p2.lignes_json);
+        let labels: Vec<&str> = v.as_array().unwrap().iter().map(|l| l["label"].as_str().unwrap()).collect();
+        assert_eq!(labels, vec!["Français", "Écriture", "Lecture"], "la ligne reçue reste à sa place");
+        assert_eq!(v[2]["p1"], "Albums");
+    }
+
+    #[test]
+    fn la_programmation_par_eleve_vit_a_part_de_celle_de_la_classe() {
+        let c = base();
+        ecrire_programmation(&c, "2026-2027", false, "[]", r#"[{"id":"l1","label":"Lecture"}]"#).unwrap();
+        let ime = ecrire_programmation(&c, "2026-2027", true, "{}", r#"{"objectifs":[{"id":"o1","titre":"Se repérer"}],"groupes":[]}"#).unwrap();
+        assert_eq!(ime.niveau, "ime");
+        let n: i64 = c.query_row("SELECT COUNT(*) FROM programmations_finale", [], |r| r.get(0)).unwrap();
+        assert_eq!(n, 2);
+        // Deux champs d'un même objectif, modifiés de chaque côté, se gardent.
+        c.execute(
+            r#"UPDATE programmations_finale SET lignes_json = '{"objectifs":[{"id":"o1","titre":"Se repérer","periodes":[1]}],"groupes":[]}' WHERE niveau = 'ime'"#,
+            [],
+        ).unwrap();
+        let p = ecrire_programmation(&c, "2026-2027", true,
+            r#"{"objectifs":[{"id":"o1","titre":"Se repérer"}],"groupes":[]}"#,
+            r#"{"objectifs":[{"id":"o1","titre":"Se repérer dans la classe"}],"groupes":[]}"#).unwrap();
+        let v = json(&p.lignes_json);
+        assert_eq!(v["objectifs"][0]["titre"], "Se repérer dans la classe");
+        assert_eq!(v["objectifs"][0]["periodes"], json("[1]"));
+    }
+
+    #[test]
+    fn un_creneau_pose_ailleurs_reste_quand_l_ecran_en_supprime_un_autre() {
+        let c = base();
+        let depart = r#"[{"id":"s1","jour":"Lundi","titre":"Accueil"},{"id":"s2","jour":"Lundi","titre":"Lecture"}]"#;
+        ecrire_emploi_du_temps(&c, "2026-2027", "[]", depart).unwrap();
+        c.execute(
+            r#"UPDATE edt_typique SET slots_json = '[{"id":"s1","jour":"Lundi","titre":"Accueil"},{"id":"s2","jour":"Lundi","titre":"Lecture"},{"id":"s3","jour":"Mardi","titre":"Piscine"}]'"#,
+            [],
+        ).unwrap();
+        let edt = ecrire_emploi_du_temps(&c, "2026-2027", depart, r#"[{"id":"s1","jour":"Lundi","titre":"Accueil"}]"#).unwrap();
+        let titres: Vec<String> = json(&edt.slots_json).as_array().unwrap().iter().map(|s| s["titre"].as_str().unwrap().to_string()).collect();
+        assert_eq!(titres, vec!["Accueil", "Piscine"]);
+        let n: i64 = c.query_row("SELECT COUNT(*) FROM edt_typique", [], |r| r.get(0)).unwrap();
+        assert_eq!(n, 1);
+    }
 }
 
 // ============================================================
