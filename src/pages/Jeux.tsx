@@ -27,6 +27,7 @@ import {
   ArbreCalculTab, OperationsPoseesTab, CartesCalculTab, CartesNombresTab, CompteEstBonTab, CubesTab, FractionsTab, HeureTab, JeuDeLOieTab, MartiniereTab, NumerationTab, PyramidesTab,
 } from "./AteliersMaths";
 import { CursiveTab, EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
+import { AbaqueTab, BillesTab, SuiteNombresTab } from "./AteliersNumerationCP";
 import { DonneesTab, MesuresTab, MonnaieTab } from "./AteliersMesures";
 import { ComprehensionTab, LecteurTab, VoixHauteTab } from "./AteliersLecture";
 import { EcrireTab, GrammaireTab, OralTab, OrthographeTab } from "./AteliersFrancais";
@@ -369,6 +370,9 @@ export default function Jeux() {
         : onglet === "carteMentale" ? <CarteMentaleTab banque={Boolean(etat?.installee)} />
         : onglet === "nombres" ? <CartesNombresTab />
         : onglet === "cubes" ? <CubesTab />
+        : onglet === "billes" ? <BillesTab />
+        : onglet === "abaque" ? <AbaqueTab />
+        : onglet === "suiteNombres" ? <SuiteNombresTab />
         : onglet === "comparer" ? <ComparerTab />
         : onglet === "calcul" ? <CartesCalculTab />
         : onglet === "arbre" ? <ArbreCalculTab />
