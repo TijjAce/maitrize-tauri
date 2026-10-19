@@ -212,6 +212,12 @@ export function detacherAtelier(reglages: Record<string, string>, atelier: strin
   return sortie;
 }
 
+/** Ce qu'il faut écrire pour retirer la compétence d'une seule liste — celle d'un générateur de l'enseignant. */
+export function detacherDeLaListe(reglages: Record<string, string>, cle: string, c: CompetenceSelectionnee): Record<string, string> {
+  const liste = lireCompetencesAtelier(reglages[cle]);
+  return liste.some((x) => memeCompetence(x, c)) ? { [cle]: ecrireCompetencesAtelier(liste.filter((x) => !memeCompetence(x, c))) } : {};
+}
+
 export const ORDRE_DES_NIVEAUX = ["PS", "MS", "GS", "CP", "CE1", "CE2", "CM1", "CM2"];
 
 /** Les niveaux d'une ligne de référentiel : « CE1 », une plage « CP-CE2 », ou aucun quand elle vaut pour tout le cycle. */

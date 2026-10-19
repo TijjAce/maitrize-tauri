@@ -17,6 +17,13 @@ import { referencesDe, sansReferences } from "./references";
 /** Où se garde la consigne d'un atelier — préfixe « fabriquer: », donc partagé. */
 export const cleConsigne = (atelier: string) => `fabriquer:consigne:${atelier}`;
 
+/**
+ * Les ateliers où chaque feuille écrit ses consignes elle-même — les
+ * générateurs de l'enseignant, un exercice, une consigne — : « La feuille »
+ * ne les réécrit pas, faute de quoi un générateur prendrait celle d'un autre.
+ */
+export const CONSIGNE_DANS_L_ATELIER: ReadonlySet<string> = new Set(["perso"]);
+
 /** Émis quand une consigne change : les aperçus ouverts se mettent à jour. */
 export const EVT_CONSIGNE = "maitrize:consigne-atelier";
 

@@ -9,9 +9,11 @@ import { PliDuCatalogue } from "./PliDuCatalogue";
 import { donneesDuReferentiel, type CompetenceSelectionnee, type RefCG, type RefComp, type RefDom, type RefSous } from "./CompetenceTree";
 import { correspond } from "../competencesTravaillees";
 import {
-  EVT_COMPETENCES_ATELIER, ORDRE_DES_NIVEAUX, PREFIXE_COMPETENCES, detacherAtelier, identiteCompetence, liensParCompetence,
+  EVT_COMPETENCES_ATELIER, ORDRE_DES_NIVEAUX, PREFIXE_COMPETENCES, cleDesCompetences, detacherAtelier, detacherDeLaListe, identiteCompetence, liensParCompetence,
   niveauxDeLaLigne, nombreDeCompetences, rattacherAtelier, vautPourLeNiveau, type LienAtelier,
 } from "../ateliersCompetences";
+import { PREFIXE_GENERATEUR } from "../generateursPerso";
+import { useGenerateursPerso } from "./GenerateursPerso";
 import { rattacherLesAteliersDesSequences } from "../ateliersDesSequences";
 import { FAMILLES_DE_SUPPORTS, type Onglet } from "../catalogueAteliers";
 
@@ -97,12 +99,18 @@ function useListesDesAteliers(): [Record<string, string>, React.Dispatch<React.S
   return [reglages, setReglages, relire];
 }
 
-/** Un atelier rattaché, une seule fois même s'il l'est par plusieurs listes ; les classes de ces listes, quand elles en sont. */
+/**
+ * Un atelier rattaché, une seule fois même s'il l'est par plusieurs listes ;
+ * les classes de ces listes, quand elles en sont. Les générateurs de
+ * l'enseignant ont chacun la leur : chacun paraît sous son nom.
+ */
 function ateliersDesLiens(liens: LienAtelier[]): { atelier: string; classes: string[] }[] {
   const sortie: { atelier: string; classes: string[] }[] = [];
   for (const l of liens) {
-    let a = sortie.find((x) => x.atelier === l.atelier);
-    if (!a) sortie.push(a = { atelier: l.atelier, classes: [] });
+    const cle = l.atelier === "perso" ? (l.objectif ? PREFIXE_GENERATEUR + l.objectif : "") : l.atelier;
+    if (!cle) continue;
+    let a = sortie.find((x) => x.atelier === cle);
+    if (!a) sortie.push(a = { atelier: cle, classes: [] });
     if (ORDRE_DES_NIVEAUX.includes(l.objectif) && !a.classes.includes(l.objectif)) a.classes.push(l.objectif);
   }
   return sortie;
@@ -110,7 +118,12 @@ function ateliersDesLiens(liens: LienAtelier[]): { atelier: string; classes: str
 
 const raccourcir = (t: string, n = 70) => (t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t);
 
-export function CatalogueParCompetence({ recherche, onOuvrir }: { recherche: string; onOuvrir: (id: Onglet) => void }) {
+export function CatalogueParCompetence({ recherche, onOuvrir, onOuvrirGenerateur }: {
+  recherche: string; onOuvrir: (id: Onglet) => void;
+  /** Ouvre un générateur de l'enseignant, rattaché à une compétence. */
+  onOuvrirGenerateur?: (id: string) => void;
+}) {
+  const generateurs = useGenerateursPerso();
   const naviguer = useNavigate();
   const { data: refs } = useAsync(() => api.referentielsList(), []);
   const actifs = React.useMemo(() => (refs ?? []).filter((r) => r.actif), [refs]);
@@ -162,10 +175,14 @@ export function CatalogueParCompetence({ recherche, onOuvrir }: { recherche: str
       return null;
     }
   };
-  const nomDe = (atelier: string) => ATELIERS.get(atelier)?.nom ?? atelier;
+  const generateurDe = (atelier: string) => (atelier.startsWith(PREFIXE_GENERATEUR) ? generateurs.find((g) => PREFIXE_GENERATEUR + g.id === atelier) : undefined);
+  const nomDe = (atelier: string) => generateurDe(atelier)?.nom ?? ATELIERS.get(atelier)?.nom ?? atelier;
   const rattacher = (atelier: string, c: CompetenceSelectionnee) => { void appliquer((frais) => rattacherAtelier(frais, atelier, c)); };
   const detacher = async (atelier: string, c: CompetenceSelectionnee) => {
-    const avant = await appliquer((frais) => detacherAtelier(frais, atelier, c));
+    // Un générateur : sa liste seulement, pas celles des autres.
+    const avant = await appliquer((frais) => (atelier.startsWith(PREFIXE_GENERATEUR)
+      ? detacherDeLaListe(frais, cleDesCompetences("perso", atelier.slice(PREFIXE_GENERATEUR.length)), c)
+      : detacherAtelier(frais, atelier, c)));
     if (avant) toastAnnulable(`${nomDe(atelier)} n'est plus rattaché à « ${raccourcir(c.competenceTitre, 60)} ».`, () => { void appliquer(() => avant); }, "🎯");
   };
 
@@ -255,11 +272,14 @@ export function CatalogueParCompetence({ recherche, onOuvrir }: { recherche: str
           {lies.length > 0 && (
             <span className="pc-puces">
               {lies.map(({ atelier, classes }) => {
-                const a = ATELIERS.get(atelier);
+                const g = generateurDe(atelier);
+                // Un générateur supprimé ne se montre plus.
+                if (atelier.startsWith(PREFIXE_GENERATEUR) && !g) return null;
+                const a = g ? { id: atelier, nom: g.nom, icone: g.icone, quoi: g.quoi } : ATELIERS.get(atelier);
                 return (
                   <span key={atelier} className="pc-puce">
-                    <button type="button" className="pc-puce-nom" disabled={!a} onClick={() => a && ouvrir(a)}
-                      title={a ? `Ouvrir ${a.nom}` : undefined}>
+                    <button type="button" className="pc-puce-nom" disabled={!a || (!!g && !onOuvrirGenerateur)}
+                      onClick={() => (g ? onOuvrirGenerateur?.(g.id) : a && ouvrir(a))} title={a ? `Ouvrir ${a.nom}` : undefined}>
                       {a?.icone ?? "🧩"} {a?.nom ?? atelier}{classes.length ? ` · ${classes.join(", ")}` : ""}
                     </button>
                     <button type="button" className="pc-puce-retirer" aria-label={`Détacher ${nomDe(atelier)} de cette compétence`}

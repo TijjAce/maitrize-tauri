@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { demarcheDe } from "./demarches";
-import { ateliersRattaches, classeDe, feuilleRattachee, niveauDeComparer, niveauDesCubes, planDesFeuilles, type ClasseC2 } from "./feuillesDesSequences";
+import { ateliersRattaches, classeDe, feuilleDuGenerateur, feuilleRattachee, niveauDeComparer, niveauDesCubes, planDesFeuilles, type ClasseC2 } from "./feuillesDesSequences";
+import { blocVide, generateurSur, mapElements } from "./generateursPerso";
 import { CLASSE_DES_DEMARCHES } from "./demarchesNumeration";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 
@@ -76,6 +77,26 @@ describe("les feuilles qu'une séquence pioche dans les ateliers", () => {
     expect(trouves.find((a) => a.atelier === "nombres")!.fabricable).toBe(true);
     expect(trouves.find((a) => a.atelier === "oeilDeLynx")!.fabricable).toBe(false);
     expect(ateliersRattaches(reglages, ailleurs).map((a) => a.atelier)).toEqual(["cubes"]);
+  });
+
+  it("propose les générateurs de l'enseignant rattachés à la compétence, chacun avec sa feuille", () => {
+    const construire = comp("CP", "Construire des collections de cardinal donné.", "c2.MA.1.1.cp.02");
+    const liste = (...c: CompetenceSelectionnee[]) => JSON.stringify(c);
+    const g = { ...generateurSur({ nom: "Les fruits à compter", icone: "🍎", blocs: [mapElements(blocVide("compter"), (e) => ({ ...e, id: 7 }))] }), id: "g1" };
+    const reglages: Record<string, string> = {
+      "generateurs:perso": JSON.stringify([g]),
+      "fabriquer:competences:perso:g1": liste(construire),
+      // Un générateur supprimé, et une liste de l'atelier sans générateur : rien à proposer.
+      "fabriquer:competences:perso:g2": liste(construire),
+      "fabriquer:competences:perso": liste(construire),
+    };
+    expect(ateliersRattaches(reglages, construire)).toEqual([{ atelier: "perso:g1", nom: "🍎 Les fruits à compter", objectif: "g1", fabricable: true }]);
+    const f = feuilleDuGenerateur(g, 3, { 7: "data:image/png;base64,pomme" });
+    expect(f).toMatchObject({ seance: 3, atelier: "perso", titre: "Les fruits à compter" });
+    const fait = f.fabriquer(5);
+    expect(fait.refaire).toEqual({ perso: { id: "g1" } });
+    expect(fait.html).toContain('<div class="titre">Les fruits à compter</div>');
+    expect(fait.html).toContain("data:image/png;base64,pomme");
   });
 
   it("fabrique la feuille d'un jeu rattaché, à la classe de la séquence quand il en a une", () => {

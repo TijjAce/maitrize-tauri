@@ -3,7 +3,7 @@ import {
   basculerCompetence, cleDesCompetences, ecrireCompetencesAtelier, lireCompetencesAtelier,
   memeCompetence,
   competencesParObjectif, objectifsDesAteliers, propositionsDesAteliers, unionDesCompetences,
-  detacherAtelier, identiteCompetence, liensParCompetence, niveauxDeLaLigne, nombreDeCompetences, rattacherAtelier, vautPourLeNiveau,
+  detacherAtelier, detacherDeLaListe, identiteCompetence, liensParCompetence, niveauxDeLaLigne, nombreDeCompetences, rattacherAtelier, vautPourLeNiveau,
 } from "./ateliersCompetences";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 
@@ -157,6 +157,17 @@ describe("le catalogue par compétence", () => {
     expect(lireCompetencesAtelier(ecrit[cleDesCompetences("cubes")]).map((c) => c.competenceRefId)).toEqual(["d"]);
     expect(lireCompetencesAtelier(ecrit[cleDesCompetences("cubes", "CP")])).toEqual([]);
     expect(detacherAtelier(tout, "trous", ligne("a"))).toEqual({});
+  });
+
+  it("détache d'un seul générateur de l'enseignant, sans toucher aux autres", () => {
+    const tout = {
+      [cleDesCompetences("perso", "g1")]: ecrireCompetencesAtelier([ligne("a"), ligne("d")]),
+      [cleDesCompetences("perso", "g2")]: ecrireCompetencesAtelier([ligne("a")]),
+    };
+    const ecrit = detacherDeLaListe(tout, cleDesCompetences("perso", "g1"), ligne("a"));
+    expect(Object.keys(ecrit)).toEqual([cleDesCompetences("perso", "g1")]);
+    expect(lireCompetencesAtelier(ecrit[cleDesCompetences("perso", "g1")]).map((c) => c.competenceRefId)).toEqual(["d"]);
+    expect(detacherDeLaListe(tout, cleDesCompetences("perso", "g3"), ligne("a"))).toEqual({});
   });
 
   it("lit les niveaux d'une ligne : seul, en plage, ou tout le cycle", () => {

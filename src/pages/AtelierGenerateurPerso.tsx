@@ -1,9 +1,10 @@
 import React from "react";
 import { api, newId, nowIso } from "../api";
+import { cleDesCompetences, objectifsDesAteliers } from "../ateliersCompetences";
 import { Aide, AideEnLigne } from "../components/Aide";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { ChoixPicto, usePictoImage, usePictoImages } from "../components/ChoixPicto";
-import { avecLesPictos, creerAvecLIA, enregistrerGenerateur, retoucherAvecLIA, supprimerGenerateur, useGenerateursPerso } from "../components/GenerateursPerso";
+import { avecLesPictos, creerAvecLIA, enregistrerGenerateur, pictosPourLesMots, retoucherAvecLIA, supprimerGenerateur, useGenerateursPerso } from "../components/GenerateursPerso";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { Field, Input, Select, Textarea } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
@@ -12,8 +13,9 @@ import { useGraine } from "../modifierFeuille";
 import { cleImage, type PictoPose } from "../supportsVisuels";
 import { USAGES, type Usage } from "../usageAtelier";
 import {
-  BLOCS_PERSO, BORNES_COMBIEN, CLASSES_PERSO, LARGEUR_PLANCHE, STYLE_GENERATEURS_PERSO, blocVide, ceQuiManque, htmlGenerateurPerso, imagesDeLaRecette, nomDuBloc, placeDansLaPlanche,
-  type Affichage, type BlocPerso, type BlocPlanche, type GenerateurPerso, type SorteDeBloc,
+  BLOCS_PERSO, BORNES_COMBIEN, CLASSES_PERSO, CONSIGNE_ORDRE_A_DECOUPER, LARGEUR_PLANCHE, STYLE_GENERATEURS_PERSO, blocVide, ceQuiManque, htmlGenerateurPerso, imagesDeLaRecette, memeImagePartout,
+  motsSansImage, nomDuBloc, placeDansLaPlanche, poserPartout,
+  type Affichage, type BlocPerso, type BlocPlanche, type GenerateurPerso, type SorteAvecCombien, type SorteDeBloc,
 } from "../generateursPerso";
 import { Boutons, Coche, Colonnes } from "./AteliersLangage";
 
@@ -24,14 +26,9 @@ import { Boutons, Coche, Colonnes } from "./AteliersLangage";
 // des images sur la planche —, à la main ou en demandant à l'IA. Tout se
 // garde au fur et à mesure (voir generateursPerso.ts).
 
-/** Le picto d'un mot, trouvé dans la banque quand on l'ajoute à la main ; rien sinon. */
+/** L'image d'un mot qu'on ajoute à la main, trouvée comme celles de l'IA ; rien sinon. */
 async function pictoDuMot(mot: string): Promise<number | null> {
-  try {
-    const [trouves] = await api.arasaacParMots([mot]);
-    return trouves[0]?.id ?? null;
-  } catch {
-    return null;
-  }
+  return (await pictosPourLesMots([mot]).catch(() => []))[0]?.id ?? null;
 }
 
 /** Un élément : son image et son mot ; un clic pour changer l'un ou l'autre, la croix pour l'enlever. */
@@ -70,6 +67,32 @@ function ListeElements({ elements, banque, onChange }: { elements: PictoPose[]; 
   );
 }
 
+/** Une liste dont l'ordre compte — les étapes d'une histoire, d'une recette — : chaque élément se déplace d'un cran. */
+function ListeOrdonnee({ elements, banque, onChange }: { elements: PictoPose[]; banque: boolean; onChange: (l: PictoPose[]) => void }) {
+  const [mot, setMot] = React.useState("");
+  const deplacer = (i: number, j: number) => { const c = [...elements]; [c[i], c[j]] = [c[j], c[i]]; onChange(c); };
+  const ajouter = async () => {
+    const m = mot.trim();
+    if (!m) return;
+    setMot("");
+    onChange([...elements, { id: await pictoDuMot(m), mot: m }]);
+  };
+  return (
+    <div className="gp-liste">
+      {elements.map((e, i) => (
+        <span key={i} className="gp-etape">
+          <b>{i + 1}</b>
+          <Element e={e} banque={banque} onChange={(x) => onChange(elements.map((y, j) => (j === i ? x : y)))} onRemove={() => onChange(elements.filter((_, j) => j !== i))} />
+          {i > 0 && <button type="button" className="gp-chip-x" title="Avant" onClick={() => deplacer(i, i - 1)}>‹</button>}
+          {i < elements.length - 1 && <button type="button" className="gp-chip-x" title="Après" onClick={() => deplacer(i, i + 1)}>›</button>}
+        </span>
+      ))}
+      {elements.length < 8 && <Input value={mot} placeholder="L'étape suivante, puis Entrée" style={{ width: 190 }} onChange={(e) => setMot(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void ajouter(); } }} />}
+    </div>
+  );
+}
+
 /** Un nombre, dans ses bornes. */
 function Nombre({ label, valeur, min, max, onChange }: { label: string; valeur: number; min: number; max: number; onChange: (n: number) => void }) {
   return (
@@ -79,6 +102,14 @@ function Nombre({ label, valeur, min, max, onChange }: { label: string; valeur: 
     </Field>
   );
 }
+
+/** Les retouches qu'on demande souvent : un clic, et l'IA refait la recette ainsi. */
+const RETOUCHES_RAPIDES: { libelle: string; consigne: string }[] = [
+  { libelle: "Plus facile", consigne: "Rends les exercices plus faciles : moins d'éléments sur une feuille, des mots plus courts et plus courants, le picto avec le mot." },
+  { libelle: "Plus difficile", consigne: "Rends les exercices un peu plus difficiles : plus d'éléments sur une feuille, des mots moins courants, un exercice de plus si c'est utile." },
+  { libelle: "Pour des non-lecteurs", consigne: "Adapte pour des élèves qui ne lisent pas encore : des exercices avec des images plutôt que des phrases à lire, le picto avec le mot, des consignes très courtes." },
+  { libelle: "D'autres mots", consigne: "Garde les mêmes exercices, mais prends d'autres mots du même thème." },
+];
 
 const AFFICHAGES: { id: Affichage; libelle: string }[] = [
   { id: "les-deux", libelle: "Le picto et le mot" }, { id: "picto", libelle: "Le picto seul" }, { id: "mot", libelle: "Le mot seul" },
@@ -232,6 +263,36 @@ function BlocEditeur({ bloc, rang, banque, onChange, onMonter, onDescendre, onSu
       );
       case "etiquettes": return <Field label="Les étiquettes"><ListeElements elements={bloc.elements} banque={banque} onChange={(elements) => onChange({ ...bloc, elements })} /></Field>;
       case "planche": return <PlancheEditeur bloc={bloc} banque={banque} onChange={onChange} />;
+      case "associer": return <Field label="Les mots, avec leur image"><ListeElements elements={bloc.elements} banque={banque} onChange={(elements) => onChange({ ...bloc, elements })} /></Field>;
+      case "ordre": {
+        const consignes = [BLOCS_PERSO.find((x) => x.sorte === "ordre")!.consigne, CONSIGNE_ORDRE_A_DECOUPER];
+        return (<>
+          <Field label="Les étapes, dans l'ordre"><ListeOrdonnee elements={bloc.etapes} banque={banque} onChange={(etapes) => onChange({ ...bloc, etapes })} /></Field>
+          <Coche on={bloc.decouper} libelle="Les images à découper et coller" onChange={(decouper) => onChange({
+            ...bloc, decouper,
+            // La consigne de départ suit ; celle qu'on a écrite reste.
+            consigne: consignes.includes(bloc.consigne) ? consignes[decouper ? 1 : 0] : bloc.consigne,
+          })} />
+        </>);
+      }
+      case "choisir": return (
+        <Field label="Les questions">
+          {bloc.items.map((it, i) => {
+            const changer = (x: Partial<typeof it>) => onChange({ ...bloc, items: bloc.items.map((y, j) => (j === i ? { ...y, ...x } : y)) });
+            return (
+              <div key={i} className="gp-question">
+                <div className="gp-question-ligne">
+                  <Input value={it.question} placeholder="La question" onChange={(e) => changer({ question: e.target.value })} />
+                  <button type="button" className="gp-chip-x" title="Enlever la question" onClick={() => onChange({ ...bloc, items: bloc.items.filter((_, j) => j !== i) })}>✕</button>
+                </div>
+                <div className="gp-question-ligne"><span>Bonne</span><Element e={it.bonne} banque={banque} onChange={(bonne) => changer({ bonne })} /></div>
+                <div className="gp-question-ligne"><span>Autres</span><ListeElements elements={it.autres} banque={banque} onChange={(autres) => changer({ autres: autres.slice(0, 3) })} /></div>
+              </div>
+            );
+          })}
+          <button type="button" className="btn sm ghost" onClick={() => onChange({ ...bloc, items: [...bloc.items, { question: "", bonne: { id: null, mot: "" }, autres: [] }] })}>➕ Une question</button>
+        </Field>
+      );
     }
   })();
   return (
@@ -247,8 +308,10 @@ function BlocEditeur({ bloc, rang, banque, onChange, onMonter, onDescendre, onSu
       {contenu}
       {manque && <p className="gp-manque">⚠️ Pas encore sur la feuille : {manque}</p>}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-        {bloc.sorte !== "planche" && <Nombre label="Sur une feuille" valeur={bloc.combien} min={BORNES_COMBIEN[bloc.sorte][0]} max={BORNES_COMBIEN[bloc.sorte][1]}
-          onChange={(combien) => onChange({ ...bloc, combien })} />}
+        {"combien" in bloc && (
+          <Nombre label="Sur une feuille" valeur={bloc.combien} min={BORNES_COMBIEN[bloc.sorte as SorteAvecCombien][0]} max={BORNES_COMBIEN[bloc.sorte as SorteAvecCombien][1]}
+            onChange={(combien) => onChange({ ...bloc, combien } as BlocPerso)} />
+        )}
         {"affichage" in bloc && (
           <Field label="Ce qu'on voit">
             <Select value={bloc.affichage} onChange={(e) => onChange({ ...bloc, affichage: e.target.value as Affichage } as BlocPerso)}>
@@ -296,7 +359,8 @@ function Creation({ generateurs, onOuvrir }: { generateurs: GenerateurPerso[]; o
       <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
         Créer un générateur
         <Aide titre="Créer un générateur avec l'IA" vers="droite"><p>Décrivez le support que vous voulez, comme à un collègue. L'IA de Mistral en écrit la recette : des exercices que Maitrize
-          sait dessiner et corriger — relier, trier en colonnes, compléter, compter, entourer, des questions, des étiquettes, une planche d'images. Chaque mot reçoit son picto ;
+          sait dessiner et corriger — relier, trier en colonnes, compléter, compter, entourer, des questions, des étiquettes, une planche d'images, coller le mot
+          sous l'image, remettre dans l'ordre, cocher la bonne image. Chaque mot reçoit son picto, ou votre photo gardée dans Mes pictos ;
           vous changez les mots, les pictos, mettez vos photos, placez les images. Chaque feuille est tirée au sort, avec son corrigé. Les prénoms des élèves ne partent
           pas chez Mistral : ils sont masqués avant l'envoi.</p></Aide>
       </h3>
@@ -346,8 +410,13 @@ export function GenerateurPersoTab({ banque }: { banque: boolean }) {
   const [retouche, setRetouche] = React.useState("");
   const [attente, setAttente] = React.useState(false);
   const [ajout, setAjout] = React.useState<SorteDeBloc>("relier");
+  const [imagePour, setImagePour] = React.useState<string | null>(null);
+  // Chaque générateur a ses compétences, choisies dans « La feuille » : les séquences de ces compétences proposent sa feuille.
+  React.useEffect(() => { objectifsDesAteliers.publier("perso", g ? [{ id: g.id, libelle: g.nom }] : []); }, [g?.id, g?.nom]); // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => () => objectifsDesAteliers.publier("perso", []), []);
 
   const modifier = (f: (x: GenerateurPerso) => GenerateurPerso) => setG((x) => (x ? { ...f(x), modifie: nowIso() } : x));
+  const sansImage = g ? motsSansImage(g) : [];
   const blocs = (f: (l: BlocPerso[]) => BlocPerso[]) => modifier((x) => ({ ...x, blocs: f(x.blocs) }));
   const ouvrir = (x: GenerateurPerso) => { setG(x); setChoix({ id: x.id }); };
   // Un exercice ajouté à la main prend les images du générateur pour ses mots, et les pictos de la banque pour les autres.
@@ -362,18 +431,29 @@ export function GenerateurPersoTab({ banque }: { banque: boolean }) {
       droite={<div className="gp-apercu-vide">La feuille s'affichera ici, avec son corrigé.</div>} />;
   }
 
-  const retoucher = async () => {
+  // Une retouche refait toute la recette : on peut revenir à la version d'avant.
+  const retoucher = async (consigne = retouche) => {
+    const avant = g;
     setAttente(true);
     try {
-      const nouveau = await retoucherAvecLIA(g, retouche);
+      const nouveau = await retoucherAvecLIA(avant, consigne);
       setG(nouveau);
-      setRetouche("");
-      toast("Le générateur est retouché.", { icone: "✨" });
+      if (consigne === retouche) setRetouche("");
+      toastAnnulable("Le générateur est retouché.", () => { setG({ ...avant, modifie: nowIso() }); }, "✨");
     } catch (e) {
       toast(String((e as Error)?.message ?? e), { icone: "⚠️" });
     } finally {
       setAttente(false);
     }
+  };
+  const dupliquer = async () => {
+    const maintenant = nowIso();
+    const copie: GenerateurPerso = { ...g, id: newId(), nom: `${g.nom} (copie)`.slice(0, 80), cree: maintenant, modifie: maintenant };
+    const competences = await api.settingGet(cleDesCompetences("perso", g.id)).catch(() => null);
+    if (competences) await api.settingSet(cleDesCompetences("perso", copie.id), competences).catch(() => {});
+    await enregistrerGenerateur(copie);
+    ouvrir(copie);
+    toast(`« ${copie.nom} » : changez-la sans toucher à l'original.`, { icone: "⧉" });
   };
   const supprimer = async () => {
     const garde = g;
@@ -389,6 +469,7 @@ export function GenerateurPersoTab({ banque }: { banque: boolean }) {
         <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
           <h3 style={{ margin: 0, flex: 1 }}>{g.icone} {g.nom}</h3>
           <button type="button" className="btn sm ghost" onClick={() => { setChoix({ id: "" }); setG(null); }}>➕ Nouveau</button>
+          <button type="button" className="btn sm ghost" onClick={() => void dupliquer()} title="Dupliquer ce générateur, pour en faire une variante">⧉</button>
           <button type="button" className="btn sm ghost" onClick={() => void supprimer()} title="Supprimer ce générateur">🗑</button>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -417,10 +498,22 @@ export function GenerateurPersoTab({ banque }: { banque: boolean }) {
               onKeyDown={(e) => { if (e.key === "Enter" && retouche.trim() && !attente) void retoucher(); }} />
             <button type="button" className="btn sm" disabled={attente || !retouche.trim()} onClick={() => void retoucher()}>{attente ? "…" : "✨ Retoucher"}</button>
           </div>
+          <div className="gp-retouches">
+            {RETOUCHES_RAPIDES.map((r) => (
+              <button key={r.libelle} type="button" className="btn sm ghost" disabled={attente} title={r.consigne} onClick={() => void retoucher(r.consigne)}>{r.libelle}</button>
+            ))}
+          </div>
         </Field>
+        {sansImage.length > 0 && (
+          <p className="gp-manque">⚠️ Sans image : {sansImage.map((m, i) => (
+            <React.Fragment key={m}>{i > 0 && ", "}<button type="button" className="gp-mot-sans-image" title="Choisir son image, pour toute la recette" onClick={() => setImagePour(m)}>{m}</button></React.Fragment>
+          ))}</p>
+        )}
+        {imagePour && <ChoixPicto valeur={{ id: null, mot: imagePour }} banque={banque} photos onClose={() => setImagePour(null)}
+          onValider={(p) => { if (p.id !== null || p.photo) modifier((x) => poserPartout(x, imagePour, p)); setImagePour(null); }} />}
         {g.blocs.map((b, i) => (
           <BlocEditeur key={i} bloc={b} rang={i + 1} banque={banque}
-            onChange={(nb) => blocs((l) => l.map((x, j) => (j === i ? nb : x)))}
+            onChange={(nb) => blocs((l) => memeImagePartout(l.map((x, j) => (j === i ? nb : x)), l[i], nb))}
             onMonter={i > 0 ? () => blocs((l) => { const c = [...l]; [c[i - 1], c[i]] = [c[i], c[i - 1]]; return c; }) : undefined}
             onDescendre={i < g.blocs.length - 1 ? () => blocs((l) => { const c = [...l]; [c[i], c[i + 1]] = [c[i + 1], c[i]]; return c; }) : undefined}
             onSupprimer={() => blocs((l) => l.filter((_, j) => j !== i))} />

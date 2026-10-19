@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  BLOCS_PERSO, blocVide, ceQuiManque, generateurSur, htmlGenerateurPerso, imagesDeLaRecette, lireGenerateurs, lireRecette, motsSansImage, placeDansLaPlanche,
-  poserLesPictos, retoucheALIA, type GenerateurPerso,
+  BLOCS_PERSO, blocVide, ceQuiManque, generateurSur, mapElements, memeImagePartout, poserPartout, htmlGenerateurPerso, imagesDeLaRecette, lireGenerateurs, lireRecette, motsSansImage, placeDansLaPlanche,
+  poserLesPictos, retoucheALIA, variantesDuMot, type GenerateurPerso,
 } from "./generateursPerso";
 
 /** Une recette comme l'IA en répond : des mots seuls, sans picto. */
@@ -41,11 +41,13 @@ describe("les générateurs que l'enseignant fait faire à l'IA", () => {
     expect(compter.consigne).toBe(BLOCS_PERSO.find((b) => b.sorte === "compter")!.consigne);
     const q = generateurSur({ blocs: [{ sorte: "questions", questions: [{ question: "Q ?", reponse: "oui", choix: ["oui"] }] }] }).blocs[0];
     expect(q.sorte === "questions" && q.questions[0].choix).toEqual([]);
-    // Chaque sorte a un bloc de départ, complet, qui se relit tel quel.
+    // Chaque sorte a un bloc de départ, qui se relit tel quel, et complet une fois ses images posées.
     for (const b of BLOCS_PERSO) {
       expect(generateurSur({ blocs: [blocVide(b.sorte)] }).blocs[0], b.sorte).toEqual(blocVide(b.sorte));
-      expect(ceQuiManque(blocVide(b.sorte)), b.sorte).toBeNull();
+      expect(ceQuiManque(mapElements(blocVide(b.sorte), (e) => ({ ...e, id: 7 }))), b.sorte).toBeNull();
     }
+    // Coller le mot sous l'image n'a pas de sens sans l'image.
+    expect(ceQuiManque(blocVide("associer"))).toBe("il faut au moins deux mots, chacun avec son image.");
   });
 
   it("trouvent la recette dans la réponse, même entourée de texte ; rien sans exercice lisible", () => {
@@ -121,6 +123,84 @@ describe("les générateurs que l'enseignant fait faire à l'IA", () => {
     // Un seul bloc : sa consigne est celle de la feuille, sans numéro.
     expect(html).toContain('<div class="regle">Je découpe les étiquettes.</div>');
     expect(html).not.toContain("gp-consigne");
+  });
+
+  it("font coller le mot sous l'image, remettre dans l'ordre, cocher la bonne image — et les corrigent", () => {
+    const mots = ["chat", "chien", "vache", "poule", "cheval", "mouton", "graine", "plante", "fleur", "fruit"];
+    const ids = Object.fromEntries(mots.map((m, i) => [m, 100 + i]));
+    const images = Object.fromEntries(mots.map((m) => [ids[m], `data:image/png;base64,${m}`]));
+    const e = (m: string) => ({ id: ids[m], mot: m });
+    const g: GenerateurPerso = {
+      ...generateurSur({ nom: "Trois exercices" }), id: "g3",
+      blocs: [
+        { sorte: "associer", consigne: "Je découpe les mots. Je colle chaque mot sous son image.", elements: ["chat", "chien", "vache", "poule", "cheval", "mouton"].map(e), combien: 4 },
+        { sorte: "ordre", consigne: "J'écris le numéro de chaque image, dans l'ordre.", etapes: ["graine", "plante", "fleur", "fruit"].map(e), affichage: "picto", decouper: false },
+        { sorte: "choisir", consigne: "Je coche la bonne image.", items: [
+          { question: "Qui pond des œufs ?", bonne: e("poule"), autres: [e("chat"), e("chien")] },
+          { question: "Qui donne du lait ?", bonne: e("vache"), autres: [e("cheval"), e("poule"), e("chien")] }], combien: 2, affichage: "les-deux" },
+      ],
+    };
+    for (const graine of [1, 2, 3, 4, 5, 6]) {
+      const html = htmlGenerateurPerso(g, graine, images);
+      expect(html).not.toMatch(/NaN|undefined|\[object/);
+      const feuille = eleve(html), c = corrige(html);
+      // Associer : sur la feuille, les images sans leur mot, les cases vides, les mots à découper ; au corrigé, chaque mot sous son image.
+      const cases = [...c.matchAll(/<div class="gp-associer-case"><img src="data:image\/png;base64,(\w+)"[^>]*><div class="gp-associer-boite"><b class="gp-rep">(\w+)<\/b>/g)];
+      expect(cases.length).toBe(4);
+      for (const [, image, mot] of cases) expect(mot).toBe(image);
+      expect(feuille.match(/gp-mot-a-couper/g)?.length).toBe(4);
+      expect(feuille).not.toMatch(/gp-associer-boite"><b/);
+      // L'ordre : au corrigé, chaque image a le rang de son étape ; la feuille ne les donne jamais déjà rangées.
+      const rangs = [...c.matchAll(/<div class="gp-ordre-case"><span class="gp-el"><img src="data:image\/png;base64,(\w+)"[^>]*><\/span><div class="gp-ordre-numero"><b class="gp-rep">(\d)<\/b>/g)];
+      expect(rangs.map(([, m, n]) => [m, Number(n)]).sort((a, b) => Number(a[1]) - Number(b[1]))).toEqual([["graine", 1], ["plante", 2], ["fleur", 3], ["fruit", 4]]);
+      expect(rangs.map(([, m]) => m)).not.toEqual(["graine", "plante", "fleur", "fruit"]);
+      // Choisir : au corrigé, la case cochée est la bonne image.
+      const cochees = [...c.matchAll(/gp-choisir-option gp-bonne"><span class="gp-el"><img src="data:image\/png;base64,(\w+)"/g)].map((m) => m[1]);
+      expect(cochees.sort()).toEqual(["poule", "vache"]);
+      expect(feuille).not.toContain("gp-bonne");
+    }
+    // À découper : les places numérotées, les images en vrac ; au corrigé, les images à leur place.
+    const decoupe = { ...g, blocs: [{ ...g.blocs[1], decouper: true }] as GenerateurPerso["blocs"] };
+    const html = htmlGenerateurPerso(decoupe, 3, images);
+    expect(eleve(html).match(/gp-ordre-image/g)?.length).toBe(4);
+    expect([...corrige(html).matchAll(/gp-ordre-rang">(\d)<\/span><span class="gp-el"><img src="data:image\/png;base64,(\w+)"/g)].map((m) => m[2])).toEqual(["graine", "plante", "fleur", "fruit"]);
+    // L'IA reçoit les mots, pas les numéros ; elle rend les trois exercices, que la relecture garde.
+    const message = retoucheALIA(g, "Ajoute une étape.");
+    expect(message).toContain('"etapes":["graine","plante","fleur","fruit"]');
+    expect(message).toContain('"bonne":"poule"');
+    expect(message).not.toContain("100");
+    const recette = lireRecette(message.split("\n")[1])!;
+    expect(recette.blocs.map((b) => b.sorte)).toEqual(["associer", "ordre", "choisir"]);
+  });
+
+  it("donnent la même image à un mot partout où il revient", () => {
+    const g = generateurSur(RECETTE);
+    // « chat » revient dans relier et dans entourer.
+    const avecPhoto = poserPartout(g, "Chat", { id: null, mot: "", photo: "chat-de-la-classe.jpg" });
+    const chats = (x: GenerateurPerso) => JSON.stringify(x.blocs).match(/\{"id":[^{}]*"mot":"chat"[^{}]*\}/g) ?? [];
+    expect(chats(avecPhoto).length).toBe(2);
+    for (const c of chats(avecPhoto)) expect(c).toContain("chat-de-la-classe.jpg");
+    // Choisir l'image d'un mot en le renommant le renomme partout.
+    expect(JSON.stringify(poserPartout(g, "chat", { id: 9, mot: "minou" }).blocs)).not.toContain('"chat"');
+    // Changer l'image d'un élément la change pour ses semblables ; un autre changement ne touche à rien.
+    const [relier, , , entourer] = g.blocs;
+    const relie = relier.sorte === "relier" ? { ...relier, paires: relier.paires.map(([x, y], i) => (i === 0 ? [{ id: 42, mot: x.mot }, y] : [x, y]) as [typeof x, typeof y]) } : relier;
+    const apres = memeImagePartout([relie, ...g.blocs.slice(1)], relier, relie);
+    const e = apres[3];
+    expect(e.sorte === "entourer" && e.cibles.find((x) => x.mot === "chat")?.id).toBe(42);
+    expect(memeImagePartout(g.blocs, entourer, { ...entourer, consigne: "J'entoure." })).toBe(g.blocs);
+  });
+
+  it("cherchent un mot sans article, au singulier, avec ou sans œ", () => {
+    expect(variantesDuMot("chevaux")).toEqual(["cheval", "chevau"]);
+    expect(variantesDuMot("oiseaux")).toEqual(["oiseau"]);
+    expect(variantesDuMot("jeux")).toEqual(["jeu"]);
+    expect(variantesDuMot("Les chats")).toEqual(["chats", "chat"]);
+    expect(variantesDuMot("l'œuf")).toEqual(["œuf", "oeuf"]);
+    expect(variantesDuMot("bus")).toEqual([]);
+    expect(variantesDuMot("chat")).toEqual([]);
+    // Un groupe de mots ne se met pas au singulier mot à mot.
+    expect(variantesDuMot("pommes de terre")).toEqual([]);
   });
 
   it("gardent les images de la planche dans leur cadre, légende comprise", () => {

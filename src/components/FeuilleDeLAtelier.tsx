@@ -7,6 +7,7 @@ import { objectifsDesAteliers, propositionsDesAteliers, unionDesCompetences } fr
 import { feuillesPubliees } from "../optionsFeuille";
 import { useModeDys, useModeImages } from "./PresentationFeuille";
 import { MODES_IMAGES, MODE_IMAGES_DEFAUT } from "../imagesSelonMode";
+import { CONSIGNE_DANS_L_ATELIER } from "../consigneAtelier";
 
 // ── La feuille de l'atelier, en une ligne ──────────────────────────────────
 //
@@ -36,7 +37,7 @@ export function useResumeDeLaFeuille(atelier: string): string {
   const [dys] = useModeDys(atelier);
   const [images] = useModeImages(atelier);
   return [
-    consigne.trim() ? "consigne réécrite" : "consigne de l'atelier",
+    CONSIGNE_DANS_L_ATELIER.has(atelier) ? "" : consigne.trim() ? "consigne réécrite" : "consigne de l'atelier",
     dys ? "mode dyslexique" : "",
     images !== MODE_IMAGES_DEFAUT ? (MODES_IMAGES.find((m) => m.id === images)?.libelle ?? "").toLowerCase() : "",
     !montres.length ? "" : sansPicto.length ? `pictos : ${avecPicto} sur ${montres.length}` : `${montres.length} picto${montres.length > 1 ? "s" : ""}`,
@@ -59,7 +60,7 @@ export function FeuilleDeLAtelier({ atelier, nom }: { atelier: string; nom: stri
       </summary>
       <div className="feuille-atelier-corps">
         <OptionsFeuille atelier={atelier} />
-        <ConsigneAtelier atelier={atelier} />
+        {!CONSIGNE_DANS_L_ATELIER.has(atelier) && <ConsigneAtelier atelier={atelier} />}
         <PictosAtelier atelier={atelier} />
         <CompetencesAtelier atelier={atelier} nom={nom} objectifs={objectifs} />
       </div>
