@@ -3186,6 +3186,8 @@ pub fn diag_ecrire(ligne: String) {
         // pas lequel — ni si le gel d'hier s'est reproduit aujourd'hui.
         let _ = writeln!(f, "{} {}", chrono::Local::now().format("%d/%m %H:%M:%S"), ligne);
     }
+    // Et à côté du travail, dans « Rapport d'incidents » (au plus une fois par minute).
+    crate::copie_bureau::miroir_incidents(false);
 }
 
 /// Le fichier du journal d'incidents.
