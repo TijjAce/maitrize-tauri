@@ -816,6 +816,9 @@ pub struct ProgressionAnnuelle {
     pub colonnes_json: String,
     #[serde(default = "vide_obj")]
     pub cellules_json: String,
+    /// Le niveau qu'elle suit (« CP », « CE1 »…) ; vide, elle vaut pour tous les niveaux.
+    #[serde(default)]
+    pub niveau: String,
 }
 
 impl ProgressionAnnuelle {
@@ -826,6 +829,7 @@ impl ProgressionAnnuelle {
             periode: r.get("periode")?,
             colonnes_json: r.get("colonnes_json")?,
             cellules_json: r.get("cellules_json")?,
+            niveau: r.get("niveau")?,
         })
     }
 }

@@ -709,6 +709,47 @@ fn fusionner_champs(
     serde_json::Value::Object(sortie)
 }
 
+/// Les champs qui rangent une collection en JSON : les cases d'une
+/// progression, ses colonnes.
+///
+/// Fusionnés champ par champ, ils se transmettaient d'un bloc : deux
+/// ordinateurs qui remplissaient chacun une case de la même progression,
+/// et l'une des deux disparaissait des deux côtés. On les fusionne élément
+/// par élément, comme les réglages qui contiennent une collection.
+const COLLECTIONS_JSON: &[(&str, &str)] = &[
+    ("progressions_annuelle", "colonnes_json"),
+    ("progressions_annuelle", "cellules_json"),
+];
+
+/// Fusionne, élément par élément, les collections JSON que l'entrant a modifiées.
+///
+/// La base de la fusion est la valeur d'avant chez l'expéditeur : ce qu'il
+/// n'a pas touché reste comme ici, même si nous l'avons changé depuis — ce
+/// que la fusion champ par champ, qui ne regarde que notre dernière
+/// écriture, ne garantissait pas.
+fn fusionner_collections(
+    table: &str,
+    sortie: &mut serde_json::Value,
+    locale: &serde_json::Value,
+    entrant: &serde_json::Value,
+    avant: &str,
+    touches_entrant: &std::collections::HashSet<String>,
+    entrant_gagne: bool,
+) {
+    let avant: serde_json::Value = serde_json::from_str(avant).unwrap_or(serde_json::Value::Null);
+    for (t, champ) in COLLECTIONS_JSON {
+        if *t != table || !touches_entrant.contains(*champ) {
+            continue;
+        }
+        let texte = |v: &serde_json::Value| v.get(*champ).and_then(|x| x.as_str()).map(str::to_string);
+        let (Some(ici), Some(recu)) = (texte(locale), texte(entrant)) else { continue };
+        let base = texte(&avant).unwrap_or_default();
+        if let (Some(fusion), Some(o)) = (fusionner_reglage(&ici, &base, &recu, entrant_gagne), sortie.as_object_mut()) {
+            o.insert((*champ).to_string(), serde_json::Value::String(fusion));
+        }
+    }
+}
+
 /// Les colonnes d'une table, avec ce qu'elles exigent.
 struct Colonne {
     nom: String,
@@ -812,7 +853,7 @@ fn en_table(v: &serde_json::Value) -> Option<Vec<(String, serde_json::Value)>> {
 /// ce qu'il a retiré s'en va, et ce que les deux ont touché revient au plus
 /// récent. Rend `None` quand les deux valeurs ne sont pas des collections de
 /// même forme : l'appelant tranche alors en bloc.
-fn fusionner_reglage(ici: &str, avant: &str, entrant: &str, entrant_gagne: bool) -> Option<String> {
+pub(crate) fn fusionner_reglage(ici: &str, avant: &str, entrant: &str, entrant_gagne: bool) -> Option<String> {
     let locale: serde_json::Value = serde_json::from_str(ici).ok()?;
     let recue: serde_json::Value = serde_json::from_str(entrant).ok()?;
     if std::mem::discriminant(&locale) != std::mem::discriminant(&recue) {
@@ -1043,7 +1084,9 @@ fn appliquer_un(tx: &Connection, c: &Changement) -> rusqlite::Result<Effet> {
                         champs_touches(a, &apres)
                     })
                     .unwrap_or_default();
-                fusionner_champs(&locale, &entrant, &touches_entrant, &touches_local, entrant_gagne)
+                let mut fusion = fusionner_champs(&locale, &entrant, &touches_entrant, &touches_local, entrant_gagne);
+                fusionner_collections(&c.table_nom, &mut fusion, &locale, &entrant, &c.avant, &touches_entrant, entrant_gagne);
+                fusion
             }
             // Ligne absente ici : rien à fusionner, on la crée.
             None => entrant,
@@ -1710,6 +1753,59 @@ mod tests {
         assert!(tb.contains("rituel"), "l'ajout de A doit survivre chez B : {tb}");
         assert!(tb.contains("ateliers"), "celui de B doit rester : {tb}");
         assert_eq!(ta, tb, "les deux machines doivent afficher le même texte");
+    }
+
+    /// Deux ordinateurs remplissent chacun une case de la même progression :
+    /// les cases voyageaient d'un bloc, et l'une des deux disparaissait.
+    #[test]
+    fn deux_cases_de_la_meme_progression_se_gardent_toutes_les_deux() {
+        let neuve = |nom: &str| {
+            let c = Connection::open_in_memory().unwrap();
+            c.execute_batch(
+                "CREATE TABLE progressions_annuelle (id TEXT PRIMARY KEY, annee TEXT, periode INTEGER,
+                   colonnes_json TEXT, cellules_json TEXT, niveau TEXT NOT NULL DEFAULT '');",
+            ).unwrap();
+            creer_table(&c);
+            poser_declencheurs(&c, nom);
+            c
+        };
+        let mut a = neuve("A");
+        let mut b = neuve("B");
+        a.execute(
+            r#"INSERT INTO progressions_annuelle VALUES ('p1', '2026-2027', 1, '[{"id":"c1","titre":"EPS","couleur":"red"}]', '{"w1_c1":"Courir"}', '')"#,
+            [],
+        ).unwrap();
+        let (depart, repere_a) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &depart).unwrap();
+        let (_, repere_b) = changements_locaux(&b, 0).unwrap();
+
+        // A remplit la semaine 2 puis ajoute une colonne ; B remplit la semaine 3.
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        a.execute(r#"UPDATE progressions_annuelle SET cellules_json = '{"w1_c1":"Courir","w2_c1":"Sauter"}' WHERE id = 'p1'"#, []).unwrap();
+        a.execute(
+            r#"UPDATE progressions_annuelle SET colonnes_json = '[{"id":"c1","titre":"EPS","couleur":"red"},{"id":"c2","titre":"Rituel","couleur":"indigo"}]' WHERE id = 'p1'"#,
+            [],
+        ).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(3));
+        b.execute(r#"UPDATE progressions_annuelle SET cellules_json = '{"w1_c1":"Courir","w3_c1":"Lancer"}' WHERE id = 'p1'"#, []).unwrap();
+
+        let (de_a, _) = changements_locaux(&a, repere_a).unwrap();
+        let (de_b, _) = changements_locaux(&b, repere_b).unwrap();
+        appliquer(&mut b, &de_a).unwrap();
+        appliquer(&mut a, &de_b).unwrap();
+
+        let lire = |c: &Connection| -> (serde_json::Value, serde_json::Value) {
+            c.query_row("SELECT cellules_json, colonnes_json FROM progressions_annuelle WHERE id = 'p1'", [], |r| {
+                Ok((serde_json::from_str(&r.get::<_, String>(0)?).unwrap(), serde_json::from_str(&r.get::<_, String>(1)?).unwrap()))
+            }).unwrap()
+        };
+        for (nom, c) in [("A", &a), ("B", &b)] {
+            let (cases, colonnes) = lire(c);
+            assert_eq!(cases["w2_c1"], "Sauter", "la case de A doit rester chez {nom} : {cases}");
+            assert_eq!(cases["w3_c1"], "Lancer", "celle de B aussi chez {nom} : {cases}");
+            assert_eq!(cases["w1_c1"], "Courir");
+            assert_eq!(colonnes.as_array().map(|x| x.len()), Some(2), "la colonne ajoutée par A chez {nom} : {colonnes}");
+        }
     }
 
     /// Un déroulé rédigé avant la synchronisation : ni trace dans le journal,
