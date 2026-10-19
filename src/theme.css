@@ -1800,3 +1800,9 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .prog-titres-liste .chip { border: 1px solid transparent; cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 600; }
 .prog-titres-liste .chip:hover { border-color: var(--border); color: var(--text); }
 .prog-titres-liste .chip.actif { border-color: var(--accent); color: var(--text); background: var(--accent-soft); }
+/* Une progression par niveau, sous celle de la classe : chaque tableau a sa tête. */
+.prog-section { margin-bottom: 22px; }
+.prog-section-tete { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; min-height: 30px; }
+.prog-section-tete h3 { margin: 0; font-size: 15px; }
+.prog-ajout-niveau { display: flex; justify-content: center; padding: 4px 0 12px; }
+.prog-ajout-niveau .btn { border-style: dashed; }

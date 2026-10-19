@@ -12,8 +12,8 @@ import type { PeriodeDeClasse } from "./vacances";
 export interface Colonne { id: string; titre: string; couleur: string }
 export interface EtatProg { colonnes: Colonne[]; cellules: Record<string, string> }
 
-/** Le libellé de la progression sans niveau. */
-export const TOUS_NIVEAUX = "Tous niveaux";
+/** La progression sans niveau : celle de la classe, en tête de la période. */
+export const LA_CLASSE = "la classe";
 
 /** Sans calendrier (hors réseau, année pas encore publiée) : huit semaines, comme avant. */
 export const SEMAINES_PAR_DEFAUT = 8;
@@ -105,16 +105,25 @@ export function datesDeLaSemaine(s: SemaineDeClasse): string {
     : `${a.getUTCDate()} ${MOIS[a.getUTCMonth()]} – ${b.getUTCDate()} ${MOIS[b.getUTCMonth()]}`;
 }
 
+/** Vrai si une progression a quelque chose : une colonne ou une case. */
+const remplie = (p?: ProgressionAnnuelle) => { const e = lireEtat(p); return e.colonnes.length > 0 || Object.keys(e.cellules).length > 0; };
+
+/** La clé d'un niveau ajouté à une période, le temps qu'il reçoive sa progression. */
+export const cleNiveauAjoute = (annee: string, periode: number, niveau: string) => `${annee}|${periode}|${niveau}`;
+
 /**
- * Les niveaux à montrer : « Tous niveaux » d'abord, puis ceux de la classe,
- * ceux qui ont déjà une progression cette année et ceux qu'on vient
- * d'ajouter, dans l'ordre de l'école.
+ * Les niveaux d'une période, sous le tableau de la classe : ceux qui y ont
+ * une progression, et ceux qu'on vient d'ajouter par « + Niveau », dans
+ * l'ordre de l'école. Un niveau se décide période par période.
  */
-export function niveauxAffiches(ordre: string[], niveauxClasse: string[], liste: ProgressionAnnuelle[], annee: string, ajoutes: string[]): string[] {
-  const vus = new Set([...niveauxClasse, ...ajoutes, ...liste.filter((p) => p.annee === annee).map((p) => p.niveau ?? "")]);
-  vus.delete("");
+export function niveauxDeLaPeriode(ordre: string[], liste: ProgressionAnnuelle[], annee: string, periode: number, ajoutes: string[]): string[] {
+  const vus = new Set(liste.filter((p) => p.annee === annee && p.periode === periode && (p.niveau ?? "") !== "" && remplie(p)).map((p) => p.niveau));
+  for (const k of ajoutes) {
+    const [a, p, n] = k.split("|");
+    if (a === annee && Number(p) === periode && n) vus.add(n);
+  }
   const rang = (n: string) => { const i = ordre.indexOf(n); return i < 0 ? ordre.length : i; };
-  return ["", ...[...vus].sort((a, b) => rang(a) - rang(b) || a.localeCompare(b, "fr"))];
+  return [...vus].sort((a, b) => rang(a) - rang(b) || a.localeCompare(b, "fr"));
 }
 
 /** Un groupe de titres à proposer pour une colonne. */
@@ -163,7 +172,7 @@ export function sourcesDeColonnes(liste: ProgressionAnnuelle[], annee: string, n
   if (memeNiveau) sources.push({ libelle: `P${memeNiveau.periode}`, colonnes: lireEtat(memeNiveau).colonnes });
   const autreNiveau = avecColonnes.filter((p) => (p.niveau ?? "") !== niveau && p.periode === periode)
     .sort((a, b) => (a.niveau === "" ? -1 : 0) - (b.niveau === "" ? -1 : 0))[0];
-  if (autreNiveau) sources.push({ libelle: autreNiveau.niveau || TOUS_NIVEAUX, colonnes: lireEtat(autreNiveau).colonnes });
+  if (autreNiveau) sources.push({ libelle: autreNiveau.niveau || LA_CLASSE, colonnes: lireEtat(autreNiveau).colonnes });
   return sources;
 }
 
