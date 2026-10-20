@@ -1,8 +1,9 @@
 import React from "react";
 import { ChipObservation } from "../components/TypeObservation";
 import { infosReussite, intitulesDesObjectifs, lireLiens } from "../objectifsPpi";
-import { api, Eleve, TYPE_AXE } from "../api";
+import { api, anneeScolaireActuelle, Eleve, TYPE_AXE } from "../api";
 import { Select, Empty, useAsync, ouvrirOnglet } from "../components/ui";
+import { useNavigate } from "react-router-dom";
 import { printHTML } from "../print";
 import { corpsDuDossier } from "../dossierHtml";
 import { construire, libelleAge, Dossier, Piece } from "../dossier";
@@ -36,16 +37,17 @@ export function DossierTab() {
     if (!eleve) return null;
     // Une seule passe : les sept sources sont lues de front plutôt qu'en
     // cascade, sinon l'écran s'affiche par morceaux.
-    const [commentaires, notes, evaluations, docs, papiers, progressions] = await Promise.all([
+    const [commentaires, notes, evaluations, docs, papiers, progressions, projet] = await Promise.all([
       api.commentairesList(eleveId),
       api.notesEleveList(),
       api.evaluationsList(),
       api.documentsEleveList(eleveId),
       api.papiersList(),
       api.progressionsEleveList(),
+      api.settingGet(`projetPedagogique:${anneeScolaireActuelle()}`).catch(() => null),
     ]);
     setObjectifs(intitulesDesObjectifs(await api.documentEleveGet(eleveId, "ppi").catch(() => null)));
-    return construire(eleve, commentaires, notes, evaluations, docs, papiers, progressions);
+    return construire(eleve, commentaires, notes, evaluations, docs, papiers, progressions, projet);
   }, [eleveId, eleves]);
 
   if (!eleves?.length) {
@@ -205,6 +207,13 @@ function Identite({ eleve, age }: { eleve: Eleve; age?: number }) {
 }
 
 function LignePiece({ piece }: { piece: Piece }) {
+  const nav = useNavigate();
+  const ouvrir = () => {
+    if (!piece.page) { ouvrirOnglet("eleves", piece.onglet); return; }
+    // Une autre page : on y va, puis on lui demande l'onglet (comme ⌘K).
+    nav(`/${piece.page}`);
+    setTimeout(() => ouvrirOnglet(piece.page!, piece.onglet), 120);
+  };
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center", borderTop: "1px solid var(--border)", padding: "6px 0", fontSize: 13 }}>
       <span>{piece.rempli ? "✅" : "⬜"}</span>
@@ -214,7 +223,7 @@ function LignePiece({ piece }: { piece: Piece }) {
           <div className="meta">mis à jour le {new Date(piece.dateMaj).toLocaleDateString("fr-FR")}</div>
         )}
       </span>
-      <button className="btn ghost sm" onClick={() => ouvrirOnglet("eleves", piece.onglet)}>
+      <button className="btn ghost sm" onClick={ouvrir}>
         {piece.rempli ? "Voir" : "Remplir"}
       </button>
     </div>

@@ -1,6 +1,6 @@
 import React from "react";
 import { api, newId, type CommentaireEleve } from "../api";
-import { Field, Input, Select, Empty, useAsync } from "../components/ui";
+import { Field, Input, Empty, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import { nomsAMasquer } from "../nomsAMasquer";
@@ -82,9 +82,9 @@ function SuiviDeLObjectif({ objectifId, commentaires }: { objectifId: string; co
   );
 }
 
-export function PpiTab() {
+/** Le PPI de l'élève choisi dans Dispositifs, dont la barre porte le choix de l'élève. */
+export function PpiTab({ eleveId }: { eleveId: string }) {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
-  const [eleveId, setEleveId] = React.useState("");
   const [data, setData] = React.useState<PpiData>(VIDE);
   const [ecole, setEcole] = React.useState("");
   const [enseignantNom, setEnseignantNom] = React.useState("");
@@ -95,10 +95,6 @@ export function PpiTab() {
     api.settingGet("ecole").then((v) => setEcole(v ?? ""));
     api.settingGet("enseignantNom").then((v) => setEnseignantNom(v ?? ""));
   }, []);
-
-  React.useEffect(() => {
-    if (!eleveId && eleves?.[0]) setEleveId(eleves[0].id);
-  }, [eleves, eleveId]);
 
   // Les observations de l'élève : ce sont elles qui portent les objectifs cochés.
   const { data: commentaires } = useAsync(
@@ -180,9 +176,6 @@ export function PpiTab() {
   return (
     <>
       <div className="toolbar">
-        <Select value={eleveId} onChange={(e) => setEleveId(e.target.value)} style={{ maxWidth: 240 }}>
-          {eleves?.map((e) => <option key={e.id} value={e.id}>{e.nom}</option>)}
-        </Select>
         <div className="spacer" />
         <button className="btn sm" disabled={exportEnCours} onClick={() => exporter()}>
           {exportEnCours ? "Export…" : "📄 Exporter le bilan PDF"}

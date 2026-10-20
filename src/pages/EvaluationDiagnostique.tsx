@@ -6,6 +6,7 @@ import { Field, Input, Select, Textarea, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { printHTML, escapeHtml } from "../print";
 import { GRILLES, Grille, Bloc, Mise, compterRenseignes, compterTotal } from "../data/evaluationsDiagnostiques";
+import { useEleveDuDossier } from "../eleveDuDossier";
 
 // ── Évaluation diagnostique ───────────────────────────────────────────────
 // Un écran générique pour les deux grilles décrites dans
@@ -92,17 +93,17 @@ const STYLE_UNE_PAGE = `
 
 const cleDoc = (grille: Grille) => `evaldiag:${grille.id}`;
 
-export function EvaluationDiagnostiqueTab() {
+/** `grille` : celle qu'ouvre une pièce du dossier, sinon la première. */
+export function EvaluationDiagnostiqueTab({ grille: voulue }: { grille?: string } = {}) {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
-  const [eleveId, setEleveId] = React.useState("");
-  const [grilleId, setGrilleId] = React.useState(GRILLES[0].id);
+  const [eleveId, setEleveId] = useEleveDuDossier(eleves);
+  const [grilleId, setGrilleId] = React.useState(GRILLES.some((g) => g.id === voulue) ? voulue! : GRILLES[0].id);
   const [v, setV] = React.useState<Valeurs>({});
   const [charge, setCharge] = React.useState(false);
 
   const grille = GRILLES.find((g) => g.id === grilleId) ?? GRILLES[0];
   const eleve = eleves?.find((e) => e.id === eleveId);
 
-  React.useEffect(() => { if (!eleveId && eleves?.[0]) setEleveId(eleves[0].id); }, [eleves, eleveId]);
 
   React.useEffect(() => {
     if (!eleveId) return;

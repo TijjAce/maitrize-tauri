@@ -28,6 +28,7 @@ import { SyntheseEleveTab } from "./SyntheseEleve";
 import { nomsAMasquer } from "../nomsAMasquer";
 import { fabricationsDesFiches, niveauDesFiches } from "../fichesAutonomie";
 import { isoJour } from "../dates";
+import { useEleveDuDossier } from "../eleveDuDossier";
 
 const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "dispositifs", "gevasco"] as const;
 /** Ce qu'affiche l'onglet Évaluations : le sommatif (évaluations notées, synthèse GS) ou le diagnostique (grilles d'observation). */
@@ -40,11 +41,21 @@ export default function Eleves() {
   const [vueDossier, setVueDossier] = React.useState<VueDossier>("dossier");
   // Tous les onglets, quelle que soit la structure choisie dans les Réglages : elle ne retire rien.
   useSegmentNav(ELEVES_TABS, onglet, setOnglet);
+  // Ce qu'une pièce du dossier demande d'ouvrir : le PPI parmi les dispositifs,
+  // une grille d'observation. L'onglet le lit en s'ouvrant, puis on l'oublie :
+  // y revenir autrement repart de son premier écran.
+  const [piece, setPiece] = React.useState<{ dispositif?: string; grille?: string }>({});
+  React.useEffect(() => { setPiece({}); }, [onglet]);
   useOngletDemande("eleves", ELEVES_TABS, setOnglet, (demande) => {
     // Synthèse et synthèse GS vivent dans l'évaluation sommative : les liens
     // du dossier de l'élève et de ⌘K y mènent toujours.
     if (demande === "synthese") { setOnglet("evaluations"); setVueEvaluation("gs"); return; }
-    if (demande === "syntheseEleve") { setOnglet("dossier"); setVueDossier("synthese"); }
+    if (demande === "syntheseEleve") { setOnglet("dossier"); setVueDossier("synthese"); return; }
+    if (demande === "ppi") { setPiece({ dispositif: "ppi" }); setOnglet("dispositifs"); return; }
+    if (demande.startsWith("evaldiag:")) {
+      setPiece({ grille: demande.slice("evaldiag:".length) });
+      setOnglet("evaluations"); setVueEvaluation("diagnostique");
+    }
   });
   return (
     <Page titre="Élèves" sous="Classe, observations et évaluations">
@@ -65,9 +76,9 @@ export default function Eleves() {
         {vueDossier === "dossier" ? <DossierTab /> : <SyntheseEleveTab />}
       </>)}
       {onglet === "observations" && <Observations />}
-      {onglet === "evaluations" && <Evaluations vue={vueEvaluation} setVue={setVueEvaluation} />}
+      {onglet === "evaluations" && <Evaluations vue={vueEvaluation} setVue={setVueEvaluation} grille={piece.grille} />}
       {onglet === "papiers" && <Papiers />}
-      {onglet === "dispositifs" && <DispositifsTab />}
+      {onglet === "dispositifs" && <DispositifsTab dispositif={piece.dispositif} />}
       {onglet === "gevasco" && <GevaScoTab />}
     </Page>
   );
@@ -199,7 +210,7 @@ function FichesExclues({ eleve, onChange }: { eleve: Eleve; onChange: (liste: st
 // ── Observations ─────────────────────────────────────────────────────────
 function Observations() {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
-  const [eleveId, setEleveId] = React.useState<string>("");
+  const [eleveId, setEleveId] = useEleveDuDossier(eleves);
   const { data: commentaires, reload } = useAsync(() => api.commentairesList(eleveId || undefined), [eleveId]);
   const [texte, setTexte] = React.useState("");
   const [type, setType] = React.useState("divers");
@@ -214,7 +225,6 @@ function Observations() {
   }, [commentaires]);
   const affichees = (commentaires ?? []).filter((c) => !filtre || c.type === filtre);
 
-  React.useEffect(() => { if (!eleveId && eleves?.length) setEleveId(eleves[0].id); }, [eleves, eleveId]);
 
   const ajouter = async () => {
     if (!texte.trim() || !eleveId) return;
@@ -280,7 +290,7 @@ function Observations() {
 // sait faire en arrivant ; le sommatif fait le point sur ce qui est acquis —
 // épreuves notées ou par compétences, et synthèse officielle des acquis de
 // fin de GS. La synthèse rédigée d'après le suivi vit dans le Dossier.
-function Evaluations({ vue, setVue }: { vue: VueEvaluation; setVue: (v: VueEvaluation) => void }) {
+function Evaluations({ vue, setVue, grille }: { vue: VueEvaluation; setVue: (v: VueEvaluation) => void; grille?: string }) {
   const { data: evals, reload } = useAsync(() => api.evaluationsList(), []);
   const [edit, setEdit] = React.useState<Evaluation | null>(null);
   const [notes, setNotes] = React.useState<Evaluation | null>(null);
@@ -308,7 +318,7 @@ function Evaluations({ vue, setVue }: { vue: VueEvaluation; setVue: (v: VueEvalu
         {vue === "notees" && <button className="btn primary" onClick={() => setEdit(nouvelleEvaluation())}>+ Évaluation</button>}
       </div>
 
-      {vue === "diagnostique" && <EvaluationDiagnostiqueTab />}
+      {vue === "diagnostique" && <EvaluationDiagnostiqueTab grille={grille} />}
       {vue === "gs" && <SyntheseGS />}
       {vue === "notees" && ((evals?.length ?? 0) === 0 ? <Empty icone="📊" titre="Aucune évaluation" /> :
         evals!.map((ev) => (
@@ -487,7 +497,7 @@ function fmtDateFr(iso?: string) {
 function SyntheseGS() {
   const doms = syntheseDomaines as SynDom[];
   const { data: eleves } = useAsync(() => api.elevesList(), []);
-  const [eleveId, setEleveId] = React.useState("");
+  const [eleveId, setEleveId] = useEleveDuDossier(eleves, (e) => e.niveau === "GS");
   const [data, setData] = React.useState<SynData>({ positionnements: {}, observations: {} });
   const [ecole, setEcole] = React.useState("");
   const [enseignantNom, setEnseignantNom] = React.useState("");
@@ -504,11 +514,6 @@ function SyntheseGS() {
 
   const majDirecteurNom = (v: string) => { setDirecteurNom(v); api.settingSet("syntheseGS:directeurNom", v); };
   const majDirecteurDate = (v: string) => { setDirecteurDate(v); api.settingSet("syntheseGS:directeurDate", v); };
-
-  React.useEffect(() => {
-    const gs = (eleves ?? []).filter((e) => e.niveau === "GS");
-    if (!eleveId && (gs[0] || eleves?.[0])) setEleveId((gs[0] ?? eleves![0]).id);
-  }, [eleves, eleveId]);
 
   React.useEffect(() => {
     if (!eleveId) return;
