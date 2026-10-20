@@ -1599,7 +1599,8 @@ pub fn vocaux_list(db: State<Db>) -> R<Vec<Vocal>> {
  *
  * Par le moteur réglé pour les observations d'élève (voir
  * `whisper_embarque::choix_de`). Un échec s'écrit à côté du vocal plutôt que
- * de le faire disparaître — on saura pourquoi, et on pourra réessayer.
+ * de le faire disparaître — on saura pourquoi, et on pourra réessayer. Un
+ * vocal sans son passe à « perdu » (voir `son_du_vocal`).
  */
 #[tauri::command]
 pub async fn vocal_transcrire(
@@ -1608,15 +1609,17 @@ pub async fn vocal_transcrire(
     id: String,
 ) -> R<Vocal> {
     use crate::whisper_embarque::{choix_ici, noms_de_la_classe, transcrire_octets, Choix, Usage};
-    let (fichier, choix, noms) = {
+    let (octets, fichier, choix, noms) = {
         let c = db.lock();
         let fichier = c
             .query_row("SELECT fichier FROM vocaux WHERE id=?1", params![id], |r| r.get::<_, String>(0))
             .map_err(|_| "Ce vocal n'existe plus.".to_string())?;
-        (fichier, choix_ici(&c, Usage::Observations), noms_de_la_classe(&c))
+        // Sans son, le vocal vient de changer d'état : c'est lui qu'on rend.
+        let Some(octets) = son_du_vocal(&c, &fichiers_dir(), &id, &fichier)? else {
+            return c.query_row("SELECT * FROM vocaux WHERE id=?1", params![id], Vocal::from_row).map_err(e);
+        };
+        (octets, fichier, choix_ici(&c, Usage::Observations), noms_de_la_classe(&c))
     };
-    let octets = std::fs::read(fichiers_dir().join(&fichier))
-        .map_err(|er| format!("Enregistrement introuvable : {er}"))?;
     let resultat = match choix {
         // Les noms de la classe aident Whisper, sur cet ordinateur ; ils ne
         // partent pas avec l'audio quand on transcrit en ligne.
@@ -1658,6 +1661,82 @@ pub fn vocal_delete(db: State<Db>, id: String) -> R<()> {
         effacer_fichier_joint(&c, &fichier);
     }
     Ok(())
+}
+
+/// Ce qu'on lit sous un vocal dont le son a disparu.
+const SON_INTROUVABLE: &str = "Enregistrement introuvable sur cet ordinateur.";
+
+/**
+ * Le son d'un vocal, lu dans `dossier` — ou rien, le vocal ayant changé d'état.
+ *
+ * Un son absent ne reviendra pas : le vocal passe à « perdu », que la
+ * transcription de fond ne reprend plus (voir vocauxEnFond.ts). Resté
+ * « reçu », il se reprenait à chaque ouverture pour échouer de même —
+ * quatre-vingt-onze fois en six jours chez son auteur, pour une dictée
+ * relevée une seconde fois sur Nuage, dont la synchronisation avait effacé le
+ * son. Un son présent mais illisible est un échec comme un autre : il se
+ * reprendra une fois, à l'ouverture suivante.
+ */
+fn son_du_vocal(c: &rusqlite::Connection, dossier: &std::path::Path, id: &str, fichier: &str) -> R<Option<Vec<u8>>> {
+    let lu = if fichier.is_empty() {
+        Err(std::io::Error::from(std::io::ErrorKind::NotFound))
+    } else {
+        std::fs::read(dossier.join(fichier))
+    };
+    let (etat, erreur) = match lu {
+        Ok(octets) => return Ok(Some(octets)),
+        Err(er) if er.kind() == std::io::ErrorKind::NotFound => {
+            diag_ecrire(format!("VOCAL PERDU {id} : enregistrement introuvable ({er}), il ne sera plus repris"));
+            ("perdu", SON_INTROUVABLE.to_string())
+        }
+        Err(er) => ("echec", format!("Enregistrement illisible : {er}")),
+    };
+    c.execute("UPDATE vocaux SET etat=?2, erreur=?3 WHERE id=?1", params![id, etat, erreur]).map_err(e)?;
+    Ok(None)
+}
+
+#[cfg(test)]
+mod tests_vocaux {
+    use super::*;
+
+    fn base_et_dossier() -> (rusqlite::Connection, tempfile::TempDir) {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        (c, tempfile::tempdir().unwrap())
+    }
+
+    fn etat_de(c: &rusqlite::Connection, id: &str) -> (String, String) {
+        c.query_row("SELECT etat, erreur FROM vocaux WHERE id=?1", params![id], |r| Ok((r.get(0)?, r.get(1)?))).unwrap()
+    }
+
+    #[test]
+    fn un_vocal_dont_le_son_a_disparu_passe_a_perdu() {
+        let (c, dossier) = base_et_dossier();
+        // Rangé comme par le relais de Nuage : le son se lit, rien ne change.
+        assert!(crate::portable::ranger_vocal(&c, dossier.path(), "v1", "2026-10-14T10:18:18", 14.7, "c1", "", &[7u8; 4000]).unwrap());
+        assert_eq!(son_du_vocal(&c, dossier.path(), "v1", "vocal-v1.wav").unwrap(), Some(vec![7u8; 4000]));
+        assert_eq!(etat_de(&c, "v1"), ("recu".into(), String::new()));
+        // Puis la synchronisation efface le fichier : le vocal ne se reprendra plus.
+        std::fs::remove_file(dossier.path().join("vocal-v1.wav")).unwrap();
+        assert_eq!(son_du_vocal(&c, dossier.path(), "v1", "vocal-v1.wav").unwrap(), None);
+        assert_eq!(etat_de(&c, "v1"), ("perdu".into(), SON_INTROUVABLE.into()));
+        // Sans nom de fichier, pas davantage de son.
+        c.execute("INSERT INTO vocaux (id, fichier, etat) VALUES ('v2', '', 'recu')", []).unwrap();
+        assert_eq!(son_du_vocal(&c, dossier.path(), "v2", "").unwrap(), None);
+        assert_eq!(etat_de(&c, "v2").0, "perdu");
+    }
+
+    #[test]
+    fn un_son_present_mais_illisible_est_un_echec_qui_se_reprendra() {
+        let (c, dossier) = base_et_dossier();
+        c.execute("INSERT INTO vocaux (id, fichier, etat) VALUES ('v3', 'vocal-v3.wav', 'recu')", []).unwrap();
+        // Un dossier à la place du fichier : il est là, mais ne se lit pas.
+        std::fs::create_dir(dossier.path().join("vocal-v3.wav")).unwrap();
+        assert_eq!(son_du_vocal(&c, dossier.path(), "v3", "vocal-v3.wav").unwrap(), None);
+        let (etat, erreur) = etat_de(&c, "v3");
+        assert_eq!(etat, "echec");
+        assert!(erreur.starts_with("Enregistrement illisible"), "{erreur}");
+    }
 }
 
 // ── Projets de classe ────────────────────────────────────────────────────
