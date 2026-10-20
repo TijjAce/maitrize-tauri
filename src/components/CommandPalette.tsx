@@ -11,6 +11,7 @@ import { RACCOURCI_RETOUR, useHistorique } from "./Retour";
 import { EVT_NOUVEAU_RITUEL } from "../rituels";
 import { EVT_EN_RETARD } from "../fichesAutonomie";
 import { EVT_OUVRIR_PICTOS } from "./BoutonPictos";
+import { chercherRaccourcis, raccourcisClavier } from "../raccourcis";
 
 /**
  * Les familles de résultats, pour restreindre d'un clic.
@@ -364,7 +365,11 @@ export function CommandPalette() {
   // La famille choisie en haut : elle survit à ce qu'on continue de taper,
   // et se remet à zéro à chaque ouverture.
   const [famille, setFamille] = React.useState<Famille | "">("");
-  React.useEffect(() => { if (open) { setQ(""); setRes([]); setSel(0); setBulle(null); setFamille(""); } }, [open]);
+  // La palette montre ses commandes, ou les raccourcis clavier (« ? », ou la commande « Raccourcis clavier »).
+  const [vue, setVue] = React.useState<"commandes" | "raccourcis">("commandes");
+  React.useEffect(() => { if (open) { setQ(""); setRes([]); setSel(0); setBulle(null); setFamille(""); setVue("commandes"); } }, [open]);
+  const voirLesRaccourcis = () => { setVue("raccourcis"); setQ(""); setBulle(null); };
+  const revenirAuxCommandes = () => { setVue("commandes"); setQ(""); setSel(0); };
 
   // Les dossiers du bureau : ils n'existent pas en base comme des lignes, mais
   // on les cherche comme le reste — c'est souvent par eux qu'on retrouve.
@@ -437,6 +442,7 @@ export function CommandPalette() {
     { id: "a-pictos", ico: "🧩", label: "Trouver un pictogramme (par son mot ou son numéro)", sous: "Action · ARASAAC, Sclera, Makaton, Mes pictos", famille: "action",
       run: () => { setOpen(false); window.dispatchEvent(new Event(EVT_OUVRIR_PICTOS)); } },
     { id: "a-neuf", ico: "✨", label: "Quoi de neuf", sous: "Action · ce qui a changé dans l'app", famille: "action", run: () => { setOpen(false); montrerLesNouveautes(); } },
+    { id: "a-raccourcis", ico: "⌨️", label: "Raccourcis clavier", sous: "Action · les touches du clavier, partout et écran par écran · ?", famille: "action", run: voirLesRaccourcis },
     { id: "r-demain", ico: "🌅", label: "Préparer pour demain", sous: "Réponse directe", famille: "action", run: repondre("Préparer pour demain", preparerDemain) },
     { id: "r-jour", ico: "📅", label: "Planning d'aujourd'hui", sous: "Réponse directe", famille: "action", run: repondre("Planning d'aujourd'hui", () => planningJour("today")) },
     { id: "r-listseq", ico: "📋", label: "Lister mes séquences", sous: "Réponse directe", famille: "action", run: repondre("Mes séquences", listerSequences) },
@@ -537,6 +543,7 @@ export function CommandPalette() {
   const rubans = FAMILLES.filter((fam) => fam.id === famille || trouvees.some((c) => c.famille === fam.id));
   const cmds = famille ? trouvees.filter((c) => c.famille === famille) : trouvees;
   const clamped = Math.min(sel, Math.max(0, cmds.length - 1));
+  const groupesRaccourcis = vue === "raccourcis" ? chercherRaccourcis(raccourcisClavier(), q) : [];
 
   /** Passe au ruban suivant (⇥), en repassant par « Tout ». */
   const rubanSuivant = (pas: number) => {
@@ -553,15 +560,49 @@ export function CommandPalette() {
     <div className="overlay" style={{ alignItems: "flex-start", paddingTop: "10vh" }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
       <div className="palette" role="dialog" aria-modal="true" aria-label="Recherche et commandes" onKeyDown={(e) => {
+        if (vue === "raccourcis") {
+          // ⌫ dans un champ vide ramène aux commandes ; le reste du clavier n'a rien à choisir ici.
+          if (e.key === "Backspace" && !q) { e.preventDefault(); revenirAuxCommandes(); }
+          return;
+        }
         if (e.key === "ArrowDown") { e.preventDefault(); auClavier.current = true; setSel((s) => Math.min(s + 1, cmds.length - 1)); }
         if (e.key === "ArrowUp") { e.preventDefault(); auClavier.current = true; setSel((s) => Math.max(s - 1, 0)); }
         if (e.key === "Tab") { e.preventDefault(); rubanSuivant(e.shiftKey ? -1 : 1); }
         if (e.key === "Enter" && cmds[clamped]) { e.preventDefault(); lancer(cmds[clamped]); }
       }}>
-        <input className="palette-input" autoFocus aria-label="Commande, action ou recherche"
-          placeholder="Commande, action, ou recherche (dossier, jeu, PDF du coffre, séquence…)"
-          value={q} onChange={(e) => { setQ(e.target.value); setSel(0); }} />
-        {rubans.length > 1 && (
+        <input className="palette-input" autoFocus aria-label={vue === "raccourcis" ? "Chercher un raccourci" : "Commande, action ou recherche"}
+          placeholder={vue === "raccourcis" ? "Chercher un raccourci (annuler, onglet, sélection…)" : "Commande, action, ou recherche (dossier, jeu, PDF du coffre, séquence…)"}
+          value={q} onChange={(e) => {
+            // « ? » dans un champ vide : les raccourcis, comme dans bien des applications.
+            if (vue === "commandes" && e.target.value === "?") { voirLesRaccourcis(); return; }
+            setQ(e.target.value); setSel(0);
+          }} />
+        {vue === "raccourcis" && (
+          <div className="palette-list palette-raccourcis" ref={laListe}>
+            <div className="raccourcis-tete">
+              <span>⌨️ Raccourcis clavier</span>
+              <button type="button" className="btn ghost sm" onMouseDown={(e) => e.preventDefault()} onClick={revenirAuxCommandes}>← Commandes</button>
+            </div>
+            {groupesRaccourcis.length === 0
+              ? <div className="raccourcis-vide">Aucun raccourci pour « {q} ».</div>
+              : groupesRaccourcis.map((g) => (
+                <section key={g.ou} className="raccourcis-groupe" aria-label={g.ou}>
+                  <h4>{g.ou}</h4>
+                  {g.raccourcis.map((r) => (
+                    <div key={r.quoi} className="raccourci">
+                      <span className="raccourci-quoi">{r.quoi}</span>
+                      <span className="raccourci-touches">
+                        {r.touches.map((t, i) => (
+                          <React.Fragment key={t}>{i > 0 && <span className="raccourci-ou">ou</span>}<kbd>{t}</kbd></React.Fragment>
+                        ))}
+                      </span>
+                    </div>
+                  ))}
+                </section>
+              ))}
+          </div>
+        )}
+        {vue === "commandes" && rubans.length > 1 && (
           <div className="palette-rubans">
             <button type="button" className={"chip" + (famille ? "" : " on")}
               onMouseDown={(e) => e.preventDefault()}
@@ -574,13 +615,13 @@ export function CommandPalette() {
             ))}
           </div>
         )}
-        {bulle && (
+        {vue === "commandes" && bulle && (
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "var(--accent-soft)" }}>
             <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{bulle.titre}</div>
             <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.5 }}>{busy ? "…" : bulle.texte}</div>
           </div>
         )}
-        <div className="palette-list" ref={laListe}>
+        {vue === "commandes" && <div className="palette-list" ref={laListe}>
           {cmds.length === 0 ? (
             <div style={{ padding: 16, color: "var(--text-2)" }}>
               {famille ? `Aucun résultat dans « ${FAMILLES.find((x) => x.id === famille)?.nom} ».` : "Aucun résultat."}
@@ -608,8 +649,12 @@ export function CommandPalette() {
                 </span>
               </button>
             ))}
+        </div>}
+        <div className="palette-foot">
+          {vue === "raccourcis"
+            ? <>⌫ revenir aux commandes · esc fermer · {raccourci("K")}</>
+            : <>↑↓ naviguer · ⇥ filtrer · ↵ exécuter · ? raccourcis · esc fermer · {raccourci("K")}</>}
         </div>
-        <div className="palette-foot">↑↓ naviguer · ⇥ filtrer · ↵ exécuter · esc fermer · {raccourci("K")}</div>
       </div>
     </div>
   );
