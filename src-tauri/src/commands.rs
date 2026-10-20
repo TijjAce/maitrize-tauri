@@ -2593,7 +2593,7 @@ mod tests_planning_pdf {
         let jours = vec![PlanningJour { jour: "lundi 28 septembre".into(), rangs: vec![vec![c]] }];
         let pdf = construire_planning_pdf("Planning — lundi 28 septembre", &jours).expect("le PDF se construit");
         let doc = lopdf::Document::load_mem(&pdf).expect("relisible");
-        let flux: String = doc.get_pages().values().map(|p| String::from_utf8_lossy(&doc.get_page_content(*p).unwrap()).into_owned()).collect();
+        let flux: String = doc.get_pages().values().map(|p| String::from_utf8_lossy(&doc.get_page_content(*p)).into_owned()).collect();
         // printpdf écrit chaque texte en hexadécimal : <4A4F494E54> Tj.
         let lisible: String = flux
             .split('<')
