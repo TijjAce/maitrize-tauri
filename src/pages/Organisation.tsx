@@ -247,14 +247,15 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
     <>
       <div className="toolbar">
         <AnneeSelect annee={annee} setAnnee={setAnnee} />
+        {/* Les périodes, à côté de l'année (demande de l'enseignant, octobre 2026). */}
+        <div className="prog-periodes">
+          {[1, 2, 3, 4, 5].map((p) => <PeriodeChip key={p} p={p} selected={periode === p} onClick={() => setPeriode(p)} />)}
+          {dates && <span className="meta">{dates}</span>}
+        </div>
         <div className="spacer" />
         {/* Ce qui est enregistré dit s'il y a de quoi imprimer : l'écran des tableaux ne se lit qu'après leur rendu. */}
         <button className="btn" onClick={imprimer}
           disabled={tableaux.every((n) => lireEtat(progressionDe(liste, annee, n, periode)).colonnes.length === 0)}>🖨 PDF</button>
-      </div>
-      <div className="prog-periodes">
-        {[1, 2, 3, 4, 5].map((p) => <PeriodeChip key={p} p={p} selected={periode === p} onClick={() => setPeriode(p)} />)}
-        {dates && <span className="meta">{dates}</span>}
       </div>
       {tableaux.map((n) => (
         <SectionProgression key={n || "classe"} cible={{ annee, niveau: n, periode }} liste={liste} lecture={data} relire={reload}
