@@ -88,16 +88,23 @@ const dossierDe = (o: Outil) => {
   return famille ? `${iconeEtNom(famille.libelle)[1]} — ` : "";
 };
 
-/** Les ateliers qui répondent à ce qu'on cherche — nom, phrase, famille, cycle, ou le moment où ils sont rangés. */
+/**
+ * Les ateliers qui répondent à ce qu'on cherche — nom, phrase, famille et partie (« Sons et lecture » dans
+ * Français), cycle, ou le moment où ils sont rangés.
+ */
 export function chercherAteliers(
-  familles: { libelle: string; outils: Outil[] }[], recherche: string, usages: Record<string, Usage> = {},
+  familles: { id?: string; libelle: string; outils: Outil[] }[], recherche: string, usages: Record<string, Usage> = {},
 ): Outil[] {
   const q = recherche.trim().toLowerCase();
   if (!q) return [];
   const sans = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const cible = sans(q);
-  return familles.flatMap((f) => f.outils.filter((o) =>
-    sans(`${o.nom} ${o.quoi} ${f.libelle} ${o.cycles ?? ""} ${usages[o.id] ? descriptionDe(usages[o.id]).nom : ""}`).includes(cible)));
+  return familles.flatMap((f) => {
+    const parties = f.id ? partiesDeLaFamille({ id: f.id, outils: f.outils }) ?? [] : [];
+    const partieDe = (o: Outil) => parties.find((p) => p.outils.includes(o))?.nom ?? "";
+    return f.outils.filter((o) =>
+      sans(`${o.nom} ${o.quoi} ${f.libelle} ${partieDe(o)} ${o.cycles ?? ""} ${usages[o.id] ? descriptionDe(usages[o.id]).nom : ""}`).includes(cible));
+  });
 }
 
 /**
@@ -118,8 +125,21 @@ const compteDesSequences = (outils: Outil[]) => {
 };
 const RANGEMENT_MEMORISE = "fabriquer:rangement";
 
-/** Les sections repliées du catalogue — « famille:maths », « famille:maths:calcul » —, gardées sur cet ordinateur. */
-const lirePlis = (brut: unknown): string[] => (Array.isArray(brut) ? brut.filter((x): x is string => typeof x === "string") : []);
+/** Les familles devenues des parties du français (octobre 2026) : « famille:sons » se lit « famille:francais:sons ». */
+const ANCIENNES_FAMILLES_DU_FRANCAIS = ["langage", "sons", "ecrit"];
+
+/**
+ * Les sections repliées du catalogue — « famille:maths », « famille:maths:calcul » —, gardées sur cet ordinateur.
+ * Une ancienne famille du français repliée replie sa partie ; les trois repliées, le français l'est aussi.
+ */
+export const lirePlis = (brut: unknown): string[] => {
+  const plis = Array.isArray(brut) ? brut.filter((x): x is string => typeof x === "string") : [];
+  const anciennes = ANCIENNES_FAMILLES_DU_FRANCAIS.filter((id) => plis.includes(`famille:${id}`));
+  if (!anciennes.length) return plis;
+  const suite = [...plis.filter((c) => !anciennes.includes(c.slice("famille:".length))), ...anciennes.map((id) => `famille:francais:${id}`)];
+  if (anciennes.length === ANCIENNES_FAMILLES_DU_FRANCAIS.length) suite.push("famille:francais");
+  return [...new Set(suite)];
+};
 
 const ONGLET_MEMORISE = "fabriquer:onglet";
 
@@ -338,7 +358,7 @@ export default function Jeux() {
             <Empty icone="🔍" titre="Aucun atelier" sous="Essayez « loto », « problèmes », « sons », « rituel »…" />
           )
         ) : FAMILLES_DE_SUPPORTS.map((f) => {
-          // Les mathématiques, par domaine du programme ; chaque domaine se plie aussi. Dans chacun, les ateliers vont par moment.
+          // Le français en trois parties, les mathématiques par domaine du programme ; chaque partie se plie aussi. Dans chacune, les ateliers vont par moment.
           const parties = partiesDeLaFamille(f);
           return (
             <section key={f.id} className="famille-catalogue">

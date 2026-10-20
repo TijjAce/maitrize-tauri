@@ -368,7 +368,7 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(supports.some((o) => o.sequence)).toBe(false);
     // La famille des dossiers n'a plus rien à montrer parmi les supports ; les autres gardent leurs ateliers.
     expect(FAMILLES_DE_SUPPORTS.map((f) => f.id)).not.toContain("sequences");
-    expect(FAMILLES_DE_SUPPORTS.find((f) => f.id === "langage")?.outils.map((o) => o.id)).not.toContain("vilainPetitCanard");
+    expect(FAMILLES_DE_SUPPORTS.find((f) => f.id === "francais")?.outils.map((o) => o.id)).not.toContain("vilainPetitCanard");
     // Chaque carte est d'un côté, et d'un seul.
     expect(supports.length + SEQUENCES_TOUTES_FAITES.length).toBe(FAMILLES.flatMap((f) => f.outils).length);
   });

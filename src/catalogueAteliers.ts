@@ -68,9 +68,10 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     ],
   },
   {
-    id: "langage", libelle: "🗣 Langage",
-    aide: "Vocabulaire et désignation à partir des pictogrammes.",
+    id: "francais", libelle: "📖 Français",
+    aide: "Le langage, les sons et la lecture, comprendre et écrire, la grammaire, l'oral, les dictées.",
     outils: [
+      // Langage
       { id: "jeux", nom: "Loto", icone: "🎲", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Des planches et leurs cartes à découper : les pictogrammes d'un thème, ou vos propres images." },
       { id: "memory", nom: "Jeu de mémoire", icone: "🃏", pictos: true, cycles: "Cycles 1 et 2",
@@ -87,20 +88,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Les mots collectés en grand pour le tableau, en petit par enveloppe, et la corolle lexicale." },
       { id: "ombres", nom: "Jeu des ombres", icone: "👤", cycles: "Cycles 1 et 2",
         quoi: "Chaque image retrouve sa silhouette : à poser dessus, ou à relier. Pictogrammes ou vos propres images." },
-    ],
-  },
-  {
-    id: "observation", libelle: "👁 Observation",
-    aide: "Observer, comparer, retrouver : l'attention visuelle qu'on exerce avant de lire, et pendant.",
-    outils: [
-      { id: "oeilDeLynx", nom: "Cherche et trouve", icone: "👁", pictos: true, cycles: "Cycles 1 à 3",
-        quoi: "Des modèles à retrouver dans une image pleine de dessins, et à entourer : cinq niveaux — tailles, sens, sosies, noir et blanc —, la version « combien de fois ? », et le corrigé." },
-    ],
-  },
-  {
-    id: "sons", libelle: "🔤 Sons et lecture",
-    aide: "Ce que les guides de lecture font manipuler : syllabes, sons, lettres, fluence.",
-    outils: [
+      // Sons et lecture
       { id: "sons", nom: "Fiches de sons", icone: "🔤", cycles: "Cycle 2",
         quoi: "Syllabes, mots à lire, à entourer, à compléter — une fiche par graphème." },
       { id: "lotoSyllabes", nom: "Loto des syllabes", icone: "🎯", pictos: true, cycles: "Cycles 1 et 2",
@@ -125,12 +113,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "La fiche d'un son en gestes Borel-Maisonny : colorier le bon dessin, relier au bon mot, ou écrire le mot." },
       { id: "syllabeManquante", nom: "La syllabe qui manque", icone: "🧩", pictos: true, cycles: "Cycle 2",
         quoi: "Sous chaque dessin, le mot avec un trou : écrire ma, mi ou mu. Puis des mots à écrire en entier, sous l'en-tête du son et de son geste." },
-    ],
-  },
-  {
-    id: "ecrit", libelle: "✍️ Lecture et écriture",
-    aide: "Comprendre, écrire, la grammaire, l'oral, les dictées ; des mots et des phrases à manipuler ; la cursive.",
-    outils: [
+      // Lecture et écriture
       { id: "comprehension", nom: "Comprendre un texte", icone: "📖", cycles: "Cycle 2",
         quoi: "Des récits, documentaires, règles, poèmes et scènes de théâtre à la longueur de chaque classe, lignes numérotées : questions à justifier, résumé, moments du récit, reprises, inférences, émotions, mots inconnus, types de textes, écoute — et le corrigé." },
       { id: "lecteur", nom: "Carnet de lecteur", icone: "📚", cycles: "Cycle 2",
@@ -153,6 +136,14 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Les mots de la semaine cachés dans une grille de lettres, la liste dessous, le corrigé à la suite." },
       { id: "cursive", nom: "Écriture cursive", icone: "🖋", cycles: "Cycle 2",
         quoi: "Des modèles en cursive et des lignes à réglure de 3, 2,5 ou 2 mm : la lettre du jour, des syllabes et des mots, ou une phrase en script à copier." },
+    ],
+  },
+  {
+    id: "observation", libelle: "👁 Observation",
+    aide: "Observer, comparer, retrouver : l'attention visuelle qu'on exerce avant de lire, et pendant.",
+    outils: [
+      { id: "oeilDeLynx", nom: "Cherche et trouve", icone: "👁", pictos: true, cycles: "Cycles 1 à 3",
+        quoi: "Des modèles à retrouver dans une image pleine de dessins, et à entourer : cinq niveaux — tailles, sens, sosies, noir et blanc —, la version « combien de fois ? », et le corrigé." },
     ],
   },
   {
@@ -290,11 +281,26 @@ export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[]
   { id: "donnees", nom: "Données", outils: ["donnees"] },
 ];
 
-/** Les parties d'une famille, quand elle en a : les domaines des mathématiques ; ce qu'aucun ne range va dans « Autres ». */
+/**
+ * Le français, en trois parties : les trois familles d'avant, rassemblées sous
+ * « Français » comme les domaines sous « Mathématiques » (demande de
+ * l'enseignant, octobre 2026).
+ */
+export const PARTIES_DU_FRANCAIS: { id: string; nom: string; outils: Onglet[] }[] = [
+  { id: "langage", nom: "Langage", outils: ["jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres"] },
+  { id: "sons", nom: "Sons et lecture", outils: ["sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante"] },
+  { id: "ecrit", nom: "Lecture et écriture", outils: ["comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive"] },
+];
+
+/** Les familles qui se découpent, et leurs parties. */
+const PARTIES: Record<string, { id: string; nom: string; outils: Onglet[] }[]> = { francais: PARTIES_DU_FRANCAIS, maths: DOMAINES_DES_MATHS };
+
+/** Les parties d'une famille, quand elle en a : celles du français, les domaines des mathématiques ; ce qu'aucune ne range va dans « Autres ». */
 export function partiesDeLaFamille(f: { id: string; outils: Outil[] }): { id: string; nom: string; outils: Outil[] }[] | null {
-  if (f.id !== "maths") return null;
-  const parties = DOMAINES_DES_MATHS.map((d) => ({ id: d.id, nom: d.nom, outils: d.outils.map((id) => f.outils.find((o) => o.id === id)).filter((o): o is Outil => !!o) }));
-  const ranges = new Set(DOMAINES_DES_MATHS.flatMap((d) => d.outils as string[]));
+  const domaines = PARTIES[f.id];
+  if (!domaines) return null;
+  const parties = domaines.map((d) => ({ id: d.id, nom: d.nom, outils: d.outils.map((id) => f.outils.find((o) => o.id === id)).filter((o): o is Outil => !!o) }));
+  const ranges = new Set(domaines.flatMap((d) => d.outils as string[]));
   const autres = f.outils.filter((o) => !ranges.has(o.id));
   return [...parties, { id: "autres", nom: "Autres", outils: autres }].filter((p) => p.outils.length > 0);
 }
