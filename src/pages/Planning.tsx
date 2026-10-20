@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
-import { isoJour, lundiDe, jourPlanningInitial, anneeDe, toMin, minToHHMM, plusJours } from "../dates";
+import { isoJour, lundiDe, jourPlanningInitial, anneeDe, toMin, minToHHMM, plusJours, moisVoisin } from "../dates";
 import { api, Creneau, Seance, Sequence, Eleve, Jeu, MATIERES, couleurPourMatiere, teinteCreneau, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance, texteErreur, type MaterielItem, type ObservationEleve } from "../api";
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
@@ -87,12 +87,14 @@ export default function Planning() {
   const [ancre, setAncre] = React.useState(jourPlanningInitial);
 
   // Un résultat de recherche ouvre le cahier journal au bon jour : la date
-  // n'est pas dans l'URL, elle arrive donc par un signal.
+  // n'est pas dans l'URL, elle arrive donc par un signal. Tous ceux qui
+  // l'envoient (« Voir » d'une dictée, ⌘K, l'accueil, une séance) veulent le
+  // journal de ce jour : le planning déjà ouvert en Semaine ou en Mois passe en Jour.
   React.useEffect(() => {
     const aller = (e: Event) => {
       const iso = String((e as CustomEvent).detail ?? "").slice(0, 10);
       const d = new Date(`${iso}T12:00:00`);
-      if (!Number.isNaN(d.getTime())) setAncre(d);
+      if (!Number.isNaN(d.getTime())) { setAncre(d); setVue("jour"); }
     };
     window.addEventListener(EVT_JOUR, aller);
     return () => window.removeEventListener(EVT_JOUR, aller);
@@ -193,11 +195,8 @@ export default function Planning() {
   const feries = React.useMemo(() => ({ ...joursFeriesFR(ancre.getFullYear()), ...joursFeriesFR(ancre.getFullYear() + 1) }), [ancre]);
 
   const decaler = (n: number) => {
-    const d = new Date(ancre);
-    if (vue === "jour") d.setDate(d.getDate() + n);
-    else if (vue === "semaine") d.setDate(d.getDate() + n * 7);
-    else d.setMonth(d.getMonth() + n);
-    setAncre(d);
+    if (vue === "mois") { setAncre(moisVoisin(ancre, n)); return; }
+    setAncre(plusJours(ancre, vue === "jour" ? n : n * 7));
   };
 
   // Remplit les créneaux libres à partir de l'emploi du temps de l'année

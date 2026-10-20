@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  isoJour, lundiDe, plusJours, jourPlanningInitial, anneeDe,
+  isoJour, lundiDe, plusJours, moisVoisin, jourPlanningInitial, anneeDe,
   toMin, minToHHMM, hhmm,
 } from "./dates";
 
@@ -54,6 +54,25 @@ describe("plusJours", () => {
 
   it("gère le 29 février d'une année bissextile", () => {
     expect(isoJour(plusJours(new Date(2028, 1, 28), 1))).toBe("2028-02-29");
+  });
+});
+
+describe("moisVoisin", () => {
+  it("ne saute pas de mois les 29, 30 et 31", () => {
+    expect(isoJour(moisVoisin(new Date(2027, 0, 31, 12), 1))).toBe("2027-02-28");
+    expect(isoJour(moisVoisin(new Date(2028, 0, 31, 12), 1))).toBe("2028-02-29");
+    expect(isoJour(moisVoisin(new Date(2026, 9, 31, 12), 1))).toBe("2026-11-30");
+  });
+
+  it("recule bien d'un mois, même depuis un 31", () => {
+    expect(isoJour(moisVoisin(new Date(2026, 9, 31, 12), -1))).toBe("2026-09-30");
+    expect(isoJour(moisVoisin(new Date(2027, 2, 31, 12), -1))).toBe("2027-02-28");
+  });
+
+  it("franchit l'année et garde le jour et l'heure", () => {
+    const d = moisVoisin(new Date(2026, 11, 15, 12), 1);
+    expect(isoJour(d)).toBe("2027-01-15");
+    expect(d.getHours()).toBe(12);
   });
 });
 
