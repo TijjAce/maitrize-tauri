@@ -184,7 +184,7 @@ pub fn fichiers_dir() -> PathBuf {
     dir
 }
 
-/// La corbeille des fichiers joints : un fichier effacé y passe trois mois.
+/// La corbeille des fichiers joints : un fichier effacé y passe un an.
 ///
 /// Revenir à un état passé de l'application doit retrouver les documents de
 /// ce moment-là : effacé pour de bon, un PDF ou une photo manquait à jamais
@@ -195,7 +195,10 @@ pub fn corbeille_dir() -> PathBuf {
 }
 
 /// Combien de jours un fichier reste dans la corbeille.
-const JOURS_CORBEILLE: i64 = 90;
+///
+/// Autant que le plus ancien état auquel on peut revenir (voir
+/// instantanes.rs) : revenir à un état, c'est retrouver ses documents aussi.
+const JOURS_CORBEILLE: i64 = 366;
 
 /// Met un fichier joint à la corbeille ; s'il ne peut y aller, il est effacé
 /// comme avant. Vrai si le fichier n'est plus dans « Fichiers ».
@@ -226,7 +229,7 @@ pub(crate) fn ramener_dans(conn: &Connection, nom: &str, corbeille: &std::path::
     true
 }
 
-/// Vide la corbeille de ce qui y est depuis plus de trois mois, d'après la
+/// Vide la corbeille de ce qui y est depuis plus d'un an, d'après la
 /// date d'effacement notée pour la synchronisation.
 pub fn purger_corbeille(conn: &Connection) {
     let Ok(entrees) = std::fs::read_dir(corbeille_dir()) else { return };
@@ -305,15 +308,12 @@ pub(crate) fn copie_avant_changement_de_version(conn: &Connection, version: &str
 }
 
 /**
- * Le ménage d'après le démarrage : replier le journal, rendre la place, copier.
+ * Le ménage d'après le démarrage : replier le journal, rendre la place, vider
+ * ce que la corbeille garde depuis trop longtemps.
  *
  * Rien de tout cela n'a sa place avant l'ouverture de la fenêtre. La copie
- * quotidienne recopie la base entière — vingt-quatre mégaoctets chez son
- * auteur —, et l'on attendait devant un écran vide une fois par jour.
- *
- * L'ordre compte : on replie d'abord ce qui n'est pas encore parti, ce qui
- * libère l'essentiel du fichier ; on rend la place au disque ; et l'on copie
- * une base déjà allégée.
+ * de chaque jour, qui se faisait ici, est devenue un instantané pris à part
+ * (voir instantanes.rs).
  */
 pub fn menage_apres_demarrage(conn: &Connection) {
     let envoye = conn
@@ -324,7 +324,6 @@ pub fn menage_apres_demarrage(conn: &Connection) {
     if crate::journal::compacter(conn, envoye) > 0 {
         tasser_si_besoin(conn);
     }
-    sauvegarde_auto(conn);
     purger_corbeille(conn);
 }
 
@@ -364,32 +363,9 @@ pub fn identifiant_machine(conn: &Connection) -> String {
     id
 }
 
-/// Nombre de copies automatiques conservées (une par jour d'utilisation).
+/// Copies de chaque jour gardées : celles d'avant les instantanés, le temps
+/// qu'elles deviennent des instantanés (voir instantanes.rs).
 const SAUVEGARDES_GARDEES: usize = 7;
-
-/// Copie quotidienne de la base, au lancement.
-///
-/// L'export manuel des Réglages ne protège que si on y pense ; cette copie
-/// tourne toute seule et garde les sept derniers jours d'utilisation.
-/// `VACUUM INTO` intègre le WAL et produit un fichier autonome, ouvrable tel
-/// quel — pas un instantané à moitié écrit.
-pub fn sauvegarde_auto(conn: &Connection) {
-    let dir = sauvegardes_dir();
-    let jour = jour_iso();
-    let cible = dir.join(format!("maitrize-{jour}.sqlite3"));
-    // Une seule copie par jour : relancer l'app dix fois ne recopie pas dix fois.
-    if !cible.exists() {
-        if let Err(err) = conn.execute("VACUUM INTO ?1", [cible.to_string_lossy().as_ref()]) {
-            eprintln!("sauvegarde automatique impossible : {err}");
-            return;
-        }
-    }
-    conn.execute(
-        "INSERT OR REPLACE INTO settings (cle, valeur) VALUES ('derniereSauvegardeAuto', ?1)",
-        [&jour],
-    ).ok();
-    purger_sauvegardes(&dir);
-}
 
 /// Copie de la base avant une opération qui la remplace (restauration).
 ///
@@ -1442,51 +1418,6 @@ mod tests_verrou {
         }));
         assert!(db.lock().is_autocommit());
         assert_eq!(lignes(&db), 0);
-    }
-}
-
-#[cfg(test)]
-mod tests_sauvegarde {
-    use super::*;
-
-    /// La copie du jour doit être créée, réutilisée sans doublon, et la
-    /// rotation ne doit garder que les plus récentes.
-    #[test]
-    fn copie_quotidienne_et_rotation() {
-        let dir = std::env::temp_dir().join(format!("maitrize-test-{}", std::process::id()));
-        std::fs::remove_dir_all(&dir).ok();
-        std::env::set_var("MAITRIZE_DATA_DIR", &dir);
-
-        let conn = Connection::open(data_dir().join("maitrize.sqlite3")).unwrap();
-        migrate(&conn);
-
-        // Fausses copies anciennes, plus nombreuses que la limite.
-        let sdir = sauvegardes_dir();
-        for j in 1..=10 {
-            std::fs::write(sdir.join(format!("maitrize-2026-01-{j:02}.sqlite3")), b"x").unwrap();
-        }
-
-        sauvegarde_auto(&conn);
-        let cible = sdir.join(format!("maitrize-{}.sqlite3", jour_iso()));
-        assert!(cible.exists(), "la copie du jour n'a pas été créée");
-        let taille = std::fs::metadata(&cible).unwrap().len();
-        assert!(taille > 0, "copie vide");
-
-        let restantes = || std::fs::read_dir(&sdir).unwrap().count();
-        assert_eq!(restantes(), SAUVEGARDES_GARDEES, "la rotation n'a pas purgé");
-
-        // Deuxième lancement le même jour : pas de nouvelle copie.
-        sauvegarde_auto(&conn);
-        assert_eq!(restantes(), SAUVEGARDES_GARDEES);
-        assert_eq!(std::fs::metadata(&cible).unwrap().len(), taille);
-
-        // La date de dernière copie est enregistrée.
-        let vu: String = conn.query_row("SELECT valeur FROM settings WHERE cle='derniereSauvegardeAuto'",
-            [], |r| r.get(0)).unwrap();
-        assert_eq!(vu, jour_iso());
-
-        std::env::remove_var("MAITRIZE_DATA_DIR");
-        std::fs::remove_dir_all(&dir).ok();
     }
 }
 

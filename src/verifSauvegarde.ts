@@ -27,19 +27,27 @@ export function alerteDeLEssai(v: VerifSauvegarde): string {
   return "";
 }
 
+/** Le dernier essai qui n'a pas pu lire le stockage, sur ce poste. */
+const CLE_ECHEC = "maitrize:essai-sauvegarde-echoue";
+
 /**
  * Un essai si le dernier remonte à plus d'un mois.
  *
  * Silencieux par nature : stockage non configuré ou injoignable ne concerne
- * pas l'enseignant au milieu d'une séance.
+ * pas l'enseignant au milieu d'une séance. Un essai qui n'a pas pu lire le
+ * stockage n'était pas noté : il recommençait à chaque lancement, et chaque
+ * fois une ligne au journal d'incidents. Il attend désormais le lendemain.
  */
 export async function verifierLaSauvegarde(maintenant = new Date()): Promise<void> {
   try {
+    const echec = (() => { try { return localStorage.getItem(CLE_ECHEC) ?? ""; } catch { return ""; } })();
+    if (echec && !essaiNecessaire(echec, maintenant, 1)) return;
     const derniere = await api.sauvegardeVerifDerniere();
     if (!essaiNecessaire(derniere?.essai ?? "", maintenant)) return;
     const alerte = alerteDeLEssai(await api.sauvegardeVerifier());
     if (alerte) toast(alerte, { icone: "⚠️", duree: 30000 });
   } catch {
-    /* pas de stockage, ou injoignable : on réessaiera */
+    /* pas de stockage, ou injoignable : on réessaiera demain */
+    try { localStorage.setItem(CLE_ECHEC, maintenant.toISOString()); } catch { /* tant pis */ }
   }
 }

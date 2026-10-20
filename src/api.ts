@@ -448,8 +448,23 @@ export interface InfoCopie {
 /** Un fichier de la copie, tel qu'envoyé au backend. */
 export interface EntreeCopie { chemin: string; empreinte: string; fichier?: string; contenu?: string }
 
-/** Copie quotidienne automatique de la base. */
-export interface SauvegardeAuto { nom: string; jour: string; octets: number }
+/** Un état passé de l'application (voir retour.rs) : un instantané, ou une copie d'avant une opération. */
+export interface EtatPasse {
+  nom: string;
+  /** « AAAA-MM-JJ » ou « AAAA-MM-JJTHH:MM:SS ». */
+  date: string;
+  /** « auto » (pris tout seul), « jour », « avant-v1.6.33 », « avant-retour », « avant-import »… */
+  motif: string;
+  octets: number;
+}
+/** Ce qui changerait dans une table en revenant à un état. */
+export interface Ecart {
+  table: string;
+  revenues: number; parties: number; changees: number;
+  exemplesRevenues: string[]; exemplesParties: string[]; exemplesChangees: string[];
+}
+/** Ce qu'un retour a fait ; revenir à `copie` l'annule. */
+export interface BilanRetour { copie: string; ecarts: Ecart[]; fichiers: number }
 
 // ============================================================
 // FABRIQUES (valeurs par défaut)
@@ -768,8 +783,10 @@ export const api = {
   exportData: () => invoke<string>("export_data"),
   importData: (json: string) => invoke<string>("import_data", { json }),
   exporterBase: (chemin: string) => invoke<void>("exporter_base", { chemin }),
-  sauvegardesAutoList: () => invoke<SauvegardeAuto[]>("sauvegardes_auto_list"),
-  sauvegardesAutoOuvrir: () => invoke<void>("sauvegardes_auto_ouvrir"),
+  // Revenir en arrière
+  retourEtats: () => invoke<EtatPasse[]>("retour_etats"),
+  retourEcarts: (nom: string) => invoke<Ecart[]>("retour_ecarts", { nom }),
+  retourRevenir: (nom: string) => invoke<BilanRetour>("retour_revenir", { nom }),
   // Copie du bureau dans un vrai dossier de l'ordinateur
   copieBureauInfo: () => invoke<InfoCopie>("copie_bureau_info"),
   copieBureauRegler: (active: boolean, emplacement?: string) =>
