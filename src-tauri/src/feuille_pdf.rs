@@ -41,7 +41,7 @@ pub const ZOOM_WEBKIT: f64 = 0.75 / 0.8;
 pub fn prete_a_imprimer(html: &str, id: &str) -> String {
     let style = format!("<style>html{{zoom:{ZOOM_WEBKIT}}}</style>");
     let script = format!(
-        r#"<script>(function(){{function pret(){{fetch("{PROTOCOLE}://localhost/{id}.pret").catch(function(){{}});}}
+        r#"<script nonce="{id}">(function(){{function pret(){{fetch("{PROTOCOLE}://localhost/{id}.pret").catch(function(){{}});}}
 function attendre(){{Promise.all([].slice.call(document.images).map(function(i){{return i.decode?i.decode().catch(function(){{}}):null;}}))
 .then(function(){{return document.fonts?document.fonts.ready:null;}}).then(pret,pret);}}
 if(document.readyState==="complete")attendre();else window.addEventListener("load",attendre);}})();</script>"#
@@ -54,6 +54,16 @@ if(document.readyState==="complete")attendre();else window.addEventListener("loa
         Some(i) => format!("{}{script}{}", &avec_style[..i], &avec_style[i..]),
         None => format!("{avec_style}{script}"),
     }
+}
+
+/// La politique de sécurité d'une feuille : son seul script est celui qui
+/// prévient qu'elle est prête (il porte l'identifiant de la feuille, tiré au
+/// hasard à l'impression) ; tout autre script, toute requête ailleurs que vers
+/// le protocole, tout formulaire, tout cadre est refusé. Une balise glissée
+/// dans la feuille ne s'y exécute pas.
+pub fn politique_de_securite(id: &str) -> String {
+    format!("default-src 'none'; script-src 'nonce-{id}'; style-src 'unsafe-inline'; img-src data: blob: https:; \
+             font-src data:; connect-src 'self' {PROTOCOLE}:; base-uri 'none'; form-action 'none'; frame-src 'none'; object-src 'none'")
 }
 
 /// Répond au protocole `feuille://localhost/<id>.html` : la feuille, ou rien ;
@@ -76,6 +86,7 @@ pub fn servir<R: Runtime>(ctx: tauri::UriSchemeContext<'_, R>, requete: tauri::h
         Some(html) => tauri::http::Response::builder()
             .status(200)
             .header("Content-Type", "text/html; charset=utf-8")
+            .header("Content-Security-Policy", politique_de_securite(&id))
             .body(html.into_bytes())
             .unwrap_or_else(|_| tauri::http::Response::new(Vec::new())),
         None => tauri::http::Response::builder().status(404).body(Vec::new()).unwrap_or_else(|_| tauri::http::Response::new(Vec::new())),
@@ -259,14 +270,25 @@ mod tests {
     fn la_feuille_dit_qu_elle_est_prete_une_fois_ses_images_decodees() {
         let html = prete_a_imprimer("<html><head><title>t</title></head><body><img src=\"a.png\"></body></html>", "abc");
         // Le script se pose à la fin du corps, avant la balise fermante.
-        assert!(html.contains("<img src=\"a.png\"><script>"));
+        assert!(html.contains("<img src=\"a.png\"><script nonce=\"abc\">"));
         assert!(html.ends_with("</script></body></html>"));
         assert!(html.contains("feuille://localhost/abc.pret"));
         assert!(html.contains("i.decode()"));
         // Sans en-tête ni corps, le style ouvre la feuille et le script la ferme.
         let nue = prete_a_imprimer("<p>x</p>", "z");
         assert!(nue.starts_with("<style>html{zoom:"));
-        assert!(nue.contains("<p>x</p><script>"));
+        assert!(nue.contains("<p>x</p><script nonce=\"z\">"));
+    }
+
+    #[test]
+    fn seul_le_script_de_la_feuille_s_execute() {
+        let politique = politique_de_securite("abc");
+        let directive = |nom: &str| politique.split(';').map(str::trim).find(|d| d.starts_with(nom)).unwrap_or_default().to_string();
+        assert_eq!(directive("default-src"), "default-src 'none'");
+        // Ni script en ligne, ni attribut onerror=, ni eval : le seul script porte l'identifiant de la feuille.
+        assert_eq!(directive("script-src"), "script-src 'nonce-abc'");
+        // Aucune requête ailleurs que vers le protocole des feuilles.
+        assert_eq!(directive("connect-src"), "connect-src 'self' feuille:");
     }
 
     #[test]
