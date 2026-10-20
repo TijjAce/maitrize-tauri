@@ -601,7 +601,8 @@ fn retirer_des_programmations(c: &rusqlite::Connection, id: &str) -> R<()> {
 /// ferait revenir — il manque ici, il est là-bas.
 pub(crate) fn effacer_fichier_joint(c: &rusqlite::Connection, nom: &str) {
     let Ok(chemin) = fichier_de_l_application(nom) else { return };
-    std::fs::remove_file(chemin).ok();
+    // Par la corbeille : revenir à un état passé le retrouvera.
+    crate::db::mettre_a_la_corbeille(&chemin);
     c.execute("INSERT OR REPLACE INTO fichiers_effaces (nom, date, publie) VALUES (?1, ?2, 0)", params![nom, now_iso()]).ok();
     c.execute("DELETE FROM fichiers_rendus WHERE nom=?1", params![nom]).ok();
 }
