@@ -424,7 +424,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
   // Le journal se zoome au pincement, comme la grille du planning à côté ; retenu par ordinateur.
   const { zoom, majZoom, cadre } = useZoomPince("journal-zoom");
 
-  const aujourdhui = new Date().toISOString().slice(0, 10);
+  const aujourdhui = isoJour(new Date());
   const passe = dateIso < aujourdhui;
 
   if (!duJour.length) {

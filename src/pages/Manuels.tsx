@@ -20,6 +20,7 @@ import {
   poidsLisible, retirerPage,
   type ExerciceManuel, type FicheAdaptee, type Manuel, type OptionsReadaptation, type PageManuel, type ResumeManuel, type Zone,
 } from "../manuels";
+import { isoJour } from "../dates";
 
 // ── Adapter une fiche › Manuels ───────────────────────────────────────────
 //
@@ -31,7 +32,7 @@ import {
 // séquences qui la visent. Le manuel se range aussi en PDF, sur le bureau ou
 // là où l'on veut.
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => isoJour(new Date());
 
 /** Les octets d'un fichier de Fichiers/, relus. */
 async function octetsDuFichierStocke(nom: string): Promise<Uint8Array> {

@@ -22,6 +22,7 @@
 
 import type { PictoArasaac } from "./api";
 import { infoBanque } from "./pictosAppoint";
+import { isoJour } from "./dates";
 
 export type OrigineMonPicto = "ia" | "sclera" | "bajard" | "photo" | "makaton";
 
@@ -213,7 +214,7 @@ export async function garderMonPicto(o: { mot: string; base64: string; origine: 
   const precision = o.precision?.trim() ?? "";
   const p: MonPicto = {
     id: nouvelIdMonPicto(o.origine), mot, fichier: await api.fichierSave(`picto.${o.ext ?? "png"}`, o.base64), origine: o.origine,
-    date: new Date().toISOString().slice(0, 10), ...(precision ? { precision } : {}),
+    date: isoJour(new Date()), ...(precision ? { precision } : {}),
   };
   await api.settingSet(PREFIXE_MES_PICTOS + p.id, ficheEcrite(p));
   annoncer();

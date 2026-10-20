@@ -21,6 +21,7 @@ import {
   CLE_MODE, CLE_RELECTURE, MODES, estUnePanneDeReseau, lireMode, rangeEnLigne, relitEnLigne,
   type ModeIA,
 } from "../modeReunion";
+import { isoJour } from "../dates";
 
 // ── Réunions ──────────────────────────────────────────────────────────────
 //
@@ -39,7 +40,7 @@ import {
 // verbal. C'est l'enseignant qui signe ce qui sort d'ici.
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
-const aujourdhui = () => new Date().toISOString().slice(0, 10);
+const aujourdhui = () => isoJour(new Date());
 
 /** L'accord donné une fois, gardé sur ce poste : l'écoute part seule ensuite. */
 const CLE_CONSENTEMENT = "reunionsConsentement";
