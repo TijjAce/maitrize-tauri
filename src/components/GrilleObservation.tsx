@@ -25,38 +25,62 @@ export function GrilleObservation({ eleve }: { eleve: Eleve | null }) {
   const [fiches, setFiches] = React.useState<ObservationEleve[] | null>(null);
   const [occupe, setOccupe] = React.useState("");
   const minuteurs = React.useRef<Record<string, number>>({});
+  // Les fiches écrites mais pas encore enregistrées, dans leur dernier état.
+  const enAttente = React.useRef<Record<string, ObservationEleve>>({});
 
-  const charger = React.useCallback(() => {
-    if (!eleve) { setFiches([]); return; }
+  /** Enregistre tout de suite ce qu'une fiche attendait encore. */
+  const enregistrer = (id: string) => {
+    window.clearTimeout(minuteurs.current[id]);
+    const o = enAttente.current[id];
+    if (!o) return;
+    delete enAttente.current[id];
+    api.observationSave(o).catch((e) => toast("Non enregistré : " + texteErreur(e), { icone: "⚠️" }));
+  };
+  const viderLesAttentes = () => { for (const id of Object.keys(enAttente.current)) enregistrer(id); };
+
+  // Les fiches de l'élève, relues quand l'élève change — pas quand sa fiche
+  // est relue à l'identique (une synchronisation relisait les fiches par-dessus
+  // ce qu'on était en train d'écrire). Changer d'élève ou quitter l'écran
+  // enregistre d'abord ce qui attendait : la dernière frappe partait avec le
+  // minuteur, sans être écrite.
+  const eleveId = eleve?.id ?? "";
+  React.useEffect(() => {
+    if (!eleveId) { setFiches([]); return; }
     setFiches(null);
-    api.observationsList(eleve.id).then(setFiches).catch((e) => {
+    let actif = true;
+    api.observationsList(eleveId).then((l) => { if (actif) setFiches(l); }).catch((e) => {
+      if (!actif) return;
       toast("Observations illisibles : " + texteErreur(e), { icone: "⚠️" });
       setFiches([]);
     });
-  }, [eleve]);
-  React.useEffect(charger, [charger]);
+    return () => { actif = false; viderLesAttentes(); };
+  }, [eleveId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Une case modifiée s'enregistre seule, peu après la frappe. */
   const modifier = (o: ObservationEleve, champ: Colonne, valeur: string) => {
-    const suite = { ...o, [champ]: valeur, dateMaj: new Date().toISOString() };
-    setFiches((l) => (l ?? []).map((x) => (x.id === o.id ? suite : x)));
+    setFiches((l) => (l ?? []).map((x) => {
+      if (x.id !== o.id) return x;
+      const suite = { ...x, [champ]: valeur, dateMaj: new Date().toISOString() };
+      enAttente.current[o.id] = suite;
+      return suite;
+    }));
     window.clearTimeout(minuteurs.current[o.id]);
-    minuteurs.current[o.id] = window.setTimeout(() => {
-      api.observationSave(suite).catch((e) => toast("Non enregistré : " + texteErreur(e), { icone: "⚠️" }));
-    }, 700);
+    minuteurs.current[o.id] = window.setTimeout(() => enregistrer(o.id), 700);
   };
 
-  // Ce qui attendait encore part en quittant l'écran.
-  React.useEffect(() => () => {
-    for (const t of Object.values(minuteurs.current)) window.clearTimeout(t);
-  }, []);
+  const fichesRef = React.useRef(fiches);
+  fichesRef.current = fiches;
 
   const ranger = async (o: ObservationEleve) => {
     setOccupe(o.id);
     try {
       const propose = await repartir(o, eleve?.nom ?? "");
+      // La fiche telle qu'elle est maintenant, et non telle qu'elle était au
+      // clic : on a pu y écrire, ou changer d'élève, pendant que l'IA rangeait.
+      const actuelle = enAttente.current[o.id] ?? fichesRef.current?.find((x) => x.id === o.id)
+        ?? (await api.observationsList(o.eleveId)).find((x) => x.id === o.id) ?? o;
       // Ce qui est déjà écrit à la main n'est pas écrasé : l'IA complète.
-      const suite = { ...o, dateMaj: new Date().toISOString() };
+      const suite = { ...actuelle, dateMaj: new Date().toISOString() };
       let posees = 0;
       for (const [cle, valeur] of Object.entries(propose) as [Colonne, string][]) {
         if ((suite[cle] ?? "").trim() || !valeur.trim()) continue;
@@ -64,6 +88,9 @@ export function GrilleObservation({ eleve }: { eleve: Eleve | null }) {
         posees++;
       }
       if (!posees) { toast("Rien à ajouter : les colonnes sont déjà écrites.", { icone: "ℹ️" }); return; }
+      // La fiche rangée comprend ce qui attendait : un seul enregistrement.
+      window.clearTimeout(minuteurs.current[o.id]);
+      delete enAttente.current[o.id];
       await api.observationSave(suite);
       setFiches((l) => (l ?? []).map((x) => (x.id === o.id ? suite : x)));
       toast(`${posees} colonne(s) proposée(s) — à relire.`, { icone: "✨", duree: 6000 });
