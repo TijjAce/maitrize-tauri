@@ -43,6 +43,22 @@ const ONGLETS = [
 ] as const;
 type Onglet = typeof ONGLETS[number][0];
 
+/** L'allure d'un style d'interface, en petit : sur son fond, une carte, deux lignes de texte et un bouton. */
+function ApercuStyle({ apercu: a }: { apercu: (typeof STYLES)[number]["apercu"] }) {
+  const ligne = (largeur: number): React.CSSProperties => ({ height: 3, width: largeur, borderRadius: 2, background: "var(--text-2)", opacity: .55 });
+  return (
+    <span aria-hidden="true" style={{ flex: "none", width: 74, height: 50, borderRadius: 8, padding: 7, background: a.fond, border: "1px solid var(--border)",
+      display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <span style={{ width: 52, height: 32, borderRadius: a.r, border: a.bord, boxShadow: a.ombre, background: a.carte,
+        display: "flex", flexDirection: "column", justifyContent: "center", gap: 4, padding: "0 6px",
+        backdropFilter: a.carte.includes("transparent") ? "blur(4px)" : undefined }}>
+        <span style={ligne(30)} /><span style={ligne(22)} />
+        <span style={{ alignSelf: "flex-end", width: 16, height: 6, borderRadius: Math.min(a.r, 3), background: "var(--accent)" }} />
+      </span>
+    </span>
+  );
+}
+
 export default function Reglages() {
   const [onglet, setOnglet] = React.useState<Onglet>("general");
   // L'annonce d'une dictée arrivée mène droit à l'onglet du téléphone.
@@ -280,11 +296,14 @@ export default function Reglages() {
               const on = (s.styleInterface || "doux") === st.id;
               return (
                 <button key={st.id} onClick={() => set("styleInterface", st.id)}
-                  style={{ textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer",
+                  style={{ display: "flex", alignItems: "center", gap: 12, textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer",
                     border: on ? "2px solid var(--accent)" : "1px solid var(--border)",
                     background: on ? "var(--accent-soft)" : "var(--bg)", color: "var(--text)" }}>
-                  <div style={{ fontWeight: 700, fontSize: 13.5 }}>{st.label}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-2)" }}>{st.desc}</div>
+                  <ApercuStyle apercu={st.apercu} />
+                  <span>
+                    <span style={{ display: "block", fontWeight: 700, fontSize: 13.5 }}>{st.label}</span>
+                    <span style={{ display: "block", fontSize: 11.5, color: "var(--text-2)" }}>{st.desc}</span>
+                  </span>
                 </button>
               );
             })}

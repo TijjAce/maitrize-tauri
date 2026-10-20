@@ -20,11 +20,21 @@ export const ACCENTS = [
   { id: "gray", hex: "#6b7280" },
 ];
 
+/**
+ * Les styles d'interface, et de quoi dessiner leur aperçu dans les réglages :
+ * l'arrondi, le bord, l'ombre, le fond derrière la carte et la carte.
+ */
 export const STYLES = [
-  { id: "vitre", label: "Vitré", desc: "Matériaux translucides et flous" },
-  { id: "epure", label: "Épuré", desc: "Fonds opaques, sans ombre" },
-  { id: "doux", label: "Doux", desc: "Coins très arrondis et ombres" },
-  { id: "contraste", label: "Contrasté", desc: "Coins nets et bordures marquées" },
+  { id: "vitre", label: "Vitré", desc: "Verre dépoli sur un fond coloré", apercu: {
+    r: 8, bord: "1px solid color-mix(in srgb, var(--panel) 55%, #fff 45%)", ombre: "0 4px 12px rgba(20, 25, 40, .14)",
+    fond: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 40%, var(--panel)), color-mix(in srgb, #06b6d4 34%, var(--panel)) 55%, color-mix(in srgb, #f472b6 34%, var(--panel)))",
+    carte: "color-mix(in srgb, var(--panel) 52%, transparent)" } },
+  { id: "epure", label: "Épuré", desc: "À plat : filets fins, aucune ombre", apercu: {
+    r: 3, bord: "1px solid var(--border)", ombre: "none", fond: "var(--panel)", carte: "var(--panel)" } },
+  { id: "doux", label: "Doux", desc: "Coins très arrondis, ombres légères", apercu: {
+    r: 10, bord: "1px solid transparent", ombre: "0 3px 10px rgba(20, 25, 40, .16)", fond: "var(--panel-2)", carte: "var(--panel)" } },
+  { id: "contraste", label: "Contrasté", desc: "Angles nets, bordures épaisses, texte appuyé", apercu: {
+    r: 1, bord: "2px solid var(--text)", ombre: "none", fond: "var(--panel)", carte: "var(--panel)" } },
 ];
 
 /**
@@ -70,8 +80,8 @@ export function applyTheme(s: Record<string, string>) {
   if (mode === "foret") mode = "foret-nuit";
   root.setAttribute("data-theme", mode);
 
-  const style = s.styleInterface || "";
-  if (style) root.setAttribute("data-style", style); else root.removeAttribute("data-style");
+  // « Doux » quand rien n'est choisi : c'est celui que les réglages montrent comme choisi.
+  root.setAttribute("data-style", s.styleInterface || "doux");
 
   const accent = ACCENTS.find((a) => a.id === (s.accent || "indigo"))?.hex || "#6366f1";
   root.style.setProperty("--accent", accent);
