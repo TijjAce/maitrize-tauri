@@ -5,6 +5,7 @@ import { toast } from "../components/Toaster";
 import { printHTML, escapeHtml } from "../print";
 import { DISPOSITIFS, Champ } from "../data/dispositifs";
 import { PpiTab } from "./Ppi";
+import { useEleveDuDossier } from "../eleveDuDossier";
 
 // ── Dispositifs d'accompagnement ──────────────────────────────────────────
 // Un seul écran pilote tous les plans (PPS, PAP, PAI, PPRE) à partir des
@@ -17,12 +18,13 @@ type Valeurs = Record<string, any>;
 
 const todayFr = () => new Date().toLocaleDateString("fr-FR");
 
-export function DispositifsTab() {
+/** `dispositif` : celui qu'ouvre une pièce du dossier (« ppi »…), sinon le PPS. */
+export function DispositifsTab({ dispositif }: { dispositif?: string } = {}) {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   // Dossiers déjà ouverts, tous élèves confondus.
   const { data: documents, reload: rechargerDocs } = useAsync(() => api.documentsEleveList(), []);
-  const [eleveId, setEleveId] = React.useState("");
-  const [dispoId, setDispoId] = React.useState("pps");
+  const [eleveId, setEleveId] = useEleveDuDossier(eleves);
+  const [dispoId, setDispoId] = React.useState(dispositif ?? "pps");
   const [v, setV] = React.useState<Valeurs>({});
   const [ecole, setEcole] = React.useState("");
   // Impression : formulaire complet (à remplir à la main) ou résumé
@@ -30,7 +32,6 @@ export function DispositifsTab() {
   const [resume, setResume] = React.useState(false);
 
   React.useEffect(() => { api.settingGet("ecole").then((x) => setEcole(x ?? "")); }, []);
-  React.useEffect(() => { if (!eleveId && eleves?.[0]) setEleveId(eleves[0].id); }, [eleves, eleveId]);
 
   const dispo = DISPOSITIFS.find((d) => d.id === dispoId);
   // Un type de document par dispositif : « dispositif:pap », « dispositif:pai »…
@@ -169,7 +170,7 @@ export function DispositifsTab() {
       <VueDEnsemble eleves={eleves ?? []} documents={documents ?? []} eleveId={eleveId} dispoId={dispoId}
         ouvrir={(eid, did) => { setEleveId(eid); setDispoId(did); }} />
 
-      {dispoId === "ppi" ? <PpiTab /> : dispo && (
+      {dispoId === "ppi" ? <PpiTab eleveId={eleveId} /> : dispo && (
         <>
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 15, fontWeight: 700 }}>{dispo.nomLong}</div>

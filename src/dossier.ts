@@ -16,8 +16,10 @@ import { CommentaireEleve, DocumentEleve, Eleve, NoteEleve, Evaluation,
 export interface Piece {
   typeDoc: string;
   label: string;
-  /** Onglet où le remplir, pour y renvoyer d'un clic. */
+  /** Onglet où le remplir, pour y renvoyer d'un clic (dans Élèves, sauf `page`). */
   onglet: string;
+  /** La page de cet onglet, quand ce n'est pas Élèves. */
+  page?: string;
   rempli: boolean;
   dateMaj?: string;
 }
@@ -29,16 +31,20 @@ export interface Piece {
  * (voir classe.ts). Le PPI, le GEVA-Sco et le projet pédagogique viennent en
  * tête, ce sont eux qu'une équipe de suivi demande d'abord.
  */
-export function piecesAttendues(): { typeDoc: string; label: string; onglet: string }[] {
+export function piecesAttendues(): { typeDoc: string; label: string; onglet: string; page?: string }[] {
+  // L'onglet ouvre la pièce elle-même : la grille d'observation voulue, le PPI
+  // parmi les dispositifs (il tombait sur le PPS), la synthèse de GS.
   const communes = [
-    { typeDoc: "evaldiag:observation", label: "Observation générale", onglet: "evaluations" },
-    { typeDoc: "evaldiag:besoins", label: "Observation S4C", onglet: "evaluations" },
+    { typeDoc: "evaldiag:observation", label: "Observation générale", onglet: "evaldiag:observation" },
+    { typeDoc: "evaldiag:besoins", label: "Observation S4C", onglet: "evaldiag:besoins" },
     { typeDoc: "syntheseGS", label: "Synthèse des acquis GS", onglet: "synthese" },
   ];
+  // Le projet pédagogique est celui de la classe, pour l'année (Organisation) :
+  // aucun écran n'en écrit un par élève, la pièce restait « à remplir ».
   const imeSeules = [
-    { typeDoc: "ppi", label: "PPI", onglet: "dispositifs" },
+    { typeDoc: "ppi", label: "PPI", onglet: "ppi" },
     { typeDoc: "gevasco", label: "GEVA-Sco", onglet: "gevasco" },
-    { typeDoc: "projetPedagogique", label: "Projet pédagogique", onglet: "dispositifs" },
+    { typeDoc: "projetPedagogique", label: "Projet pédagogique", onglet: "projet", page: "organisation" },
   ];
   return [...imeSeules, ...communes];
 }
@@ -70,9 +76,11 @@ function nonVide(v: unknown): boolean {
   return true;
 }
 
-export function pieces(attendues: ReturnType<typeof piecesAttendues>, docs: DocumentEleve[]): Piece[] {
+/** `projetDeLaClasse` : le projet pédagogique de l'année (réglage `projetPedagogique:<année>`). */
+export function pieces(attendues: ReturnType<typeof piecesAttendues>, docs: DocumentEleve[], projetDeLaClasse?: string | null): Piece[] {
   const parType = new Map(docs.map((d) => [d.typeDoc, d]));
   return attendues.map((a) => {
+    if (a.typeDoc === "projetPedagogique") return { ...a, rempli: documentRempli(projetDeLaClasse ?? undefined) };
     const d = parType.get(a.typeDoc);
     return { ...a, rempli: documentRempli(d?.donnees), dateMaj: d?.dateMaj };
   });
@@ -180,9 +188,10 @@ export function construire(
   docs: DocumentEleve[],
   papiers: PapierEleve[],
   progressions: ProgressionEleve[],
+  projetDeLaClasse?: string | null,
 ): Dossier {
   const obs = observations(commentaires.filter((c) => c.eleveId === eleve.id));
-  const p = pieces(piecesAttendues(), docs.filter((d) => d.eleveId === eleve.id));
+  const p = pieces(piecesAttendues(), docs.filter((d) => d.eleveId === eleve.id), projetDeLaClasse);
   const miennes = progressions.filter((x) => x.eleveId === eleve.id);
 
   const manques: string[] = [];

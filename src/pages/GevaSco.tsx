@@ -3,6 +3,7 @@ import { api, newId, anneeScolaireActuelle } from "../api";
 import { Select, Empty, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { isoJour } from "../dates";
+import { useEleveDuDossier } from "../eleveDuDossier";
 
 // ── GEVA-Sco — aide à la préparation ──────────────────────────────────────
 // Reprend la structure du support officiel (arrêté du 6 février 2015,
@@ -257,7 +258,7 @@ const STYLE_FEUILLE = `
 
 export function GevaScoTab() {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
-  const [eleveId, setEleveId] = React.useState("");
+  const [eleveId, setEleveId] = useEleveDuDossier(eleves);
   const [d, setD] = React.useState<GevaData>(VIDE);
   const [ecole, setEcole] = React.useState("");
   const [enseignantNom, setEnseignantNom] = React.useState("");
@@ -283,7 +284,6 @@ export function GevaScoTab() {
     api.settingGet("ecole").then((v) => setEcole(v ?? ""));
     api.settingGet("enseignantNom").then((v) => setEnseignantNom(v ?? ""));
   }, []);
-  React.useEffect(() => { if (!eleveId && eleves?.[0]) setEleveId(eleves[0].id); }, [eleves, eleveId]);
 
   const eleve = eleves?.find((e) => e.id === eleveId);
 
