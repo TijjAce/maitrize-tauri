@@ -10,6 +10,28 @@ import { demanderEtatDuPlan, useSuiviSequences } from "../components/useSuiviSeq
 import { LigneSuivi } from "../components/SuiviSequence";
 import { rangerParActivite } from "../suiviSequences";
 
+/**
+ * Aujourd'hui (AAAA-MM-JJ), tenu à jour : à minuit, et quand on revient sur la
+ * fenêtre — la minuterie d'un Mac en veille peut sonner en retard.
+ */
+function useAujourdhui(): string {
+  const [jour, setJour] = React.useState(() => isoJour(new Date()));
+  React.useEffect(() => {
+    const relire = () => setJour(isoJour(new Date()));
+    const demain = new Date();
+    demain.setHours(24, 0, 1, 0);
+    const minuit = window.setTimeout(relire, demain.getTime() - Date.now());
+    window.addEventListener("focus", relire);
+    document.addEventListener("visibilitychange", relire);
+    return () => {
+      window.clearTimeout(minuit);
+      window.removeEventListener("focus", relire);
+      document.removeEventListener("visibilitychange", relire);
+    };
+  }, [jour]);
+  return jour;
+}
+
 export default function Dashboard() {
   const nav = useNavigate();
   // Va sur une page puis déclenche l'action associée (comme la palette ⌘K).
@@ -21,10 +43,12 @@ export default function Dashboard() {
   React.useEffect(() => { api.settingGet("enseignantNom").then((v) => setNom(v ?? "")); }, []);
 
   // Le jour à l'heure de l'ordinateur : la date UTC change à 2 h l'été, à 20 h aux Antilles.
-  const today = isoJour(new Date());
+  const today = useAujourdhui();
   // La semaine, pas seulement le jour : on prépare la suite autant qu'on
-  // remplit le jour même, et un lundi soir on regarde déjà mardi.
-  const lundi = React.useMemo(() => lundiDe(new Date()), []);
+  // remplit le jour même, et un lundi soir on regarde déjà mardi. Elle suit
+  // le jour : l'accueil reste monté toute la session, et l'application
+  // ouverte du vendredi au lundi montrait encore la semaine d'avant.
+  const lundi = React.useMemo(() => lundiDe(new Date(`${today}T12:00:00`)), [today]);
   // Du lundi au dimanche : un créneau posé un samedi se verrait aussi. Seuls
   // les jours qui portent quelque chose s'affichent, la carte reste courte.
   const jours = React.useMemo(
