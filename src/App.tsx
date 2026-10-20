@@ -42,6 +42,7 @@ import { raccourci, isMac } from "./api";
 import { Retour, useSuiviDesLieux, useTitreDuLieu } from "./components/Retour";
 import { getVersion } from "@tauri-apps/api/app";
 import { Toaster, toast } from "./components/Toaster";
+import { useAnnonceDuRetour } from "./components/RevenirEnArriere";
 import { ConfirmerHost } from "./components/confirmer";
 import { FinDAnneeHost } from "./components/FinDAnnee";
 import { LecteurMarkdownHost } from "./components/LecteurMarkdown";
@@ -152,6 +153,8 @@ export default function App() {
   const [version, setVersion] = React.useState("");
   // Chaque adresse visitée se note : « Revenir » y ramène.
   useSuiviDesLieux(location.pathname + location.search);
+  // Après un retour en arrière, la fenêtre s'est rechargée : le dire, et offrir d'annuler.
+  useAnnonceDuRetour();
   React.useEffect(() => { bootTheme(); }, []);
   React.useEffect(() => { getVersion().then(setVersion).catch(() => {}); }, []);
   // Synchronisation de fond : rien à cliquer, les écrans se relisent d'eux-mêmes

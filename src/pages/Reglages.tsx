@@ -1,7 +1,7 @@
 import React from "react";
 import { Page } from "../App";
-import { api, isMac, texteErreur, type InfoCopie, type SauvegardeAuto, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, matiereDuDomaine, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type JetonsIa, type PortableInfo, type VerifSauvegarde, type EtatWhisper } from "../api";
-import { Field, Input, Select, Confirm, useAsync, useOngletDemande } from "../components/ui";
+import { api, isMac, texteErreur, type InfoCopie, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, matiereDuDomaine, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type JetonsIa, type PortableInfo, type VerifSauvegarde, type EtatWhisper } from "../api";
+import { Field, Input, Select, Confirm, useOngletDemande } from "../components/ui";
 import { PartagerMesDossiers } from "../components/PartagerMesDossiers";
 import { confirmer } from "../components/confirmer";
 import { toast, toastAnnulable } from "../components/Toaster";
@@ -24,6 +24,7 @@ import { SupportsDeTravail } from "../components/SupportsDeTravail";
 import { listen } from "@tauri-apps/api/event";
 import { Licences } from "../components/Licences";
 import { ChiffrementDisqueCard } from "../components/ChiffrementDisque";
+import { RevenirEnArriere } from "../components/RevenirEnArriere";
 import { FenetreCouleurs, LegendeTla, garderPaletteParDefaut, usePaletteParDefaut } from "../components/CouleursTla";
 
 const ONGLETS = [
@@ -393,45 +394,37 @@ export default function Reglages() {
       </>}
 
       {onglet === "donnees" && <>
-      {/* Des cartes se suivaient sans hiérarchie, du partage au journal
-          d'incidents. Deux familles, et tout ce qui tourne seul replié : on
-          ouvre cette page pour vérifier une sauvegarde, pas pour lire un
-          chemin de dossier. Ce qu'il faut voir d'un coup d'œil — la date de
-          la dernière copie — reste écrit sur la ligne repliée. */}
-      {/* Avant tout le reste : les dossiers des élèves sont sur ce disque. */}
-      <Famille titre="Sur cet ordinateur">
-        <ChiffrementDisqueCard />
-      </Famille>
+      {/* « Y a bcp de trucs » (l'enseignant, octobre 2026). Ce qui compte, dans
+          l'ordre : son travail dans un dossier du Bureau, le rapport
+          d'incidents à côté, revenir à un état passé. Le reste — stockage,
+          emplacements, exports — ne s'ouvre qu'un jour de panne : replié. */}
+      {/* Un disque non chiffré passe devant tout : les dossiers des élèves sont dessus. */}
+      <ChiffrementDisqueCard seulement="alerte" />
+      <MonTravailSurLeBureau />
+      <RevenirEnArriere />
 
-      <Famille titre="Avec vos collègues">
-        <PartagerMesDossiers />
-      </Famille>
-
-      <Famille titre="Sauvegardes">
-        {/* Le stockage se règle une fois, puis la sauvegarde part toute seule :
-            cinq champs et une phrase secrète n'ont pas à rester sous les yeux.
+      <Repli titre="Avancé" ouvertAuDepart={versLeStockage}>
+        {/* Le stockage se règle une fois, puis la sauvegarde part toute seule.
             C'est le seul endroit où il se règle : les échanges avec les amis
             passent par lui aussi. */}
         <Repli titre="Sauvegarde sur mon stockage (S3 / MinIO)" ouvertAuDepart={versLeStockage}>
           <SauvegardeS3Card />
+          <EssaiDeRestauration />
         </Repli>
-        <CopiesAutomatiquesRepliees />
-        <CopieDuBureauRepliee />
-
-      {/* Ce qu'on ouvre une fois par an, ou le jour où ça va mal. */}
-      <Repli titre="Vérifier, exporter, diagnostiquer">
-        <EssaiDeRestauration />
-        <DossierDesDonnees />
+        <EmplacementDeLaCopie />
         <JournalIncidents />
+        <ChiffrementDisqueCard seulement="sinon" />
+        <DossierDesDonnees />
 
         <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
-          <h3 style={{ marginTop: 0 }}>💾 Export manuel</h3>
-          <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
-            Un fichier unique contenant tout, pièces jointes comprises — à garder
-            sur une clé avant une manipulation délicate. Aucun secret n'y figure :
-            ni la clé de l'IA, ni celle du stockage, ni votre phrase de sauvegarde.
-            Après une restauration, elles sont à ressaisir ici.
-          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <h3 style={{ margin: 0 }}>💾 Export manuel</h3>
+            <Aide titre="Export manuel" vers="droite">
+              <p>Un fichier unique contenant tout, pièces jointes comprises — à garder sur une clé avant une manipulation
+                délicate. Aucun secret n'y figure : ni la clé de l'IA, ni celle du stockage, ni votre phrase de sauvegarde.
+                Après une restauration, elles sont à ressaisir ici.</p>
+            </Aide>
+          </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <button className="btn" onClick={exporter}>⬇️ Exporter (JSON)</button>
             <input ref={importInput} type="file" accept="application/json,.json" style={{ display: "none" }}
@@ -444,8 +437,10 @@ export default function Reglages() {
             <span style={{ fontSize: 13 }}>{dataMsg}</span>
           </div>
         </div>
+
+        {/* Ouvrir ses dossiers aux collègues : une fois, et jamais plus. */}
+        <PartagerMesDossiers />
       </Repli>
-      </Famille>
       </>}
 
       {onglet === "retard" && <ReglagesEnRetard />}
@@ -754,12 +749,14 @@ function DossierDesDonnees() {
   if (!d) return null;
   return (
     <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
-      <h3 style={{ marginTop: 0 }}>📂 Emplacement des données</h3>
-      <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
-        Base, fichiers joints et copies quotidiennes. Doit rester un dossier
-        <b> local</b>, ni sur un partage réseau, ni dans un dossier synchronisé (iCloud Drive, OneDrive…) :
-        la base s'y corrompt, et les dossiers des élèves partiraient chez ce service.
-      </p>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <h3 style={{ margin: 0 }}>📂 Emplacement des données</h3>
+        <Aide titre="Emplacement des données" vers="droite">
+          <p>La base, les fichiers joints, les états passés et la corbeille. Ce dossier doit rester sur l'ordinateur : ni
+            sur un partage réseau, ni dans un dossier synchronisé (iCloud Drive, OneDrive…). La base s'y abîme.</p>
+          <p>Changer d'emplacement ne déplace rien : l'application repart du nouveau dossier.</p>
+        </Aide>
+      </div>
       {d.synchronise && (
         <p style={{ fontSize: 13, color: "var(--danger, #ef4444)", marginTop: 0 }}>
           ⚠️ Ce dossier est synchronisé par {d.synchronise}. Choisissez un dossier de l'ordinateur qui ne l'est pas,
@@ -795,67 +792,52 @@ function quandCopie(iso: string): string {
   return `le ${d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })} à ${heure}`;
 }
 
-/**
- * La copie du bureau dans un vrai dossier de l'ordinateur : de vrais fichiers,
- * qui restent là si les données de Maitrize venaient à manquer.
- */
-/** Ce que la ligne repliée dit de la copie du bureau : faite quand, ou pas du tout. */
+/** Ce que la copie dit de sa dernière fois : faite quand, ou pas encore. */
 function resumeDeLaCopie(info: InfoCopie): { texte: string; alerte: boolean } {
-  if (!info.active) return { texte: "désactivée", alerte: false };
+  if (!info.active) return { texte: "arrêtée sur cet ordinateur", alerte: false };
   const d = info.derniere;
-  return { texte: d ? `dernière : ${quandCopie(d.date)}` : "pas encore faite", alerte: !!d?.erreurs.length };
+  return { texte: d ? `copiée ${quandCopie(d.date)}` : "pas encore faite", alerte: !!d?.erreurs.length };
 }
 
-/** La copie du bureau, repliée : sa dernière date reste lisible, et suit les copies qui se font. */
-function CopieDuBureauRepliee() {
+/** L'état de la copie, relu à chaque copie qui se fait. */
+function useInfoCopie(): [InfoCopie | null, (i: InfoCopie) => void, () => void] {
   const [info, setInfo] = React.useState<InfoCopie | null>(null);
   const relire = React.useCallback(() => { api.copieBureauInfo().then(setInfo).catch(() => {}); }, []);
   React.useEffect(() => {
     relire();
     return suivreLaCopie(relire);
   }, [relire]);
-  const resume = info ? resumeDeLaCopie(info) : null;
-  return (
-    <Repli titre="Copie du bureau sur l'ordinateur"
-      resume={resume ? <span style={{ color: resume.alerte ? "var(--danger, #ef4444)" : undefined }}>{resume.texte}</span> : null}>
-      <CopieDuBureauCard />
-    </Repli>
-  );
+  return [info, setInfo, relire];
 }
 
-function CopieDuBureauCard() {
-  const [info, setInfo] = React.useState<InfoCopie | null>(null);
+/**
+ * Mon travail sur le Bureau : le dossier « Maitrize », lisible sans
+ * l'application, et le rapport d'incidents à côté (voir copieDuTravail.ts,
+ * copie_bureau.rs). Où il se trouve se règle dans « Avancé ».
+ */
+function MonTravailSurLeBureau() {
+  const [info, setInfo, relire] = useInfoCopie();
   const [msg, setMsg] = React.useState("");
   const [occupe, setOccupe] = React.useState(false);
-  const relire = React.useCallback(() => { api.copieBureauInfo().then(setInfo).catch(() => {}); }, []);
-  React.useEffect(() => {
-    relire();
-    return suivreLaCopie(relire);
-  }, [relire]);
 
-  const regler = async (active: boolean, emplacement?: string) => {
+  const reprendre = async () => {
     setMsg("");
     try {
-      setInfo(await api.copieBureauRegler(active, emplacement));
-      if (active) copierLeBureau().then(relire).catch(() => {});
+      setInfo(await api.copieBureauRegler(true));
+      copierLeBureau().then(relire).catch(() => {});
     } catch (e) { setMsg("❌ " + texteErreur(e)); }
-  };
-  const choisir = async () => {
-    const { open } = await import("@tauri-apps/plugin-dialog");
-    const choix = await open({ directory: true, multiple: false, title: "Où poser la copie du bureau ?" });
-    if (typeof choix === "string") await regler(true, choix);
   };
   const copierMaintenant = async () => {
     setOccupe(true);
     setMsg("");
     try {
       const r = await copierLeBureau();
-      if (r.aJour) setMsg("✅ La copie est déjà à jour.");
+      if (r.aJour) setMsg("✅ Le dossier est déjà à jour.");
       else if (r.bilan) {
         const b = r.bilan;
         setMsg(b.erreurs.length
           ? `⚠️ Copie faite, avec ${b.erreurs.length} fichier${b.erreurs.length > 1 ? "s" : ""} en erreur.`
-          : `✅ Copie à jour : ${b.ecrits} fichier${b.ecrits > 1 ? "s" : ""} écrit${b.ecrits > 1 ? "s" : ""}`
+          : `✅ Dossier à jour : ${b.ecrits} fichier${b.ecrits > 1 ? "s" : ""} écrit${b.ecrits > 1 ? "s" : ""}`
             + (b.archives ? `, ${b.archives} ancienne${b.archives > 1 ? "s" : ""} version${b.archives > 1 ? "s" : ""} rangée${b.archives > 1 ? "s" : ""}.` : "."));
       }
       relire();
@@ -868,24 +850,100 @@ function CopieDuBureauCard() {
 
   if (!info) return null;
   const d = info.derniere;
+  const resume = resumeDeLaCopie(info);
   return (
     <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <h3 style={{ margin: 0 }}>🖥 Copie du bureau sur l'ordinateur</h3>
-        {info.active && (
-          <span style={{ fontSize: 12, color: d?.erreurs.length ? "var(--danger, #ef4444)" : "var(--text-2)" }}>
-            {d ? `dernière : ${quandCopie(d.date)}` : "pas encore faite"}
-          </span>
-        )}
+        <h3 style={{ margin: 0 }}>🖥 Mon travail sur le Bureau</h3>
+        <Aide titre="Mon travail sur le Bureau" vers="droite">
+          <p>Tout votre travail, recopié dans le dossier « Maitrize » en vrais fichiers, lisibles sans l'application :
+            le plan de travail, un dossier par élève (son dossier complet, sa photo, ses papiers), l'emploi du temps, les
+            progressions et les programmations, le cahier journal semaine par semaine et les documents du coffre.
+            Le journal d'incidents y est recopié aussi, dans « Rapport d'incidents ».</p>
+          <p>Le dossier se met à jour tout seul, au plus deux minutes après un changement. Ce qui y est remplacé ou supprimé
+            part dans « Anciennes versions », où cela reste trois mois. Ce que vous modifiez dans ce dossier ne revient pas
+            dans Maitrize.</p>
+          {info.synchronise && (
+            <p>Ce dossier est synchronisé par {info.synchronise} : il part avec lui, dossiers des élèves compris.
+              {isMac && " Pour qu'Apple ne puisse pas les lire, activez la Protection avancée des données : Réglages Système › votre nom › iCloud."}</p>
+          )}
+        </Aide>
+        <div className="spacer" />
+        <span style={{ fontSize: 12, color: resume.alerte ? "var(--danger, #ef4444)" : "var(--text-2)" }}>{resume.texte}</span>
       </div>
-      <p style={{ color: "var(--text-2)", fontSize: 13, margin: "6px 0 10px" }}>
-        Le plan de travail est recopié dans un vrai dossier, avec de vrais fichiers : les documents tels
-        que vous les avez déposés, les textes et les séquences en pages web, les liens en raccourcis. Si
-        les données de Maitrize venaient à manquer, votre travail reste là. La copie se met à jour toute
-        seule, au plus deux minutes après un changement. Rien n'est effacé sans filet : ce qui est
-        remplacé ou supprimé part dans « Anciennes versions », où cela reste trois mois.
-      </p>
-      <label className="pb-coche" style={{ marginBottom: 8 }}>
+      {!info.active ? (
+        <div style={{ marginTop: 10 }}>
+          <button className="btn" onClick={reprendre}>Reprendre la copie</button>
+        </div>
+      ) : <>
+        {d?.autorisationRefusee && (
+          <p style={{ fontSize: 13, color: "var(--danger, #ef4444)", margin: "10px 0 0" }}>
+            {isMac
+              ? "macOS refuse à Maitrize l'accès à ce dossier. Ouvrez Réglages Système → Confidentialité et sécurité → Fichiers et dossiers, et cochez « Dossier Bureau » sous Maitrize ; ou choisissez un autre emplacement dans « Avancé »."
+              : "Windows refuse l'écriture dans ce dossier (dossier protégé ou en lecture seule) : choisissez un autre emplacement dans « Avancé »."}
+          </p>
+        )}
+        {d && (d.manquants?.length ?? 0) > 0 && (
+          <details style={{ fontSize: 12.5, margin: "10px 0 0", color: "var(--text-2)" }}>
+            <summary style={{ cursor: "pointer" }}>
+              {d.manquants.length} document{d.manquants.length > 1 ? "s" : ""} absent{d.manquants.length > 1 ? "s" : ""} de Maitrize, donc non copié{d.manquants.length > 1 ? "s" : ""}
+            </summary>
+            <div style={{ margin: "4px 0" }}>
+              Le travail les cite, mais leur fichier n'est pas sur cet ordinateur : pas encore arrivé de l'autre
+              ordinateur, ou perdu. La copie les prendra dès qu'ils seront là.
+            </div>
+            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>{d.manquants.map((x, i) => <li key={i}>{x}</li>)}</ul>
+          </details>
+        )}
+        {d && d.erreurs.length > 0 && !d.autorisationRefusee && (
+          <details style={{ fontSize: 12.5, margin: "10px 0 0" }}>
+            <summary style={{ cursor: "pointer", color: "var(--danger, #ef4444)" }}>
+              {d.erreurs.length} problème{d.erreurs.length > 1 ? "s" : ""} lors de la dernière copie
+            </summary>
+            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>{d.erreurs.map((x, i) => <li key={i}>{x}</li>)}</ul>
+          </details>
+        )}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+          <button className="btn" onClick={() => api.copieBureauOuvrir().catch((e) => setMsg("❌ " + texteErreur(e)))}>📂 Ouvrir le dossier</button>
+          <button className="btn" disabled={occupe} onClick={copierMaintenant}>
+            {occupe ? "Copie en cours…" : "Copier maintenant"}
+          </button>
+        </div>
+      </>}
+      {msg && <p style={{ fontSize: 13, marginBottom: 0 }}>{msg}</p>}
+    </div>
+  );
+}
+
+/** Où se fait la copie du travail, et si elle se fait sur cet ordinateur. */
+function EmplacementDeLaCopie() {
+  const [info, setInfo, relire] = useInfoCopie();
+  const [msg, setMsg] = React.useState("");
+
+  const regler = async (active: boolean, emplacement?: string) => {
+    setMsg("");
+    try {
+      setInfo(await api.copieBureauRegler(active, emplacement));
+      if (active) copierLeBureau().then(relire).catch(() => {});
+    } catch (e) { setMsg("❌ " + texteErreur(e)); }
+  };
+  const choisir = async () => {
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    const choix = await open({ directory: true, multiple: false, title: "Où poser le dossier de votre travail ?" });
+    if (typeof choix === "string") await regler(true, choix);
+  };
+
+  if (!info) return null;
+  return (
+    <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <h3 style={{ margin: 0 }}>🖥 Emplacement du dossier de travail</h3>
+        <Aide titre="Emplacement du dossier de travail" vers="droite">
+          <p>Chaque ordinateur fait sa propre copie : choisissez un dossier propre à cet ordinateur, pas un dossier
+            partagé avec l'autre. Changer d'emplacement laisse l'ancienne copie où elle est.</p>
+        </Aide>
+      </div>
+      <label className="pb-coche" style={{ margin: "10px 0 8px" }}>
         <input type="checkbox" checked={info.active} onChange={(e) => regler(e.target.checked)} />
         <span>Faire la copie sur cet ordinateur</span>
       </label>
@@ -894,57 +952,10 @@ function CopieDuBureauCard() {
           background: "var(--panel-2)", padding: "6px 8px", borderRadius: 6 }}>
           {info.racine}
         </div>
-        <div style={{ fontSize: 12, color: "var(--text-2)", margin: "6px 0 10px" }}>
-          {info.parDefaut ? "Emplacement par défaut" : "Emplacement choisi"}
-          {d && ` · ${d.fichiers} fichier${d.fichiers > 1 ? "s" : ""} dans la copie`}
-        </div>
-        {info.synchronise && (
-          <p style={{ fontSize: 13, color: "var(--danger, #ef4444)", margin: "0 0 10px" }}>
-            ⚠️ Ce dossier est synchronisé par {info.synchronise} : la copie — vos séquences, vos textes, vos
-            documents — part avec lui. Choisissez un dossier de l'ordinateur qui ne l'est pas, votre dossier
-            personnel par exemple, ou décochez la copie.
-          </p>
-        )}
-        {d?.autorisationRefusee && (
-          <p style={{ fontSize: 13, color: "var(--danger, #ef4444)", margin: "0 0 10px" }}>
-            {isMac
-              ? "macOS refuse à Maitrize l'accès à ce dossier. Ouvrez Réglages Système → Confidentialité et sécurité → Fichiers et dossiers, et cochez « Dossier Bureau » sous Maitrize ; ou choisissez un autre emplacement."
-              : "Windows refuse l'écriture dans ce dossier (dossier protégé ou en lecture seule) : choisissez un autre emplacement."}
-          </p>
-        )}
-        {d && (d.manquants?.length ?? 0) > 0 && (
-          <details style={{ fontSize: 12.5, margin: "0 0 10px", color: "var(--text-2)" }}>
-            <summary style={{ cursor: "pointer" }}>
-              {d.manquants.length} document{d.manquants.length > 1 ? "s" : ""} absent{d.manquants.length > 1 ? "s" : ""} de Maitrize, donc non copié{d.manquants.length > 1 ? "s" : ""}
-            </summary>
-            <div style={{ margin: "4px 0" }}>
-              Le bureau les cite, mais leur fichier n'est pas sur cet ordinateur : pas encore arrivé de l'autre
-              ordinateur, ou perdu. La copie les prendra dès qu'ils seront là.
-            </div>
-            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>{d.manquants.map((x, i) => <li key={i}>{x}</li>)}</ul>
-          </details>
-        )}
-        {d && d.erreurs.length > 0 && !d.autorisationRefusee && (
-          <details style={{ fontSize: 12.5, margin: "0 0 10px" }}>
-            <summary style={{ cursor: "pointer", color: "var(--danger, #ef4444)" }}>
-              {d.erreurs.length} problème{d.erreurs.length > 1 ? "s" : ""} lors de la dernière copie
-            </summary>
-            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>{d.erreurs.map((x, i) => <li key={i}>{x}</li>)}</ul>
-          </details>
-        )}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="btn primary" disabled={occupe} onClick={copierMaintenant}>
-            {occupe ? "Copie en cours…" : "Copier maintenant"}
-          </button>
-          <button className="btn" onClick={() => api.copieBureauOuvrir().catch((e) => setMsg("❌ " + texteErreur(e)))}>📂 Ouvrir le dossier</button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
           <button className="btn" onClick={choisir}>Choisir un autre emplacement…</button>
           {!info.parDefaut && <button className="btn" onClick={() => regler(true, "")}>Revenir au Bureau</button>}
         </div>
-        <p style={{ fontSize: 12, color: "var(--text-2)", margin: "8px 0 0" }}>
-          Chaque ordinateur fait sa propre copie : choisissez un dossier propre à cet ordinateur, pas un
-          dossier partagé avec l'autre. Ce que vous modifiez dans la copie ne revient pas dans Maitrize.
-          Changer d'emplacement laisse l'ancienne copie où elle est.
-        </p>
       </>}
       {msg && <p style={{ fontSize: 13, marginBottom: 0 }}>{msg}</p>}
     </div>
@@ -996,6 +1007,11 @@ function EssaiDeRestauration() {
     <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <h3 style={{ margin: 0 }}>🧪 Essai de restauration</h3>
+        <Aide titre="Essai de restauration" vers="droite">
+          <p>Sauvegarder est facile ; ce qui compte est de pouvoir revenir. L'application ouvre pour de vrai la dernière
+            sauvegarde en ligne, phrase secrète comprise, et compte ce qu'elle contient — sans rien remplacer ici. Elle le
+            refait toute seule une fois par mois.</p>
+        </Aide>
         <span style={{ fontSize: 12, color: souci ? "var(--danger, #ef4444)" : "var(--text-2)" }}>
           {verif ? `dernier essai le ${quand}` : "jamais fait"}
         </span>
@@ -1004,11 +1020,6 @@ function EssaiDeRestauration() {
           {occupe ? "Lecture…" : "Relire la sauvegarde"}
         </button>
       </div>
-      <p style={{ color: "var(--text-2)", fontSize: 12, margin: "6px 0 0" }}>
-        Sauvegarder est facile ; ce qui compte est de pouvoir revenir. L'app ouvre pour de vrai
-        la dernière sauvegarde en ligne, phrase secrète comprise, et compte ce qu'elle contient —
-        sans rien remplacer ici. Elle le refait toute seule une fois par mois.
-      </p>
       {erreur && <p style={{ fontSize: 13, color: "var(--danger, #ef4444)", marginBottom: 0 }}>{erreur}</p>}
       {verif && (
         <div style={{ marginTop: 10, fontSize: 13 }}>
@@ -1027,69 +1038,6 @@ function EssaiDeRestauration() {
           )}
           {verif.alertes.map((a) => (
             <div key={a} style={{ color: "var(--danger, #ef4444)", marginTop: 6 }}>⚠️ {a}</div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Copies quotidiennes de la base, faites au lancement de l'app. */
-/** Quand la dernière copie automatique a eu lieu, et s'il faut s'en inquiéter. */
-function etatDesCopies(liste: SauvegardeAuto[]): { quand: string; alerte: boolean } {
-  const derniere = liste[0];
-  if (!derniere) return { quand: "aucune copie pour l'instant", alerte: false };
-  // Écart en jours entre la dernière copie et aujourd'hui.
-  const d = new Date(derniere.jour + "T00:00:00");
-  const auj = new Date(); auj.setHours(0, 0, 0, 0);
-  const jours = Math.round((auj.getTime() - d.getTime()) / 86_400_000);
-  const quand = jours <= 0 ? "aujourd'hui" : jours === 1 ? "hier" : `il y a ${jours} jours`;
-  // Au-delà de deux jours sans copie, l'app n'a pas été lancée : on le signale.
-  return { quand, alerte: jours > 2 };
-}
-
-/** Les copies automatiques, repliées : la date de la dernière se lit sans ouvrir, en rouge quand elle tarde. */
-function CopiesAutomatiquesRepliees() {
-  const { data: copies } = useAsync(() => api.sauvegardesAutoList(), []);
-  const { quand, alerte } = etatDesCopies(copies ?? []);
-  return (
-    <Repli titre="Copies automatiques"
-      resume={copies ? <span style={{ color: alerte ? "var(--danger, #ef4444)" : undefined }}>dernière : {quand}</span> : null}>
-      <CopiesAutomatiques />
-    </Repli>
-  );
-}
-
-function CopiesAutomatiques() {
-  const { data: copies } = useAsync(() => api.sauvegardesAutoList(), []);
-  const liste = copies ?? [];
-  const { quand, alerte } = etatDesCopies(liste);
-  const mo = (o: number) => (o / 1_048_576).toFixed(1).replace(".", ",") + " Mo";
-
-  return (
-    <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <h3 style={{ margin: 0 }}>🗂 Copies automatiques</h3>
-        <span style={{ fontSize: 12, color: alerte ? "var(--danger, #ef4444)" : "var(--text-2)" }}>
-          dernière : {quand}
-        </span>
-        <div className="spacer" />
-        {liste.length > 0 && (
-          <button className="btn sm" onClick={() => api.sauvegardesAutoOuvrir()}>📂 Ouvrir le dossier</button>
-        )}
-      </div>
-      <p style={{ color: "var(--text-2)", fontSize: 12, margin: "6px 0 0" }}>
-        L'app copie sa base à chaque premier lancement de la journée et garde les 7 dernières.
-        Ces copies restent sur cet ordinateur : pour être vraiment à l'abri, exportez de temps
-        en temps sur une clé ou un disque externe.
-      </p>
-      {liste.length > 0 && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-          {liste.map((c) => (
-            <span key={c.nom} title={`${c.nom} · ${mo(c.octets)}`}
-              style={{ fontSize: 11, padding: "3px 7px", borderRadius: 6, background: "var(--panel-2)", color: "var(--text-2)" }}>
-              {c.jour}
-            </span>
           ))}
         </div>
       )}
@@ -1131,12 +1079,18 @@ export function JournalIncidents() {
 
   return (
     <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
-      <h3 style={{ marginTop: 0 }}>🩺 Journal d'incidents</h3>
-      <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13 }}>
-        Si une action semble ne rien faire, ou si la fenêtre s'est figée, ce fichier dit ce qui s'est passé : erreurs,
-        blocages (avec leur durée et l'écran), plantages et arrêts forcés. Il s'écrit tout seul, au fil de l'eau ; il note
-        les erreurs, jamais ce que vous écrivez — relisez-le tout de même avant de l'envoyer, il cite des noms de fichiers.
-      </p>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <h3 style={{ margin: 0 }}>🩺 Journal d'incidents</h3>
+        <Aide titre="Journal d'incidents" vers="droite">
+          <p>Si une action semble ne rien faire, ou si la fenêtre s'est figée, ce fichier dit ce qui s'est passé : erreurs,
+            blocages (avec leur durée et l'écran), plantages et arrêts forcés. Il s'écrit tout seul, au fil de l'eau, et se
+            recopie dans le dossier de votre travail, sous « Rapport d'incidents ». Il note les erreurs, jamais ce que vous
+            écrivez — relisez-le tout de même avant de l'envoyer, il cite des noms de fichiers.</p>
+          <p><b>Pour aider un collègue dont la fenêtre se bloque :</b> demandez-lui d'ouvrir Réglages › Données & synchro ›
+            Avancé, de cliquer « 📋 Copier le rapport » et de vous l'envoyer. Si l'application ne répond plus du tout, elle a
+            quand même écrit le blocage sur son disque : le rapport le montrera au prochain démarrage.</p>
+        </Aide>
+      </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button className="btn" onClick={ouvrir}>Ouvrir le journal</button>
         <button className="btn" disabled={occupe} onClick={() => faire(() => { /* lecture seule */ })}>
@@ -1151,27 +1105,11 @@ export function JournalIncidents() {
           if (await telechargerTexte(`maitrize-rapport-${jour}.txt`, texte)) setMsg("Rapport enregistré.");
         })}>💾 Enregistrer le rapport…</button>
       </div>
-      <p style={{ color: "var(--text-2)", fontSize: 12.5, marginBottom: 0 }}>
-        <b>Pour aider un collègue dont la fenêtre se bloque :</b> demandez-lui d'ouvrir Réglages › Journal d'incidents,
-        de cliquer « 📋 Copier le rapport » et de vous l'envoyer. Si l'application ne répond plus du tout, elle a quand
-        même écrit le blocage sur son disque : le rapport le montrera au prochain démarrage.
-      </p>
       {rapport && (
         <pre style={{ marginTop: 10, marginBottom: 0, maxHeight: 220, overflow: "auto", fontSize: 11.5,
           whiteSpace: "pre-wrap", background: "var(--panel-2)", padding: 10, borderRadius: 8 }}>{rapport}</pre>
       )}
       {msg && <p style={{ fontSize: 13, marginBottom: 0, color: "var(--text-2)" }}>{msg}</p>}
-    </div>
-  );
-}
-
-/** Un intertitre, et ce qui va avec : de quoi lire la page en diagonale. */
-function Famille({ titre, children }: { titre: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 6 }}>
-      <div className="meta" style={{ fontSize: 11.5, textTransform: "uppercase",
-        letterSpacing: .5, margin: "4px 0 8px", fontWeight: 700 }}>{titre}</div>
-      {children}
     </div>
   );
 }

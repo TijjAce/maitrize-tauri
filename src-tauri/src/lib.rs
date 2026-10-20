@@ -16,6 +16,7 @@ mod noms_entendus;
 mod webdav;
 mod copie_bureau;
 mod retour;
+mod instantanes;
 mod db;
 mod disque;
 mod fin_annee;
@@ -67,6 +68,8 @@ pub fn run() {
             // Une fenêtre figée ne peut rien écrire : c'est le backend qui le
             // voit. Il lui faut la fenêtre pour savoir si elle est devant.
             veille::surveiller(app.handle().clone());
+            // L'état de l'application, heure par heure : de quoi revenir en arrière.
+            instantanes::surveiller(app.handle().clone());
             // Le ménage de la base attend que la fenêtre soit là.
             let pour_le_menage = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -151,7 +154,7 @@ pub fn run() {
             // Recherche
             recherche,
             // Export / Import
-            export_data, import_data, exporter_base, sauvegardes_auto_list, sauvegardes_auto_ouvrir,
+            export_data, import_data, exporter_base,
             // Vacances scolaires
             vacances_scolaires,
             // IA Mistral

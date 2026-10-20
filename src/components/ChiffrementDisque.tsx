@@ -2,8 +2,13 @@ import React from "react";
 import { api, isMac, texteErreur, type ChiffrementDisque } from "../api";
 import { constat } from "../chiffrementDisque";
 
-/** La carte des Réglages : le disque est-il chiffré ? (voir chiffrementDisque.ts) */
-export function ChiffrementDisqueCard() {
+/**
+ * La carte des Réglages : le disque est-il chiffré ? (voir chiffrementDisque.ts)
+ *
+ * `seulement` : « alerte » ne la montre que si le disque ne l'est pas — en
+ * tête de page —, « sinon » que s'il l'est ou qu'on n'en sait rien.
+ */
+export function ChiffrementDisqueCard({ seulement }: { seulement?: "alerte" | "sinon" } = {}) {
   const [etat, setEtat] = React.useState<ChiffrementDisque | null>(null);
   const [msg, setMsg] = React.useState("");
   React.useEffect(() => {
@@ -11,6 +16,7 @@ export function ChiffrementDisqueCard() {
   }, []);
   const c = etat ? constat(etat) : null;
   const alerte = c?.ton === "alerte";
+  if (seulement && (!c || (seulement === "alerte") !== alerte)) return null;
   return (
     <div className="card" style={{ marginBottom: 18, maxWidth: 620, ...(alerte ? { borderColor: "var(--danger, #ef4444)" } : {}) }}>
       <h3 style={{ marginTop: 0 }}>{alerte ? "🔓" : "🔒"} Chiffrement du disque</h3>

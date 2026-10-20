@@ -3096,16 +3096,6 @@ fn table_to_json(c: &rusqlite::Connection, table: &str) -> R<Vec<serde_json::Val
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
 
-/// Une copie automatique de la base (nom, date, taille).
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SauvegardeAuto {
-    pub nom: String,
-    pub jour: String,
-    pub octets: u64,
-}
-
-/// Liste les copies quotidiennes, de la plus récente à la plus ancienne.
 /// Où vivent les données, et où elles pourraient vivre.
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -3272,29 +3262,6 @@ pub fn diag_ouvrir() -> R<()> {
         return Err("Aucun incident enregistré pour l'instant.".into());
     }
     tauri_plugin_opener::open_path(&chemin, None::<&str>).map_err(e)
-}
-
-#[tauri::command(async)]
-pub fn sauvegardes_auto_list() -> R<Vec<SauvegardeAuto>> {
-    let dir = crate::db::sauvegardes_dir();
-    let Ok(entrees) = std::fs::read_dir(&dir) else { return Ok(vec![]) };
-    let mut out: Vec<SauvegardeAuto> = entrees
-        .flatten()
-        .filter_map(|f| {
-            let nom = f.file_name().to_string_lossy().to_string();
-            let jour = nom.strip_prefix("maitrize-")?.strip_suffix(".sqlite3")?.to_string();
-            let octets = f.metadata().map(|m| m.len()).unwrap_or(0);
-            Some(SauvegardeAuto { nom, jour, octets })
-        })
-        .collect();
-    out.sort_by(|a, b| b.jour.cmp(&a.jour));
-    Ok(out)
-}
-
-/// Ouvre le dossier des copies automatiques dans le Finder / l'Explorateur.
-#[tauri::command(async)]
-pub fn sauvegardes_auto_ouvrir() -> R<()> {
-    tauri_plugin_opener::open_path(crate::db::sauvegardes_dir(), None::<&str>).map_err(e)
 }
 
 /// Exporte une copie consistante de la base SQLite vers un chemin choisi.

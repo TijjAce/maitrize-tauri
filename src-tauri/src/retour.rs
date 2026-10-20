@@ -2,8 +2,8 @@
 //!
 //! L'enseignant veut « revenir à un état précis de l'application avec tout
 //! ce qu'il existait à ce moment », et que rien ne puisse se perdre (octobre
-//! 2026). Les copies de la base — celle de chaque jour, celles d'avant une
-//! mise à jour ou d'avant une opération — sont ces états.
+//! 2026). Les instantanés de chaque heure (voir instantanes.rs) et les copies
+//! d'avant une mise à jour ou d'avant une opération sont ces états.
 //!
 //! Revenir à l'une ne remplace pas la base : chaque table reprend ses lignes
 //! d'alors par des écritures ordinaires. Le journal les voit, l'autre
@@ -13,10 +13,11 @@
 //! de la corbeille.
 
 use crate::db::{sauvegardes_dir, Db};
+use crate::instantanes::BaseOuverte;
 use rusqlite::{params, Connection};
 use serde::Serialize;
 use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tauri::State;
 
 type R<T> = Result<T, String>;
@@ -38,9 +39,16 @@ pub struct EtatPasse {
 #[serde(rename_all = "camelCase")]
 pub struct Ecart {
     pub table: String,
+    /// Les lignes supprimées depuis, qui reviendraient.
     pub revenues: usize,
+    /// Les lignes créées depuis, qui s'en iraient.
     pub parties: usize,
+    /// Les lignes modifiées depuis, qui reprendraient leurs valeurs d'alors.
     pub changees: usize,
+    /// Quelques titres ou noms de chaque sorte, pour s'y reconnaître.
+    pub exemples_revenues: Vec<String>,
+    pub exemples_parties: Vec<String>,
+    pub exemples_changees: Vec<String>,
 }
 
 /// Ce qu'un retour a fait.
@@ -54,9 +62,11 @@ pub struct BilanRetour {
     pub fichiers: usize,
 }
 
-/// Lit le nom d'une copie : « maitrize-2026-10-20.sqlite3 » ou « maitrize-2026-10-20-avant-import-101500.sqlite3 ».
+/// Lit le nom d'un état : « maitrize-2026-10-20.sqlite3 », « maitrize-2026-10-20-avant-import-101500.sqlite3 »
+/// ou, compressé, « maitrize-2026-10-20-auto-140500.sqlite3.zip ».
 pub fn lire_nom(nom: &str) -> Option<(String, String)> {
-    let coeur = nom.strip_prefix("maitrize-")?.strip_suffix(".sqlite3")?;
+    let coeur = nom.strip_prefix("maitrize-")?;
+    let coeur = coeur.strip_suffix(".sqlite3.zip").or_else(|| coeur.strip_suffix(".sqlite3"))?;
     let jour = coeur.get(..10)?;
     if !jour.chars().enumerate().all(|(i, c)| if i == 4 || i == 7 { c == '-' } else { c.is_ascii_digit() }) {
         return None;
@@ -119,6 +129,26 @@ fn compte(c: &Connection, sql: &str) -> rusqlite::Result<usize> {
     c.query_row(sql, [], |r| r.get::<_, i64>(0)).map(|n| n as usize)
 }
 
+/// Ce qui nomme une ligne de `table` dans le schéma `schema`, en SQL : son
+/// titre, son nom… Rien si la table n'a rien de tel.
+fn libelle(c: &Connection, schema: &str, table: &str, alias: &str) -> Option<String> {
+    let cols: BTreeSet<String> = colonnes(c, schema, table).into_iter().map(|x| x.nom).collect();
+    if table == "creneaux" && cols.contains("date") && cols.contains("matiere") {
+        return Some(format!("substr({alias}.date, 1, 10) || ' · ' || {alias}.matiere"));
+    }
+    ["titre", "nom", "intitule", "label", "matiere"].iter()
+        .find(|x| cols.contains(**x))
+        .map(|x| format!("{alias}.\"{x}\""))
+}
+
+/// Au plus trois libellés non vides, rendus par `sql`.
+fn exemples(c: &Connection, sql: &str) -> Vec<String> {
+    let Ok(mut st) = c.prepare(sql) else { return vec![] };
+    st.query_map([], |r| r.get::<_, Option<String>>(0))
+        .map(|it| it.flatten().flatten().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).take(3).collect())
+        .unwrap_or_default()
+}
+
 /// L'égalité des colonnes communes d'une ligne d'ici (`m`) et d'alors (`i`).
 fn differe(communes: &[String]) -> String {
     let conditions: Vec<String> = communes.iter().filter(|c| *c != "id")
@@ -142,17 +172,29 @@ fn existe(c: &Connection, schema: &str, table: &str) -> bool {
 pub fn ecarts(c: &Connection) -> rusqlite::Result<Vec<Ecart>> {
     let mut v = Vec::new();
     for t in tables(c) {
+        let ici = libelle(c, "main", &t, "m");
         let e = if !existe(c, "instantane", &t) {
-            Ecart { table: t.clone(), parties: compte(c, &format!("SELECT COUNT(*) FROM main.\"{t}\""))?, ..Default::default() }
+            Ecart {
+                table: t.clone(),
+                parties: compte(c, &format!("SELECT COUNT(*) FROM main.\"{t}\""))?,
+                exemples_parties: ici.as_ref().map(|l| exemples(c, &format!("SELECT {l} FROM main.\"{t}\" m"))).unwrap_or_default(),
+                ..Default::default()
+            }
         } else {
             let alors: BTreeSet<String> = colonnes(c, "instantane", &t).into_iter().map(|x| x.nom).collect();
             let communes: Vec<String> = colonnes(c, "main", &t).into_iter().map(|x| x.nom).filter(|n| alors.contains(n)).collect();
+            let revenues = format!("FROM instantane.\"{t}\" i WHERE i.id NOT IN (SELECT id FROM main.\"{t}\")");
+            let parties = format!("FROM main.\"{t}\" m WHERE m.id NOT IN (SELECT id FROM instantane.\"{t}\")");
+            let changees = format!("FROM main.\"{t}\" m JOIN instantane.\"{t}\" i ON i.id = m.id WHERE {}", differe(&communes));
+            let d_alors = libelle(c, "instantane", &t, "i");
             Ecart {
                 table: t.clone(),
-                revenues: compte(c, &format!("SELECT COUNT(*) FROM instantane.\"{t}\" WHERE id NOT IN (SELECT id FROM main.\"{t}\")"))?,
-                parties: compte(c, &format!("SELECT COUNT(*) FROM main.\"{t}\" WHERE id NOT IN (SELECT id FROM instantane.\"{t}\")"))?,
-                changees: compte(c, &format!(
-                    "SELECT COUNT(*) FROM main.\"{t}\" m JOIN instantane.\"{t}\" i ON i.id = m.id WHERE {}", differe(&communes)))?,
+                revenues: compte(c, &format!("SELECT COUNT(*) {revenues}"))?,
+                parties: compte(c, &format!("SELECT COUNT(*) {parties}"))?,
+                changees: compte(c, &format!("SELECT COUNT(*) {changees}"))?,
+                exemples_revenues: d_alors.map(|l| exemples(c, &format!("SELECT {l} {revenues}"))).unwrap_or_default(),
+                exemples_parties: ici.as_ref().map(|l| exemples(c, &format!("SELECT {l} {parties}"))).unwrap_or_default(),
+                exemples_changees: ici.as_ref().map(|l| exemples(c, &format!("SELECT {l} {changees}"))).unwrap_or_default(),
             }
         };
         if e.revenues + e.parties + e.changees > 0 {
@@ -165,6 +207,7 @@ pub fn ecarts(c: &Connection) -> rusqlite::Result<Vec<Ecart>> {
         revenues: alors.iter().filter(|(k, _)| !ici.iter().any(|(x, _)| x == k)).count(),
         parties: ici.iter().filter(|(k, _)| !alors.iter().any(|(x, _)| x == k)).count(),
         changees: alors.iter().filter(|(k, v)| ici.iter().any(|(x, w)| x == k && w != v)).count(),
+        ..Default::default()
     };
     if r.revenues + r.parties + r.changees > 0 {
         v.push(r);
@@ -279,7 +322,8 @@ pub(crate) fn ecarts_avec(c: &Connection, copie: &Path) -> Result<Vec<Ecart>, St
     v
 }
 
-fn copie_nommee(nom: &str) -> R<PathBuf> {
+/// L'état `nom`, prêt à être attaché : décompressé s'il le faut.
+fn etat_nomme(nom: &str) -> R<BaseOuverte> {
     if lire_nom(nom).is_none() || nom.contains('/') || nom.contains('\\') {
         return Err("État inconnu.".into());
     }
@@ -287,7 +331,7 @@ fn copie_nommee(nom: &str) -> R<PathBuf> {
     if !chemin.is_file() {
         return Err("Cet état n'est plus sur l'ordinateur.".into());
     }
-    Ok(chemin)
+    crate::instantanes::ouvrir(&chemin, &std::env::temp_dir())
 }
 
 #[tauri::command(async)]
@@ -297,13 +341,14 @@ pub fn retour_etats() -> Vec<EtatPasse> {
 
 #[tauri::command(async)]
 pub fn retour_ecarts(db: State<Db>, nom: String) -> R<Vec<Ecart>> {
-    let copie = copie_nommee(&nom)?;
-    ecarts_avec(&db.lock(), &copie)
+    let etat = etat_nomme(&nom)?;
+    ecarts_avec(&db.lock(), &etat.chemin)
 }
 
 #[tauri::command(async)]
 pub fn retour_revenir(db: State<Db>, nom: String) -> R<BilanRetour> {
-    let copie = copie_nommee(&nom)?;
+    let etat = etat_nomme(&nom)?;
+    let copie = etat.chemin.clone();
     let c = db.lock();
     // L'état présent d'abord : y revenir annule ce retour.
     let avant = crate::db::copie_de_securite(&c, "avant-retour")?;
@@ -315,6 +360,7 @@ pub fn retour_revenir(db: State<Db>, nom: String) -> R<BilanRetour> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     fn base(chemin: &Path, machine: &str) -> Connection {
         let c = Connection::open(chemin).unwrap();
@@ -339,6 +385,7 @@ mod tests {
         assert_eq!(lire_nom("maitrize-2026-10-20.sqlite3"), Some(("2026-10-20".into(), "jour".into())));
         assert_eq!(lire_nom("maitrize-2026-10-20-avant-v1.6.33-005754.sqlite3"), Some(("2026-10-20T00:57:54".into(), "avant-v1.6.33".into())));
         assert_eq!(lire_nom("maitrize-2026-10-20-avant-retour-101500.sqlite3").map(|x| x.1), Some("avant-retour".into()));
+        assert_eq!(lire_nom("maitrize-2026-10-20-auto-140500.sqlite3.zip"), Some(("2026-10-20T14:05:00".into(), "auto".into())));
         assert_eq!(lire_nom("autre.sqlite3"), None);
         assert_eq!(lire_nom("maitrize-2026-1-20.sqlite3"), None);
     }
@@ -369,6 +416,8 @@ mod tests {
         assert_eq!((de("projets").revenues, de("projets").parties), (1, 1));
         assert_eq!(de("sequences").changees, 1);
         assert_eq!(de("seances").revenues, 1);
+        assert_eq!((de("projets").exemples_revenues.clone(), de("projets").exemples_parties.clone()), (vec!["Le potager".to_string()], vec!["Le cirque".to_string()]));
+        assert_eq!(de("sequences").exemples_changees, vec!["Les grands nombres".to_string()]);
 
         let (fait, _) = revenir_a(&c, &d.join("alors.sqlite3"), &d.join("Corbeille"), &d.join("Fichiers")).unwrap();
         assert!(!fait.is_empty());

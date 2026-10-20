@@ -116,6 +116,8 @@ const PREFIXES_PARTAGES: &[&str] = &["edt:", "salle:", "tla:", "dossier:", "bure
 /// modification ne partait.
 pub const REGLAGES_DU_POSTE: &[&str] = &[
     "identifiantMachine", "nomMachine", "derniereSync", "derniereSauvegardeAuto", crate::db::CLE_VERSION_BASE,
+    // Où en était le journal au dernier instantané de cet ordinateur.
+    crate::instantanes::CLE_MARQUE,
     "syncSeqEnvoyee", "syncDeltasVus", CLE_DOSSIERS_ANNONCES,
     // La copie du bureau vit dans un dossier de cet ordinateur-ci.
     crate::copie_bureau::CLE_ACTIVE, crate::copie_bureau::CLE_EMPLACEMENT,
