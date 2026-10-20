@@ -118,7 +118,10 @@
 :root[data-style="contraste"] .input:focus, :root[data-style="contraste"] .textarea:focus, :root[data-style="contraste"] .select:focus {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
 
-/* Vitré : du verre dépoli sur un fond coloré — sans couleurs derrière, la transparence ne se verrait pas. */
+/* Vitré : du verre sur un fond coloré — sans couleurs derrière, la transparence ne se verrait pas. Le flou
+   (backdrop-filter) ne va qu'à ce qui passe au-dessus du contenu — fenêtres, menus, palette — : sur le fond en
+   dégradé doux, il ne se voit pas, et chaque élément flouté est une couche que la carte graphique refait à chaque
+   image (le catalogue de Fabriquer en portait 83, et la fenêtre ramait). */
 :root[data-style="vitre"] {
   --r-bouton: 10px; --r-carte: 16px; --r-grand: 20px; --r-pastille: 100px; --bw: 1px;
   --shadow: 0 8px 30px rgba(20, 25, 40, .10); --shadow-bouton: none;
@@ -138,7 +141,10 @@
 :root[data-style="vitre"] .ctx-menu, :root[data-style="vitre"] .atelier, :root[data-style="vitre"] details.pli-catalogue > summary,
 :root[data-style="vitre"] .btn:not(.primary):not(.ghost), :root[data-style="vitre"] .seg, :root[data-style="vitre"] .onglets {
   background: var(--verre); border-color: var(--verre-bord);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
+}
+:root[data-style="vitre"] .modal, :root[data-style="vitre"] .palette, :root[data-style="vitre"] .ctx-menu, :root[data-style="vitre"] .notes-panel {
+  background: color-mix(in srgb, var(--panel) 74%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
 }
 :root[data-style="vitre"] .sidebar { border-right-color: var(--verre-bord); }
 
