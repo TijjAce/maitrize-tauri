@@ -3,6 +3,7 @@ import { api, isMac, journal, texteErreur, type BilanCopie } from "../api";
 import { EVT_DONNEES_DISTANTES } from "./ui";
 import { toast } from "./Toaster";
 import { planDeCopie, sousLaPartie, PARTIE_PLAN, type DonneesBureau } from "../copieBureau";
+import { planDuTravail, type DonneesTravail } from "../copieDuTravail";
 
 // ── La copie du bureau se tient à jour seule ───────────────────────────────
 //
@@ -25,6 +26,20 @@ async function lireBureau(): Promise<DonneesBureau> {
   return { sequences, seances, piecesJointes, materiels, textes, coffre, reglages, jeux, ateliers, espaces, outils };
 }
 
+/** Le reste du travail : élèves, organisation, cahier journal (le coffre et les séances viennent du bureau). */
+async function lireTravail(bureau: DonneesBureau): Promise<DonneesTravail> {
+  const [eleves, commentaires, notes, evaluations, documents, papiers, progressionsEleve, observations, creneaux, edts, progressions, programmations] =
+    await Promise.all([
+      api.elevesList(), api.commentairesList(), api.notesEleveList(), api.evaluationsList(), api.documentsEleveList(),
+      api.papiersList(), api.progressionsEleveList(), api.observationsList(), api.creneauxList(), api.edtTypiqueList(),
+      api.progressionsAnnuelleList(), api.programmationsFinaleList(),
+    ]);
+  return {
+    eleves, commentaires, notes, evaluations, documents, papiers, progressionsEleve, observations, creneaux,
+    seances: bureau.seances, edts, progressions, programmations, coffre: bureau.coffre,
+  };
+}
+
 let enCours: Promise<ResultatCopie> | null = null;
 const abonnes = new Set<(r: ResultatCopie) => void>();
 
@@ -40,8 +55,12 @@ export function copierLeBureau(): Promise<ResultatCopie> {
   enCours = (async (): Promise<ResultatCopie> => {
     const info = await api.copieBureauInfo();
     if (!info.active) return { bilan: null, aJour: false, desactivee: true };
-    // Le plan de travail est une partie du dossier de tout le travail (voir copie_bureau.rs).
-    const plan = sousLaPartie(PARTIE_PLAN, planDeCopie(await lireBureau(), isMac ? "mac" : "windows"));
+    // Le plan de travail est une partie du dossier de tout le travail (voir copie_bureau.rs) ;
+    // les élèves, l'organisation, le cahier journal et les ressources en sont d'autres.
+    const bureau = await lireBureau();
+    const duPlan = sousLaPartie(PARTIE_PLAN, planDeCopie(bureau, isMac ? "mac" : "windows"));
+    const duReste = planDuTravail(await lireTravail(bureau));
+    const plan = { fichiers: [...duPlan.fichiers, ...duReste.fichiers], dossiers: [...duPlan.dossiers, ...duReste.dossiers] };
     const squelette = plan.fichiers.map((f) => ({
       chemin: f.chemin, empreinte: f.empreinte, fichier: f.source.genre === "fichier" ? f.source.nom : undefined,
     }));

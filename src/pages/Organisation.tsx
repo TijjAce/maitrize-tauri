@@ -12,6 +12,7 @@ import { Aide } from "../components/Aide";
 import { chargerVacances, periodesDeLAnnee, type PeriodeDeClasse } from "../vacances";
 import { isoJour } from "../dates";
 import { useCollectionParEcart } from "../ecritureParEcart";
+import { htmlPeriode, htmlProgrammation, type LigneProgrammation, type TableauDePeriode } from "../organisationHtml";
 import {
   avecCase, casesDeLaColonne, cleCase, cleNiveauAjoute, copieDesColonnes, datesDeLaSemaine, deplacerColonne, enJson, LA_CLASSE,
   lireEtat, memeEtat, niveauxDeLaPeriode, nombreDeSemaines, progressionDe, remettreColonne, sansColonne, semainesDeLaPeriode,
@@ -88,31 +89,12 @@ function DomaineLabel({ label, onChange }: { label: string; onChange: (v: string
 }
 
 /** La période à imprimer : le tableau de la classe puis ceux des niveaux, leurs semaines datées, les retours à la ligne des cases. */
-function imprimerProgression(annee: string, periode: number,
-  tableaux: { niveau: string; colonnes: { id: string; titre: string; teinte: string }[]; cellules: Record<string, string> }[],
-  semainesCal: SemaineDeClasse[]) {
-  const corps = tableaux.filter((t) => t.colonnes.length > 0).map((t) => {
-    const nb = nombreDeSemaines(semainesCal.length, t.cellules);
-    const head = `<tr><th>Semaine</th>${t.colonnes.map((c) => `<th style="border-top:4px solid ${c.teinte}">${escapeHtml(c.titre)}</th>`).join("")}</tr>`;
-    const rows = Array.from({ length: nb }, (_, i) => i + 1).map((n) => {
-      const s = semainesCal[n - 1];
-      return `<tr><td><b>S${n}</b>${s ? `<br><small>${escapeHtml(datesDeLaSemaine(s))}</small>` : ""}</td>${t.colonnes.map((c) =>
-        `<td>${escapeHtml(t.cellules[cleCase(n, c.id)] ?? "").replace(/\n/g, "<br>")}</td>`).join("")}</tr>`;
-    }).join("");
-    return `${t.niveau ? `<h2>${escapeHtml(t.niveau)}</h2>` : ""}<table>${head}${rows}</table>`;
-  }).join("");
-  printHTML(`Progression ${annee} P${periode}`, `<h1>Progression — ${escapeHtml(annee)} · Période ${periode}</h1>${corps}`);
+function imprimerProgression(annee: string, periode: number, tableaux: TableauDePeriode[], semainesCal: SemaineDeClasse[]) {
+  printHTML(`Progression ${annee} P${periode}`, htmlPeriode(annee, periode, tableaux, semainesCal));
 }
 
 function imprimerProgrammation(annee: string, lignes: Ligne[]) {
-  const rows = lignes.map((l) => l.estDomaine
-    ? `<tr style="background:${couleurHex[l.couleur ?? "blue"]}22;font-weight:700"><td colspan="6">📁 ${escapeHtml(l.label)}</td></tr>`
-    : `<tr><td>${escapeHtml(l.label)}</td>${[l.p1, l.p2, l.p3, l.p4, l.p5].map((v, i) => {
-        const fait = (l.periodesFaites ?? []).includes(i + 1);
-        return `<td style="${fait ? "text-decoration:line-through;color:#888" : ""}">${escapeHtml(v)}</td>`;
-      }).join("")}</tr>`).join("");
-  printHTML(`Programmation ${annee}`,
-    `<h1>Programmation annuelle — ${escapeHtml(annee)}</h1><table><tr><th>Domaine / Activité</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th><th>P5</th></tr>${rows}</table>`);
+  printHTML(`Programmation ${annee}`, htmlProgrammation(annee, lignes));
 }
 
 const SEGMENTS = [
@@ -523,12 +505,7 @@ const lireLignes = (p?: ProgrammationFinale) => lireListe<Ligne>(p?.lignesJson);
 const CLE_MODE_PROG = "programmationMode";
 
 // ── Programmation finale P1-P5 (domaines colorés, séquences liées, cases faites)
-interface Ligne {
-  id: string; estDomaine: boolean; label: string; couleur?: string;
-  p1: string; p2: string; p3: string; p4: string; p5: string;
-  seqs?: Record<string, string[]>; // "p1".."p5" → [sequenceId]
-  periodesFaites?: number[];        // périodes (1..5) marquées réalisées
-}
+type Ligne = LigneProgrammation;
 const PCOLS: ("p1" | "p2" | "p3" | "p4" | "p5")[] = ["p1", "p2", "p3", "p4", "p5"];
 
 function Programmation({ annee, setAnnee }: AnneeProps) {
