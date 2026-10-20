@@ -37,6 +37,31 @@ use commands::*;
 use db::Db;
 use std::sync::Mutex;
 
+/// La fenêtre de l'application : celle de `tauri.conf.json`, sans étiquette.
+const FENETRE_PRINCIPALE: &str = "main";
+
+/// Une fenêtre peut-elle appeler les commandes de l'application ?
+fn fenetre_autorisee(etiquette: &str) -> bool {
+    etiquette == FENETRE_PRINCIPALE
+}
+
+/// Les commandes de l'application ne répondent qu'à la fenêtre principale.
+/// Sans manifeste des commandes, Tauri les ouvre à toutes les fenêtres locales,
+/// y compris les fenêtres invisibles qui impriment une feuille en PDF (voir
+/// feuille_pdf) : une balise glissée dans une feuille y aurait lu, écrit ou
+/// effacé n'importe quel fichier.
+fn seule_la_fenetre_principale<R: tauri::Runtime>(
+    commandes: impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static,
+) -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Send + Sync + 'static {
+    move |appel| {
+        if !fenetre_autorisee(appel.message.webview_ref().label()) {
+            appel.resolver.reject("commande réservée à la fenêtre principale de Maitrize");
+            return true;
+        }
+        commandes(appel)
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Une panique ne laissait aucune trace : la fenêtre n'a pas de console, et
@@ -100,7 +125,7 @@ pub fn run() {
         .manage(arasaac::BanqueArasaac::default())
         .manage(portable::Portable(Mutex::new(None)))
         .manage(portable::PhotoCapture(Mutex::new(None)))
-        .invoke_handler(tauri::generate_handler![
+        .invoke_handler(seule_la_fenetre_principale(tauri::generate_handler![
             // Séquences / séances
             sequences_list, sequence_save, sequence_delete,
             seances_list, seance_save, seance_delete,
@@ -209,7 +234,7 @@ pub fn run() {
             telephone::telephone_etat, telephone::telephone_comptes, telephone::telephone_relier,
             telephone::telephone_code, telephone::telephone_code_ordinateur, telephone::telephone_code_appliquer,
             telephone::telephone_oublier, telephone::telephone_relever, telephone::telephone_publier_journal,
-        ])
+        ]))
         .build(contexte)
         .expect("error while running tauri application")
         .run(|_app, evenement| {
@@ -219,4 +244,14 @@ pub fn run() {
                 commands::diag_arret();
             }
         });
+}
+
+#[cfg(test)]
+mod essais_fenetres {
+    #[test]
+    fn seule_la_fenetre_principale_appelle_les_commandes() {
+        assert!(super::fenetre_autorisee("main"));
+        assert!(!super::fenetre_autorisee("feuille-0b1c"));
+        assert!(!super::fenetre_autorisee(""));
+    }
 }
