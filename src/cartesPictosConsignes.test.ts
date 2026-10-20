@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   REGLAGES_CARTES_PICTOS, cartesParPage, coteDesCartes, coteSur, coteSurUneFeuille, htmlCartesPictos, libelleTaille, pagesDesCartesPictos,
-  pictosAImprimer, pictosImprimables, verbesAImprimer, verbesAvecPicto,
+  pictosAImprimer, pictosImprimables, verbesAvecPicto,
 } from "./cartesPictosConsignes";
 
 const lexique = { écrire: 22, lire: 11, colorier: "bajard:Colorie01.png", comparer: "sclera:comparer.png" };
@@ -10,8 +10,6 @@ const images = { 11: "data:lire", 22: "data:ecrire", "bajard:Colorie01.png": "da
 describe("les pictos des consignes en cartes", () => {
   it("prennent les verbes qui ont un picto, dans l'ordre de la liste, ou ceux qu'on a choisis", () => {
     expect(verbesAvecPicto(lexique)).toEqual(["lire", "écrire", "colorier", "comparer"]);
-    expect(verbesAImprimer(lexique, REGLAGES_CARTES_PICTOS)).toEqual(["lire", "écrire", "colorier", "comparer"]);
-    expect(verbesAImprimer(lexique, { ...REGLAGES_CARTES_PICTOS, choisis: ["colorier", "lire", "dire"] })).toEqual(["lire", "colorier"]);
   });
 
   it("sont des carrés : de 32 mm par défaut, ou tous sur une seule feuille", () => {

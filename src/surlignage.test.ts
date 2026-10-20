@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { prenomsNommes, segmentsDuBilan } from "./surlignage";
+import { segmentsDuBilan } from "./surlignage";
 
 const classe = ["AMEDEE", "LUCILLE", "Rose"];
 const enClair = (texte: string) => segmentsDuBilan(texte, classe).map((s) => (s.genre ? `[${s.genre}:${s.texte}]` : s.texte)).join("");
@@ -23,8 +23,4 @@ describe("ce que le bilan montre en couleur", () => {
     expect(enClair("ROSELINE a chanté.")).toBe("ROSELINE a chanté.");
   });
 
-  it("dit qui recevra une note, dans l'ordre de la classe", () => {
-    expect(prenomsNommes("Lucille et AMEDEE ont joué.", classe)).toEqual(["AMEDEE", "LUCILLE"]);
-    expect(prenomsNommes("Séance calme.", classe)).toEqual([]);
-  });
 });

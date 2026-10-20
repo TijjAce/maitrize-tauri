@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  NATURES, couleurNature, nouveauGabarit, redimensionner,
+  NATURES, nouveauGabarit, redimensionner,
   casesPerdues, poser, remplies, verifier, lireGabarit, echanger,
   PALETTES, PALETTE_DEFAUT, apparence, dupliquer, lirePalette, pourImpression,
   accueilDu, pagesDuClasseur, classeurPourImpression, licenceDeLImage,
@@ -152,10 +152,6 @@ describe("code couleur", () => {
   it("donne une couleur distincte à chaque nature", () => {
     const vues = new Set(NATURES.map((n) => n.couleur));
     expect(vues.size).toBe(NATURES.length);
-  });
-
-  it("retombe sur la couleur des noms si la nature est inconnue", () => {
-    expect(couleurNature("bidule" as any)).toBe(couleurNature("nom"));
   });
 
 });

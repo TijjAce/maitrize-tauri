@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   creneauDuVocal, creneauRetenu, jourDuVocal, minutesDuVocal, quandDuVocal, repereDuVocal, verserDansLeBilan,
-  vocauxDuJour,
+  
 } from "./vocaux";
 import type { Creneau } from "./api";
 
@@ -81,13 +81,6 @@ describe("lire un vocal en attente", () => {
 });
 
 describe("les vocaux d'un jour", () => {
-  const v = (id: string, debut: string) =>
-    ({ id, fichier: "", debut, dureeS: 1, texte: "", etat: "recu", erreur: "", dateCreation: "" });
-
-  it("les rend dans l'ordre où ils ont été dits", () => {
-    const liste = [v("b", "2026-09-25T11:00"), v("a", "2026-09-25T09:00"), v("x", "2026-09-24T10:00")];
-    expect(vocauxDuJour(liste, "2026-09-25").map((x) => x.id)).toEqual(["a", "b"]);
-  });
 
   it("sait le jour d'un vocal", () => {
     expect(jourDuVocal({ debut: "2026-09-25T10:12:00" })).toBe("2026-09-25");

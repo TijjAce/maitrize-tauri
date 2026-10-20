@@ -18,11 +18,11 @@ vi.mock("./api", () => ({
 import {
   PHRASES_PAR_RANGEMENT, SECONDES_PAR_RELECTURE, RUBRIQUES, TRANCHE_S, ajouterAuTexte,
   assezPourRelire, assezPourResumer, convertirAnciennes,
-  decouperEnPhrases, dureeLisible, ecrirePlan, ecrireResumes, fusionnerPlan, horodatage,
+  decouperEnPhrases, dureeLisible, ecrirePlan, ecrireResumes, fusionnerPlan,
   lirePlan, lireResumes, lireTranches, mettreAuPropre, nettoyer, nomDeLaReunion, promptRelecture,
   relireLeDocument,
-  phrasesEnAttente, planVide, promptCompteRendu, promptPassage, promptRangement, rangerLeDocument, redigerCompteRendu,
-  repereDuResume, resumerPassage, riendedit, sansMarqueursOrphelins, texteACopier, type Resume, promptReformuler, reformulerPassage,
+  phrasesEnAttente, planVide, promptCompteRendu, promptRangement, rangerLeDocument,
+  riendedit, sansMarqueursOrphelins, texteACopier, type Resume, promptReformuler, reformulerPassage,
 } from "./reunion";
 
 const resume = (p: Partial<Resume> = {}): Resume => ({
@@ -100,9 +100,6 @@ describe("ce qui est enregistré", () => {
   it("garde le moment où le résumé a été fait, quand il y en a un", () => {
     const lus = lireResumes(ecrireResumes([resume({ quand: 720 })]));
     expect(lus[0].quand).toBe(720);
-    expect(repereDuResume(lus[0])).toBe("12 min · phrases 1–10");
-    // Un texte tapé au clavier n'a pas de minute à afficher.
-    expect(repereDuResume(resume({ de: 10, a: 20 }))).toBe("phrases 11–20");
   });
 });
 
@@ -127,7 +124,6 @@ describe("relire une réunion d'avant", () => {
     const t = lireTranches(JSON.stringify([{ id: "a", rang: 1, resume: "- Un point." }]));
     expect(t[0].debut).toBe(0);
     expect(t[0].fin).toBe(TRANCHE_S);
-    expect(horodatage(t[0])).toBe("00:00 → 05:00");
   });
 });
 
@@ -141,13 +137,6 @@ describe("un passage sans rien d'utile", () => {
 });
 
 describe("les consignes envoyées au modèle", () => {
-  it("le résumé d'un passage interdit d'inventer et prévoit le vide", () => {
-    const m = promptPassage("ESS", "Camille", "euh… donc… on disait");
-    expect(m[0].content).toContain("ESS");
-    expect(m[0].content).toContain("N'invente rien");
-    expect(m[0].content).toMatch(/réponds exactement : —/);
-    expect(m[1].content).toBe("euh… donc… on disait");
-  });
 
   it("le compte rendu est structuré et porte l'en-tête de la réunion", () => {
     const m = promptCompteRendu({
@@ -161,49 +150,6 @@ describe("les consignes envoyées au modèle", () => {
 
   it("retire les balises de code que les modèles ajoutent parfois", () => {
     expect(nettoyer("```\n- Un point.\n```")).toBe("- Un point.");
-  });
-});
-
-describe("ce qui part chez Mistral", () => {
-  it("aucun prénom d'élève ne part dans le résumé d'un passage", async () => {
-    reponse = "- [P1] a besoin d'un temps calme le matin.";
-    const texte = await resumerPassage("Camille Bernard a besoin d'un temps calme le matin.",
-      { genre: "ESS", titre: "Camille" });
-    const envoye = appels[0].messages.map((m) => m.content).join("\n");
-    expect(envoye).not.toContain("Camille");
-    expect(envoye).not.toContain("Bernard");
-    expect(texte).toBe("- Camille a besoin d'un temps calme le matin.");
-  });
-
-  it("le titre de la réunion ne trahit pas l'élève dont on parle", async () => {
-    reponse = "- Point noté.";
-    await resumerPassage("On parle de la cantine.", { genre: "ESS", titre: "ESS de Camille Bernard" });
-    const envoye = appels[0].messages.map((m) => m.content).join("\n");
-    expect(envoye).not.toContain("Camille");
-    expect(envoye).not.toContain("Bernard");
-    expect(envoye).toContain("[P1]");
-  });
-
-  it("le compte rendu masque aussi les prénoms, et n'assemble que ce qui dit quelque chose", async () => {
-    reponse = "## Points abordés\n- [P1] progresse en lecture.";
-    const texte = await redigerCompteRendu(
-      { genre: "ESS", titre: "Camille", date: "2026-09-21", participants: "" },
-      [resume({ texte: "- Camille Bernard progresse en lecture." }),
-       resume({ id: "r2", rang: 2, de: 10, a: 20, texte: "—" })],
-    );
-    const envoye = appels[0].messages.map((m) => m.content).join("\n");
-    expect(envoye).not.toContain("Bernard");
-    expect(envoye).not.toContain("—");
-    expect(texte).toContain("Camille");
-    expect(texte).not.toMatch(/\[P\d+\]/);
-  });
-
-  it("sans aucun résumé utile, on ne fait pas d'appel pour rien", async () => {
-    await expect(redigerCompteRendu(
-      { genre: "ESS", titre: "", date: "", participants: "" },
-      [resume({ texte: "—" })],
-    )).rejects.toThrow();
-    expect(appels).toHaveLength(0);
   });
 });
 

@@ -6,7 +6,7 @@
 // parle d'élèves : ce qui y est écrit a sa place dans leur dossier, sans le
 // retaper.
 
-import type { Creneau, Eleve } from "./api";
+import type { Creneau } from "./api";
 
 /** Pour comparer deux intitulés ou prénoms : sans accents ni majuscules. */
 const cle = (s: string) => (s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -33,22 +33,6 @@ export function reprendrePrevu(actuel: string, repris: string): string {
   if (!actuel.trim()) return r;
   if (actuel.includes(r)) return actuel;
   return `${actuel.replace(/\s+$/, "")}\n${r}`;
-}
-
-/**
- * Les élèves cochés d'office : le seul présent sur le créneau, sinon ceux dont
- * le prénom figure dans le texte.
- */
-export function elevesCites(texte: string, eleves: Eleve[], presents: string[]): string[] {
-  const parmi = presents.length ? eleves.filter((e) => presents.includes(e.id)) : eleves;
-  if (presents.length === 1 && parmi.length === 1) return [parmi[0].id];
-  const mots = ` ${cle(texte).replace(/[^a-z0-9]+/g, " ")} `;
-  return parmi
-    .filter((e) => {
-      const prenom = cle(e.nom.split(/\s+/)[0] ?? "").replace(/[^a-z0-9]+/g, " ").trim();
-      return prenom.length > 1 && mots.includes(` ${prenom} `);
-    })
-    .map((e) => e.id);
 }
 
 // ── Manuels cités, et images posées dans le prévu ─────────────────────────
@@ -154,9 +138,3 @@ export function poserImage(texte: string, nom: string, apres = ""): string {
   return lignes.join("\n");
 }
 
-/** Date d'une observation tirée d'un créneau : la fin du créneau, ce jour-là. */
-export function dateObservation(c: Pick<Creneau, "date" | "heureFin">): string {
-  const heure = /^\d\d:\d\d$/.test(c.heureFin) ? c.heureFin : "12:00";
-  const d = new Date(`${c.date.slice(0, 10)}T${heure}:00`);
-  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
-}

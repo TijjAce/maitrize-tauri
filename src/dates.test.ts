@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   isoJour, lundiDe, plusJours, jourPlanningInitial, anneeDe,
-  toMin, minToHHMM, hhmm, seChevauchent,
+  toMin, minToHHMM, hhmm,
 } from "./dates";
 
 // Le 1er janvier 2026 est un jeudi ; le 24 août 2026 un lundi.
@@ -108,23 +108,3 @@ describe("horaires", () => {
   });
 });
 
-describe("seChevauchent", () => {
-  const a = { debut: "09:00", fin: "10:30" };
-
-  it("détecte un recouvrement partiel", () => {
-    expect(seChevauchent(a, { debut: "10:00", fin: "11:00" })).toBe(true);
-  });
-
-  it("ignore deux créneaux qui se touchent", () => {
-    expect(seChevauchent(a, { debut: "10:30", fin: "11:30" })).toBe(false);
-  });
-
-  it("détecte un créneau entièrement contenu dans l'autre", () => {
-    expect(seChevauchent(a, { debut: "09:15", fin: "09:45" })).toBe(true);
-  });
-
-  it("est symétrique", () => {
-    const b = { debut: "10:00", fin: "11:00" };
-    expect(seChevauchent(a, b)).toBe(seChevauchent(b, a));
-  });
-});

@@ -7,18 +7,13 @@ vi.mock("./api", () => ({
 
 import {
   CATALOGUE, MOIS, avancement, chercherIdees, depuisIdee, ecrireEtapes, etatDeduit,
-  ideesDuMois, lireEtapes, moisCourant, nomDuMois, projetVierge, rangerParMois, type Etape, semainesDuMois, anneeDuMois, placer, THEMES
+  lireEtapes, moisCourant, nomDuMois, projetVierge, type Etape, semainesDuMois, anneeDuMois, placer, THEMES
 } from "./projets";
 
 const aplatir = (s: string) =>
   s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
 
 describe("le catalogue", () => {
-  it("couvre les dix mois de l'année scolaire", () => {
-    for (const m of MOIS) {
-      expect(ideesDuMois(m.num).length, `mois ${m.nom}`).toBeGreaterThanOrEqual(3);
-    }
-  });
 
   it("chaque idée se tient : un titre, une phrase, des domaines, des étapes", () => {
     for (const i of CATALOGUE) {
@@ -121,21 +116,6 @@ describe("où en est un projet", () => {
   it("un projet sans étape reste ce qu'on en a dit", () => {
     expect(etatDeduit("encours", [])).toBe("encours");
     expect(etatDeduit("idee", [])).toBe("idee");
-  });
-});
-
-describe("ranger par mois", () => {
-  const p = (mois: string) => ({ ...projetVierge(mois, "2026-2027"), titre: "x" });
-
-  it("rend les dix mois, même vides, dans l'ordre de l'année", () => {
-    const rangs = rangerParMois([p("01"), p("09")]);
-    expect(rangs.map((r) => r.mois)).toEqual(MOIS.map((m) => m.num));
-    expect(rangs[0].projets).toHaveLength(1); // septembre
-  });
-
-  it("ajoute un groupe pour ce qui n'a pas de mois — et seulement alors", () => {
-    expect(rangerParMois([p("09")]).some((r) => r.mois === "")).toBe(false);
-    expect(rangerParMois([p("")]).some((r) => r.mois === "")).toBe(true);
   });
 });
 

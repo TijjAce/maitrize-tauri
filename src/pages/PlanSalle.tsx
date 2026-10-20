@@ -156,7 +156,6 @@ export interface EtatSalle {
   profilMatiere: Record<string, string>;
 }
 
-
 /**
  * Agencement d'un créneau : celui qu'on lui a donné, sinon celui retenu pour
  * sa matière, sinon le premier. Une seule définition, partagée par l'onglet et
@@ -165,12 +164,6 @@ export interface EtatSalle {
 export function profilDuCreneau(etat: EtatSalle, c: Creneau | undefined): Profil | undefined {
   const id = (c ? (etat.profilCreneau[c.id] ?? etat.profilMatiere[c.matiere]) : undefined) ?? etat.profils[0]?.id;
   return etat.profils.find((p) => p.id === id);
-}
-
-/** Placement d'un créneau, avec la même cascade que l'agencement. */
-export function planDuCreneau(etat: EtatSalle, c: Creneau | undefined): Plan {
-  if (!c) return PLAN_VIDE;
-  return etat.plans[c.id] ?? etat.plansMatiere[c.matiere] ?? PLAN_VIDE;
 }
 
 export function nomsDesPlaces(places: ElemSalle[]): Record<string, string> {

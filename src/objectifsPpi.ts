@@ -45,21 +45,6 @@ export function lireLiens(json?: string | null): LienObjectif[] {
   }
 }
 
-export const ecrireLiens = (liens: LienObjectif[]): string => (liens.length ? JSON.stringify(liens) : "");
-
-/**
- * Coche un objectif, change son appréciation, ou le décoche.
- *
- * Recliquer sur l'appréciation déjà choisie retire le lien : cocher par erreur
- * doit se défaire du même geste, sans bouton supplémentaire.
- */
-export function basculerLien(liens: LienObjectif[], id: string, reussite: Reussite): LienObjectif[] {
-  const dedans = liens.find((l) => l.id === id);
-  if (!dedans) return [...liens, { id, reussite }];
-  if (dedans.reussite === reussite) return liens.filter((l) => l.id !== id);
-  return liens.map((l) => (l.id === id ? { ...l, reussite } : l));
-}
-
 /**
  * Les intitulés des objectifs d'un PPI, par identifiant.
  *

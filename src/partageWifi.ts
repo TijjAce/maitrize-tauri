@@ -39,14 +39,6 @@ export async function lirePartage(): Promise<PortableInfo | null> {
   try { return await api.portableEtat(); } catch { return null; }
 }
 
-/**
- * L'adresse à coller dans le téléphone, telle qu'on la lit à l'écran.
- *
- * Elle porte le jeton : sans lui, l'ordinateur répondrait « accès refusé » à
- * chaque dépôt.
- */
-export const adresseDuPartage = (info: PortableInfo | null): string => info?.url ?? "";
-
 /** Ce que l'infobulle de l'interrupteur raconte. */
 export function titreDuPartage(info: PortableInfo | null): string {
   return info

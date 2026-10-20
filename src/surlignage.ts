@@ -52,6 +52,3 @@ export function segmentsDuBilan(texte: string, prenoms: string[]): Segment[] {
   return sortie;
 }
 
-/** Les prénoms que le texte nomme, dans l'ordre de la classe. */
-export const prenomsNommes = (texte: string, prenoms: string[]): string[] =>
-  prenoms.filter((p) => positionsDuPrenom(texte, p).length > 0);

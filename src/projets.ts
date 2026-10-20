@@ -298,9 +298,6 @@ export function moisCourant(quand = new Date()): string {
 /** Le nom du mois, tel qu'on le dit. */
 export const nomDuMois = (num: string) => MOIS.find((m) => m.num === num)?.nom ?? "Hors année";
 
-/** Les idées d'un mois donné. */
-export const ideesDuMois = (mois: string) => CATALOGUE.filter((i) => i.mois === mois);
-
 /**
  * Les idées qui répondent à une recherche, sans accents ni casse.
  *
@@ -430,9 +427,3 @@ export function etatDeduit(etat: string, etapes: Etape[]): Etat {
   return faites > 0 ? "encours" : (etat === "encours" ? "encours" : "idee");
 }
 
-/** Les projets d'un mois, puis ceux qui n'en ont pas. */
-export function rangerParMois(projets: ProjetClasse[]): { mois: string; projets: ProjetClasse[] }[] {
-  const groupes = MOIS.map((m) => ({ mois: m.num, projets: projets.filter((p) => p.mois === m.num) }));
-  const sansMois = projets.filter((p) => !MOIS.some((m) => m.num === p.mois));
-  return sansMois.length ? [...groupes, { mois: "", projets: sansMois }] : groupes;
-}
