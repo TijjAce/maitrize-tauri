@@ -233,7 +233,7 @@ export function PanneauCommun({ compact = false, onFermer }: {
       onClick: () => { if (b.id !== actif?.id) setActifId(b.id); },
     })),
     { label: "Rejoindre un partage : coller un lien", icon: "🔗", sep: true, onClick: () => setAjout(true) },
-    { label: "Partager mes dossiers…", icon: "📤", onClick: () => { nav("/reglages"); setTimeout(() => ouvrirOnglet("reglages", "donnees"), 140); } },
+    { label: "Partager mes dossiers…", icon: "📤", onClick: () => { nav("/reglages"); setTimeout(() => ouvrirOnglet("reglages", "nuage"), 140); } },
   ]);
   const boutonChanger = (
     <button className="btn sm" aria-label="Changer de bureau commun" title="Changer de bureau commun, ou en rejoindre un autre" onClick={changerDeBureau}>
@@ -501,7 +501,7 @@ function PremiersPas({ onAjouter, compact = false }: { onAjouter: () => void; co
       <button className="btn primary" onClick={onAjouter}>🔗 Coller un lien de partage</button>
       <p style={{ fontSize: 12.5, color: "var(--text-2)", margin: "12px 0 0", lineHeight: 1.55 }}>
         Pour <b>partager vos propres dossiers</b> — votre Nuage, ou un dossier synchronisé sur cet
-        ordinateur —, c'est dans <b>Réglages › Données &amp; synchro › 🤝 Partager mes dossiers</b>.
+        ordinateur —, c'est dans <b>Réglages › Nuage</b>.
         Vous en tirerez ensuite un lien à envoyer (menu ⋯ du bureau commun).
       </p>
     </div>
@@ -556,7 +556,7 @@ function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b:
         <p className="commun-avis">
           Cette adresse est celle du dossier <b>« {adresse.dossier || "racine"} »</b> vu dans Nuage ({adresse.hote}), connecté à un compte :
           elle ne s'ouvre pas sans lui. Demandez à la personne qui partage un <b>lien de partage</b> (dans Nuage : Partager › Lien de partage).
-          Pour vos propres dossiers : <b>Réglages › Données &amp; synchro › 🤝 Partager mes dossiers</b>, où cette adresse se colle telle quelle.
+          Pour vos propres dossiers : <b>Réglages › Nuage</b>, où cette adresse se colle telle quelle.
         </p>
       ) : (
         <div className="row">
@@ -571,7 +571,7 @@ function AjoutBureau({ onClose, onAjoute }: { onClose: () => void; onAjoute: (b:
       )}
       <p style={{ fontSize: 12.5, color: "var(--text-2)", marginBottom: 0 }}>
         Sur Nuage, un lien de partage porte souvent un mot de passe : la personne qui vous l'envoie vous le donne aussi.
-        Pour <b>partager</b> vos propres dossiers, allez dans <b>Réglages › Données &amp; synchro › 🤝 Partager mes dossiers</b>.
+        Pour <b>partager</b> vos propres dossiers, allez dans <b>Réglages › Nuage</b>.
       </p>
       {erreur && <p style={{ color: "var(--danger, #ef4444)", fontSize: 13, marginBottom: 0 }}>{erreur}</p>}
     </Modal>
