@@ -377,7 +377,8 @@ fn ecrire_vocal(app: &tauri::AppHandle, url: &str, octets: Vec<u8>) -> Result<St
  *
  * Rend faux s'il était déjà là : par le relais, le même dépôt peut être
  * relevé deux fois — par deux ordinateurs, ou après une coupure avant
- * l'effacement —, et il ne doit se ranger qu'une fois.
+ * l'effacement —, et il ne doit se ranger qu'une fois, même versé depuis
+ * (voir `deja_range`).
  */
 // Le Wi-Fi décrit un vocal par les paramètres de l'adresse, le relais par une
 // étiquette : les grouper n'ajouterait qu'une structure de passage, pour deux
@@ -401,6 +402,7 @@ pub(crate) fn ranger_vocal(
         rusqlite::params![id, fichier, debut, duree, creneau, destination_connue(destination), crate::models::now_iso()],
     )
     .map_err(|er| er.to_string())?;
+    retenir(c, id);
     Ok(true)
 }
 
@@ -409,8 +411,35 @@ fn destination_connue(destination: &str) -> &str {
     if destination == maitrize_relais::VERS_LES_NOTES { destination } else { "" }
 }
 
+/**
+ * Vrai si ce dépôt est déjà passé par ici.
+ *
+ * Sa ligne dans `vocaux` ne suffit pas : une dictée ou une note versée, dans
+ * le bilan ou les notes rapides, s'efface. Son dépôt, s'il n'avait pas pu
+ * quitter Nuage, revenait alors comme neuf et se versait deux fois. Le
+ * 14 octobre, une dictée revenue ainsi avait même perdu son son : la
+ * synchronisation l'effaçait, son nom portant encore la marque d'effacement
+ * de la première. D'où `depots_ranges`, qui retient chaque dépôt rangé ; et,
+ * pour les dictées rangées avant elle, cette marque même.
+ */
 fn deja_range(c: &rusqlite::Connection, id: &str) -> bool {
-    c.query_row("SELECT 1 FROM vocaux WHERE id = ?1", [id], |_| Ok(())).is_ok()
+    c.query_row(
+        "SELECT EXISTS (SELECT 1 FROM vocaux WHERE id = ?1)
+             OR EXISTS (SELECT 1 FROM depots_ranges WHERE id = ?1)
+             OR EXISTS (SELECT 1 FROM fichiers_effaces WHERE nom = 'vocal-' || ?1 || '.wav')",
+        [id],
+        |r| r.get(0),
+    )
+    .unwrap_or(false)
+}
+
+/// Retient qu'un dépôt est rangé : sa ligne partie, il ne se rangera pas de nouveau.
+fn retenir(c: &rusqlite::Connection, id: &str) {
+    c.execute(
+        "INSERT OR IGNORE INTO depots_ranges (id, date) VALUES (?1, ?2)",
+        rusqlite::params![id, crate::models::now_iso()],
+    )
+    .ok();
 }
 
 /**
@@ -486,6 +515,7 @@ pub(crate) fn ranger_note(
         rusqlite::params![id, debut, texte, creneau, destination_connue(destination), crate::models::now_iso()],
     )
     .map_err(|er| er.to_string())?;
+    retenir(c, id);
     Ok(true)
 }
 

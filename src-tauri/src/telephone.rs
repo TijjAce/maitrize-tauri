@@ -928,6 +928,8 @@ mod tests {
         fichiers: Arc<Mutex<BTreeMap<String, Vec<u8>>>>,
         /// Les accès retirés, par compte.
         retires: Arc<Mutex<Vec<String>>>,
+        /// Vrai : Nuage n'efface plus rien, comme quand il ne répond plus au moment d'effacer.
+        sans_effacement: Arc<AtomicBool>,
         arret: Arc<AtomicBool>,
     }
 
@@ -954,8 +956,10 @@ mod tests {
             let adresse = format!("http://{}", serveur.server_addr().to_ip().unwrap());
             let fichiers: Arc<Mutex<BTreeMap<String, Vec<u8>>>> = Arc::default();
             let retires: Arc<Mutex<Vec<String>>> = Arc::default();
+            let sans_effacement = Arc::new(AtomicBool::new(false));
             let arret = Arc::new(AtomicBool::new(false));
             let (f, ret, a, ici) = (fichiers.clone(), retires.clone(), arret.clone(), adresse.clone());
+            let sans_eff = sans_effacement.clone();
             std::thread::spawn(move || {
                 let mut interrogations = 0;
                 while !a.load(Ordering::Relaxed) {
@@ -1037,7 +1041,13 @@ mod tests {
                             None => { drop(garde); repondre(req, 404, Vec::new()); }
                         },
                         "DELETE" => {
-                            let code = if garde.remove(&chemin).is_some() { 204 } else { 404 };
+                            let code = if sans_eff.load(Ordering::Relaxed) {
+                                503
+                            } else if garde.remove(&chemin).is_some() {
+                                204
+                            } else {
+                                404
+                            };
                             drop(garde);
                             repondre(req, code, Vec::new());
                         }
@@ -1063,7 +1073,7 @@ mod tests {
                     }
                 }
             });
-            FauxNuage { adresse, fichiers, retires, arret }
+            FauxNuage { adresse, fichiers, retires, sans_effacement, arret }
         }
 
         fn noms(&self) -> Vec<String> {
@@ -1313,6 +1323,53 @@ mod tests {
             // Reconnu, il quitte Nuage tout de même.
             assert!(nuage.noms().is_empty());
         });
+    }
+
+    #[test]
+    fn un_depot_verse_puis_releve_de_nouveau_ne_se_range_pas_une_seconde_fois() {
+        let nuage = FauxNuage::demarrer();
+        let r = relais_sur(&nuage);
+        let (a, k, acces) = (r.appairage().unwrap(), nuage.connexion(), acces_au_dossier(&r, &nuage.compte()));
+        let c = base_de_test();
+        let dossier = tempfile::tempdir().unwrap();
+        en_attendant(async {
+            deposer(&a, &k, &etiquette(relais::Genre::Vocal, "verse-1"), &vec![1u8; 500]).await;
+            deposer(&a, &k, &etiquette(relais::Genre::Note, "verse-2"), "La frise est à reprendre.".as_bytes()).await;
+            let ranger_ici = |e: &relais::Etiquette, contenu: &[u8]| ranger(&c, dossier.path(), e, contenu).map(|(n, _)| n);
+            // Nuage ne répond plus au moment d'effacer : rangés, les dépôts restent.
+            nuage.sans_effacement.store(true, Ordering::Relaxed);
+            let premiere = relever_dans(&r, &acces, false, ranger_ici).await.unwrap();
+            assert_eq!(premiere, Bilan { relie: true, vocaux: 1, notes: 1, ..Default::default() });
+            assert_eq!(nuage.noms(), vec!["depot/n-verse-2.mtz", "depot/v-verse-1.mtz"]);
+            // La dictée versée dans le bilan, la note dans les notes rapides : leurs lignes s'en vont.
+            c.execute("DELETE FROM vocaux", []).unwrap();
+            nuage.sans_effacement.store(false, Ordering::Relaxed);
+            let seconde = relever_dans(&r, &acces, false, ranger_ici).await.unwrap();
+            assert_eq!(seconde, Bilan { relie: true, ..Default::default() });
+            // Rien ne se range une seconde fois, et les dépôts reconnus quittent Nuage.
+            assert!(vocaux(&c).is_empty());
+            assert!(nuage.noms().is_empty());
+        });
+    }
+
+    #[test]
+    fn une_dictee_versee_avant_qu_on_retienne_les_depots_ne_revient_pas_non_plus() {
+        let c = base_de_test();
+        let dossier = tempfile::tempdir().unwrap();
+        let e = etiquette(relais::Genre::Vocal, "avant-1");
+        assert_eq!(ranger(&c, dossier.path(), &e, &[1u8; 500]).unwrap(), (true, String::new()));
+        // Rangée par une version qui ne retenait pas les dépôts, puis versée :
+        // de son passage, il ne reste que la marque de son son effacé.
+        c.execute_batch(
+            "DELETE FROM depots_ranges; DELETE FROM vocaux;
+             INSERT INTO fichiers_effaces (nom, date, publie) VALUES ('vocal-avant-1.wav', '2026-10-14T10:30:00+00:00', 0);",
+        )
+        .unwrap();
+        std::fs::remove_file(dossier.path().join("vocal-avant-1.wav")).unwrap();
+        // Relevée de nouveau, elle s'y reconnaît.
+        assert_eq!(ranger(&c, dossier.path(), &e, &[1u8; 500]).unwrap(), (false, String::new()));
+        assert!(vocaux(&c).is_empty());
+        assert!(!dossier.path().join("vocal-avant-1.wav").exists());
     }
 
     #[test]
