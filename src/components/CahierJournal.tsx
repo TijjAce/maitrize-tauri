@@ -140,8 +140,11 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
   // plus longtemps qu'un rendu.
   const elevesRef = React.useRef(eleves);
   elevesRef.current = eleves;
-  const creneauxRef = React.useRef(duJour);
-  creneauxRef.current = duJour;
+  // Tous les créneaux vus, jamais oubliés : l'écriture du départ part quand le
+  // jour a déjà changé, et la liste du jour est alors celle du nouveau jour.
+  // Sans le créneau, le bilan s'enregistrait sans rien porter au dossier.
+  const creneauxConnus = React.useRef(new Map<string, Creneau>());
+  for (const c of duJour) creneauxConnus.current.set(c.id, c);
 
   const enregistrer = React.useCallback(async (id: string, b: Brouillon) => {
     setEtats((e) => ({ ...e, [id]: "enregistrement" }));
@@ -151,7 +154,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
       setEtats((e) => ({ ...e, [id]: "ok" }));
       // Ce que le bilan dit d'un élève va dans ses notes ; les fiches posées
       // sur ce créneau avec un axe s'en nourrissent (voir notesDuBilan.ts).
-      const c = creneauxRef.current.find((x) => x.id === id);
+      const c = creneauxConnus.current.get(id);
       if (!c) return;
       try {
         const porte = await porterAuDossier(c, b.bilan, { observations: observations.current, notes: notes.current, eleves: elevesRef.current });
@@ -172,6 +175,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
       }
     } catch (err) {
       setEtats((e) => ({ ...e, [id]: "erreur" }));
+      journal(`ÉCHEC enregistrement du cahier journal : ${texteErreur(err)}`);
       toast("Cahier journal non enregistré : " + texteErreur(err), { icone: "⚠️", duree: 6000 });
     }
   }, []);
@@ -198,15 +202,11 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
       window.clearTimeout(t);
       enAttente.delete(id);
       const b = aEcrire.current[id], e = enregistres.current[id];
-      // La dernière écriture, celle du départ. Elle échouait sans un mot : on
-      // changeait de jour et le dernier paragraphe n'existait plus nulle part.
-      if (b && (!e || b.prevu !== e.prevu || b.bilan !== e.bilan)) {
-        api.creneauJournalSave(id, b.prevu, b.bilan).catch((err: unknown) => {
-          journal(`ÉCHEC enregistrement du cahier journal au départ : ${texteErreur(err)}`);
-          toast("Les dernières lignes du cahier journal n'ont pas pu être enregistrées.",
-            { icone: "⚠️", duree: 9000 });
-        });
-      }
+      // La dernière écriture, celle du départ — par le même chemin que les
+      // autres : ce que le bilan dit d'un élève part aussi dans ses notes.
+      // Un échec se dit (voir `enregistrer`) : on changeait de jour et le
+      // dernier paragraphe n'existait plus nulle part.
+      if (b && (!e || b.prevu !== e.prevu || b.bilan !== e.bilan)) void enregistrer(id, b);
     }
     minuteurs.current = {};
   }, [dateIso]);
