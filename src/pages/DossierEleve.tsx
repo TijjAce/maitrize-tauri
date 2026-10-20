@@ -7,6 +7,7 @@ import { printHTML } from "../print";
 import { corpsDuDossier } from "../dossierHtml";
 import { construire, libelleAge, Dossier, Piece } from "../dossier";
 import { CLE_AGENT_DEMANDE } from "./SyntheseEleve";
+import { eleveAMontrer, eleveDuDossier, retenirEleveDuDossier } from "../eleveDuDossier";
 
 // ── Dossier de l'élève ─────────────────────────────────────────────────────
 //
@@ -20,9 +21,10 @@ import { CLE_AGENT_DEMANDE } from "./SyntheseEleve";
 
 export function DossierTab() {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
-  const [eleveId, setEleveId] = React.useState("");
+  const [eleveId, setEleveIdBrut] = React.useState(eleveDuDossier);
+  const setEleveId = (id: string) => { setEleveIdBrut(id); retenirEleveDuDossier(id); };
 
-  React.useEffect(() => { if (!eleveId && eleves?.[0]) setEleveId(eleves[0].id); }, [eleves, eleveId]);
+  React.useEffect(() => { if (eleves && eleveAMontrer(eleves, eleveId) !== eleveId) setEleveId(eleveAMontrer(eleves, eleveId)); }, [eleves, eleveId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Intitulés des objectifs du PPI, pour dire sous une observation ce qu'elle
   // a travaillé : sans le nom, un identifiant ne raconte rien.
