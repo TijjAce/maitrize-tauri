@@ -18,10 +18,11 @@
 import type { CommentaireEleve, Creneau, Reunion } from "./api";
 import { api } from "./api";
 import { normaliser } from "./competencesTravaillees";
-import { pseudonymiser, restaurer } from "./confidentialite";
+import { pseudonymiser, restaurer, type Remplacement } from "./confidentialite";
 import { lireResumes, lireTranches, riendedit } from "./reunion";
 import { SECTIONS_SYNTHESE, sansAutresEleves, type Section, type SyntheseEleve } from "./synthese";
 import { nomDeStructure, structureDe } from "./classe";
+import { nomsAMasquer } from "./nomsAMasquer";
 
 /** D'où vient un écrit — pour que l'enseignant puisse aller le relire. */
 export type Origine = "observation" | "journal" | "reunion";
@@ -216,14 +217,14 @@ export function dossierDesEcrits(ecrits: Ecrit[], maximum = 60, parEcrit = 400):
     .join("\n");
 }
 
-export function promptSynthese(a: { ecrits: string; suivi: string; periode: string; contexte: string }) {
+export function promptSynthese(a: { ecrits: string; suivi: string; plans?: string; periode: string; contexte: string }) {
   return [
     {
       role: "system" as const,
       content: [
         "Tu aides un enseignant du premier degré à rédiger la synthèse d'un élève.",
         a.contexte,
-        "On te donne tout ce que l'enseignant a écrit sur cet élève pendant la période — observations, passages du cahier journal, comptes rendus de réunion — et un relevé de son suivi (compétences, évaluations).",
+        "On te donne tout ce que l'enseignant a écrit sur cet élève pendant la période — observations, passages du cahier journal, comptes rendus de réunion —, un relevé de son suivi (compétences, évaluations) et ce que disent ses plans et projets (PAP, PPRE, PPS, PPI, GEVA-Sco) : aménagements, objectifs, points d'appui.",
         "Rends un texte en français, structuré avec ces titres précédés de « ## » :",
         "## Bilan, puis un titre par domaine concerné parmi : " + SECTIONS_SYNTHESE.map((s) => s.titre).join(" | ") + ".",
         "N'écris un domaine que si les écrits en disent quelque chose : mieux vaut trois domaines nourris que sept vides.",
@@ -232,7 +233,7 @@ export function promptSynthese(a: { ecrits: string; suivi: string; periode: stri
         "Règles : n'invente aucun fait, aucune date, aucun diagnostic. Ne parle pas de santé, de famille ni d'orientation.",
         "Reste descriptif et bienveillant : ce texte peut être lu par la famille. Pas de jargon, pas d'étiquette sur l'élève.",
         "Les camarades sont « un camarade » : ne cherche pas à les nommer.",
-        "Le marqueur [P1] remplace le prénom de l'élève : recopie-le exactement, à chaque fois.",
+        "Le marqueur [P1] remplace le prénom de l'élève : recopie-le exactement, à chaque fois. Les marqueurs [P2], [P3]… remplacent des adultes : recopie-les tels quels, ou ne les cite pas.",
       ].join(" "),
     },
     {
@@ -245,6 +246,9 @@ export function promptSynthese(a: { ecrits: string; suivi: string; periode: stri
         "",
         "Relevé du suivi :",
         a.suivi || "rien",
+        "",
+        "Plans et projets :",
+        a.plans || "rien",
       ].join("\n"),
     },
   ];
@@ -286,6 +290,27 @@ export function lireSyntheseRedigee(reponse: string): { bilan: string; sections:
 }
 
 /**
+ * Masque l'élève et les adultes d'un texte : l'élève devient [P1], quelle que
+ * soit la forme de son nom et où qu'il paraisse ; les adultes [P2], [P3]…
+ * La consigne du modèle compte sur [P1] ; l'élève revient sous son prénom.
+ */
+export function masquerLEleveEtLesAdultes(texte: string, eleve: string, adultes: string[]): { texte: string; table: Remplacement[] } {
+  const { texte: masque, table } = pseudonymiser(texte, [eleve, ...adultes]);
+  const estLEleve = (original: string) => pseudonymiser(original, [eleve]).table.length > 0;
+  const siens = table.filter((r) => estLEleve(r.original));
+  const autres = table.filter((r) => !estLEleve(r.original));
+  const nouveau = new Map<string, string>([
+    ...siens.map((r) => [r.marqueur, "[P1]"] as const),
+    ...autres.map((r, i) => [r.marqueur, `[P${i + 2}]`] as const),
+  ]);
+  const prenom = [...siens].sort((x, y) => x.original.length - y.original.length)[0];
+  return {
+    texte: masque.replace(/\[P\d+\]/g, (m) => nouveau.get(m) ?? m),
+    table: [...(prenom ? [{ marqueur: "[P1]", original: prenom.original }] : []), ...autres.map((r, i) => ({ marqueur: `[P${i + 2}]`, original: r.original }))],
+  };
+}
+
+/**
  * Rédige la synthèse à partir de tout ce qui est écrit.
  *
  * Les camarades disparaissent avant l'envoi, le prénom de l'élève part masqué
@@ -296,9 +321,11 @@ export async function redigerSyntheseSuivie(a: {
   autresEleves: string[];
   ecrits: Ecrit[];
   suivi: string;
+  /** Ce que disent ses plans et projets — PAP, PPRE, PPS, PPI, GEVA-Sco —, tel que l'agent les a lus (voir agentSynthese.ts). */
+  plans?: string;
   periode: string;
 }): Promise<{ bilan: string; sections: Partial<Record<Section, string>> }> {
-  if (!a.ecrits.length && !a.suivi.trim()) {
+  if (!a.ecrits.length && !a.suivi.trim() && !(a.plans ?? "").trim()) {
     throw new Error("Rien n'a encore été écrit sur cet élève pour cette période.");
   }
   const reglages = await api.settingsAll().catch(() => ({} as Record<string, string>));
@@ -310,12 +337,16 @@ export async function redigerSyntheseSuivie(a: {
   const sansCamarades = (t: string) => sansAutresEleves(t, a.autresEleves);
   const ecrits = sansCamarades(dossierDesEcrits(a.ecrits));
   const suivi = sansCamarades(a.suivi);
-  const { texte: masque, table } = pseudonymiser(`${ecrits} ${suivi}`, [a.eleve.nom]);
-  const [ecritsMasques, suiviMasque] = masque.split(" ");
+  const plans = sansCamarades((a.plans ?? "").trim());
+  // L'élève devient [P1] ; les adultes nommés — contacts de l'établissement, participants — suivent.
+  const eleves = new Set([a.eleve.nom, ...a.autresEleves]);
+  const adultes = (await nomsAMasquer()).filter((n) => !eleves.has(n));
+  const { texte: masque, table } = masquerLEleveEtLesAdultes(`${ecrits} ${suivi} ${plans}`, a.eleve.nom, adultes);
+  const [ecritsMasques, suiviMasque, plansMasques] = masque.split(" ");
 
   const modele = await api.modeleActif();
   const rep = await api.mistralChat(promptSynthese({
-    ecrits: ecritsMasques, suivi: suiviMasque ?? "", periode: a.periode, contexte,
+    ecrits: ecritsMasques, suivi: suiviMasque ?? "", plans: plansMasques ?? "", periode: a.periode, contexte,
   }), modele);
   const propre = restaurer(rep.trim(), table).texte;
   const lu = lireSyntheseRedigee(propre);

@@ -9,11 +9,14 @@ import { isoJour } from "../dates";
 import { lireCompetences, TYPE_DOC_COMPETENCES } from "../competencesTravaillees";
 import {
   SECTIONS_SYNTHESE, TYPE_DOC_SYNTHESE, Section, SyntheseEleve, Indice,
-  indicesDeLEleve, dansLaPeriode, comptes, preRemplirSynthese, brouillonDeSection,
+  indicesDeLEleve, dansLaPeriode, comptes, preRemplirSynthese,
 } from "../synthese";
-import {
-  nouveauxDepuis, poserLaRedaction, rassembler, redigerSyntheseSuivie, resumeDesEcrits, type Ecrit,
-} from "../veilleEleve";
+import { nouveauxDepuis, poserLaRedaction, rassembler, resumeDesEcrits, type Ecrit } from "../veilleEleve";
+import { AgentArrete, ETAPES_DE_L_AGENT, lancerLAgent, type AvancementDeLAgent } from "../agentSynthese";
+import { AgentDeSynthese } from "../components/AgentDeSynthese";
+
+/** Le dossier d'un élève demande l'agent : la synthèse s'ouvre sur lui, et l'agent part (voir DossierEleve.tsx). */
+export const CLE_AGENT_DEMANDE = "maitrize:agent-synthese";
 
 // ── Synthèse d'un élève (évaluation sommative) ─────────────────────────────
 // Un bilan par domaine ou matière, sur une période, rédigé d'après le suivi
@@ -59,10 +62,20 @@ export function SyntheseEleveTab() {
   // La veille : tout ce qui a été écrit sur l'élève, où que ce soit.
   const [ecrits, setEcrits] = React.useState<Ecrit[]>([]);
   const [ecritsVisibles, setEcritsVisibles] = React.useState(false);
-  const [redigeant, setRedigeant] = React.useState(false);
   const [avantTout, setAvantTout] = React.useState<SyntheseEleve | null>(null);
+  // L'agent : où il en est, sa rédaction qui avance, son mot de la fin ; de quoi l'arrêter.
+  const [agent, setAgent] = React.useState<{ avancement: AvancementDeLAgent; redaction: number; fini: string } | null>(null);
+  const arreter = React.useRef(false);
+  const agentTourne = agent !== null && !agent.fini;
+  const [lancerPour, setLancerPour] = React.useState("");
 
   React.useEffect(() => { if (!eleveId && eleves?.[0]) setEleveId(eleves[0].id); }, [eleves, eleveId]);
+  // Venu du dossier d'un élève : on ouvre sa synthèse, et l'agent part dès qu'elle est lue.
+  React.useEffect(() => {
+    let demande = "";
+    try { demande = sessionStorage.getItem(CLE_AGENT_DEMANDE) ?? ""; sessionStorage.removeItem(CLE_AGENT_DEMANDE); } catch { /* sans stockage, rien de demandé */ }
+    if (demande) { setEleveId(demande); setLancerPour(demande); }
+  }, []);
 
   const lireSuivi = React.useCallback(async (id: string) => {
     const [competences, progressions, evaluations, notes, observations] = await Promise.all([
@@ -166,48 +179,50 @@ export function SyntheseEleveTab() {
   };
 
   /**
-   * Rédige la synthèse à partir de tout ce qui a été écrit sur l'élève.
-   *
-   * Le suivi (compétences, évaluations) part sous forme de brouillon par
-   * domaine : c'est le même relevé que le pré-remplissage, mais c'est le
-   * modèle qui l'assemble avec les observations et les réunions.
+   * L'agent de synthèse : il lit tout ce qui concerne l'élève, source après
+   * source, puis fait rédiger la synthèse (voir agentSynthese.ts). L'élève
+   * et la période ne changent pas pendant qu'il travaille : sa rédaction ne
+   * peut aller qu'à l'élève pour qui on l'a lancé.
    */
-  const redigerLaSynthese = async () => {
-    if (!eleveId || !eleve || redigeant) return;
+  const lancerLAgentDeSynthese = async () => {
+    if (!eleveId || !eleve || agentTourne) return;
     const dejaEcrit = synthese.bilan.trim() || SECTIONS_SYNTHESE.some((s) => (synthese.sections[s.id] ?? "").trim());
     const remplacer = dejaEcrit
-      ? await confirmer("Une synthèse est déjà écrite. Remplacer le texte existant par la nouvelle rédaction ?",
-          { oui: "Remplacer" })
+      ? await confirmer("Une synthèse est déjà écrite. Remplacer le texte existant par la rédaction de l'agent ?", { oui: "Remplacer" })
       : true;
     // Refuser de remplacer ne veut pas dire renoncer : les sections vides se
     // remplissent quand même, et ce qui est écrit reste.
-    setRedigeant(true);
+    ecrire();
+    arreter.current = false;
+    const depart = synthese;
+    setAgent({ avancement: { etape: 0, trouves: {} }, redaction: 0, fini: "" });
+    // Pendant que Mistral rédige, la barre avance doucement : le chat ne reste pas planté.
+    const rang = ETAPES_DE_L_AGENT.length - 1;
+    const minuterie = window.setInterval(() => setAgent((a) => (a && !a.fini && a.avancement.etape === rang
+      ? { ...a, redaction: a.redaction + (0.95 - a.redaction) * 0.05 } : a)), 400);
     try {
-      const frais = await lireSuivi(eleveId);
-      setIndices(frais);
-      const periodeFraiche = dansLaPeriode(frais, synthese.debut, synthese.fin);
-      const suivi = SECTIONS_SYNTHESE
-        .map((s) => {
-          const texte = brouillonDeSection(periodeFraiche.filter((i) => i.section === s.id));
-          return texte ? `${s.titre} :\n${texte}` : "";
-        })
-        .filter(Boolean).join("\n\n");
-      const redige = await redigerSyntheseSuivie({
-        eleve: { id: eleveId, nom: eleve.nom },
-        autresEleves: autres,
-        ecrits,
-        suivi,
+      const { redige, lus } = await lancerLAgent({
+        eleve, autresEleves: autres, debut: synthese.debut, fin: synthese.fin,
         periode: `du ${fmtFr(synthese.debut)} au ${fmtFr(synthese.fin)}`,
+        surAvancement: (avancement) => setAgent((a) => (a ? { ...a, avancement } : a)),
+        arrete: () => arreter.current,
       });
-      setAvantTout(synthese);
-      modifier(poserLaRedaction(synthese, redige, remplacer));
+      setAvantTout(depart);
+      modifier(poserLaRedaction(depart, redige, remplacer));
       const domaines = Object.keys(redige.sections).length;
-      toast(`Synthèse rédigée d'après ${ecrits.length} écrit(s)${domaines ? ` — ${domaines} domaine(s)` : ""}. À relire avant de l'imprimer.`,
-        { icone: "✨", duree: 7000 });
+      setAgent((a) => (a ? { ...a, redaction: 1, fini: `Le chat a lu ${lus} élément${lus > 1 ? "s" : ""} et rédigé la synthèse${domaines ? ` : ${domaines} domaine${domaines > 1 ? "s" : ""}` : ""}. À relire avant de l'imprimer.` } : a));
     } catch (e) {
-      toast("Rédaction impossible : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
-    } finally { setRedigeant(false); }
+      const arrete = e instanceof AgentArrete;
+      setAgent((a) => (a ? { ...a, fini: arrete ? "Le chat s'est arrêté : rien n'a changé." : `Le chat n'a pas pu finir : ${texteErreur(e)}` } : a));
+      if (!arrete) toast("Synthèse non rédigée : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
+    } finally {
+      window.clearInterval(minuterie);
+    }
   };
+  // Demandé depuis le dossier : dès que la synthèse de cet élève est lue.
+  React.useEffect(() => {
+    if (lancerPour && charge && eleveId === lancerPour && eleve) { setLancerPour(""); void lancerLAgentDeSynthese(); }
+  }); // eslint-disable-line react-hooks/exhaustive-deps
 
   const revenir = (cle: Section | "bilan") => {
     const t = avant[cle];
@@ -251,13 +266,13 @@ export function SyntheseEleveTab() {
   return (
     <>
       <div className="toolbar" style={{ flexWrap: "wrap" }}>
-        <Select value={eleveId} onChange={(e) => { ecrire(); setEleveId(e.target.value); }} style={{ maxWidth: 240 }} aria-label="Élève">
+        <Select value={eleveId} disabled={agentTourne} onChange={(e) => { ecrire(); setAgent(null); setEleveId(e.target.value); }} style={{ maxWidth: 240 }} aria-label="Élève">
           {eleves.map((e) => <option key={e.id} value={e.id}>{e.nom}{e.niveau ? ` (${e.niveau})` : ""}</option>)}
         </Select>
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-          Du <input type="date" className="input" value={synthese.debut} style={{ width: 150 }}
+          Du <input type="date" className="input" value={synthese.debut} style={{ width: 150 }} disabled={agentTourne}
             onChange={(e) => modifier({ ...synthese, debut: e.target.value })} aria-label="Début de la période" />
-          au <input type="date" className="input" value={synthese.fin} style={{ width: 150 }}
+          au <input type="date" className="input" value={synthese.fin} style={{ width: 150 }} disabled={agentTourne}
             onChange={(e) => modifier({ ...synthese, fin: e.target.value })} aria-label="Fin de la période" />
         </label>
         <div className="spacer" />
@@ -289,12 +304,15 @@ export function SyntheseEleveTab() {
           {avantTout && (
             <button className="btn ghost sm" onClick={() => { modifier(avantTout); setAvantTout(null); }}>↶ Revenir</button>
           )}
-          <button className="btn primary sm" disabled={redigeant || !charge || (ecrits.length === 0 && periode.length === 0)}
-            onClick={() => { void redigerLaSynthese(); }}
-            title="Rédiger la synthèse à partir des observations, du cahier journal, des réunions et du suivi">
-            {redigeant ? "Rédaction…" : "✨ Rédiger la synthèse"}
+          <button className="btn primary sm" disabled={agentTourne || !charge} onClick={() => { void lancerLAgentDeSynthese(); }}
+            title="L'agent lit tout ce qui concerne l'élève — dossier, observations, cahier journal, évaluations, plans, PPI, GEVA-Sco, réunions —, puis rédige la synthèse">
+            {agentTourne ? "Le chat travaille…" : "🐈 Lancer l'agent"}
           </button>
         </div>
+        {agent && (
+          <AgentDeSynthese avancement={agent.avancement} redaction={agent.redaction} prenom={prenom} fini={agent.fini}
+            onArreter={() => { arreter.current = true; }} onFermer={() => setAgent(null)} />
+        )}
         {ecritsVisibles && (
           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6, maxHeight: 260, overflowY: "auto" }}>
             {ecrits.map((e, i) => (
@@ -307,8 +325,9 @@ export function SyntheseEleveTab() {
         )}
         <p className="meta" style={{ fontSize: 11.5, margin: "8px 0 0", lineHeight: 1.5 }}>
           Des bilans du cahier journal et des comptes rendus de réunion, seules les phrases
-          qui nomment {prenom} sont reprises. Les camarades cités deviennent « un camarade »,
-          et son prénom est masqué avant l'envoi à l'IA.
+          qui nomment {prenom} sont reprises. Les camarades cités deviennent « un camarade » ;
+          son prénom et les noms des adultes sont masqués avant l'envoi à l'IA. Ni la santé,
+          ni les coordonnées, ni la famille ne sont lues.
         </p>
       </div>
 
