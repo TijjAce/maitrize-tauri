@@ -6,6 +6,7 @@ import { Select, Empty, useAsync, ouvrirOnglet } from "../components/ui";
 import { printHTML } from "../print";
 import { corpsDuDossier } from "../dossierHtml";
 import { construire, libelleAge, Dossier, Piece } from "../dossier";
+import { CLE_AGENT_DEMANDE } from "./SyntheseEleve";
 
 // ── Dossier de l'élève ─────────────────────────────────────────────────────
 //
@@ -56,6 +57,13 @@ export function DossierTab() {
           {eleves.map((e) => <option key={e.id} value={e.id}>{e.nom}</option>)}
         </Select>
         <div className="spacer" />
+        {eleveId && (
+          <button className="btn" title="L'agent lit tout ce qui concerne l'élève, puis rédige sa synthèse"
+            onClick={() => {
+              try { sessionStorage.setItem(CLE_AGENT_DEMANDE, eleveId); } catch { /* sans stockage, la synthèse s'ouvre sans l'agent */ }
+              ouvrirOnglet("eleves", "syntheseEleve");
+            }}>🐈 Synthèse par l'agent</button>
+        )}
         {data && <button className="btn" onClick={() => imprimer(data, objectifs)}>🖨 Imprimer le dossier</button>}
       </div>
       {data && <Contenu dossier={data} objectifs={objectifs} />}
