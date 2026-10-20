@@ -4,6 +4,7 @@ import { Select, Empty, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { isoJour } from "../dates";
 import { useEleveDuDossier } from "../eleveDuDossier";
+import { sansTrous } from "../gevasco";
 
 // ── GEVA-Sco — aide à la préparation ──────────────────────────────────────
 // Reprend la structure du support officiel (arrêté du 6 février 2015,
@@ -123,6 +124,20 @@ interface GevaData {
   perspectives: string;
   remarquesFamille: string; remarquesProfessionnels: string;
   participants: { id: string; nom: string; fonction: string }[];
+}
+
+const responsableVide = (): Responsable => ({ id: newId(), civilite: "", nom: "", rue: "", cp: "", ville: "", tel: "", courriel: "" });
+const parcoursVide = () => ({ id: newId(), annee: "", scolarisation: "" });
+const participantVide = () => ({ id: newId(), nom: "", fonction: "" });
+
+/** Le document tel qu'il se lit en base : ses listes sans trous (voir gevasco.ts). */
+function normaliser(d: GevaData): GevaData {
+  return {
+    ...d,
+    responsables: sansTrous(d.responsables, responsableVide),
+    parcours: sansTrous(d.parcours, parcoursVide),
+    participants: sansTrous(d.participants, participantVide),
+  };
 }
 
 const VIDE: GevaData = {
@@ -291,7 +306,7 @@ export function GevaScoTab() {
     if (!eleveId) return;
     api.documentEleveGet(eleveId, "gevasco").then((v) => {
       let charge = VIDE;
-      try { charge = v ? { ...VIDE, ...JSON.parse(v) } : VIDE; } catch { charge = VIDE; }
+      try { charge = v ? normaliser({ ...VIDE, ...JSON.parse(v) }) : VIDE; } catch { charge = VIDE; }
       dRef.current = charge; setD(charge);
     });
   }, [eleveId]);
@@ -360,7 +375,8 @@ export function GevaScoTab() {
     T("Tel", d.tel); T("Courriel", d.courriel);
 
     // Représentants légaux (Personne1 à 3 sur le support)
-    d.responsables.slice(0, 3).forEach((r, i) => {
+    const doc = normaliser(d);
+    doc.responsables.slice(0, 3).forEach((r, i) => {
       const p = `Personne${i + 1}`;
       T(`${p}_Nom-ligne1`, r.nom);
       T(`${p}_Numero-et-rue`, r.rue);
@@ -380,7 +396,7 @@ export function GevaScoTab() {
     T("Etablissement-scolaire_Numero-et-rue", d.etabRue);
     T("Etablissement-scolaire_Ville", d.etabVille);
     T("Points-saillants-scolarisation_Code-postal", d.etabCp);
-    d.parcours.slice(0, 6).forEach((p, i) => {
+    doc.parcours.slice(0, 6).forEach((p, i) => {
       T(`Parcours-de-scolarisation_Annee${i + 1}`, p.annee);
       T(`Parcours-de-scolarisation_Scolarisation${i + 1}`, p.scolarisation);
     });
@@ -440,7 +456,7 @@ export function GevaScoTab() {
     T("Objectifs-pedagogiques-et-axes-a-travailler-pour-suite-parcours", d.perspectives);
     T("Remarques-de-l-eleve-et-des-parents", d.remarquesFamille);
     T("Remarques-des-professionnels", d.remarquesProfessionnels);
-    d.participants.slice(0, 15).forEach((p, i) => {
+    doc.participants.slice(0, 15).forEach((p, i) => {
       T(`Participant${i + 1}`, p.nom);
       T(`Fonction${i + 1}`, p.fonction);
     });
@@ -453,7 +469,13 @@ export function GevaScoTab() {
     }
   };
 
-  const imprimer = async () => { setEnCours(true); try { await exporterFormulaire(); } finally { setEnCours(false); } };
+  // Une erreur du remplissage (une ligne illisible…) se dit aussi : elle ne passait que par l'alerte générale.
+  const imprimer = async () => {
+    setEnCours(true);
+    try { await exporterFormulaire(); }
+    catch (e: any) { toast("Impression impossible : " + String(e?.message ?? e), { icone: "⚠️", duree: 6000 }); }
+    finally { setEnCours(false); }
+  };
 
   const cotees = Object.values(d.activites).filter((a) => a.code).length;
   const totalAct = DOMAINES.reduce((n, dom) => n + dom.activites.length, 0);
@@ -588,15 +610,9 @@ export function GevaScoTab() {
               <tr>
                 {[0, 1, 2].map((i) => {
                   const r = d.responsables[i];
-                  const assure = () => {
-                    if (r) return r;
-                    const n = { id: newId(), civilite: "" as const, nom: "", rue: "", cp: "", ville: "", tel: "", courriel: "" };
-                    const liste = [...d.responsables]; liste[i] = n; up({ responsables: liste });
-                    return n;
-                  };
                   const upR = (p: Partial<Responsable>) => {
-                    const base = assure();
-                    const liste = [...d.responsables]; liste[i] = { ...base, ...p };
+                    const liste = sansTrous(d.responsables, responsableVide, i + 1);
+                    liste[i] = { ...liste[i], ...p };
                     up({ responsables: liste });
                   };
                   return (
@@ -646,8 +662,8 @@ export function GevaScoTab() {
               {Array.from({ length: 6 }, (_, i) => {
                 const p = d.parcours[i];
                 const upP = (champ: "annee" | "scolarisation", v: string) => {
-                  const liste = [...d.parcours];
-                  liste[i] = { id: p?.id ?? newId(), annee: p?.annee ?? "", scolarisation: p?.scolarisation ?? "", [champ]: v };
+                  const liste = sansTrous(d.parcours, parcoursVide, i + 1);
+                  liste[i] = { ...liste[i], [champ]: v };
                   up({ parcours: liste });
                 };
                 return (
@@ -778,8 +794,8 @@ export function GevaScoTab() {
               {Array.from({ length: 14 }, (_, i) => {
                 const p = d.participants[i];
                 const upP = (champ: "nom" | "fonction", v: string) => {
-                  const liste = [...d.participants];
-                  liste[i] = { id: p?.id ?? newId(), nom: p?.nom ?? "", fonction: p?.fonction ?? "", [champ]: v };
+                  const liste = sansTrous(d.participants, participantVide, i + 1);
+                  liste[i] = { ...liste[i], [champ]: v };
                   up({ participants: liste });
                 };
                 return (
