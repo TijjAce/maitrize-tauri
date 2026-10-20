@@ -25,6 +25,21 @@ export function plusJours(d: Date, n: number): Date {
 }
 
 /**
+ * Le même jour, `n` mois plus loin (ou plus tôt), ramené au dernier jour d'un
+ * mois plus court : après le 31 janvier vient le 28 ou le 29 février, et non le
+ * 3 mars. `setMonth` débordait, et la vue Mois du planning sautait un mois les
+ * 29, 30 et 31 — ou n'avançait pas en reculant.
+ */
+export function moisVoisin(d: Date, n: number): Date {
+  const x = new Date(d);
+  x.setDate(1);
+  x.setMonth(x.getMonth() + n);
+  const dernier = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate();
+  x.setDate(Math.min(d.getDate(), dernier));
+  return x;
+}
+
+/**
  * Jour ouvert à l'arrivée sur le planning : aujourd'hui, le lendemain s'il
  * est passé 18 h, puis le lundi suivant si on tombe un week-end.
  */
