@@ -116,10 +116,6 @@ export function quandDuVocal(debut: string): string {
   return m ? `${jour} à ${m[1]}h${m[2]}` : jour;
 }
 
-/** Les vocaux d'un jour donné, les plus anciens d'abord. */
-export const vocauxDuJour = (vocaux: Vocal[], jour: string) =>
-  vocaux.filter((v) => jourDuVocal(v) === jour).sort((a, b) => a.debut.localeCompare(b.debut));
-
 /**
  * Le créneau sous lequel ranger ce vocal, avant tout choix de l'enseignant.
  *

@@ -23,10 +23,6 @@ export const TOUS_LES_NIVEAUX = "tous";
 /** Une photo devient un support de travail quand elle a son niveau ; sa matière est facultative. */
 export const estUnSupport = (p: MonPicto): boolean => p.origine === "photo" && !!p.niveau;
 
-/** Les supports qu'un élève de ce niveau peut recevoir : ceux de son niveau, et ceux de tous les niveaux. */
-export const supportsDuNiveau = (photos: MonPicto[], niveau: string): MonPicto[] =>
-  photos.filter((p) => estUnSupport(p) && (p.niveau === TOUS_LES_NIVEAUX || p.niveau === niveau));
-
 /** Les photos rattachées à une séquence. */
 export const supportsDeLaSequence = (photos: MonPicto[], sequenceId: string): MonPicto[] =>
   photos.filter((p) => p.origine === "photo" && p.sequenceId === sequenceId);

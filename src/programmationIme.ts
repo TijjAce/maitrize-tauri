@@ -201,75 +201,6 @@ export const cleCompetence = (competence: string, origine: string) =>
 
 export const cleDeLObjectif = (o: Objectif) => cleCompetence(o.competence, o.origine);
 
-/** Les objectifs travaillés sur ce créneau. */
-export const objectifsDuCreneau = (p: ProgrammationIme, creneauId: string): Objectif[] =>
-  p.objectifs.filter((o) => o.creneaux.includes(creneauId));
-
-/**
- * Pose une compétence sur un créneau, et l'attribue à ses élèves.
- *
- * Si elle y est déjà, rien ne bouge. Si elle existe ailleurs, on l'étend :
- * une même compétence travaillée le lundi et le jeudi reste un seul objectif,
- * sans quoi le compte par élève la verrait deux fois.
- */
-export function poserSurCreneau(
-  p: ProgrammationIme, creneauId: string, eleveIds: string[], competence: string, origine: string,
-  source?: SourceCompetence,
-): ProgrammationIme {
-  const cle = cleCompetence(competence, origine);
-  const existant = p.objectifs.find((o) => cleDeLObjectif(o) === cle);
-  const avecEleves = (pour: string[]) => {
-    const suite = [...pour];
-    for (const id of eleveIds) if (!suite.includes(marqueEleve(id))) suite.push(marqueEleve(id));
-    return suite;
-  };
-  if (!existant) {
-    return {
-      ...p,
-      objectifs: [...p.objectifs, {
-        ...nouvelObjectif(avecEleves([])), competence: competence.trim(), origine: origine.trim(),
-        creneaux: [creneauId], ...(source ? { source } : {}),
-      }],
-    };
-  }
-  return {
-    ...p,
-    objectifs: p.objectifs.map((o) => (o.id === existant.id ? {
-      ...o,
-      creneaux: o.creneaux.includes(creneauId) ? o.creneaux : [...o.creneaux, creneauId],
-      pour: avecEleves(o.pour),
-    } : o)),
-  };
-}
-
-/**
- * Retire une compétence d'un créneau.
- *
- * Les élèves qui la travaillent encore ailleurs la gardent : c'est tout
- * l'intérêt d'une compétence partagée entre deux créneaux. L'objectif qui ne
- * sert plus nulle part et ne vise plus personne s'en va.
- */
-export function retirerDuCreneau(
-  p: ProgrammationIme, creneauId: string, competence: string, origine: string,
-  elevesParCreneau: Record<string, string[]>,
-): ProgrammationIme {
-  const cle = cleCompetence(competence, origine);
-  const objectifs = p.objectifs.flatMap((o): Objectif[] => {
-    if (cleDeLObjectif(o) !== cle || !o.creneaux.includes(creneauId)) return [o];
-    const restants = o.creneaux.filter((c) => c !== creneauId);
-    // Ceux que les créneaux restants couvrent encore.
-    const gardes = new Set(restants.flatMap((c) => elevesParCreneau[c] ?? []));
-    const partants = new Set((elevesParCreneau[creneauId] ?? []).filter((e) => !gardes.has(e)));
-    const pour = o.pour.filter((m) => !partants.has(m.replace(/^eleve:/, "")) || !m.startsWith("eleve:"));
-    if (!restants.length && !pour.length) return [];
-    return [{ ...o, creneaux: restants, pour }];
-  });
-  return { ...p, objectifs };
-}
-
-export const nouveauGroupe = (nom: string, eleveIds: string[] = []): Groupe =>
-  ({ id: newId(), nom: nom.trim() || "Groupe", eleveIds });
-
 /** Ajoute ou retire une cible (élève ou groupe) d'un objectif. */
 export function basculerCible(o: Objectif, cible: string): Objectif {
   return {
@@ -327,28 +258,6 @@ export function basculerPeriode(o: Objectif, p: number): Objectif {
   const periodes = [...set].sort((a, b) => a - b);
   // Une période qu'on ne travaille plus ne peut pas rester « atteinte ».
   return { ...o, periodes, atteintes: o.atteintes.filter((x) => periodes.includes(x)) };
-}
-
-/**
- * Retire un groupe, sans perdre ce qui le visait.
- *
- * Les objectifs qui s'appuyaient dessus reprennent ses élèves un par un :
- * supprimer un groupe ne doit pas vider une année de programmation.
- */
-export function retirerGroupe(p: ProgrammationIme, groupeId: string): ProgrammationIme {
-  const groupe = p.groupes.find((g) => g.id === groupeId);
-  if (!groupe) return p;
-  const marque = marqueGroupe(groupeId);
-  return {
-    ...p,
-    groupes: p.groupes.filter((g) => g.id !== groupeId),
-    objectifs: p.objectifs.map((o) => {
-      if (!o.pour.includes(marque)) return o;
-      const sans = o.pour.filter((x) => x !== marque);
-      const repris = groupe.eleveIds.map(marqueEleve).filter((m) => !sans.includes(m));
-      return { ...o, pour: [...sans, ...repris] };
-    }),
-  };
 }
 
 /**

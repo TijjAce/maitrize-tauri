@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { CommentaireEleve } from "./api";
 import {
-  basculerLien, ecrireLiens, joursEntre, lireLiens, resumeSuivi, sansNouvelles, suivreObjectif,
+  joursEntre, lireLiens, resumeSuivi, sansNouvelles, suivreObjectif,
 } from "./objectifsPpi";
 
 const obs = (id: string, date: string, objectifs?: string): CommentaireEleve =>
@@ -19,18 +19,6 @@ describe("objectifs du PPI travaillés", () => {
     // Une appréciation inconnue ne fait pas disparaître l'objectif.
     expect(lireLiens('[{"id":"o1","reussite":"bizarre"},{"texte":"sans id"}]'))
       .toEqual([{ id: "o1", reussite: "aide" }]);
-    expect(ecrireLiens([])).toBe("");
-  });
-
-  it("coche, change d'appréciation, et décoche du même geste", () => {
-    let l = basculerLien([], "o1", "reussi");
-    expect(l).toEqual([{ id: "o1", reussite: "reussi" }]);
-    l = basculerLien(l, "o1", "aide");
-    expect(l).toEqual([{ id: "o1", reussite: "aide" }]);
-    l = basculerLien(l, "o2", "pasencore");
-    expect(l).toHaveLength(2);
-    // Recliquer sur le même choix retire le lien.
-    expect(basculerLien(l, "o1", "aide")).toEqual([{ id: "o2", reussite: "pasencore" }]);
   });
 
   it("rassemble ce qu'un objectif a récolté, du plus récent au plus ancien", () => {

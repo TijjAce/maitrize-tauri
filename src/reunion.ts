@@ -86,12 +86,6 @@ export interface Tranche {
   erreur?: string;
 }
 
-/** « 00:00 → 05:00 » */
-export function horodatage(t: { debut: number; fin: number }): string {
-  const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(Math.round(s % 60)).padStart(2, "0")}`;
-  return `${mmss(t.debut)} → ${mmss(t.fin)}`;
-}
-
 /** « 1 h 05 » — la durée écoutée, telle qu'on la dit. */
 export function dureeLisible(secondes: number): string {
   const m = Math.round(secondes / 60);
@@ -280,27 +274,6 @@ export function ajouterAuTexte(texte: string, morceau: string): string {
 }
 
 // ── Ce qu'on demande au modèle ────────────────────────────────────────────
-
-/** Le résumé d'un passage : des puces, rien d'autre. */
-export function promptPassage(genre: string, titre: string, passage: string) {
-  const quoi = [genre, titre].filter(Boolean).join(" — ") || "une réunion";
-  return [
-    {
-      role: "system" as const,
-      content: [
-        "Tu assistes un enseignant du premier degré pendant " + quoi + ".",
-        "On te donne un passage de la réunion, tel qu'il vient d'être écrit : plusieurs personnes parlent, le texte contient des hésitations et des erreurs de transcription.",
-        "Rends les points importants sous forme de puces commençant par « - », une idée par puce, à l'infinitif ou en phrase courte.",
-        "Garde ce qui compte pour la suite : décisions, échéances, chiffres, dispositifs cités, ce que chacun s'engage à faire.",
-        "N'invente rien, n'interprète pas, n'ajoute aucun commentaire ni titre.",
-        "Ignore les bavardages, les répétitions et ce qui n'a pas de suite.",
-        "Si ce passage n'apporte rien (bavardage, hors sujet), réponds exactement : —",
-        "Les marqueurs entre crochets comme [P1] remplacent des prénoms : recopie-les exactement, et n'en invente aucun.",
-      ].join(" "),
-    },
-    { role: "user" as const, content: passage },
-  ];
-}
 
 /** Le compte rendu final, à partir des résumés de tranches. */
 export function promptCompteRendu(r: {
@@ -518,31 +491,6 @@ function masquerTout(morceaux: string[], noms: string[]) {
 }
 
 /**
- * Résume une tranche. La transcription arrive de l'audio (déjà partie chez
- * Mistral) ; pour le résumé, les prénoms connus sont masqués et remis ici.
- */
-export async function resumerPassage(
-  passage: string,
-  contexte: { genre: string; titre: string; participants?: string },
-): Promise<string> {
-  if (!passage.trim()) return "";
-  const { parts, table } = masquerTout([contexte.titre, passage], await nomsDesEleves(contexte.participants ?? ""));
-  const [titre, masque] = parts;
-  const modele = await api.modeleActif(MODELE_TACHES);
-  const rep = await api.mistralChat(promptPassage(contexte.genre, titre, masque), modele);
-  const propre = nettoyer(rep);
-  return restaurer(propre, table).texte;
-}
-
-/** Où en était la réunion quand ce résumé a été fait. */
-export function repereDuResume(r: Resume): string {
-  const phrases = `phrases ${r.de + 1}–${r.a}`;
-  if (r.quand == null) return phrases;
-  const m = Math.floor(r.quand / 60);
-  return `${m} min · ${phrases}`;
-}
-
-/**
  * La seconde lecture : celle qui voit ce qu'un passage seul ne voit pas.
  *
  * Le rangement au fil de l'eau ne connaît que le document et deux phrases :
@@ -616,28 +564,6 @@ export async function mettreAuPropre(
   const modele = await api.modeleActif();
   const rep = await api.mistralChat(promptCompteRendu({
     genre: reunion.genre, titre, date: reunion.date, participants, resumes: planMasque,
-  }), modele);
-  const propre = nettoyer(rep);
-  if (!propre) throw new Error("La réponse de l'IA est vide.");
-  return sansMarqueursOrphelins(restaurer(propre, table).texte);
-}
-
-/** Rédige le compte rendu à partir des résumés déjà obtenus. */
-export async function redigerCompteRendu(
-  reunion: Pick<Reunion, "genre" | "titre" | "date" | "participants">,
-  liste: Resume[],
-): Promise<string> {
-  const utiles = liste.filter((r) => !riendedit(r.texte));
-  if (!utiles.length) throw new Error("Aucun résumé à assembler.");
-  const resumes = utiles.map((r) => `[${repereDuResume(r)}]\n${r.texte.trim()}`).join("\n\n");
-  // Le titre et les participants partent aussi : ils se masquent avec le reste.
-  const { parts, table } = masquerTout(
-    [reunion.titre, reunion.participants, resumes], await nomsDesEleves(reunion.participants));
-  const [titre, participants, masque] = parts;
-  const modele = await api.modeleActif();
-  const rep = await api.mistralChat(promptCompteRendu({
-    genre: reunion.genre, titre, date: reunion.date,
-    participants, resumes: masque,
   }), modele);
   const propre = nettoyer(rep);
   if (!propre) throw new Error("La réponse de l'IA est vide.");

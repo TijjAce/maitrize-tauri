@@ -168,10 +168,6 @@ export function titreDuDocument(markdown: string): string {
   return (propre || "Document").slice(0, 80);
 }
 
-/** Un texte qui a la forme d'un document : un titre, ou plusieurs parties. */
-export const estUnDocument = (markdown: string) =>
-  /^#\s+\S/m.test(markdown) || (markdown.match(/^##\s+\S/gm)?.length ?? 0) >= 2;
-
 /** Ce qu'on dit au modèle pour qu'il écrive un document, et rien d'autre. */
 export function consigneDocument(): string {
   return [

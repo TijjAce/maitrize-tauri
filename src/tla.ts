@@ -19,9 +19,6 @@ export const NATURES: { id: NatureMot; label: string; couleur: string }[] = [
   { id: "question", label: "Question", couleur: "#e9ddf6" },
 ];
 
-export const couleurNature = (n: NatureMot) =>
-  NATURES.find((x) => x.id === n)?.couleur ?? "#fce6ca";
-
 // ── Les couleurs, au choix ─────────────────────────────────────────────────
 //
 // La couleur dit la nature du mot d'un coup d'œil, mais elle n'aide pas tous
@@ -360,7 +357,6 @@ export function lireGabarit(json: string): Gabarit {
   if (soucis.length) throw new Error(soucis.join(" "));
   return g;
 }
-
 
 /**
  * Construit un tableau à partir d'un squelette, du noyau résolu et du thème.

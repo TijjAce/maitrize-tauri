@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { idsDuCreneau, remplirPlacesLibres, nomsDesPlaces, profilDuCreneau, planDuCreneau, assisDansProfil } from "./PlanSalle";
+import { idsDuCreneau, remplirPlacesLibres, nomsDesPlaces, profilDuCreneau, assisDansProfil } from "./PlanSalle";
 import type { Creneau, Eleve } from "../api";
 
 const eleve = (id: string): Eleve => ({
@@ -138,23 +138,6 @@ describe("profilDuCreneau", () => {
     // Le créneau pointe vers un agencement disparu : mieux vaut rien
     // qu'un plan pris dans une autre disposition.
     expect(profilDuCreneau({ ...base, profilCreneau: { c1: "effacé" } }, c)).toBeUndefined();
-  });
-});
-
-describe("planDuCreneau", () => {
-  const plan = { places: { s1: "a" }, notes: {} };
-  const base = { profils: [], plans: {}, plansMatiere: {}, profilCreneau: {}, profilMatiere: {} };
-
-  it("rend le plan propre au créneau", () => {
-    expect(planDuCreneau({ ...base, plans: { c1: plan } }, creneau("[]"))).toEqual(plan);
-  });
-
-  it("hérite de celui de la matière", () => {
-    expect(planDuCreneau({ ...base, plansMatiere: { "Scolarité": plan } }, creneau("[]"))).toEqual(plan);
-  });
-
-  it("rend un plan vide sans créneau", () => {
-    expect(planDuCreneau(base, undefined)).toEqual({ places: {}, notes: {} });
   });
 });
 

@@ -62,6 +62,3 @@ export const minToHHMM = (min: number) =>
 /** « 09:30:00 » → « 9h30 », pour l'affichage. */
 export const hhmm = (h: string) => h.slice(0, 5).replace(":", "h");
 
-/** Deux créneaux se chevauchent-ils ? Se toucher bout à bout ne compte pas. */
-export const seChevauchent = (a: { debut: string; fin: string }, b: { debut: string; fin: string }) =>
-  toMin(a.debut) < toMin(b.fin) && toMin(b.debut) < toMin(a.fin);

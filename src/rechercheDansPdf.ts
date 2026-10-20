@@ -98,9 +98,3 @@ export function morceauxCouverts(o: Occurrence, origine: number[]): number[] {
   return [...vus].sort((a, b) => a - b);
 }
 
-/** Le passage autour d'une trouvaille, pour se reconnaître sans y aller. */
-export function extraitAutour(texte: string, o: Occurrence, marge = 40): string {
-  const debut = Math.max(0, o.debut - marge);
-  const fin = Math.min(texte.length, o.fin + marge);
-  return (debut > 0 ? "…" : "") + texte.slice(debut, fin).trim() + (fin < texte.length ? "…" : "");
-}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ficheEcrite, lireFiches, type MonPicto } from "./mesPictos";
-import { estUnSupport, supportsDeLaSequence, supportsDuNiveau, TOUS_LES_NIVEAUX } from "./supportsDeTravail";
+import { estUnSupport, supportsDeLaSequence, TOUS_LES_NIVEAUX } from "./supportsDeTravail";
 import { lireFabrication, seRefaitDansFabriquer } from "./modifierFeuille";
 import { NIVEAUX_FICHES, iconeDeLaRecette, pageDuSupport, recetteDe, recettesDesSupports, recettesPour } from "./fichesAutonomie";
 
@@ -26,8 +26,6 @@ describe("une photo, support de travail", () => {
     const cp = photo({ id: PHOTO, matiere: "Français", niveau: "CP", sequenceId: "q1" });
     const tous = photo({ id: PHOTO - 1, mot: "Les cubes", matiere: "Mathématiques", niveau: TOUS_LES_NIVEAUX });
     const simple = photo({ id: PHOTO - 2, mot: "Les ciseaux" });
-    expect(supportsDuNiveau([cp, tous, simple], "CP").map((p) => p.mot)).toEqual(["Le jeu des boîtes", "Les cubes"]);
-    expect(supportsDuNiveau([cp, tous, simple], "CE1").map((p) => p.mot)).toEqual(["Les cubes"]);
     expect(supportsDeLaSequence([cp, tous, simple], "q1").map((p) => p.mot)).toEqual(["Le jeu des boîtes"]);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { densiteDuDocument, lignesDuDocument,
-  SUGGESTIONS_DOCUMENT, consigneDocument, estUnDocument, feuilleDuDocument, markdownVersHtml, titreDuDocument,
+  SUGGESTIONS_DOCUMENT, consigneDocument, feuilleDuDocument, markdownVersHtml, titreDuDocument,
 } from "./documentIa";
 
 describe("le Markdown d'un document", () => {
@@ -107,12 +107,6 @@ describe("le document lui-même", () => {
     expect(titreDuDocument("\n\n## Seulement des parties\ntexte")).toBe("Seulement des parties");
     expect(titreDuDocument("   ")).toBe("Document");
     expect(titreDuDocument("# " + "x".repeat(200))).toHaveLength(80);
-  });
-
-  it("reconnaît un document à sa forme", () => {
-    expect(estUnDocument("# Fiche\ntexte")).toBe(true);
-    expect(estUnDocument("## Un\n## Deux")).toBe(true);
-    expect(estUnDocument("Voici trois idées :\n- a\n- b")).toBe(false);
   });
 
   it("donne une feuille prête à imprimer, sur le papier avec un h1", () => {

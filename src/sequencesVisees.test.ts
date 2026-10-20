@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cleDeVisee, infobulleVisee, sequencesParCompetence, titresVisant } from "./sequencesVisees";
+import { cleDeVisee, sequencesParCompetence, titresVisant } from "./sequencesVisees";
 import { nouvelleSequence, type Sequence } from "./api";
 
 const visee = (competenceRefId: string, titre = "Lire", referentielNom = "Cycle 2", sousDomaineTitre = "Lecture") =>
@@ -18,8 +18,6 @@ describe("les compétences déjà visées", () => {
     const c1 = { referentielNom: "Cycle 2", sousDomaineTitre: "Lecture", competenceRefId: "c1", competenceTitre: "Lire" };
     expect(titresVisant(parCle, c1)).toEqual(["Les nombres jusqu'à 59", "Lecture du soir"]);
     expect(titresVisant(parCle, { ...c1, competenceRefId: "c9" })).toEqual([]);
-    expect(infobulleVisee(titresVisant(parCle, c1))).toBe("Déjà visée par : Les nombres jusqu'à 59 · Lecture du soir");
-    expect(infobulleVisee([])).toBe("");
   });
 
   it("écartent la séquence qu'on modifie : elle ne se vise pas elle-même", () => {

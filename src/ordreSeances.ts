@@ -62,13 +62,3 @@ export function renumerotees<T extends Numerotee>(rangees: T[]): T[] {
     .filter((s, i) => s.numero !== rangees[i].numero);
 }
 
-/**
- * Une numérotation abîmée se répare-t-elle ?
- *
- * Des doublons ou des trous (1, 1, 5) arrivent après un import, une copie ou
- * une vieille version : la liste s'affiche alors dans un ordre instable.
- */
-export function numerotationAbimee(seances: Numerotee[]): boolean {
-  const liste = ordonnees(seances);
-  return liste.some((s, i) => s.numero !== i + 1);
-}

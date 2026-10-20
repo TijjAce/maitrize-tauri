@@ -135,11 +135,6 @@ export function motsPropres(pictos: { id: number; mot: string }[]): string[] {
 
 const parOrdre = (mots: string[]) => [...mots].sort((a, b) => a.localeCompare(b, "fr"));
 
-/** De la banque, un tirage de mots au hasard : un par image, par ordre alphabétique. */
-export function motsDeLaBanque(pictos: { id: number; mot: string }[], combien: number, graine: number): string[] {
-  return parOrdre(piocher(hasard(graine), motsPropres(pictos), Math.max(1, Math.round(combien) || 1)));
-}
-
 /** Combien de mots de la banque on soumet au modèle, au plus : au-delà, la liste ne l'aide plus. */
 export const CANDIDATS_MAX = 300;
 

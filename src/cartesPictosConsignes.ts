@@ -86,13 +86,6 @@ export const REGLAGES_CARTES_PICTOS: ReglagesCartesPictos = { taille: "surMesure
 /** Les verbes qui ont un picto, dans l'ordre de la liste. */
 export const verbesAvecPicto = (lexique: Lexique): string[] => VERBES_CONSIGNE.map((v) => v.verbe).filter((v) => lexique[v] != null);
 
-/** Les verbes à imprimer : ceux qu'on a choisis, ou tous ceux qui ont un picto. */
-export function verbesAImprimer(lexique: Lexique, r: ReglagesCartesPictos): string[] {
-  const choisis = new Set(r.choisis);
-  const tous = verbesAvecPicto(lexique);
-  return choisis.size ? tous.filter((v) => choisis.has(v)) : tous;
-}
-
 /** Tout ce qui peut s'imprimer, selon ce qu'on imprime : les verbes, puis les matières, dans l'ordre de leurs listes. */
 export const pictosImprimables = (verbes: Lexique, matieres: Lexique, quoi: QuoiImprimer): string[] =>
   [...(quoi !== "matieres" ? verbesAvecPicto(verbes) : []), ...(quoi !== "verbes" ? matieresAvecPicto(matieres) : [])];

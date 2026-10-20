@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { aplatir, extraitAutour, morceauxCouverts, motifDe, occurrences } from "./rechercheDansPdf";
+import { aplatir, morceauxCouverts, motifDe, occurrences } from "./rechercheDansPdf";
 
 describe("aplatir le texte d'une page", () => {
   it("enlève accents et casse, garde la longueur utile", () => {
@@ -70,11 +70,3 @@ describe("chercher", () => {
   });
 });
 
-describe("se reconnaître sans y aller", () => {
-  it("rend le passage autour de la trouvaille", () => {
-    const t = aplatir(["Les situations de communication permettront de servir de base a l'apprentissage"]);
-    const [o] = occurrences(t.texte, "servir de base");
-    expect(extraitAutour(t.texte, o, 10)).toContain("servir de base");
-    expect(extraitAutour(t.texte, o, 10).startsWith("…")).toBe(true);
-  });
-});

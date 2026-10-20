@@ -61,6 +61,3 @@ export function sequencesParCompetence(sequences: Sequence[], saufId = ""): Map<
 export const titresVisant = (parCle: Map<string, string[]>, c: CompetenceVisee): string[] =>
   parCle.get(cleDeVisee(c)) ?? [];
 
-/** Ce que dit l'infobulle : « Déjà visée par : Les nombres jusqu'à 59 ». */
-export const infobulleVisee = (titres: string[]) =>
-  titres.length ? `Déjà visée par : ${titres.join(" · ")}` : "";

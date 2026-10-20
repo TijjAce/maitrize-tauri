@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   DEBIT_WHISPER, SILENCE_COUPE_S, enteteWav, estSilencieux, fautIlCouper, reechantillonner,
-  secondesDe, versPcm16,
+  versPcm16,
 } from "./audioWav";
 
 const sinus = (n: number, amplitude = 0.5) =>
@@ -12,7 +12,6 @@ describe("ramener au débit de Whisper", () => {
     const entree = sinus(48_000); // une seconde à 48 kHz
     const sortie = reechantillonner(entree, 48_000, DEBIT_WHISPER);
     expect(sortie.length).toBe(16_000);
-    expect(secondesDe(sortie.length, DEBIT_WHISPER)).toBeCloseTo(1, 5);
   });
 
   it("ne touche à rien quand le débit est déjà le bon", () => {

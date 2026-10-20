@@ -38,14 +38,6 @@ export function parImage(retard: number, ecoule: number, base = PAR_TIC): number
   return Math.max(1, Math.min(retard, Math.round(parTic(retard, base) * images)));
 }
 
-/** Le début commun à deux textes : ce qui n'a pas à être retapé. */
-export function prefixeCommun(a: string, b: string): number {
-  const max = Math.min(a.length, b.length);
-  let i = 0;
-  while (i < max && a[i] === b[i]) i++;
-  return i;
-}
-
 /**
  * Combien de caractères écrire à ce tic.
  *
@@ -70,23 +62,6 @@ export function parTic(retard: number, base = PAR_TIC): number {
  */
 export function estUneSuite(affiche: string, cible: string): boolean {
   return cible.startsWith(affiche);
-}
-
-/**
- * Le texte affiché au tic suivant.
- *
- * Quand la cible change ailleurs qu'à la fin, on garde le début commun et
- * l'on retape la suite — utile pour une correction locale, pas pour un
- * réagencement complet, que l'appelant applique d'un coup.
- */
-export function prochainAffichage(affiche: string, cible: string, base = PAR_TIC): string {
-  if (affiche === cible) return affiche;
-  const commun = prefixeCommun(affiche, cible);
-  // Ce qui a disparu s'efface d'abord, d'un coup : réécrire à l'envers
-  // donnerait l'impression d'un bug, pas d'une correction.
-  const depart = affiche.length > commun ? cible.slice(0, commun) : affiche;
-  const reste = cible.length - depart.length;
-  return cible.slice(0, depart.length + parTic(reste, base));
 }
 
 export function ZoneVivante({ cible, onChange, minHauteur = "55vh", placeholder, style, anime = true, onSelection, zoneRef }: {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { decalee, deplacee, numerotationAbimee, ordonnees, renumerotees } from "./ordreSeances";
+import { decalee, deplacee, ordonnees, renumerotees } from "./ordreSeances";
 
 const s = (id: string, numero: number, titre = "") => ({ id, numero, titre });
 const ids = (l: { id: string }[]) => l.map((x) => x.id);
@@ -75,14 +75,3 @@ describe("renuméroter", () => {
   });
 });
 
-describe("repérer une numérotation abîmée", () => {
-  it("dit vrai sur des doublons ou des trous", () => {
-    expect(numerotationAbimee([s("a", 1), s("b", 1)])).toBe(true);
-    expect(numerotationAbimee([s("a", 1), s("b", 5)])).toBe(true);
-  });
-
-  it("dit faux sur une liste saine, même mal triée à l'entrée", () => {
-    expect(numerotationAbimee([s("b", 2), s("a", 1)])).toBe(false);
-    expect(numerotationAbimee([])).toBe(false);
-  });
-});

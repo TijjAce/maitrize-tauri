@@ -73,9 +73,6 @@ export function versWav(echantillons: Float32Array, debitEntree: number, debitSo
   return new Blob([enteteWav(pcm.byteLength, debitSortie), pcm.buffer], { type: "audio/wav" });
 }
 
-/** Combien de secondes d'audio, à ce débit. */
-export const secondesDe = (echantillons: number, debit: number) => echantillons / debit;
-
 /** Le silence qui marque une fin de phrase, en secondes. */
 export const SILENCE_COUPE_S = 0.6;
 

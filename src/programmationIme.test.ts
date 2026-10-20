@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("./api", () => ({ newId: () => "id" + Math.random().toString(36).slice(2, 8) }));
 
 import {
-  CIBLE_MAX, CIBLE_MIN, basculerCible, cyclerPeriode, domaineDe, etatDePeriode, niveauDe, parDomaine, basculerPeriode, comptes, ecrire, elevesConcernes, etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte, nouveauGroupe, nouvelObjectif, objectifsDe, objectifsDuCreneau, poserSurCreneau, retirerDuCreneau, retirerGroupe, type ProgrammationIme, vide,
+  CIBLE_MAX, CIBLE_MIN, basculerCible, cyclerPeriode, domaineDe, etatDePeriode, niveauDe, parDomaine, basculerPeriode, comptes, ecrire, elevesConcernes, etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte, nouvelObjectif, objectifsDe, type ProgrammationIme, vide,
 } from "./programmationIme";
 
 const prog = (): ProgrammationIme => ({
@@ -80,27 +80,6 @@ describe("modifier un objectif", () => {
   });
 });
 
-describe("supprimer un groupe", () => {
-  it("rend ses élèves aux objectifs qui s'appuyaient dessus", () => {
-    const suite = retirerGroupe(prog(), "g1");
-    expect(suite.groupes).toEqual([]);
-    expect(suite.objectifs[0].pour.sort()).toEqual([marqueEleve("e1"), marqueEleve("e2")]);
-    expect(elevesConcernes(suite.objectifs[0], suite.groupes).sort()).toEqual(["e1", "e2"]);
-  });
-
-  it("ne duplique pas un élève déjà visé en direct", () => {
-    const p = prog();
-    p.objectifs[0].pour.push(marqueEleve("e1"));
-    const suite = retirerGroupe(p, "g1");
-    expect(suite.objectifs[0].pour.filter((x) => x === marqueEleve("e1"))).toHaveLength(1);
-  });
-
-  it("un groupe inconnu ne change rien", () => {
-    const p = prog();
-    expect(retirerGroupe(p, "zzz")).toBe(p);
-  });
-});
-
 describe("l'enregistrement", () => {
   it("fait l'aller-retour sans rien perdre", () => {
     const p = prog();
@@ -125,70 +104,6 @@ describe("l'enregistrement", () => {
     expect(lu.objectifs[0].pour).toEqual(["eleve:e1"]);
   });
 
-  it("un groupe se crée avec un nom par défaut plutôt que vide", () => {
-    expect(nouveauGroupe("  ").nom).toBe("Groupe");
-    expect(nouveauGroupe("Langage", ["e1"]).eleveIds).toEqual(["e1"]);
-  });
-});
-
-describe("programmer par créneau", () => {
-  // Deux créneaux de la semaine type, avec leurs élèves — c'est le créneau
-  // qui fait le groupe, comme dans l'emploi du temps réel.
-  const élèvesPar = { lundi14: ["e1", "e2"], jeudi10: ["e2", "e5"] };
-  const base = (): ProgrammationIme => ({ groupes: [], objectifs: [] });
-
-  it("pose une compétence sur un créneau et l'attribue à ses élèves", () => {
-    const p = poserSurCreneau(base(), "lundi14", élèvesPar.lundi14, "Lire un mot outil", "Cycle 2 › Lecture");
-    expect(p.objectifs).toHaveLength(1);
-    const o = p.objectifs[0];
-    expect(o.competence).toBe("Lire un mot outil");
-    expect(o.creneaux).toEqual(["lundi14"]);
-    expect(o.pour.sort()).toEqual([marqueEleve("e1"), marqueEleve("e2")].sort());
-    expect(objectifsDuCreneau(p, "lundi14")).toHaveLength(1);
-    expect(objectifsDuCreneau(p, "jeudi10")).toHaveLength(0);
-  });
-
-  it("ne la pose pas deux fois sur le même créneau", () => {
-    let p = poserSurCreneau(base(), "lundi14", élèvesPar.lundi14, "Lire un mot outil", "Cycle 2 › Lecture");
-    p = poserSurCreneau(p, "lundi14", élèvesPar.lundi14, "  lire un mot outil ", "cycle 2 › Lecture");
-    expect(p.objectifs).toHaveLength(1);
-    expect(p.objectifs[0].creneaux).toEqual(["lundi14"]);
-  });
-
-  it("étend un objectif déjà posé plutôt que d'en créer un second", () => {
-    let p = poserSurCreneau(base(), "lundi14", élèvesPar.lundi14, "Lire un mot outil", "Cycle 2 › Lecture");
-    p = poserSurCreneau(p, "jeudi10", élèvesPar.jeudi10, "Lire un mot outil", "Cycle 2 › Lecture");
-    expect(p.objectifs).toHaveLength(1);
-    expect(p.objectifs[0].creneaux).toEqual(["lundi14", "jeudi10"]);
-    // e5 vient du jeudi, e1 du lundi, e2 des deux : chacun compté une fois.
-    expect(p.objectifs[0].pour.sort()).toEqual(
-      [marqueEleve("e1"), marqueEleve("e2"), marqueEleve("e5")].sort());
-    // Et le compte par élève ne la voit qu'une fois.
-    expect(comptes(p, ["e1", "e2", "e5"])).toEqual({ e1: 1, e2: 1, e5: 1 });
-  });
-
-  it("en la retirant d'un créneau, garde les élèves qui la travaillent ailleurs", () => {
-    let p = poserSurCreneau(base(), "lundi14", élèvesPar.lundi14, "Lire un mot outil", "Cycle 2 › Lecture");
-    p = poserSurCreneau(p, "jeudi10", élèvesPar.jeudi10, "Lire un mot outil", "Cycle 2 › Lecture");
-    p = retirerDuCreneau(p, "lundi14", "Lire un mot outil", "Cycle 2 › Lecture", élèvesPar);
-    expect(p.objectifs).toHaveLength(1);
-    expect(p.objectifs[0].creneaux).toEqual(["jeudi10"]);
-    // e1 ne la travaillait que le lundi : il la perd. e2 reste, il est aussi
-    // du jeudi. e5 reste.
-    expect(p.objectifs[0].pour.sort()).toEqual([marqueEleve("e2"), marqueEleve("e5")].sort());
-  });
-
-  it("efface l'objectif qui ne sert plus nulle part", () => {
-    let p = poserSurCreneau(base(), "lundi14", élèvesPar.lundi14, "Lire un mot outil", "Cycle 2 › Lecture");
-    p = retirerDuCreneau(p, "lundi14", "Lire un mot outil", "Cycle 2 › Lecture", élèvesPar);
-    expect(p.objectifs).toHaveLength(0);
-  });
-
-  it("laisse intact un objectif posé à la main, sans créneau", () => {
-    const p = retirerDuCreneau(prog(), "lundi14", "Demander de l'aide", "PPI", élèvesPar);
-    expect(p.objectifs).toHaveLength(2);
-    expect(p.objectifs[0].pour).toEqual([marqueGroupe("g1")]);
-  });
 });
 
 describe("la programmation en tableau", () => {

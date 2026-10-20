@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { CategorieArasaac, ChatMessage } from "./api";
 import { DEMANDE_CORPUS } from "./corpusIa";
 import {
-  devinerLesThemes, formesAChercher, motsDeLaBanque, motsPorteurs, preparerLeCorpus, racine, reserverLaPreparation,
+  devinerLesThemes, formesAChercher, motsPorteurs, preparerLeCorpus, racine, reserverLaPreparation,
   resumeDeLaPreparation, singulier, themesParLibelle, themesParPictos, themesProposables, titreExploitable, type ServicesCorpus,
 } from "./corpusAuto";
 
@@ -50,23 +50,6 @@ describe("deviner les thèmes", () => {
   it("ne propose que des thèmes : ni grammaire, ni vocabulaire noyau, ni catégorie inconnue ou trop petite", () => {
     expect(themesProposables(CATEGORIES).map((c) => c.nom))
       .toEqual(["food", "animal anatomy", "domestic animal", "wild animal", "terrestrial animal", "gardening", "vegetable", "clothes"]);
-  });
-});
-
-describe("piocher les mots", () => {
-  const pictos = [
-    { id: 1, mot: "vache" }, { id: 2, mot: "vache" }, { id: 3, mot: "poule" }, { id: 4, mot: "cochon d'Inde" },
-    { id: 5, mot: "2 chevaux" }, { id: 6, mot: "âne" }, { id: 7, mot: "mouton (animal)" }, { id: 8, mot: "chèvre" },
-  ];
-  it("prend un mot par image, écarte ce qui n'est pas un mot, et range par ordre alphabétique", () => {
-    const tous = motsDeLaBanque(pictos, 10, 1);
-    expect(tous).toEqual(["âne", "chèvre", "cochon d'Inde", "poule", "vache"]);
-  });
-  it("tire le nombre demandé, toujours le même pour la même graine", () => {
-    const a = motsDeLaBanque(pictos, 3, 7);
-    expect(a).toHaveLength(3);
-    expect(motsDeLaBanque(pictos, 3, 7)).toEqual(a);
-    expect(new Set(a).size).toBe(3);
   });
 });
 
