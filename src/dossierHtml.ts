@@ -10,7 +10,10 @@ import { couleurObservation } from "./components/TypeObservation";
 import { infosReussite, lireLiens, intitulesDesObjectifs } from "./objectifsPpi";
 import { documentImprimable, escapeHtml } from "./print";
 import { construire, Dossier, piecesAttendues } from "./dossier";
-import { api, type DocumentEleve, type Eleve, type ObservationEleve } from "./api";
+import {
+  api, type CommentaireEleve, type DocumentEleve, type Eleve, type Evaluation, type NoteEleve, type ObservationEleve,
+  type PapierEleve, type ProgressionEleve,
+} from "./api";
 
 /**
  * Le dossier tel qu'il s'imprime : axes, pièces, observations, évaluations,
@@ -163,10 +166,25 @@ export async function dossierExporte(eleve: Eleve, annee: string): Promise<strin
     api.progressionsEleveList(),
     api.observationsList(eleve.id),
   ]);
-  const objectifs = intitulesDesObjectifs(docs.find((d) => d.typeDoc === "ppi")?.donnees ?? null);
-  const d = construire(eleve, commentaires, notes, evaluations, docs, papiers, progressions);
   const entete = `<div class="meta">Exporté de Maitrize le ${new Date().toLocaleDateString("fr-FR")}, à la fin de l'année scolaire ${escapeHtml(annee)}.</div>`;
   return documentImprimable(`Dossier — ${eleve.nom}`,
-    entete + corpsDuDossier(d, objectifs, tempsDObservationHtml(observations) + documentsHtml(docs)),
+    entete + corpsDeLExport(eleve, { commentaires, notes, evaluations, docs, papiers, progressions, observations }),
     STYLE_EXPORT);
+}
+
+/** Ce que le dossier d'un élève rassemble ; les listes peuvent contenir les autres élèves, chacun n'y prend que le sien. */
+export interface DonneesDuDossier {
+  commentaires: CommentaireEleve[]; notes: NoteEleve[]; evaluations: Evaluation[]; docs: DocumentEleve[];
+  papiers: PapierEleve[]; progressions: ProgressionEleve[]; observations: ObservationEleve[];
+}
+
+/**
+ * Le corps du dossier exporté d'un élève, à partir de données déjà lues : la
+ * copie du travail le refait pour chaque élève sans tout redemander à la base.
+ */
+export function corpsDeLExport(eleve: Eleve, d: DonneesDuDossier): string {
+  const docs = d.docs.filter((x) => x.eleveId === eleve.id);
+  const objectifs = intitulesDesObjectifs(docs.find((x) => x.typeDoc === "ppi")?.donnees ?? null);
+  const dossier = construire(eleve, d.commentaires, d.notes, d.evaluations, docs, d.papiers, d.progressions);
+  return corpsDuDossier(dossier, objectifs, tempsDObservationHtml(d.observations.filter((o) => o.eleveId === eleve.id)) + documentsHtml(docs));
 }

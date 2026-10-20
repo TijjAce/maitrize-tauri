@@ -7,9 +7,9 @@ import { toast } from "./Toaster";
 import { confirmer } from "./confirmer";
 import { openCtx } from "./ctxmenu";
 import { ChoixCompetence } from "./ChoixCompetence";
-import { printHTML, escapeHtml } from "../print";
+import { printHTML } from "../print";
 import {
-  CIBLE_MAX, CIBLE_MIN, PERIODES, basculerCible, comptes, cyclerPeriode, ecrire,
+  CIBLE_MAX, CIBLE_MIN, PERIODES, basculerCible, comptes, cyclerPeriode, ecrire, htmlParEleve,
   elevesConcernes, etatDePeriode, etatDuCompte, lire, marqueEleve, marqueGroupe, motDuCompte, niveauDe,
   nouvelObjectif, objectifsDe, parDomaine, vide, type Groupe, type Objectif, type ProgrammationIme as Prog,
 } from "../programmationIme";
@@ -356,23 +356,7 @@ export function ProgrammationIme({ annee }: { annee: string }) {
   const montres = filtre ? objectifsDe(prog, filtre) : prog.objectifs;
   const eleveFiltre = listeEleves.find((e) => e.id === filtre);
 
-  const imprimer = () => {
-    const parEleve = listeEleves.map((e) => {
-      const siens = objectifsDe(prog, e.id);
-      const lignes = siens.map((o) => `<tr><td>${escapeHtml(o.competence || "—")}
-        ${o.origine ? `<div class="meta">${escapeHtml(o.origine)}</div>` : ""}</td>
-        ${PERIODES.map((p) => `<td style="text-align:center">${o.periodes.includes(p)
-          ? (o.atteintes.includes(p) ? "✔" : "•") : ""}</td>`).join("")}</tr>`).join("");
-      return `<h2>${escapeHtml(e.nom)} <span class="meta">— ${siens.length} objectif(s)</span></h2>`
-        + (siens.length
-          ? `<table><tr><th>Objectif</th>${PERIODES.map((p) => `<th>P${p}</th>`).join("")}</tr>${lignes}</table>`
-          : `<p class="meta">Aucun objectif programmé.</p>`);
-    }).join("");
-    printHTML(`Programmation ${annee}`,
-      `<h1>Programmation par élève — ${escapeHtml(annee)}</h1>
-       <div class="meta">Cible : ${CIBLE_MIN} à ${CIBLE_MAX} objectifs par élève sur l'année · • programmé, ✔ atteint</div>
-       ${parEleve}`);
-  };
+  const imprimer = () => printHTML(`Programmation ${annee}`, htmlParEleve(annee, prog, listeEleves));
 
   if (!listeEleves.length) {
     return <Empty icone="👧" titre="Aucun élève"

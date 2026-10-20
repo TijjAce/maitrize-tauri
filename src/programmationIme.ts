@@ -11,6 +11,7 @@
 // le concerne.
 
 import { newId } from "./api";
+import { escapeHtml } from "./print";
 
 /** Ce qu'on vise pour un élève ou un groupe, sur une ou plusieurs périodes. */
 /**
@@ -348,4 +349,26 @@ export function retirerGroupe(p: ProgrammationIme, groupeId: string): Programmat
       return { ...o, pour: [...sans, ...repris] };
     }),
   };
+}
+
+/**
+ * La programmation par élève, en HTML : un tableau par élève, ses objectifs
+ * et les périodes où ils sont programmés (•) ou atteints (✔). Celle qu'on
+ * imprime, et celle que la copie du travail range sur le disque.
+ */
+export function htmlParEleve(annee: string, p: ProgrammationIme, eleves: { id: string; nom: string }[]): string {
+  const parEleve = eleves.map((e) => {
+    const siens = objectifsDe(p, e.id);
+    const lignes = siens.map((o) => `<tr><td>${escapeHtml(o.competence || "—")}
+      ${o.origine ? `<div class="meta">${escapeHtml(o.origine)}</div>` : ""}</td>
+      ${PERIODES.map((n) => `<td style="text-align:center">${o.periodes.includes(n)
+        ? (o.atteintes.includes(n) ? "✔" : "•") : ""}</td>`).join("")}</tr>`).join("");
+    return `<h2>${escapeHtml(e.nom)} <span class="meta">— ${siens.length} objectif(s)</span></h2>`
+      + (siens.length
+        ? `<table><tr><th>Objectif</th>${PERIODES.map((n) => `<th>P${n}</th>`).join("")}</tr>${lignes}</table>`
+        : `<p class="meta">Aucun objectif programmé.</p>`);
+  }).join("");
+  return `<h1>Programmation par élève — ${escapeHtml(annee)}</h1>
+     <div class="meta">Cible : ${CIBLE_MIN} à ${CIBLE_MAX} objectifs par élève sur l'année · • programmé, ✔ atteint</div>
+     ${parEleve}`;
 }

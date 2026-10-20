@@ -118,13 +118,13 @@ export function nomSur(brut: string, secours = "Sans titre"): string {
 }
 
 /** L'extension d'un fichier de Maitrize, point compris : « .pdf ». */
-function extensionDe(nomStocke: string): string {
+export function extensionDe(nomStocke: string): string {
   const m = /\.([A-Za-z0-9]{1,8})$/.exec(nomStocke);
   return m ? `.${m[1].toLowerCase()}` : "";
 }
 
 /** Un nom lisible sans l'extension qu'il porterait déjà : « Classeur.xlsx » → « Classeur ». */
-function sansExtension(nom: string, ext: string): string {
+export function sansExtension(nom: string, ext: string): string {
   return ext && nom.toLowerCase().endsWith(ext) ? nom.slice(0, -ext.length) : nom;
 }
 
@@ -133,7 +133,7 @@ const liste = <T>(json: string | null | undefined): T[] => {
 };
 
 /** Les noms déjà pris dans chaque dossier de la copie, sans distinction de casse. */
-class Noms {
+export class Noms {
   private pris = new Map<string, Set<string>>();
   constructor() {
     this.pris.set("", new Set(NOMS_RESERVES.map((n) => n.normalize("NFC").toLowerCase())));
