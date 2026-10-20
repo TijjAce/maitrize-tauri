@@ -35,6 +35,7 @@ const ONGLETS = [
   ["donnees", "Données & synchro"],
   ["partage", "Téléphone"],
   ["retard", "En retard"],
+  ["nuage", "Nuage"],
   ["amis", "Amis"],
   ["licences", "Licences"],
 ] as const;
@@ -437,11 +438,12 @@ export default function Reglages() {
             <span style={{ fontSize: 13 }}>{dataMsg}</span>
           </div>
         </div>
-
-        {/* Ouvrir ses dossiers aux collègues : une fois, et jamais plus. */}
-        <PartagerMesDossiers />
       </Repli>
       </>}
+
+      {/* Ouvrir ses dossiers aux collègues, depuis son Nuage ou un dossier de
+          cet ordinateur : un onglet à lui (demande de l'enseignant, octobre 2026). */}
+      {onglet === "nuage" && <PartagerMesDossiers />}
 
       {onglet === "retard" && <ReglagesEnRetard />}
 
