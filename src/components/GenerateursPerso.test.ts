@@ -31,7 +31,7 @@ vi.mock("../mesPictos", async (avant) => ({
 // Un prénom inventé, pour l'essai : il ne doit jamais partir chez Mistral.
 vi.mock("../nomsAMasquer", () => ({ nomsAMasquer: vi.fn(async () => ["Pimprenelle"]) }));
 
-import { creerAvecLIA, pictosPourLesMots, retoucherAvecLIA } from "./GenerateursPerso";
+import { creerAvecLIA, pictosPourLesMots, questionDeLIA, retoucherAvecLIA } from "./GenerateursPerso";
 
 const RECETTE = {
   nom: "Les petits des animaux", icone: "🐣", quoi: "Relier les animaux à leurs petits.", classe: "CP", moment: "entrainement",
@@ -84,5 +84,31 @@ describe("ce qu'on demande à Mistral", () => {
     const relier = r.blocs[0];
     expect(relier.sorte === "relier" && relier.paires[0][0]).toEqual({ id: null, mot: "chat", photo: "chat.jpg" });
     expect(relier.sorte === "relier" && relier.paires[3].map((e) => e.id)).toEqual([2, null]);
+  });
+});
+
+describe("les questions de l'IA, avant la recette", () => {
+  it("partent sans les prénoms et reviennent avec, en mode JSON", async () => {
+    reponses = ['{"pret": false, "question": "Pour [P1], quels animaux ?", "choix": ["La ferme", "La mer"]}'];
+    const q = await questionDeLIA("Une feuille pour Pimprenelle sur les animaux.", "CP", []);
+    expect(q).toEqual({ question: "Pour Pimprenelle, quels animaux ?", choix: ["La ferme", "La mer"] });
+    expect(appels[0].json).toBe(true);
+    expect(JSON.stringify(appels[0].messages)).not.toContain("Pimprenelle");
+  });
+
+  it("s'arrêtent quand l'IA en sait assez, et au bout de quatre sans rien demander", async () => {
+    reponses = ['{"pret": true}'];
+    expect(await questionDeLIA("Relier les animaux de la ferme à leurs petits, pour des non-lecteurs.", "CP", [])).toBeNull();
+    const quatre = Array.from({ length: 4 }, (_, i) => ({ question: `Question ${i + 1} ?`, reponse: "oui" }));
+    expect(await questionDeLIA("Des animaux.", "CP", quatre)).toBeNull();
+    expect(appels).toHaveLength(1);
+  });
+
+  it("redemandent sans le mode JSON quand le modèle le refuse ; une autre erreur remonte", async () => {
+    reponses = [new Error("Mistral a refusé la demande (code 422) : response_format"), '{"pret": false, "question": "Quel thème ?", "choix": []}'];
+    expect(await questionDeLIA("Des mots.", "CE1", [])).toEqual({ question: "Quel thème ?", choix: [] });
+    expect(appels.map((a) => a.json)).toEqual([true, false]);
+    reponses = [new Error("Clé API Mistral refusée.")];
+    await expect(questionDeLIA("Des mots.", "CE1", [])).rejects.toThrow("Clé API Mistral refusée.");
   });
 });

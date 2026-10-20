@@ -595,6 +595,66 @@ Règles :
 export const demandeALIA = (demande: string, classe: string) =>
   `Classe : ${classe || "non précisée"}.\nCe que veut l'enseignant : ${demande.trim()}`;
 
+// ── Les questions de l'IA, avant la recette ──────────────────────────────
+//
+// Une demande trop courte donne une feuille à côté (« des animaux » : pour
+// lire, compter, trier ?). Avant d'écrire la recette, l'IA dit si elle en
+// sait assez ; sinon elle pose la question qui manque le plus, avec des
+// réponses à toucher — une à la fois, quatre au plus (demande de
+// l'enseignant, octobre 2026).
+
+/** Une question de l'IA, et ce que l'enseignant a répondu ; vide : il l'a passée. */
+export interface Echange { question: string; reponse: string }
+
+/** La question que l'IA pose, et les réponses qu'elle propose. */
+export interface QuestionDeLIA { question: string; choix: string[] }
+
+/** Au plus tant de questions : au-delà, la recette s'écrit avec ce qu'on sait. */
+export const QUESTIONS_MAX = 4;
+
+export const CONSIGNE_DES_QUESTIONS = `Tu aides un enseignant d'école primaire française (de la maternelle au CM2, avec des élèves parfois non lecteurs, dys ou à besoins particuliers) à préparer un générateur de feuilles d'exercices : relier, trier en colonnes, compléter des phrases, compter, entourer, répondre à des questions, des étiquettes, une planche d'images, coller le mot sous l'image, remettre dans l'ordre, cocher la bonne image. Avant de l'écrire, tu vérifies que tu en sais assez pour une feuille juste et utile. Tu ne réponds QUE par un objet JSON, sans aucun texte autour, de l'une de ces deux formes :
+{"pret": true}
+{"pret": false, "question": "une seule question, courte", "choix": ["de 2 à 4 réponses courtes"]}
+
+Ce qu'il faut savoir, par ordre d'importance :
+1. ce que les élèves travaillent : la notion ou la compétence, ou le thème et ses mots ;
+2. s'ils lisent : non lecteurs, lecteurs débutants ou lecteurs (la maternelle ne lit pas : ne le demande pas) ;
+3. la forme de l'exercice, si l'enseignant en a une en tête ;
+4. la difficulté : combien d'éléments, jusqu'à quel nombre, quels sons…
+Règles :
+- Une seule question à la fois, sur ce qui manque le plus ; jamais sur ce que l'enseignant a déjà dit ou précisé.
+- Les choix sont des réponses concrètes, adaptées à la classe et au thème, qu'on n'a qu'à toucher.
+- Dès que tu en sais assez, réponds {"pret": true} : une demande claire n'appelle aucune question.
+- Vouvoie l'enseignant. Jamais de prénom d'élève.`;
+
+/** Le message pour l'IA qui questionne : la classe, la demande, et ce qui s'est déjà dit. */
+export function questionsALIA(demande: string, classe: string, echanges: Echange[]): string {
+  const deja = echanges.map((e) => `- ${e.question} → ${e.reponse.trim() || "(pas de préférence)"}`).join("\n");
+  return `${demandeALIA(demande, classe)}${deja ? `\nDéjà précisé :\n${deja}` : ""}\nQuestions déjà posées : ${echanges.length}, ${QUESTIONS_MAX} au plus.`;
+}
+
+/** La question que l'IA a répondue ; rien quand elle en sait assez, ou que sa réponse ne se lit pas. */
+export function lireQuestion(reponse: string): QuestionDeLIA | null {
+  const debut = reponse.indexOf("{"), fin = reponse.lastIndexOf("}");
+  if (debut < 0 || fin <= debut) return null;
+  try {
+    const o: unknown = JSON.parse(reponse.slice(debut, fin + 1));
+    if (!o || typeof o !== "object") return null;
+    const { pret, question, choix } = o as { pret?: unknown; question?: unknown; choix?: unknown };
+    if (pret === true || typeof question !== "string" || !question.trim()) return null;
+    const lus = Array.isArray(choix) ? choix.filter((c): c is string => typeof c === "string").map((c) => c.trim().slice(0, 80)).filter(Boolean) : [];
+    return { question: question.trim().slice(0, 200), choix: [...new Set(lus)].slice(0, 4) };
+  } catch {
+    return null;
+  }
+}
+
+/** Ce que l'enseignant veut, avec ce qu'il a précisé en répondant : c'est ce que la recette lira, et ce qu'on gardera. */
+export function demandeAvecPrecisions(demande: string, echanges: Echange[]): string {
+  const precisions = echanges.filter((e) => e.reponse.trim()).map((e) => `${e.question.trim()} ${e.reponse.trim()}`);
+  return precisions.length ? `${demande.trim()}\nPrécisions : ${precisions.join(" ; ")}` : demande.trim();
+}
+
 /** La retouche d'une recette : la recette telle qu'elle est, en mots seulement, et ce que l'enseignant veut changer. */
 export function retoucheALIA(g: GenerateurPerso, consigne: string): string {
   const recette = { nom: g.nom, icone: g.icone, quoi: g.quoi, classe: g.classe, moment: g.moment, blocs: g.blocs };
