@@ -302,13 +302,18 @@ export function GevaScoTab() {
 
   const eleve = eleves?.find((e) => e.id === eleveId);
 
+  // Seulement si l'élève est toujours celui qu'on regarde : une lecture lente
+  // arrivait après celle de l'élève suivant, et la saisie écrivait chez lui.
   React.useEffect(() => {
     if (!eleveId) return;
+    let actif = true;
     api.documentEleveGet(eleveId, "gevasco").then((v) => {
+      if (!actif) return;
       let charge = VIDE;
       try { charge = v ? normaliser({ ...VIDE, ...JSON.parse(v) }) : VIDE; } catch { charge = VIDE; }
       dRef.current = charge; setD(charge);
     });
+    return () => { actif = false; };
   }, [eleveId]);
 
   // Référence toujours à jour : deux saisies rapprochées (clics enchaînés,

@@ -37,13 +37,17 @@ export function DispositifsTab({ dispositif }: { dispositif?: string } = {}) {
   // Un type de document par dispositif : « dispositif:pap », « dispositif:pai »…
   const typeDoc = `dispositif:${dispoId}`;
 
+  // Seulement si l'élève et le dispositif sont toujours ceux qu'on regarde.
   React.useEffect(() => {
     if (!eleveId || !dispo) return;
+    let actif = true;
     api.documentEleveGet(eleveId, typeDoc).then((s) => {
+      if (!actif) return;
       let charge: Valeurs = {};
       try { charge = s ? JSON.parse(s) : {}; } catch { charge = {}; }
       vRef.current = charge; setV(charge);
     });
+    return () => { actif = false; };
   }, [typeDoc, eleveId, dispo]);
 
   // Référence à jour : deux saisies rapprochées doivent se composer.

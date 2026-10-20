@@ -15,6 +15,7 @@ import { nouveauxDepuis, poserLaRedaction, rassembler, resumeDesEcrits, type Ecr
 import { AgentArrete, ETAPES_DE_L_AGENT, lancerLAgent, type AvancementDeLAgent } from "../agentSynthese";
 import { AgentDeSynthese } from "../components/AgentDeSynthese";
 import { eleveAMontrer, eleveDuDossier, retenirEleveDuDossier } from "../eleveDuDossier";
+import { modifierLeDocument } from "../documentDeLEleve";
 
 /** Le dossier d'un élève demande l'agent : la synthèse s'ouvre sur lui, et l'agent part (voir DossierEleve.tsx). */
 export const CLE_AGENT_DEMANDE = "maitrize:agent-synthese";
@@ -139,6 +140,12 @@ export function SyntheseEleveTab() {
     setSynthese(s);
     if (eleveId) aEcrire.current = { id: eleveId, json: JSON.stringify(s) };
   };
+  // L'état du moment, pour ce qui revient après coup (rédaction, suivi relu) :
+  // l'écran a pu changer d'élève, ou la synthèse avoir été retouchée.
+  const eleveIdRef = React.useRef(eleveId);
+  eleveIdRef.current = eleveId;
+  const syntheseRef = React.useRef(synthese);
+  syntheseRef.current = synthese;
   const setSection = (id: Section, texte: string) => modifier({ ...synthese, sections: { ...synthese.sections, [id]: texte } });
 
   const eleve = eleves?.find((e) => e.id === eleveId);
@@ -149,10 +156,14 @@ export function SyntheseEleveTab() {
     if (!eleveId) return;
     if (seulement && (synthese.sections[seulement] ?? "").trim()
       && !(await confirmer("Remplacer le texte de cette section par un brouillon tiré du suivi ?", { oui: "Remplacer" }))) return;
-    const frais = await lireSuivi(eleveId);
+    const pour = eleveId;
+    const frais = await lireSuivi(pour);
+    // Un autre élève choisi entre-temps : ce brouillon n'est pas le sien.
+    if (eleveIdRef.current !== pour) return;
     setIndices(frais);
-    if (seulement) setAvant((a) => ({ ...a, [seulement]: synthese.sections[seulement] ?? "" }));
-    const r = preRemplirSynthese(synthese, frais, autres, seulement);
+    const actuelle = syntheseRef.current;
+    if (seulement) setAvant((a) => ({ ...a, [seulement]: actuelle.sections[seulement] ?? "" }));
+    const r = preRemplirSynthese(actuelle, frais, autres, seulement);
     modifier(r.synthese);
     if (!seulement) {
       toast(r.remplies
@@ -167,12 +178,21 @@ export function SyntheseEleveTab() {
   const rediger = async (cle: Section | "bilan") => {
     const texte = cle === "bilan" ? synthese.bilan : synthese.sections[cle] ?? "";
     if (!texte.trim()) { toast("Rien à rédiger dans cette section.", { icone: "✍️" }); return; }
+    const pour = eleveId;
     setRedaction(cle);
     try {
       const p = await reformuler(texte, "notes");
-      setAvant((a) => ({ ...a, [cle]: texte }));
-      if (cle === "bilan") modifier({ ...synthese, bilan: p.texte });
-      else setSection(cle, p.texte);
+      const avecLaReponse = (s: SyntheseEleve): SyntheseEleve =>
+        cle === "bilan" ? { ...s, bilan: p.texte } : { ...s, sections: { ...s.sections, [cle]: p.texte } };
+      // Chez l'élève pour qui on l'a demandée, dans l'état du moment.
+      if (eleveIdRef.current === pour) {
+        setAvant((a) => ({ ...a, [cle]: texte }));
+        modifier(avecLaReponse(syntheseRef.current));
+      } else {
+        await modifierLeDocument(pour, TYPE_DOC_SYNTHESE, lireSynthese, avecLaReponse);
+        const prenom = (eleves?.find((e) => e.id === pour)?.nom ?? "").trim().split(/\s+/)[0];
+        toast(`La rédaction est rangée dans la synthèse ${prenom ? `de ${prenom}` : "de l'élève"}.`, { icone: "✨" });
+      }
     } catch (e) {
       toast(`Rédaction impossible : ${e}`, { icone: "⚠️", duree: 6000 });
     } finally {

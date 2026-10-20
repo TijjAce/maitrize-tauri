@@ -29,6 +29,7 @@ import { nomsAMasquer } from "../nomsAMasquer";
 import { fabricationsDesFiches, niveauDesFiches } from "../fichesAutonomie";
 import { isoJour } from "../dates";
 import { useEleveDuDossier } from "../eleveDuDossier";
+import { lireJson, modifierLeDocument } from "../documentDeLEleve";
 
 const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "dispositifs", "gevasco"] as const;
 /** Ce qu'affiche l'onglet Évaluations : le sommatif (évaluations notées, synthèse GS) ou le diagnostique (grilles d'observation). */
@@ -494,6 +495,8 @@ function fmtDateFr(iso?: string) {
   return y && m && d ? `${d}/${m}/${y}` : iso;
 }
 
+const lireSyntheseGS = lireJson<SynData>({ positionnements: {}, observations: {} });
+
 function SyntheseGS() {
   const doms = syntheseDomaines as SynDom[];
   const { data: eleves } = useAsync(() => api.elevesList(), []);
@@ -515,13 +518,20 @@ function SyntheseGS() {
   const majDirecteurNom = (v: string) => { setDirecteurNom(v); api.settingSet("syntheseGS:directeurNom", v); };
   const majDirecteurDate = (v: string) => { setDirecteurDate(v); api.settingSet("syntheseGS:directeurDate", v); };
 
+  // Relu à chaque élève — et seulement s'il est toujours celui qu'on regarde :
+  // une réponse lente arrivait après celle de l'élève suivant, et la saisie
+  // suivante écrivait la synthèse de l'un dans le dossier de l'autre.
   React.useEffect(() => {
     if (!eleveId) return;
-    api.documentEleveGet(eleveId, "syntheseGS").then((v) => {
-      try { setData(v ? JSON.parse(v) : { positionnements: {}, observations: {} }); }
-      catch { setData({ positionnements: {}, observations: {} }); }
-    });
+    let actif = true;
+    api.documentEleveGet(eleveId, "syntheseGS").then((v) => { if (actif) setData(lireSyntheseGS(v)); });
+    return () => { actif = false; };
   }, [eleveId]);
+  // L'état du moment, pour la réponse de l'IA qui arrive après coup.
+  const dataRef = React.useRef(data);
+  dataRef.current = data;
+  const eleveIdRef = React.useRef(eleveId);
+  eleveIdRef.current = eleveId;
 
   const persister = (d: SynData) => { setData(d); if (eleveId) api.documentEleveSet(eleveId, "syntheseGS", JSON.stringify(d)); };
   const setPos = (itemId: string, n: number) => {
@@ -541,6 +551,7 @@ function SyntheseGS() {
     const texte = (data.observations[dom.id] ?? "").trim();
     if (!texte) { toast("Écrivez d'abord quelques mots à reformuler.", { icone: "✍️" }); return; }
     const prenom = (eleve?.nom || "L'élève").trim().split(/\s+/)[0];
+    const pour = eleveId;
     setReformuleEnCours(dom.id);
     try {
       // Aucun nom ne part : ceux des élèves sont masqués dans le texte, et
@@ -557,7 +568,14 @@ function SyntheseGS() {
         { role: "user", content: `Domaine : ${dom.titre}\n\nObservations à reformuler :\n${masque}` },
       ], modele);
       const propre = restaurer(rep.trim().replace(/^["«»\s]+|["«»\s]+$/g, ""), table).texte.replace(/\[E\]/g, prenom);
-      if (propre) setObs(dom.id, propre);
+      if (!propre) return;
+      // Chez l'élève pour qui on l'a demandée, dans l'état du moment.
+      const avecLaReponse = (d: SynData): SynData => ({ ...d, observations: { ...d.observations, [dom.id]: propre } });
+      if (eleveIdRef.current === pour) persister(avecLaReponse(dataRef.current));
+      else {
+        await modifierLeDocument(pour, "syntheseGS", lireSyntheseGS, avecLaReponse);
+        toast(`Reformulation rangée dans la synthèse de ${prenom}.`, { icone: "✨" });
+      }
     } catch (e: any) {
       toast("Reformulation impossible : " + String(e?.message ?? e), { icone: "⚠️", duree: 5000 });
     } finally {
