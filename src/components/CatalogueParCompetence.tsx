@@ -16,6 +16,7 @@ import { PREFIXE_GENERATEUR } from "../generateursPerso";
 import { useGenerateursPerso } from "./GenerateursPerso";
 import { rattacherLesAteliersDesSequences } from "../ateliersDesSequences";
 import { FAMILLES_DE_SUPPORTS, type Onglet } from "../catalogueAteliers";
+import { isoJour } from "../dates";
 
 // ── Fabriquer, par compétence ─────────────────────────────────────────────
 //
@@ -197,7 +198,7 @@ export function CatalogueParCompetence({ recherche, onOuvrir, onOuvrirGenerateur
       bilan = r;
       return r.ecrit;
     });
-    await api.settingSet(CLE_SEQUENCES_REPRISES, new Date().toISOString().slice(0, 10)).catch(() => {});
+    await api.settingSet(CLE_SEQUENCES_REPRISES, isoJour(new Date())).catch(() => {});
     setReprise(false);
     const { liens: n, competences: k } = bilan;
     if (n && avant) {

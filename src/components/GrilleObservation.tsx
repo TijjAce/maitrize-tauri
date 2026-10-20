@@ -5,6 +5,7 @@ import { toast } from "./Toaster";
 import { confirmer } from "./confirmer";
 import { printHTML, escapeHtml } from "../print";
 import { COLONNES, observationVide, repartir, type Colonne } from "../observationEleve";
+import { isoJour } from "../dates";
 
 // ── La grille « Observer », dans le dossier de l'élève ────────────────────
 //
@@ -87,7 +88,7 @@ export function GrilleObservation({ eleve }: { eleve: Eleve | null }) {
     </tr>`).join("");
     printHTML(`Observer — ${eleve.nom}`,
       `<h1>Observer — ${escapeHtml(eleve.nom)}</h1>
-       <div class="meta">${fiches.length} temps d'observation · édité le ${fmt(new Date().toISOString().slice(0, 10))}</div>
+       <div class="meta">${fiches.length} temps d'observation · édité le ${fmt(isoJour(new Date()))}</div>
        <table><tr><th>Date, contexte, axe</th>${COLONNES.map((c) => `<th>${escapeHtml(c.titre)}</th>`).join("")}</tr>${lignes}</table>
        <div class="meta" style="margin-top:14px;font-style:italic">
          Grille « Observer » (académie de Versailles, DSDEN 92). Axes d'observation :

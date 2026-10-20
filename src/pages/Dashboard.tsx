@@ -20,10 +20,8 @@ export default function Dashboard() {
   const [nom, setNom] = React.useState("");
   React.useEffect(() => { api.settingGet("enseignantNom").then((v) => setNom(v ?? "")); }, []);
 
-  const today = (() => {
-    const d = new Date().toISOString().slice(0, 10);
-    return d;
-  })();
+  // Le jour à l'heure de l'ordinateur : la date UTC change à 2 h l'été, à 20 h aux Antilles.
+  const today = isoJour(new Date());
   // La semaine, pas seulement le jour : on prépare la suite autant qu'on
   // remplit le jour même, et un lundi soir on regarde déjà mardi.
   const lundi = React.useMemo(() => lundiDe(new Date()), []);

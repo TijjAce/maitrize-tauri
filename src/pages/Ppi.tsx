@@ -5,6 +5,7 @@ import { toast } from "../components/Toaster";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import { nomsAMasquer } from "../nomsAMasquer";
 import { infosReussite, resumeSuivi, REUSSITES, sansNouvelles, suivreObjectif } from "../objectifsPpi";
+import { isoJour } from "../dates";
 
 // ── PPI (Projet Personnalisé Individualisé) — mode IME/ULIS/inclusion ──────
 // Données stockées par élève dans les réglages (clé `ppi:{eleveId}`), comme la
@@ -33,7 +34,7 @@ const statutLabel = (k: string) => STATUTS.find((s) => s.k === k)?.label ?? "En 
 const DOMAINES_SUGGERES = ["Langage / communication", "Lecture", "Écriture", "Mathématiques",
   "Autonomie", "Socialisation", "Motricité", "Attention / comportement"];
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => isoJour(new Date());
 const fmtDateFr = (iso?: string) => {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");

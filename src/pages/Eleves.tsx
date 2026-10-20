@@ -27,6 +27,7 @@ import { pseudonymiser, restaurer } from "../confidentialite";
 import { SyntheseEleveTab } from "./SyntheseEleve";
 import { nomsAMasquer } from "../nomsAMasquer";
 import { fabricationsDesFiches, niveauDesFiches } from "../fichesAutonomie";
+import { isoJour } from "../dates";
 
 const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "dispositifs", "gevasco"] as const;
 /** Ce qu'affiche l'onglet Évaluations : le sommatif (notes, synthèse, synthèse GS) ou le diagnostique. */
@@ -466,7 +467,7 @@ const POS_GS = [
   { n: 3, label: "Réussit souvent", couleur: "#57b873" },
 ];
 
-function todayIso() { return new Date().toISOString().slice(0, 10); }
+function todayIso() { return isoJour(new Date()); }
 function fmtDateFr(iso?: string) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");

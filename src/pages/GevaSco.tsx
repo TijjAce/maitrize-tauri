@@ -2,6 +2,7 @@ import React from "react";
 import { api, newId, anneeScolaireActuelle } from "../api";
 import { Select, Empty, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
+import { isoJour } from "../dates";
 
 // ── GEVA-Sco — aide à la préparation ──────────────────────────────────────
 // Reprend la structure du support officiel (arrêté du 6 février 2015,
@@ -183,7 +184,7 @@ const partsDate = (iso: string, anneeCourte = false) => {
   return { j, m, a: anneeCourte ? y.slice(-2) : y };
 };
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => isoJour(new Date());
 // ── Feuille A4 (aperçu fidèle du support officiel) ────────────────────────
 function Feuille({ paysage, num, type, nomEleve, children }: {
   paysage?: boolean; num: string; type: string; nomEleve: string; children: React.ReactNode;

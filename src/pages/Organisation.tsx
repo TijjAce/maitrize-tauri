@@ -427,7 +427,7 @@ function SectionProgression({ cible, liste, lecture, relire, sources, teinte, se
       version: 4, type: "progression", dateExport: new Date().toISOString(), appVersion: "tauri",
       progressionsAnnuelles: [{ id: prog?.id ?? newId(), annee: "", periode, niveau, colonnesJSON: colonnesJson, cellulesJSON: cellulesJson, seancesJSON: seancesJson }],
     };
-    const d = new Date().toISOString().slice(0, 10);
+    const d = isoJour(new Date());
     telechargerTexte(`Progression_${annee}_${niveau || "classe"}_P${periode}_${d}.json`, JSON.stringify(bundle, null, 2));
   };
   const importer = async (file: File) => {
@@ -916,7 +916,7 @@ function SectionProgrammation({ annee, niveau, liste, lecture, relire, sequences
   const fileRef = React.useRef<HTMLInputElement>(null);
   const exporter = () => {
     const bundle = { version: 1, type: "programmation", annee, niveau, lignes };
-    telechargerTexte(`Programmation_${annee}_${niveau || "classe"}_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(bundle, null, 2));
+    telechargerTexte(`Programmation_${annee}_${niveau || "classe"}_${isoJour(new Date())}.json`, JSON.stringify(bundle, null, 2));
   };
   const importer = async (file: File) => {
     try {

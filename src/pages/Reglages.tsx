@@ -27,6 +27,7 @@ import { ChiffrementDisqueCard } from "../components/ChiffrementDisque";
 import { RevenirEnArriere } from "../components/RevenirEnArriere";
 import { envoyerLeRapport } from "../rapportErreur";
 import { FenetreCouleurs, LegendeTla, garderPaletteParDefaut, usePaletteParDefaut } from "../components/CouleursTla";
+import { isoJour } from "../dates";
 
 const ONGLETS = [
   ["general", "Général"],
@@ -85,7 +86,7 @@ export default function Reglages() {
   const exporter = async () => {
     try {
       const json = await api.exportData();
-      const ok = await telechargerTexte(`maitrize-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`, json);
+      const ok = await telechargerTexte(`maitrize-sauvegarde-${isoJour(new Date())}.json`, json);
       setDataMsg(ok ? "✅ Sauvegarde enregistrée" : "Export annulé");
     } catch (e: any) { setDataMsg("❌ " + String(e)); }
   };
@@ -95,7 +96,7 @@ export default function Reglages() {
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const chemin = await save({
-        defaultPath: `maitrize-v2-${new Date().toISOString().slice(0, 10)}.sqlite3`,
+        defaultPath: `maitrize-v2-${isoJour(new Date())}.sqlite3`,
         filters: [{ name: "Base SQLite", extensions: ["sqlite3"] }],
       });
       if (!chemin) { setDataMsg("Export annulé"); return; }
@@ -1109,7 +1110,7 @@ export function JournalIncidents() {
           setMsg("Rapport copié : collez-le dans votre message.");
         })}>📋 Copier le rapport</button>
         <button className="btn" disabled={occupe} onClick={() => faire(async (texte) => {
-          const jour = new Date().toISOString().slice(0, 10);
+          const jour = isoJour(new Date());
           if (await telechargerTexte(`maitrize-rapport-${jour}.txt`, texte)) setMsg("Rapport enregistré.");
         })}>💾 Enregistrer le rapport…</button>
       </div>
