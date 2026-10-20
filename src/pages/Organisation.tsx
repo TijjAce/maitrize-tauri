@@ -20,7 +20,7 @@ import {
 import {
   avecCase, avecSeances, casesDeLaColonne, cleCase, cleNiveauAjoute, copieDesColonnes, datesDeLaSemaine, deplacerColonne, enJson, ETAT_VIDE, LA_CLASSE,
   lireEtat, memeEtat, niveauxDeLaProgression, nombreDeSemaines, progressionDe, remettreColonne, remplie, sansColonne, semainesDeLaPeriode,
-  tableauSansNiveau,
+  tableauSansNiveau, cleOrdreDesTableaux, dansLOrdre, deplacerTableau, lireOrdreDesTableaux, renommerDansLOrdre,
   sourcesDeColonnes, titreConnu, titresProposes, type Colonne, type EtatProg, type GroupeDeTitres, type SemaineDeClasse, type SourceDeColonnes,
 } from "../progressionAnnuelle";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
@@ -191,6 +191,7 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
   const niveaux = niveauxDeLaProgression(NIVEAUX_SCOLAIRES, liste, annee, ajoutes);
   const avecClasse = tableauSansNiveau(liste, annee, niveaux);
   const libres = NIVEAUX_SCOLAIRES.filter((n) => !niveaux.includes(n));
+  const [ordre, changerOrdre] = useOrdreDesTableaux(annee);
 
   // Les titres proposés, et la couleur qu'ils donnent à leur colonne.
   const sources = useSourcesDeTitres();
@@ -204,7 +205,7 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
 
   // Ce que montre chaque tableau, pour imprimer la période entière.
   const etats = React.useRef(new Map<string, EtatProg>());
-  const tableaux = [...(avecClasse ? [""] : []), ...niveaux];
+  const tableaux = dansLOrdre([...(avecClasse ? [""] : []), ...niveaux], ordre);
   const etatDe = (n: string) => etats.current.get(cleCible({ annee, niveau: n, periode })) ?? lireEtat(progressionDe(liste, annee, n, periode));
   const imprimer = () => imprimerProgression(annee, periode, tableaux.map((n) => {
     const e = etatDe(n);
@@ -220,6 +221,7 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
     try {
       await api.progressionAnnuelleNiveau(annee, de, vers);
       setAjoutes((a) => [...a.filter((k) => k !== cleNiveauAjoute(annee, de)), ...(vers ? [cleNiveauAjoute(annee, vers)] : [])]);
+      if (ordre.includes(de)) changerOrdre(renommerDansLOrdre(ordre, de, vers));
       setActif(vers);
       reload();
     } catch (err) { toast(texteErreur(err), { icone: "⚠️" }); }
@@ -259,13 +261,64 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
           sources={sources} teinte={teinte} semainesCal={semainesCal} clavier={actif === n} onActif={() => setActif(n)}
           surEtat={(e) => etats.current.set(cleCible({ annee, niveau: n, periode }), e)}
           sequences={sequences ?? []} seances={seances ?? []}
-          niveauUI={<NiveauDuTableau niveau={n} libres={libres} sansNiveau={!avecClasse} quoi="cette progression"
-            onChanger={(vers) => { void changerNiveau(n, vers); }} onRetirer={n ? () => { void retirerNiveau(n); } : undefined} />} />
+          niveauUI={<>
+            <NiveauDuTableau niveau={n} libres={libres} sansNiveau={!avecClasse} quoi="cette progression"
+              onChanger={(vers) => { void changerNiveau(n, vers); }} onRetirer={n ? () => { void retirerNiveau(n); } : undefined} />
+            <MonterDescendre n={n} tableaux={tableaux} onOrdre={changerOrdre} />
+          </>} />
       ))}
       <div className="prog-ajout-niveau">
         <button className="btn" onClick={ajouterNiveau} disabled={!libres.length} title="Ajouter à l'année la progression d'un niveau">+ Niveau</button>
       </div>
     </>
+  );
+}
+
+/** L'ordre des tableaux de l'année, enregistré à chaque ↑ ↓ (voir `cleOrdreDesTableaux`). */
+function useOrdreDesTableaux(annee: string): [string[], (suite: string[]) => void] {
+  const [ordre, setOrdre] = React.useState<string[]>([]);
+  React.useEffect(() => {
+    let vivant = true;
+    setOrdre([]);
+    api.settingGet(cleOrdreDesTableaux(annee)).then((v) => { if (vivant) setOrdre(lireOrdreDesTableaux(v)); }).catch(() => {});
+    return () => { vivant = false; };
+  }, [annee]);
+  const changer = React.useCallback((suite: string[]) => {
+    setOrdre(suite);
+    api.settingSet(cleOrdreDesTableaux(annee), JSON.stringify(suite))
+      .catch((err) => toast(`Ordre des tableaux non enregistré : ${texteErreur(err)}`, { icone: "⚠️" }));
+  }, [annee]);
+  return [ordre, changer];
+}
+
+/** Fait défiler ce qui contient `el` — ou la page — de `dy` pixels. */
+function defilerDe(el: Element, dy: number) {
+  if (!dy) return;
+  for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+    if (/(auto|scroll)/.test(getComputedStyle(p).overflowY) && p.scrollHeight > p.clientHeight) { p.scrollTop += dy; return; }
+  }
+  window.scrollBy(0, dy);
+}
+
+/**
+ * ↑ ↓ en tête d'un tableau : il monte ou descend parmi ceux de l'année
+ * (demande de l'enseignant, octobre 2026). La page suit, pour qu'il reste
+ * sous la souris et qu'on puisse cliquer encore.
+ */
+function MonterDescendre({ n, tableaux, onOrdre }: { n: string; tableaux: string[]; onOrdre: (suite: string[]) => void }) {
+  const i = tableaux.indexOf(n);
+  if (tableaux.length < 2 || i < 0) return null;
+  const deplacer = (sens: -1 | 1, e: React.MouseEvent<HTMLButtonElement>) => {
+    const section = e.currentTarget.closest(".prog-section");
+    const avant = section?.getBoundingClientRect().top ?? 0;
+    onOrdre(deplacerTableau(tableaux, n, sens));
+    requestAnimationFrame(() => { if (section) defilerDe(section, section.getBoundingClientRect().top - avant); });
+  };
+  return (
+    <span className="prog-deplacer">
+      <button type="button" disabled={i === 0} onClick={(e) => deplacer(-1, e)} title="Monter ce tableau" aria-label="Monter ce tableau">↑</button>
+      <button type="button" disabled={i === tableaux.length - 1} onClick={(e) => deplacer(1, e)} title="Descendre ce tableau" aria-label="Descendre ce tableau">↓</button>
+    </span>
   );
 }
 
@@ -690,7 +743,8 @@ function Programmation({ annee, setAnnee }: AnneeProps) {
   // Le tableau sans niveau : tant qu'il n'y a pas de niveau, ou qu'il a des lignes.
   const avecClasse = niveaux.length === 0 || lireLignes(programmationDe(liste, annee, "")).length > 0;
   const libres = NIVEAUX_SCOLAIRES.filter((n) => !niveaux.includes(n));
-  const tableaux = [...(avecClasse ? [""] : []), ...niveaux];
+  const [ordre, changerOrdre] = useOrdreDesTableaux(annee);
+  const tableaux = dansLOrdre([...(avecClasse ? [""] : []), ...niveaux], ordre);
 
   // Ce que montre chaque tableau, pour imprimer l'année entière.
   const etats = React.useRef(new Map<string, Ligne[]>());
@@ -709,6 +763,7 @@ function Programmation({ annee, setAnnee }: AnneeProps) {
     try {
       await api.programmationFinaleNiveau(annee, de, vers);
       setAjoutes((a) => [...a.filter((k) => k !== cleNiveauDeLAnnee(annee, de)), ...(vers ? [cleNiveauDeLAnnee(annee, vers)] : [])]);
+      if (ordre.includes(de)) changerOrdre(renommerDansLOrdre(ordre, de, vers));
       setActif(vers);
       reload();
     } catch (err) { toast(texteErreur(err), { icone: "⚠️" }); }
@@ -763,8 +818,11 @@ function Programmation({ annee, setAnnee }: AnneeProps) {
           sequences={sequences ?? []} sources={sources} teinteDomaine={teinteDomaine} periodesCal={periodesCal}
           clavier={actif === n} onActif={() => setActif(n)}
           surLignes={(l) => etats.current.set(cleNiveauDeLAnnee(annee, n), l)}
-          niveauUI={<NiveauDuTableau niveau={n} libres={libres} sansNiveau={!avecClasse} quoi="cette programmation"
-            onChanger={(vers) => { void changerNiveau(n, vers); }} onRetirer={n ? () => { void retirerNiveau(n); } : undefined} />} />
+          niveauUI={<>
+            <NiveauDuTableau niveau={n} libres={libres} sansNiveau={!avecClasse} quoi="cette programmation"
+              onChanger={(vers) => { void changerNiveau(n, vers); }} onRetirer={n ? () => { void retirerNiveau(n); } : undefined} />
+            <MonterDescendre n={n} tableaux={tableaux} onOrdre={changerOrdre} />
+          </>} />
       ))}
       <div className="prog-ajout-niveau">
         <button className="btn" onClick={ajouterNiveau} disabled={!libres.length} title="Ajouter la programmation d'un niveau">+ Niveau</button>
