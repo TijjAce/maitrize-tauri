@@ -388,8 +388,7 @@ pub fn telephone_code(db: State<Db>) -> R<CodeTelephone> {
  * Il porte la clé qui rouvre les dépôts : aussi sensible qu'un mot de passe,
  * et l'écran le dit. Pas le compte Nuage : l'autre ordinateur entre dans le
  * dossier avec le sien, qui doit être le même. Les secrets ne voyagent pas par
- * la synchronisation (voir `journal::SECRETS`) ; ils passent de main en main,
- * comme le code d'appairage des ordinateurs.
+ * la synchronisation (voir `journal::SECRETS`) ; ils passent de main en main.
  */
 #[tauri::command]
 pub fn telephone_code_ordinateur(db: State<Db>) -> R<String> {
@@ -720,17 +719,6 @@ pub async fn telephone_relever(app: AppHandle, db: State<'_, Db>) -> R<Bilan> {
         Err(e) => bilan.agenda_erreur = e,
     }
     Ok(bilan)
-}
-
-/// Relève les pages scannées : appelée tant que « Scanner avec le compagnon » est ouvert.
-#[tauri::command]
-pub async fn telephone_relever_pages(app: AppHandle, db: State<'_, Db>) -> R<Bilan> {
-    let (r, compte) = {
-        let c = db.lock();
-        (lire_relais(&c), lire_compte(&c))
-    };
-    let Some(r) = r else { return Ok(Bilan::default()) };
-    relever_avec(&app, &db, &r, &compte.ok_or(SANS_COMPTE)?, true).await
 }
 
 // ── L'emploi du temps pour le téléphone ────────────────────────────────────

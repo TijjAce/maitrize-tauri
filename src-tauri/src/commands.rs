@@ -336,13 +336,6 @@ pub fn progression_eleve_save(db: State<Db>, progression: ProgressionEleve) -> R
     Ok(progression)
 }
 
-#[tauri::command]
-pub fn progression_eleve_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.lock();
-    c.execute("DELETE FROM progressions_eleve WHERE id=?1", params![id]).map_err(e)?;
-    Ok(())
-}
-
 // ============================================================
 // CRÉNEAUX (Planning)
 // ============================================================
@@ -712,37 +705,6 @@ pub fn documents_eleve_list(db: State<Db>, eleve_id: Option<String>, type_doc: O
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
 
-// ── Appel journalier ─────────────────────────────────────────────────────
-#[tauri::command]
-pub fn appels_list(db: State<Db>, date: Option<String>) -> R<Vec<AppelJournalier>> {
-    let c = db.lock();
-    let (sql, p): (&str, Vec<&dyn rusqlite::ToSql>) = match &date {
-        Some(d) => ("SELECT * FROM appels_journalier WHERE date=?1", vec![d]),
-        None => ("SELECT * FROM appels_journalier ORDER BY date DESC", vec![]),
-    };
-    let mut st = c.prepare(sql).map_err(e)?;
-    let rows = st.query_map(p.as_slice(), AppelJournalier::from_row).map_err(e)?;
-    rows.collect::<rusqlite::Result<_>>().map_err(e)
-}
-
-#[tauri::command]
-pub fn appel_save(db: State<Db>, appel: AppelJournalier) -> R<AppelJournalier> {
-    let c = db.lock();
-    c.execute(
-        "INSERT INTO appels_journalier (id,date,statut_brut,eleve_id)
-         VALUES (?1,?2,?3,?4) ON CONFLICT(id) DO UPDATE SET date = excluded.date, statut_brut = excluded.statut_brut, eleve_id = excluded.eleve_id",
-        params![appel.id, appel.date, appel.statut_brut, appel.eleve_id],
-    ).map_err(e)?;
-    Ok(appel)
-}
-
-#[tauri::command]
-pub fn appel_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.lock();
-    c.execute("DELETE FROM appels_journalier WHERE id=?1", params![id]).map_err(e)?;
-    Ok(())
-}
-
 // ── Commentaires / observations ──────────────────────────────────────────
 #[tauri::command]
 pub fn commentaires_list(db: State<Db>, eleve_id: Option<String>) -> R<Vec<CommentaireEleve>> {
@@ -834,13 +796,6 @@ pub fn note_eleve_save(db: State<Db>, note: NoteEleve) -> R<NoteEleve> {
                 note.commentaire, note.evaluation_id, note.niveaux_json],
     ).map_err(e)?;
     Ok(note)
-}
-
-#[tauri::command]
-pub fn note_eleve_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.lock();
-    c.execute("DELETE FROM notes_eleve WHERE id=?1", params![id]).map_err(e)?;
-    Ok(())
 }
 
 // ============================================================
@@ -1012,17 +967,6 @@ pub fn progressions_annuelle_list(db: State<Db>) -> R<Vec<ProgressionAnnuelle>> 
     let mut st = c.prepare("SELECT * FROM progressions_annuelle ORDER BY annee, niveau, periode, rowid").map_err(e)?;
     let rows = st.query_map([], ProgressionAnnuelle::from_row).map_err(e)?;
     rows.collect::<rusqlite::Result<_>>().map_err(e)
-}
-
-#[tauri::command]
-pub fn progression_annuelle_save(db: State<Db>, p: ProgressionAnnuelle) -> R<ProgressionAnnuelle> {
-    let c = db.lock();
-    c.execute(
-        "INSERT INTO progressions_annuelle (id,annee,periode,colonnes_json,cellules_json,niveau,seances_json)
-         VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, periode = excluded.periode, colonnes_json = excluded.colonnes_json, cellules_json = excluded.cellules_json, niveau = excluded.niveau, seances_json = excluded.seances_json",
-        params![p.id, p.annee, p.periode, p.colonnes_json, p.cellules_json, p.niveau, p.seances_json],
-    ).map_err(e)?;
-    Ok(p)
 }
 
 /// Une progression telle que l'écran la voit : ses colonnes et ses cases, en JSON.
@@ -1427,16 +1371,6 @@ pub fn edt_typique_list(db: State<Db>) -> R<Vec<EdtTypique>> {
     rows.collect::<rusqlite::Result<_>>().map_err(e)
 }
 
-#[tauri::command]
-pub fn edt_typique_save(db: State<Db>, edt: EdtTypique) -> R<EdtTypique> {
-    let c = db.lock();
-    c.execute(
-        "INSERT INTO edt_typique (id,annee,slots_json) VALUES (?1,?2,?3) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, slots_json = excluded.slots_json",
-        params![edt.id, edt.annee, edt.slots_json],
-    ).map_err(e)?;
-    Ok(edt)
-}
-
 /// Écrit une modification de l'emploi du temps de l'année, par écart : un
 /// créneau posé sur un autre ordinateur entre-temps reste.
 pub(crate) fn ecrire_emploi_du_temps(c: &rusqlite::Connection, annee: &str, avant: &str, apres: &str) -> rusqlite::Result<EdtTypique> {
@@ -1590,13 +1524,6 @@ pub fn piece_jointe_save(db: State<Db>, piece: PieceJointe) -> R<PieceJointe> {
                 piece.seance_id, piece.a_imprimer as i64],
     ).map_err(e)?;
     Ok(piece)
-}
-
-#[tauri::command]
-pub fn piece_jointe_delete(db: State<Db>, id: String) -> R<()> {
-    let c = db.lock();
-    c.execute("DELETE FROM pieces_jointes WHERE id=?1", params![id]).map_err(e)?;
-    Ok(())
 }
 
 // ============================================================
@@ -2218,12 +2145,6 @@ pub fn fichier_read(nom: String) -> R<String> {
     Ok(base64::engine::general_purpose::STANDARD.encode(&bytes))
 }
 
-/// Chemin absolu d'un fichier joint (pour convertFileSrc côté frontend).
-#[tauri::command(async)]
-pub fn fichier_path(nom: String) -> R<String> {
-    Ok(fichier_de_l_application(&nom)?.to_string_lossy().to_string())
-}
-
 /// Ouvre une pièce jointe dans l'application par défaut (Aperçu, Acrobat…).
 ///
 /// Passe par le backend plutôt que par le greffon côté fenêtre : celui-ci
@@ -2808,18 +2729,6 @@ pub fn exporter_bilan_ppi(
     );
     let path = dossier_temporaire().join(nom);
     std::fs::write(&path, &bytes).map_err(e)?;
-    tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
-    Ok(())
-}
-
-/// Ouvre un fichier joint dans l'app par défaut du système (Aperçu pour un PDF
-/// sur macOS), plutôt que dans une visionneuse interne.
-#[tauri::command(async)]
-pub fn ouvrir_fichier(nom: String) -> R<()> {
-    let path = fichier_de_l_application(&nom)?;
-    if !path.exists() {
-        return Err("Fichier introuvable".to_string());
-    }
     tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
     Ok(())
 }

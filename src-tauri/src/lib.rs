@@ -109,17 +109,16 @@ pub fn run() {
             atelier_espace_list, atelier_espace_set,
             jeux_list, jeu_save, jeu_delete,
             outils_classe_list, outil_classe_save, outil_classe_delete,
-            progressions_eleve_list, progression_eleve_save, progression_eleve_delete,
+            progressions_eleve_list, progression_eleve_save,
             // Planning
             creneaux_list, creneau_save, creneau_delete,
             // Élèves / appel / commentaires
             eleves_list, eleve_save, eleve_delete,
             document_eleve_get, document_eleve_set, documents_eleve_list,
-            appels_list, appel_save, appel_delete,
             commentaires_list, commentaire_save, commentaire_delete,
             // Évaluations / notes
             evaluations_list, evaluation_save, evaluation_delete,
-            notes_eleve_list, note_eleve_save, note_eleve_delete,
+            notes_eleve_list, note_eleve_save,
             // Matériel
             materiel_list, materiel_save, materiel_delete,
             // Papiers
@@ -128,12 +127,12 @@ pub fn run() {
             referentiels_list, referentiel_save, referentiel_delete,
             notes_competence_list, note_competence_save,
             // Organisation
-            progressions_annuelle_list, progression_annuelle_save, progression_annuelle_ecrire, progression_annuelle_niveau,
+            progressions_annuelle_list, progression_annuelle_ecrire, progression_annuelle_niveau,
             programmations_finale_list, programmation_finale_save, programmation_finale_ecrire, programmation_finale_delete,
             programmation_finale_niveau,
-            edt_typique_list, edt_typique_save, edt_typique_ecrire,
+            edt_typique_list, edt_typique_ecrire,
             // Pièces jointes
-            pieces_jointes_list, piece_jointe_save, piece_jointe_delete,
+            pieces_jointes_list, piece_jointe_save,
             // Conversations IA
             conversations_list, conversation_save, conversation_delete,
             reunions_list, reunion_save, reunion_delete,
@@ -149,8 +148,8 @@ pub fn run() {
             // Réglages
             settings_all, settings_prefixe, setting_get, setting_set,
             // Fichiers
-            fichier_save, fichier_read, fichier_path, fichier_delete, fichier_importer_depuis_chemin, enregistrer_texte, enregistrer_archive,
-            imprimer_pdf, ouvrir_fichier, imprimer_planning, ouvrir_html, exporter_synthese_gs, exporter_bilan_ppi, exporter_gevasco,
+            fichier_save, fichier_read, fichier_delete, fichier_importer_depuis_chemin, enregistrer_texte, enregistrer_archive,
+            imprimer_pdf, imprimer_planning, ouvrir_html, exporter_synthese_gs, exporter_bilan_ppi, exporter_gevasco,
             feuille_pdf::feuille_en_pdf,
             // Recherche
             recherche,
@@ -190,7 +189,7 @@ pub fn run() {
             // Synchro chiffrée E2E (S3)
             sync::sync_config_get, sync::sync_config_set, sync::sync_test,
             sync::sync_envoyer, sync::sync_relever,
-            sync::sequence_partager, sync::programmation_partager,
+            sync::programmation_partager,
             sync::boite_relever, sync::boite_liste, sync::boite_recuperer, sync::boite_supprimer,
             // Sauvegarde chiffrée sur stockage S3/MinIO
             sync::sauvegarde_push, sync::sauvegarde_verifier, sync::sauvegarde_verif_derniere,
@@ -200,8 +199,7 @@ pub fn run() {
             commun::commun_creer_lien,
             commun::commun_resume, commun::commun_renommer, commun::commun_oublier,
             commun::commun_lister, commun::commun_fichiers, commun::commun_lire, commun::commun_ecrire, commun::commun_poser_fichier,
-            commun::commun_creer_dossier, commun::commun_supprimer, commun::commun_ouvrir, sync::sauvegarde_pull, sync::sauvegarde_liste, sync::sauvegarde_supprimer, sync::sync_etat, sync::sync_deltas, sync::sync_fichiers, sync::machines_liste, sync::machine_nom_set, sync::machine_oublier,
-            sync::appairage_code, sync::appairage_appliquer,
+            commun::commun_creer_dossier, commun::commun_supprimer, commun::commun_ouvrir, sync::sauvegarde_pull, sync::sauvegarde_liste, sync::sauvegarde_supprimer, sync::sync_etat, sync::sync_deltas, sync::sync_fichiers,
             // Version portable (serveur local WiFi + QR)
             portable::portable_demarrer, portable::portable_arreter, portable::portable_etat,
             // Capture photo depuis le téléphone
@@ -209,7 +207,7 @@ pub fn run() {
             // Le téléphone relié par Nuage : relier, relever, publier
             telephone::telephone_etat, telephone::telephone_comptes, telephone::telephone_relier,
             telephone::telephone_code, telephone::telephone_code_ordinateur, telephone::telephone_code_appliquer,
-            telephone::telephone_oublier, telephone::telephone_relever, telephone::telephone_relever_pages, telephone::telephone_publier_journal,
+            telephone::telephone_oublier, telephone::telephone_relever, telephone::telephone_publier_journal,
         ])
         .build(contexte)
         .expect("error while running tauri application")

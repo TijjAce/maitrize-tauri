@@ -306,15 +306,6 @@ pub async fn sync_relever(db: State<'_, Db>, ami_id: String) -> R<Vec<SyncMessag
 
 // ── Partage de séquences ────────────────────────────────────────────────────
 
-fn lire_sequence(c: &Connection, sid: &str) -> R<(Sequence, Vec<Seance>)> {
-    let seq = c.query_row("SELECT * FROM sequences WHERE id = ?1", [sid], Sequence::from_row)
-        .map_err(|_| "Séquence introuvable.".to_string())?;
-    let mut st = c.prepare("SELECT * FROM seances WHERE sequence_id = ?1 ORDER BY numero").map_err(e)?;
-    let seances = st.query_map([sid], Seance::from_row).map_err(e)?
-        .collect::<rusqlite::Result<Vec<_>>>().map_err(e)?;
-    Ok((seq, seances))
-}
-
 fn lire_recus(c: &Connection) -> R<HashSet<String>> {
     let mut st = c.prepare("SELECT cle FROM sync_recus").map_err(e)?;
     let rows = st.query_map([], |r| r.get::<_, String>(0)).map_err(e)?;
@@ -370,33 +361,6 @@ fn inserer_sequence(c: &Connection, mut s: Sequence, seances: Vec<Seance>, image
 /// Importe une séquence reçue (séquence isolée, sans projet).
 fn importer_sequence(c: &Connection, env: EnvSeq) -> R<String> {
     inserer_sequence(c, env.sequence, env.seances, env.image_b64, None)
-}
-
-#[tauri::command]
-pub async fn sequence_partager(db: State<'_, Db>, ami_id: String, sequence_id: String) -> R<()> {
-    let ctx = contexte(&db, &ami_id)?;
-    let (sequence, seances) = { let c = db.lock(); lire_sequence(&c, &sequence_id)? };
-    // Image de couverture : on lit ses octets pour les transmettre avec la séquence.
-    let image_b64 = sequence.image_nom.as_deref()
-        .filter(|n| !n.is_empty())
-        .and_then(|n| std::fs::read(fichiers_dir().join(n)).ok())
-        .map(|b| STANDARD.encode(b));
-    let key = cle_paire(ctx.priv_, ctx.ami_pub, &ctx.mid);
-    let env = EnvSeq {
-        de: STANDARD.encode(ctx.pub_),
-        nom: ctx.nom.clone(),
-        ts: chrono::Utc::now().to_rfc3339(),
-        kind: "sequence".into(),
-        sequence,
-        seances,
-        image_b64,
-    };
-    let blob = chiffrer(&key, &serde_json::to_vec(&env).map_err(e)?)?;
-    let nom_objet = format!("mailbox/{}/seq-{}-{}.bin", ctx.mid, chrono::Utc::now().timestamp_millis(), uuid::Uuid::new_v4());
-    client(&ctx.cfg)
-        .put_object().bucket(&ctx.cfg.bucket).key(&nom_objet).body(ByteStream::from(blob)).send().await
-        .map_err(|er| format!("Partage : {er}"))?;
-    Ok(())
 }
 
 // ── Boîte de réception ──────────────────────────────────────────────────────
@@ -1406,35 +1370,6 @@ mod tests_sauvegarde {
     }
 
     #[test]
-    fn un_code_dappairage_fait_laller_retour() {
-        use base64::Engine;
-        let code = CodeAppairage {
-            endpoint: "http://192.168.1.20:9000".into(), region: "us-east-1".into(),
-            bucket: "maitrize".into(), access: "cle".into(), secret: "secret".into(),
-            phrase: "quatre mots sans rapport".into(),
-        };
-        let encode = base64::engine::general_purpose::STANDARD
-            .encode(serde_json::to_string(&code).unwrap());
-        let relu: CodeAppairage = serde_json::from_slice(
-            &base64::engine::general_purpose::STANDARD.decode(&encode).unwrap()).unwrap();
-        assert_eq!(relu.bucket, "maitrize");
-        // La phrase voyage avec : sans elle, la seconde machine se
-        // connecterait au bon endroit sans rien pouvoir déchiffrer, et
-        // l'échec ressemblerait à « l'autre n'a rien modifié ».
-        assert_eq!(relu.phrase, "quatre mots sans rapport");
-    }
-
-    #[test]
-    fn un_code_abime_est_refuse_clairement() {
-        use base64::Engine;
-        // Recopié de travers : le message doit le dire, pas parler de JSON.
-        assert!(base64::engine::general_purpose::STANDARD.decode("pas du base64 !!").is_err());
-        let pas_maitrize = base64::engine::general_purpose::STANDARD.encode("{\"x\":1}");
-        let octets = base64::engine::general_purpose::STANDARD.decode(pas_maitrize).unwrap();
-        assert!(serde_json::from_slice::<CodeAppairage>(&octets).is_err());
-    }
-
-    #[test]
     fn un_double_se_reconnait_a_sa_fiche_de_presence() {
         let fiche = |plateforme: &str, poste: &str| Machine {
             id: "f1c0f4ac".into(), nom: "Classe".into(), plateforme: plateforme.into(),
@@ -2112,137 +2047,4 @@ async fn publier_presence(cl: &Client, cfg: &S3Cfg, phrase: &str, m: &Machine) {
     let Ok(blob) = chiffrer_sauvegarde(phrase, json.as_bytes()) else { return };
     cl.put_object().bucket(&cfg.bucket).key(format!("{PREFIXE_MACHINE}{}.enc", m.id))
         .body(ByteStream::from(blob)).send().await.ok();
-}
-
-/// Les machines qui partagent ce stockage.
-/**
- * Oublie une machine : sa fiche disparaît du stockage partagé.
- *
- * Un ordinateur réinstallé, ou qui s'est annoncé deux fois, laisse une ligne
- * qui ne correspond plus à rien — et l'on ne savait pas s'en débarrasser. Il
- * se réinscrira tout seul à sa prochaine synchronisation s'il existe encore ;
- * c'est donc sans risque.
- *
- * Celle-ci ne s'oublie pas elle-même : ce serait effacer son propre nom du
- * partage, et la liste des autres postes deviendrait fausse chez eux.
- */
-#[tauri::command]
-pub async fn machine_oublier(db: State<'_, Db>, id: String) -> R<()> {
-    let (cfg, moi) = {
-        let c = db.lock();
-        (lire_cfg(&c)?, crate::db::identifiant_machine(&c))
-    };
-    if id.trim().is_empty() {
-        return Err("Machine inconnue.".into());
-    }
-    if id == moi {
-        return Err("Cet ordinateur ne peut pas s'oublier lui-même.".into());
-    }
-    client(&cfg)
-        .delete_object()
-        .bucket(&cfg.bucket)
-        .key(format!("{PREFIXE_MACHINE}{id}.enc"))
-        .send()
-        .await
-        .map_err(|err| format!("Suppression impossible : {}", detail(&err)))?;
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn machines_liste(db: State<'_, Db>) -> R<Vec<Machine>> {
-    let (cfg, phrase, moi) = {
-        let c = db.lock();
-        let phrase = get_setting(&c, "sauvegarde_phrase");
-        let moi = Machine {
-            id: crate::db::identifiant_machine(&c),
-            nom: nom_machine(&c),
-            plateforme: plateforme().into(),
-            poste: poste().into(),
-            vue_le: get_setting(&c, CLE_DERNIERE_SYNC),
-            moi: true,
-            tables: crate::journal::tables_connues(),
-        };
-        if phrase.trim().is_empty() {
-            return Ok(vec![moi]);
-        }
-        match lire_cfg(&c) {
-            Ok(cfg) => (cfg, phrase.trim().to_string(), moi),
-            Err(_) => return Ok(vec![moi]),
-        }
-    };
-
-    let cl = client(&cfg);
-    let mut sortie = vec![moi.clone()];
-    if let Ok(liste) = cl.list_objects_v2().bucket(&cfg.bucket).prefix(PREFIXE_MACHINE).send().await {
-        for o in liste.contents() {
-            let Some(cle) = o.key() else { continue };
-            let Ok(obj) = cl.get_object().bucket(&cfg.bucket).key(cle).send().await else { continue };
-            let Ok(corps) = obj.body.collect().await else { continue };
-            let Ok(clair) = dechiffrer_sauvegarde(&phrase, corps.into_bytes().as_ref()) else { continue };
-            let Ok(mut m) = serde_json::from_slice::<Machine>(&clair) else { continue };
-            if m.id == moi.id {
-                continue; // c'est nous, déjà en tête
-            }
-            m.moi = false;
-            sortie.push(m);
-        }
-    }
-    Ok(sortie)
-}
-
-#[tauri::command]
-pub fn machine_nom_set(db: State<Db>, nom: String) -> R<()> {
-    let c = db.lock();
-    set_setting(&c, "nomMachine", nom.trim())
-}
-
-// ── Appariement ────────────────────────────────────────────────────────────
-
-#[derive(Serialize, Deserialize)]
-struct CodeAppairage {
-    endpoint: String,
-    region: String,
-    bucket: String,
-    access: String,
-    secret: String,
-    phrase: String,
-}
-
-/// Fabrique le code à saisir sur l'autre ordinateur.
-///
-/// Il porte tout ce qu'il faut pour rejoindre le même stockage, y compris la
-/// phrase secrète : sans elle, la seconde machine se connecterait au bon
-/// endroit sans pouvoir rien déchiffrer — un échec silencieux, qui ressemble
-/// à « l'autre n'a rien modifié ».
-///
-/// Il est donc aussi sensible qu'un mot de passe, et l'écran le dit.
-#[tauri::command]
-pub fn appairage_code(db: State<Db>) -> R<String> {
-    use base64::Engine;
-    let c = db.lock();
-    let cfg = lire_cfg(&c)?;
-    let phrase = get_setting(&c, "sauvegarde_phrase");
-    if phrase.trim().is_empty() {
-        return Err("Définissez d'abord une phrase secrète de sauvegarde.".into());
-    }
-    let code = CodeAppairage {
-        endpoint: cfg.endpoint, region: cfg.region, bucket: cfg.bucket,
-        access: cfg.access, secret: cfg.secret, phrase: phrase.trim().into(),
-    };
-    let json = serde_json::to_string(&code).map_err(e)?;
-    Ok(base64::engine::general_purpose::STANDARD.encode(json))
-}
-
-/// Applique un code reçu de l'autre ordinateur.
-#[tauri::command]
-pub fn appairage_appliquer(db: State<Db>, code: String) -> R<()> {
-    use base64::Engine;
-    let octets = base64::engine::general_purpose::STANDARD
-        .decode(code.trim())
-        .map_err(|_| "Ce code est incomplet ou mal recopié.".to_string())?;
-    let c: CodeAppairage = serde_json::from_slice(&octets)
-        .map_err(|_| "Ce code ne vient pas de Maitrize.".to_string())?;
-    let conn = db.lock();
-    ecrire_cfg(&conn, &c.endpoint, &c.region, &c.bucket, &c.access, Some(&c.secret))?;
-    set_setting(&conn, "sauvegarde_phrase", &c.phrase)
 }

@@ -505,31 +505,6 @@ impl Eleve {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct AppelJournalier {
-    #[serde(default = "new_id")]
-    pub id: String,
-    #[serde(default = "now_iso")]
-    pub date: String,
-    #[serde(default = "present_str")]
-    pub statut_brut: String,
-    #[serde(default)]
-    pub eleve_id: Option<String>,
-}
-fn present_str() -> String { "present".into() }
-
-impl AppelJournalier {
-    pub fn from_row(r: &Row) -> rusqlite::Result<Self> {
-        Ok(Self {
-            id: r.get("id")?,
-            date: r.get("date")?,
-            statut_brut: r.get("statut_brut")?,
-            eleve_id: r.get("eleve_id")?,
-        })
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
 pub struct CommentaireEleve {
     #[serde(default = "new_id")]
     pub id: String,
