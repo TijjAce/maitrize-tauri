@@ -1871,7 +1871,7 @@ pub async fn sync_fichiers(db: State<'_, Db>) -> R<ResultatFichiers> {
         }
         let maintenant = chrono::Utc::now().to_rfc3339();
         for nom in &plan.effacer_ici {
-            if std::fs::remove_file(dossier.join(nom)).is_ok() {
+            if crate::db::mettre_a_la_corbeille(&dossier.join(nom)) {
                 res.effaces += 1;
             }
             c.execute("INSERT OR IGNORE INTO fichiers_effaces (nom, date, publie) VALUES (?1, ?2, 1)",

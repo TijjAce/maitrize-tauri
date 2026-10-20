@@ -184,6 +184,62 @@ pub fn fichiers_dir() -> PathBuf {
     dir
 }
 
+/// La corbeille des fichiers joints : un fichier effacé y passe trois mois.
+///
+/// Revenir à un état passé de l'application doit retrouver les documents de
+/// ce moment-là : effacé pour de bon, un PDF ou une photo manquait à jamais
+/// à la base qu'on retrouvait. Hors de « Fichiers », la synchronisation ne
+/// la voit pas.
+pub fn corbeille_dir() -> PathBuf {
+    data_dir().join("Corbeille")
+}
+
+/// Combien de jours un fichier reste dans la corbeille.
+const JOURS_CORBEILLE: i64 = 90;
+
+/// Met un fichier joint à la corbeille ; s'il ne peut y aller, il est effacé
+/// comme avant. Vrai si le fichier n'est plus dans « Fichiers ».
+pub fn mettre_a_la_corbeille(chemin: &std::path::Path) -> bool {
+    mettre_dans(chemin, &corbeille_dir())
+}
+
+fn mettre_dans(chemin: &std::path::Path, corbeille: &std::path::Path) -> bool {
+    let Some(nom) = chemin.file_name() else { return false };
+    if std::fs::create_dir_all(corbeille).is_ok() && std::fs::rename(chemin, corbeille.join(nom)).is_ok() {
+        return true;
+    }
+    std::fs::remove_file(chemin).is_ok()
+}
+
+/// Ramène un fichier de la corbeille dans `fichiers` ; sa marque
+/// d'effacement tombe à la prochaine synchronisation. Vrai s'il y était.
+pub(crate) fn ramener_dans(conn: &Connection, nom: &str, corbeille: &std::path::Path, fichiers: &std::path::Path) -> bool {
+    let source = corbeille.join(nom);
+    if nom.contains('/') || nom.contains('\\') || nom.contains("..") || !source.is_file() {
+        return false;
+    }
+    if std::fs::rename(&source, fichiers.join(nom)).is_err() {
+        return false;
+    }
+    conn.execute("DELETE FROM fichiers_effaces WHERE nom = ?1", [nom]).ok();
+    conn.execute("INSERT OR IGNORE INTO fichiers_rendus (nom) VALUES (?1)", [nom]).ok();
+    true
+}
+
+/// Vide la corbeille de ce qui y est depuis plus de trois mois, d'après la
+/// date d'effacement notée pour la synchronisation.
+pub fn purger_corbeille(conn: &Connection) {
+    let Ok(entrees) = std::fs::read_dir(corbeille_dir()) else { return };
+    let limite = (chrono::Utc::now() - chrono::Duration::days(JOURS_CORBEILLE)).to_rfc3339();
+    for e in entrees.flatten() {
+        let nom = e.file_name().to_string_lossy().to_string();
+        let date: Option<String> = conn.query_row("SELECT date FROM fichiers_effaces WHERE nom = ?1", [&nom], |r| r.get(0)).ok();
+        if date.is_some_and(|d| !d.is_empty() && d < limite) {
+            std::fs::remove_file(e.path()).ok();
+        }
+    }
+}
+
 /// Ouvre la base, la met au niveau de cette `version` de l'application.
 pub fn open(version: &str) -> Connection {
     let path = data_dir().join("maitrize.sqlite3");
@@ -269,6 +325,7 @@ pub fn menage_apres_demarrage(conn: &Connection) {
         tasser_si_besoin(conn);
     }
     sauvegarde_auto(conn);
+    purger_corbeille(conn);
 }
 
 /// Rend au disque la place libérée, quand il y en a beaucoup.
@@ -464,6 +521,28 @@ pub(crate) fn migrer_pour_test(conn: &Connection) {
 #[cfg(test)]
 mod tests_copies {
     use super::*;
+
+    #[test]
+    fn un_fichier_efface_passe_par_la_corbeille_et_peut_revenir() {
+        let d = dossier("corbeille");
+        let (fichiers, corbeille) = (d.join("Fichiers"), d.join("Corbeille"));
+        std::fs::create_dir_all(&fichiers).unwrap();
+        std::fs::write(fichiers.join("a1.pdf"), b"pdf").unwrap();
+        let c = Connection::open_in_memory().unwrap();
+        migrate(&c);
+        assert!(mettre_dans(&fichiers.join("a1.pdf"), &corbeille));
+        assert!(!fichiers.join("a1.pdf").exists());
+        assert!(corbeille.join("a1.pdf").is_file());
+        c.execute("INSERT INTO fichiers_effaces (nom, date, publie) VALUES ('a1.pdf', '2026-10-20', 1)", []).unwrap();
+        assert!(ramener_dans(&c, "a1.pdf", &corbeille, &fichiers));
+        assert_eq!(std::fs::read(fichiers.join("a1.pdf")).unwrap(), b"pdf");
+        let marque: i64 = c.query_row("SELECT COUNT(*) FROM fichiers_effaces", [], |r| r.get(0)).unwrap();
+        assert_eq!(marque, 0, "sa marque d'effacement tombe");
+        let rendu: i64 = c.query_row("SELECT COUNT(*) FROM fichiers_rendus WHERE nom = 'a1.pdf'", [], |r| r.get(0)).unwrap();
+        assert_eq!(rendu, 1);
+        assert!(!ramener_dans(&c, "../x", &corbeille, &fichiers));
+        std::fs::remove_dir_all(&d).ok();
+    }
 
     fn dossier(nom: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("maitrize-copies-{nom}-{}", uuid::Uuid::new_v4()));
