@@ -148,14 +148,16 @@ const ONGLET_MEMORISE = "fabriquer:onglet";
  * Le moment où il est rangé, l'étiquette de son groupe le dit ; le clic droit
  * le range dans un autre.
  */
-function CarteAtelier({ o, usage, onOuvrir, onRanger }: {
+function CarteAtelier({ o, usage, creer, onOuvrir, onRanger }: {
   o: Outil; usage?: Usage; onOuvrir: () => void;
+  /** La carte qui crée un générateur, et non un atelier : elle se distingue des autres. */
+  creer?: boolean;
   /** Ranger l'atelier dans un moment ; absent, le clic droit ne propose rien. */
   onRanger?: (usage: Usage) => void;
 }) {
   const besoin = [o.cycles, o.pictos ? "pictogrammes ARASAAC" : ""].filter(Boolean).join(" · ");
   return (
-    <div role="button" tabIndex={0} className={`atelier${o.sequence ? " atelier-sequence" : ""}`} onClick={onOuvrir}
+    <div role="button" tabIndex={0} className={`atelier${o.sequence ? " atelier-sequence" : ""}${creer ? " atelier-creer" : ""}`} onClick={onOuvrir}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOuvrir(); } }}
       onContextMenu={onRanger ? (e) => openCtx(e, USAGES.map((u) => ({
         label: `Ranger dans ${u.nom}${u.id === usage ? " ✓" : ""}`, icon: u.ico, onClick: () => onRanger(u.id),
@@ -366,7 +368,7 @@ export default function Jeux() {
                 icone={iconeEtNom(f.libelle)[0]} titre={iconeEtNom(f.libelle)[1]} aide={f.aide} nombre={f.outils.length + (f.id === "perso" ? generateurs.length : 0)}>
                 {f.id === "perso" ? (
                   <div className="ateliers">
-                    {f.outils.map((o) => <CarteAtelier key={o.id} o={o} onOuvrir={() => ouvrirGenerateur(null)} />)}
+                    {f.outils.map((o) => <CarteAtelier key={o.id} o={o} creer onOuvrir={() => ouvrirGenerateur(null)} />)}
                     <CartesDesGenerateurs generateurs={generateurs} onOuvrir={ouvrirGenerateur} />
                   </div>
                 ) : parties ? parties.map((p) => (

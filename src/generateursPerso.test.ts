@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  BLOCS_PERSO, blocVide, ceQuiManque, generateurSur, mapElements, memeImagePartout, poserPartout, htmlGenerateurPerso, imagesDeLaRecette, lireGenerateurs, lireRecette, motsSansImage, placeDansLaPlanche,
-  poserLesPictos, retoucheALIA, variantesDuMot, type GenerateurPerso,
+  BLOCS_PERSO, blocVide, ceQuiManque, demandeAvecPrecisions, generateurSur, mapElements, memeImagePartout, poserPartout, htmlGenerateurPerso, imagesDeLaRecette, lireGenerateurs,
+  lireQuestion, lireRecette, motsSansImage, placeDansLaPlanche, poserLesPictos, questionsALIA, retoucheALIA, variantesDuMot, type GenerateurPerso,
 } from "./generateursPerso";
 
 /** Une recette comme l'IA en répond : des mots seuls, sans picto. */
@@ -213,5 +213,27 @@ describe("les générateurs que l'enseignant fait faire à l'IA", () => {
     expect(placeDansLaPlanche({ element: { id: null, mot: "x" }, x: 0, y: 50, taille: 15 }, { hauteur: 100, legendes: false })[0]).toBe(5.2);
     const planche = generateurSur({ blocs: [blocVide("planche")] });
     expect(corrige(htmlGenerateurPerso(planche, 1))).toContain('<b class="gp-rep">chat</b>');
+  });
+});
+
+describe("les questions de l'IA avant la recette", () => {
+  it("lit une question et ses choix, ou rien quand l'IA en sait assez", () => {
+    expect(lireQuestion('{"pret": true}')).toBeNull();
+    expect(lireQuestion("Je ne sais pas.")).toBeNull();
+    expect(lireQuestion('{"pret": false, "question": "  "}')).toBeNull();
+    expect(lireQuestion('Voici : {"pret": false, "question": "Vos élèves lisent-ils ? ", "choix": ["Non lecteurs", " Lecteurs ", "Non lecteurs", 3, "", "Un peu", "Oui", "Encore"]}'))
+      .toEqual({ question: "Vos élèves lisent-ils ?", choix: ["Non lecteurs", "Lecteurs", "Un peu", "Oui"] });
+    expect(lireQuestion('{"question": "Quel thème ?"}')).toEqual({ question: "Quel thème ?", choix: [] });
+  });
+
+  it("rappelle à l'IA ce qui est déjà dit, et garde les précisions avec la demande", () => {
+    const echanges = [{ question: "Vos élèves lisent-ils ?", reponse: "Non lecteurs" }, { question: "Combien d'animaux ?", reponse: "" }];
+    const message = questionsALIA("Des animaux.", "GS", echanges);
+    expect(message).toContain("Classe : GS.");
+    expect(message).toContain("- Vos élèves lisent-ils ? → Non lecteurs");
+    expect(message).toContain("- Combien d'animaux ? → (pas de préférence)");
+    expect(message).toContain("Questions déjà posées : 2, 4 au plus.");
+    expect(demandeAvecPrecisions(" Des animaux. ", echanges)).toBe("Des animaux.\nPrécisions : Vos élèves lisent-ils ? Non lecteurs");
+    expect(demandeAvecPrecisions("Des animaux.", [])).toBe("Des animaux.");
   });
 });

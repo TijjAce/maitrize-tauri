@@ -5,7 +5,7 @@ import { Aide, AideEnLigne } from "../components/Aide";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { ApercuExemple } from "../components/Exemple";
 import { ChoixPicto, usePictoImage, usePictoImages } from "../components/ChoixPicto";
-import { avecLesPictos, creerAvecLIA, enregistrerGenerateur, pictosPourLesMots, retoucherAvecLIA, supprimerGenerateur, useGenerateursPerso } from "../components/GenerateursPerso";
+import { avecLesPictos, creerAvecLIA, enregistrerGenerateur, pictosPourLesMots, questionDeLIA, retoucherAvecLIA, supprimerGenerateur, useGenerateursPerso } from "../components/GenerateursPerso";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { Field, Input, Select, Textarea } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
@@ -14,9 +14,9 @@ import { useGraine } from "../modifierFeuille";
 import { cleImage, type PictoPose } from "../supportsVisuels";
 import { USAGES, type Usage } from "../usageAtelier";
 import {
-  BLOCS_PERSO, BORNES_COMBIEN, CLASSES_PERSO, CONSIGNE_ORDRE_A_DECOUPER, EXEMPLE_DE_GENERATEUR, LARGEUR_PLANCHE, generateurSur, STYLE_GENERATEURS_PERSO, blocVide, ceQuiManque, htmlGenerateurPerso, imagesDeLaRecette, memeImagePartout,
-  motsSansImage, nomDuBloc, placeDansLaPlanche, poserPartout,
-  type Affichage, type BlocPerso, type BlocPlanche, type GenerateurPerso, type SorteAvecCombien, type SorteDeBloc,
+  BLOCS_PERSO, BORNES_COMBIEN, CLASSES_PERSO, CONSIGNE_ORDRE_A_DECOUPER, EXEMPLE_DE_GENERATEUR, LARGEUR_PLANCHE, generateurSur, STYLE_GENERATEURS_PERSO, blocVide, ceQuiManque,
+  demandeAvecPrecisions, htmlGenerateurPerso, imagesDeLaRecette, memeImagePartout, motsSansImage, nomDuBloc, placeDansLaPlanche, poserPartout,
+  type Affichage, type BlocPerso, type BlocPlanche, type Echange, type GenerateurPerso, type QuestionDeLIA, type SorteAvecCombien, type SorteDeBloc,
 } from "../generateursPerso";
 import { Boutons, Coche, Colonnes } from "./AteliersLangage";
 
@@ -325,26 +325,75 @@ function BlocEditeur({ bloc, rang, banque, onChange, onMonter, onDescendre, onSu
   );
 }
 
-/** Décrire le support, et laisser l'IA en faire la recette ; ou reprendre un générateur déjà fait. */
+/** Des débuts de demande, à toucher quand rien n'est encore écrit. */
+const IDEES: { libelle: string; texte: string }[] = [
+  { libelle: "Les animaux et leurs petits", texte: "Relier chaque animal de la ferme à son petit, puis les trier : ceux qui ont des plumes, ceux qui ont des poils." },
+  { libelle: "Compter jusqu'à 10", texte: "Compter des fruits et écrire combien il y en a, jusqu'à 10." },
+  { libelle: "Une recette dans l'ordre", texte: "Remettre dans l'ordre les étapes de la recette des crêpes, en images à découper." },
+];
+
+/** Trois points qui battent : l'IA travaille. */
+function Attente({ texte }: { texte: string }) {
+  return <div className="gp-attente" role="status"><i /><i /><i /><span>{texte}</span></div>;
+}
+
+/**
+ * Décrire le support ; l'IA demande ce qui lui manque, une question à la
+ * fois, puis écrit la recette (demande de l'enseignant, octobre 2026). Ou
+ * reprendre un générateur déjà fait.
+ */
 function Creation({ generateurs, onOuvrir }: { generateurs: GenerateurPerso[]; onOuvrir: (g: GenerateurPerso) => void }) {
   const [demande, setDemande] = useReglages<{ texte: string; classe: string }>("perso:demande", { texte: "", classe: "CP" });
-  const [attente, setAttente] = React.useState(false);
+  // Ce que l'IA a demandé, et ce que l'enseignant a répondu ; la question en cours.
+  const [echanges, setEchanges] = React.useState<Echange[]>([]);
+  const [question, setQuestion] = React.useState<QuestionDeLIA | null>(null);
+  const [autre, setAutre] = React.useState("");
+  const [attente, setAttente] = React.useState<"" | "question" | "recette">("");
   const [erreur, setErreur] = React.useState("");
-  const creer = async () => {
-    setAttente(true);
-    setErreur("");
+  const enCours = echanges.length > 0 || question !== null || attente !== "";
+
+  /** L'IA écrit la recette, avec tout ce qui a été précisé. */
+  const ecrire = async (deja: Echange[]) => {
+    setQuestion(null);
+    setAttente("recette");
     try {
-      const g = await creerAvecLIA(demande.texte, demande.classe);
+      const g = await creerAvecLIA(demandeAvecPrecisions(demande.texte, deja), demande.classe);
       await enregistrerGenerateur(g);
       setDemande({ texte: "" });
+      setEchanges([]);
       onOuvrir(g);
       toast(`« ${g.nom} » est prêt : retouchez-le, puis imprimez.`, { icone: "✨" });
     } catch (e) {
       setErreur(String((e as Error)?.message ?? e));
     } finally {
-      setAttente(false);
+      setAttente("");
     }
   };
+  /** La question suivante ; quand l'IA en sait assez, la recette. */
+  const suite = async (deja: Echange[]) => {
+    setErreur("");
+    setAttente("question");
+    let q: QuestionDeLIA | null;
+    try {
+      q = await questionDeLIA(demande.texte, demande.classe, deja);
+    } catch (e) {
+      setErreur(String((e as Error)?.message ?? e));
+      setAttente("");
+      return;
+    }
+    if (!q) { await ecrire(deja); return; }
+    setQuestion(q);
+    setAutre("");
+    setAttente("");
+  };
+  const repondre = (reponse: string) => {
+    if (!question) return;
+    const deja = [...echanges, { question: question.question, reponse: reponse.trim() }];
+    setEchanges(deja);
+    setQuestion(null);
+    void suite(deja);
+  };
+  const modifier = () => { setEchanges([]); setQuestion(null); setErreur(""); };
   const sansLIA = async () => {
     const maintenant = nowIso();
     const g = await avecLesPictos({
@@ -355,40 +404,95 @@ function Creation({ generateurs, onOuvrir }: { generateurs: GenerateurPerso[]; o
     setDemande({ texte: "" });
     onOuvrir(g);
   };
+
   return (
-    <>
-      <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
-        Créer un générateur
-        <Aide titre="Créer un générateur avec l'IA" vers="droite"><p>Décrivez le support que vous voulez, comme à un collègue. L'IA de Mistral en écrit la recette : des exercices que Maitrize
-          sait dessiner et corriger — relier, trier en colonnes, compléter, compter, entourer, des questions, des étiquettes, une planche d'images, coller le mot
-          sous l'image, remettre dans l'ordre, cocher la bonne image. Chaque mot reçoit son picto, ou votre photo gardée dans Mes pictos ;
-          vous changez les mots, les pictos, mettez vos photos, placez les images. Chaque feuille est tirée au sort, avec son corrigé. Les prénoms des élèves ne partent
-          pas chez Mistral : ils sont masqués avant l'envoi.</p></Aide>
-      </h3>
-      <Field label="Le support que vous voulez">
-        <Textarea rows={5} value={demande.texte} onChange={(e) => setDemande({ texte: e.target.value })}
-          placeholder="Relier chaque animal de la ferme à son petit, puis les trier : ceux qui ont des plumes, ceux qui ont des poils. Avec les pictos, pour des élèves qui ne lisent pas encore." />
-      </Field>
-      <Field label="Pour quelle classe">
-        <Select value={demande.classe} onChange={(e) => setDemande({ classe: e.target.value })}>
-          {CLASSES_PERSO.map((c) => <option key={c} value={c}>{c}</option>)}
-        </Select>
-      </Field>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <button type="button" className="btn primary" disabled={attente || demande.texte.trim().length < 8} onClick={() => void creer()}>
-          {attente ? "L'IA écrit la recette…" : "✨ Créer avec l'IA"}
-        </button>
-        <button type="button" className="btn ghost sm" disabled={attente} onClick={() => void sansLIA()}>Commencer sans l'IA</button>
+    <div className="gp-creation">
+      <div className="gp-creation-tete">
+        <h3>✨ Créer un générateur</h3>
+        <Aide titre="Créer un générateur avec l'IA" vers="gauche"><p>Décrivez la feuille comme à un collègue. Si la demande ne lui suffit pas, l'IA de Mistral vous
+          pose une question à la fois — ce que les élèves travaillent, s'ils lisent, la forme de l'exercice —, avec des réponses à toucher ; puis elle écrit
+          la recette : des exercices que Maitrize dessine et corrige. Vous retouchez les mots, les pictos, vos photos, la place des images. Les prénoms des
+          élèves ne partent pas chez Mistral.</p></Aide>
       </div>
-      {erreur && <p className="erreur" style={{ color: "var(--danger, #d64545)", fontSize: 13 }}>{erreur}</p>}
-      {generateurs.length > 0 && (
-        <Field label="Vos générateurs">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {generateurs.map((g) => <button key={g.id} type="button" className="btn sm" onClick={() => onOuvrir(g)}>{g.icone} {g.nom}</button>)}
+
+      {!enCours ? (<>
+        <div className="gp-etape-titre">Pour qui ?</div>
+        <div className="gp-classes" role="group" aria-label="La classe">
+          {CLASSES_PERSO.map((c) => (
+            <button key={c} type="button" className={demande.classe === c ? "actif" : ""} aria-pressed={demande.classe === c}
+              onClick={() => setDemande({ classe: c })}>{c}</button>
+          ))}
+        </div>
+        <div className="gp-etape-titre">La feuille que vous voulez</div>
+        <Textarea rows={5} value={demande.texte} aria-label="La feuille que vous voulez" onChange={(e) => setDemande({ texte: e.target.value })}
+          placeholder="Relier chaque animal de la ferme à son petit, avec les pictos, pour des élèves qui ne lisent pas encore." />
+        {!demande.texte.trim() && (
+          <div className="gp-idees">
+            {IDEES.map((x) => <button key={x.libelle} type="button" onClick={() => setDemande({ texte: x.texte })}>{x.libelle}</button>)}
           </div>
-        </Field>
+        )}
+        <div className="gp-actions">
+          <button type="button" className="btn primary" disabled={demande.texte.trim().length < 8} onClick={() => void suite([])}>✨ Continuer</button>
+          <button type="button" className="btn ghost sm" onClick={() => void sansLIA()}>Commencer sans l'IA</button>
+        </div>
+      </>) : (<>
+        <div className="gp-fil">
+          <div className="gp-fil-demande">
+            <span className="gp-fil-classe">{demande.classe}</span>
+            <span className="gp-fil-texte">{demande.texte.trim()}</span>
+            {attente === "" && <button type="button" className="btn ghost sm" onClick={modifier}>Modifier</button>}
+          </div>
+          {echanges.map((e, i) => (
+            <div key={i} className="gp-echange">
+              <span className="gp-echange-q">{e.question}</span>
+              <span className={`gp-echange-r${e.reponse ? "" : " passee"}`}>{e.reponse || "Passée"}</span>
+            </div>
+          ))}
+        </div>
+        {question && (
+          <div className="gp-question-ia">
+            <div className="gp-question-rang">Question {echanges.length + 1}</div>
+            <div className="gp-question-texte">{question.question}</div>
+            {question.choix.length > 0 && (
+              <div className="gp-choix">
+                {question.choix.map((c) => <button key={c} type="button" onClick={() => repondre(c)}>{c}</button>)}
+              </div>
+            )}
+            <div className="gp-autre">
+              <Input value={autre} placeholder={question.choix.length ? "Autre réponse…" : "Votre réponse…"} aria-label="Votre réponse"
+                onChange={(e) => setAutre(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && autre.trim()) { e.preventDefault(); repondre(autre); } }} />
+              <button type="button" className="btn sm" disabled={!autre.trim()} onClick={() => repondre(autre)}>Répondre</button>
+            </div>
+            <div className="gp-question-pied">
+              <button type="button" className="btn ghost sm" onClick={() => repondre("")}>Passer</button>
+              <button type="button" className="btn ghost sm" onClick={() => void ecrire(echanges)}>Créer maintenant</button>
+            </div>
+          </div>
+        )}
+        {attente === "question" && <Attente texte={echanges.length ? "L'IA regarde s'il lui manque encore quelque chose…" : "L'IA lit votre demande…"} />}
+        {attente === "recette" && <Attente texte="L'IA écrit la recette, puis cherche les images…" />}
+      </>)}
+
+      {erreur && (
+        <div className="gp-erreur">
+          <p>{erreur}</p>
+          {enCours && attente === "" && !question && <button type="button" className="btn sm" onClick={() => void suite(echanges)}>Réessayer</button>}
+        </div>
       )}
-    </>
+
+      {generateurs.length > 0 && !enCours && (
+        <div className="gp-mes-generateurs">
+          <div className="gp-etape-titre">Vos générateurs</div>
+          <div className="gp-liste-generateurs">
+            {generateurs.map((g) => (
+              <button key={g.id} type="button" onClick={() => onOuvrir(g)}>
+                <span aria-hidden="true">{g.icone}</span> {g.nom}{g.classe ? <small> · {g.classe}</small> : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

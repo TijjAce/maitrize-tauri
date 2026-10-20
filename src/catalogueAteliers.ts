@@ -64,7 +64,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     aide: "Décrivez le support voulu : l'IA de Mistral en fait un générateur, que vous retouchez.",
     outils: [
       { id: "perso", nom: "Créer un générateur avec l'IA", icone: "✨", cycles: "De la maternelle au CM2",
-        quoi: "Décrivez la feuille que vous voulez : l'IA en fait un générateur, que vous retouchez — les mots, les pictos, vos photos, la place des images." },
+        quoi: "Décrivez la feuille voulue. L'IA vous demande ce qui lui manque, puis la fabrique, prête à retoucher." },
     ],
   },
   {

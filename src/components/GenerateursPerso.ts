@@ -8,8 +8,9 @@ import { pseudonymiserTout, restaurer } from "../confidentialite";
 import { nomsAMasquer } from "../nomsAMasquer";
 import { lireMesPictos, pourLeMot, type MonPicto } from "../mesPictos";
 import {
-  CLE_GENERATEURS, CONSIGNE_DE_L_IA, EVT_GENERATEURS, demandeALIA, lireGenerateurs, lireRecette, motsSansImage, poserLesPictos, retoucheALIA, variantesDuMot,
-  type GenerateurPerso,
+  CLE_GENERATEURS, CONSIGNE_DE_L_IA, CONSIGNE_DES_QUESTIONS, EVT_GENERATEURS, QUESTIONS_MAX, demandeALIA, lireGenerateurs, lireQuestion, lireRecette, motsSansImage,
+  poserLesPictos, questionsALIA, retoucheALIA, variantesDuMot,
+  type Echange, type GenerateurPerso, type QuestionDeLIA,
 } from "../generateursPerso";
 import { EVT_DONNEES_DISTANTES } from "./ui";
 
@@ -107,6 +108,29 @@ export async function pictosPourLesMots(mots: string[]): Promise<{ id: number; m
 export async function avecLesPictos(g: GenerateurPerso, garder: GenerateurPerso | null): Promise<GenerateurPerso> {
   const mots = motsSansImage(garder ? poserLesPictos(g, [], garder) : g);
   return poserLesPictos(g, await pictosPourLesMots(mots), garder);
+}
+
+/**
+ * La question que l'IA pose avant d'écrire la recette, quand la demande ne
+ * lui dit pas assez ; rien quand elle en sait assez. Au-delà de
+ * QUESTIONS_MAX, ou si sa réponse ne se lit pas, on n'attend plus : la
+ * recette s'écrit avec ce qu'on sait. Les prénoms partent masqués, comme
+ * pour la recette.
+ */
+export async function questionDeLIA(demande: string, classe: string, echanges: Echange[]): Promise<QuestionDeLIA | null> {
+  if (echanges.length >= QUESTIONS_MAX) return null;
+  const masque = pseudonymiserTout([questionsALIA(demande, classe, echanges)], await nomsAMasquer());
+  const messages: ChatMessage[] = [{ role: "system", content: CONSIGNE_DES_QUESTIONS }, { role: "user", content: masque.textes[0] }];
+  const modele = await api.modeleActif();
+  let reponse: string;
+  try {
+    reponse = await api.mistralChat(messages, modele, true);
+  } catch (e) {
+    if (!/\(code 4(00|22)\)/.test(String((e as Error)?.message ?? e))) throw e;
+    reponse = await api.mistralChat(messages, modele);
+  }
+  const q = lireQuestion(reponse);
+  return q && { question: restaurer(q.question, masque.table).texte, choix: q.choix.map((c) => restaurer(c, masque.table).texte) };
 }
 
 /** Un nouveau générateur, d'après ce que l'enseignant a décrit. */

@@ -1278,6 +1278,57 @@ details.pli-catalogue[open] > summary .pli-chevron { transform: rotate(90deg); }
 .gp-manque { font-size: 12.5px; color: var(--orange); margin: 6px 0 0; }
 .gp-mot-sans-image { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-decoration: underline dotted; cursor: pointer; }
 .gp-apercu-vide { border: 1px dashed var(--border); border-radius: 12px; padding: 40px 20px; text-align: center; color: var(--text-2); font-size: 13px; }
+/* Créer un générateur : pour qui, la feuille voulue, puis les questions de l'IA une à une, ce qui est déjà dit au-dessus. */
+.gp-creation { display: flex; flex-direction: column; gap: 10px; }
+.gp-creation-tete { display: flex; align-items: center; gap: 8px; }
+.gp-creation-tete h3 { margin: 0; flex: 1; font-size: 16px; }
+.gp-etape-titre { font-size: 12.5px; font-weight: 650; color: var(--text-2); margin: 4px 0 -4px; }
+.gp-classes { display: flex; flex-wrap: wrap; gap: 4px; }
+.gp-classes button { min-width: 40px; height: 30px; padding: 0 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel);
+  color: var(--text-2); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.gp-classes button:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); color: var(--text); }
+.gp-classes button.actif { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.gp-idees { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -2px; }
+.gp-idees button, .gp-choix button { border: 1px solid var(--border); border-radius: 100px; background: var(--panel); color: var(--text);
+  font: inherit; font-size: 12.5px; padding: 4px 11px; cursor: pointer; text-align: left; }
+.gp-idees button { color: var(--text-2); }
+.gp-idees button:hover, .gp-choix button:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.gp-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 2px; }
+.gp-fil { display: flex; flex-direction: column; gap: 6px; }
+.gp-fil-demande { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: start;
+  padding: 8px 10px; border-radius: 10px; background: var(--panel-2); font-size: 13px; }
+.gp-fil-classe { font-size: 11.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 6px; padding: 1px 6px; margin-top: 1px; }
+.gp-fil-texte { line-height: 1.4; overflow-wrap: anywhere; }
+.gp-echange { display: flex; flex-direction: column; gap: 1px; padding: 0 10px 0 12px; border-left: 2px solid color-mix(in srgb, var(--accent) 45%, var(--border)); font-size: 12.5px; }
+.gp-echange-q { color: var(--text-2); }
+.gp-echange-r { font-weight: 650; }
+.gp-echange-r.passee { font-weight: 400; font-style: italic; color: var(--text-2); }
+.gp-question-ia { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: 12px; background: color-mix(in srgb, var(--accent) 5%, var(--panel)); }
+.gp-question-rang { font-size: 11.5px; font-weight: 700; letter-spacing: .02em; color: var(--accent); }
+.gp-question-texte { font-size: 14.5px; font-weight: 650; line-height: 1.35; }
+.gp-choix { display: flex; flex-wrap: wrap; gap: 6px; }
+.gp-autre { display: flex; gap: 6px; }
+.gp-autre .input { flex: 1; min-width: 0; }
+.gp-question-pied { display: flex; justify-content: space-between; margin: -2px -6px -4px; }
+.gp-attente { display: flex; align-items: center; gap: 5px; padding: 8px 2px; font-size: 13px; color: var(--text-2); }
+.gp-attente i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: gp-pouls 1s ease-in-out infinite; }
+.gp-attente i:nth-child(2) { animation-delay: .15s; }
+.gp-attente i:nth-child(3) { animation-delay: .3s; }
+.gp-attente span { margin-left: 5px; }
+@keyframes gp-pouls { 0%, 100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
+.gp-erreur { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--danger, #d64545); }
+.gp-erreur p { margin: 0; flex: 1; min-width: 180px; }
+.gp-mes-generateurs { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--border); }
+.gp-liste-generateurs { display: flex; flex-direction: column; gap: 2px; }
+.gp-liste-generateurs button { border: none; border-radius: 8px; background: none; color: var(--text); font: inherit; font-size: 13.5px;
+  padding: 6px 8px; text-align: left; cursor: pointer; }
+.gp-liste-generateurs button:hover { background: var(--panel-2); }
+.gp-liste-generateurs small { color: var(--text-2); font-size: 12px; }
+/* La carte qui crée un générateur : en pointillés, de la couleur de l'accent ; ce n'est pas un atelier comme les autres. */
+.atelier.atelier-creer { border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 5%, var(--panel)); }
+.atelier.atelier-creer:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--panel)); }
+.atelier.atelier-creer .atelier-nom { color: var(--accent); }
 /* Dans un domaine, les ateliers vont par moment de la séquence : chaque moment a sa petite étiquette, sur toute la largeur. */
 .ateliers-moment { grid-column: 1 / -1; font-size: 12.5px; font-weight: 700; color: var(--text-2); margin: 6px 0 -4px 2px; }
 .ateliers-moment:first-child { margin-top: 0; }
