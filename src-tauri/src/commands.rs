@@ -363,11 +363,17 @@ pub fn creneau_save(db: State<Db>, creneau: Creneau) -> R<Creneau> {
 /// dupliqué garde le sien. Ensuite, seul le cahier journal le règle
 /// (`creneau_minuteur_save`) : une grille restée ouverte, qui déplace le
 /// créneau, ne le remet pas à son ancienne valeur.
+///
+/// Le prévu et le bilan, de même : écrits ici à la création, ensuite par le
+/// seul cahier journal (`creneau_journal_save`). La grille et la fiche du
+/// créneau renvoient la ligne chargée à l'ouverture du planning ; déplacer le
+/// créneau, lui lier une séance ou l'enregistrer tel quel effaçait le bilan
+/// écrit depuis (trouvé en octobre 2026).
 pub(crate) fn ecrire_creneau(c: &rusqlite::Connection, creneau: Creneau) -> R<Creneau> {
     c.execute(
         "INSERT INTO creneaux (id,date,heure_debut,heure_fin,matiere,couleur,seance_id,atelier_id,espace_id,eleves_json,
           nature,prevu,bilan,minuteur)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14) ON CONFLICT(id) DO UPDATE SET date = excluded.date, heure_debut = excluded.heure_debut, heure_fin = excluded.heure_fin, matiere = excluded.matiere, couleur = excluded.couleur, seance_id = excluded.seance_id, atelier_id = excluded.atelier_id, espace_id = excluded.espace_id, eleves_json = excluded.eleves_json, nature = excluded.nature, prevu = excluded.prevu, bilan = excluded.bilan",
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14) ON CONFLICT(id) DO UPDATE SET date = excluded.date, heure_debut = excluded.heure_debut, heure_fin = excluded.heure_fin, matiere = excluded.matiere, couleur = excluded.couleur, seance_id = excluded.seance_id, atelier_id = excluded.atelier_id, espace_id = excluded.espace_id, eleves_json = excluded.eleves_json, nature = excluded.nature",
         params![creneau.id, creneau.date, creneau.heure_debut, creneau.heure_fin,
                 creneau.matiere, creneau.couleur, creneau.seance_id, creneau.atelier_id,
                 creneau.espace_id, creneau.eleves_json, creneau.nature, creneau.prevu, creneau.bilan,
@@ -3769,6 +3775,30 @@ mod tests_cahier_journal {
         assert_eq!(ancien.nature, "classe");
         assert_eq!(ancien.prevu, "");
         assert_eq!(ancien.minuteur, 0);
+    }
+
+    /// Le bilan écrit au cahier journal reste quand la grille ou la fiche du
+    /// créneau réécrit la ligne chargée avant lui : on déplace le créneau, on
+    /// change sa matière, on l'enregistre tel quel.
+    #[test]
+    fn deplacer_ou_modifier_un_creneau_garde_son_prevu_et_son_bilan() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        let cr: Creneau = serde_json::from_value(serde_json::json!({
+            "id": "cr1", "date": "2026-10-13", "heureDebut": "08:45", "heureFin": "10:00",
+            "matiere": "Français", "prevu": "Lecture de l'album."
+        })).unwrap();
+        super::ecrire_creneau(&c, cr.clone()).unwrap();
+        super::ecrire_journal_creneau(&c, "cr1", "Lecture de l'album, pages 4 à 9.", "Album lu jusqu'à la page 9.").unwrap();
+        // La fiche, ouverte avec la ligne d'avant le bilan : on déplace le créneau, on change sa matière.
+        super::ecrire_creneau(&c, Creneau { heure_debut: "09:00".into(), matiere: "Lecture".into(), ..cr.clone() }).unwrap();
+        let lu = c.query_row("SELECT * FROM creneaux WHERE id='cr1'", [], Creneau::from_row).unwrap();
+        assert_eq!((lu.heure_debut.as_str(), lu.matiere.as_str()), ("09:00", "Lecture"));
+        assert_eq!((lu.prevu.as_str(), lu.bilan.as_str()), ("Lecture de l'album, pages 4 à 9.", "Album lu jusqu'à la page 9."));
+        // Un créneau neuf, lui, s'écrit avec son prévu.
+        super::ecrire_creneau(&c, Creneau { id: "cr2".into(), prevu: "Rituel.".into(), ..cr }).unwrap();
+        let neuf: String = c.query_row("SELECT prevu FROM creneaux WHERE id='cr2'", [], |r| r.get(0)).unwrap();
+        assert_eq!(neuf, "Rituel.");
     }
 
     /// Le minuteur des tablettes se règle au cahier journal ; la grille, qui
