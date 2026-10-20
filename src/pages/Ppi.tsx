@@ -1,6 +1,7 @@
 import React from "react";
 import { api, newId, type CommentaireEleve } from "../api";
 import { Field, Input, Empty, useAsync } from "../components/ui";
+import { lireJson, modifierLeDocument } from "../documentDeLEleve";
 import { toast } from "../components/Toaster";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import { nomsAMasquer } from "../nomsAMasquer";
@@ -82,6 +83,8 @@ function SuiviDeLObjectif({ objectifId, commentaires }: { objectifId: string; co
   );
 }
 
+const lirePpi = lireJson<PpiData>(VIDE);
+
 /** Le PPI de l'élève choisi dans Dispositifs, dont la barre porte le choix de l'élève. */
 export function PpiTab({ eleveId }: { eleveId: string }) {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
@@ -102,12 +105,19 @@ export function PpiTab({ eleveId }: { eleveId: string }) {
     [eleveId],
   );
 
+  // Relu à chaque élève, et seulement s'il est toujours celui qu'on regarde
+  // (une réponse lente arrivait après celle de l'élève suivant).
   React.useEffect(() => {
     if (!eleveId) return;
-    api.documentEleveGet(eleveId, "ppi").then((v) => {
-      try { setData(v ? { ...VIDE, ...JSON.parse(v) } : VIDE); } catch { setData(VIDE); }
-    });
+    let actif = true;
+    api.documentEleveGet(eleveId, "ppi").then((v) => { if (actif) setData(lirePpi(v)); });
+    return () => { actif = false; };
   }, [eleveId]);
+  // L'état du moment, pour la réponse de l'IA qui arrive après coup.
+  const dataRef = React.useRef(data);
+  dataRef.current = data;
+  const eleveIdRef = React.useRef(eleveId);
+  eleveIdRef.current = eleveId;
 
   const persister = (d: PpiData) => { setData(d); if (eleveId) api.documentEleveSet(eleveId, "ppi", JSON.stringify(d)); };
   const up = (p: Partial<PpiData>) => persister({ ...data, ...p });
@@ -125,6 +135,7 @@ export function PpiTab({ eleveId }: { eleveId: string }) {
   // tout nom d'élève dans les notes, part masqué — [P1], [P2]… — et revient à sa place sur la machine.
   const reformuler = async (b: PpiBilan) => {
     if (!b.texte.trim()) { toast("Écrivez d'abord quelques mots à reformuler.", { icone: "✍️" }); return; }
+    const pour = eleveId;
     setReformuleId(b.id);
     try {
       const modele = await api.modeleActif();
@@ -140,7 +151,15 @@ export function PpiTab({ eleveId }: { eleveId: string }) {
         { role: "user", content: masque },
       ], modele);
       const propre = restaurer(rep.trim().replace(/^["«»\s]+|["«»\s]+$/g, ""), table).texte;
-      if (propre) upBilan(b.id, { texte: propre });
+      if (!propre) return;
+      // Chez l'élève pour qui on l'a demandée, dans l'état du moment : l'écran
+      // a pu changer d'élève, ou le bilan avoir été retouché, entre-temps.
+      const avecLaReponse = (d: PpiData): PpiData => ({ ...d, bilans: d.bilans.map((x) => (x.id === b.id ? { ...x, texte: propre } : x)) });
+      if (eleveIdRef.current === pour) persister(avecLaReponse(dataRef.current));
+      else {
+        await modifierLeDocument(pour, "ppi", lirePpi, avecLaReponse);
+        toast(`Reformulation rangée dans le PPI de ${prenom}.`, { icone: "✨" });
+      }
     } catch (e: any) {
       toast("Reformulation impossible : " + String(e?.message ?? e), { icone: "⚠️", duree: 5000 });
     } finally {

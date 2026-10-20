@@ -108,11 +108,15 @@ export function EvaluationDiagnostiqueTab({ grille: voulue }: { grille?: string 
   React.useEffect(() => {
     if (!eleveId) return;
     setCharge(false);
+    // Seulement si l'élève et la grille sont toujours ceux qu'on regarde.
+    let actif = true;
     api.documentEleveGet(eleveId, cleDoc(grille)).then((s) => {
+      if (!actif) return;
       let lu: Valeurs = {};
       try { lu = s ? JSON.parse(s) : {}; } catch { lu = {}; }
       vRef.current = lu; setV(lu); setCharge(true);
     });
+    return () => { actif = false; };
   }, [eleveId, grilleId]);
 
   // Référence à jour : deux clics rapprochés doivent se composer, pas
