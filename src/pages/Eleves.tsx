@@ -30,7 +30,7 @@ import { fabricationsDesFiches, niveauDesFiches } from "../fichesAutonomie";
 import { isoJour } from "../dates";
 
 const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "dispositifs", "gevasco"] as const;
-/** Ce qu'affiche l'onglet Évaluations : le sommatif (notes, synthèse, synthèse GS) ou le diagnostique. */
+/** Ce qu'affiche l'onglet Évaluations : le sommatif (évaluations notées, synthèse GS) ou le diagnostique (grilles d'observation). */
 type VueEvaluation = "notees" | "gs" | "diagnostique";
 /** Le Dossier, ou sa Synthèse : la synthèse vit avec le dossier de l'élève (demande de l'enseignant, octobre 2026). */
 type VueDossier = "dossier" | "synthese";
@@ -285,25 +285,25 @@ function Evaluations({ vue, setVue }: { vue: VueEvaluation; setVue: (v: VueEvalu
   const [edit, setEdit] = React.useState<Evaluation | null>(null);
   const [notes, setNotes] = React.useState<Evaluation | null>(null);
   const [del, setDel] = React.useState<Evaluation | null>(null);
-  const sommative = vue !== "diagnostique";
+  // Une seule barre, rangée par nature : une seule vue choisie à la fois, chacune à un clic.
+  const vueBouton = (v: VueEvaluation, libelle: string) => (
+    <button type="button" aria-pressed={vue === v} className={vue === v ? "active" : ""} onClick={() => setVue(v)}>{libelle}</button>
+  );
 
   return (
     <>
-      <div className="toolbar" style={{ flexWrap: "wrap" }}>
-        <div className="seg" role="tablist" aria-label="Nature de l'évaluation">
-          <button role="tab" aria-selected={sommative} className={sommative ? "active" : ""}
-            onClick={() => { if (!sommative) setVue("notees"); }}>📊 Évaluation sommative</button>
-          <button role="tab" aria-selected={!sommative} className={!sommative ? "active" : ""}
-            onClick={() => setVue("diagnostique")}>🔍 Évaluation diagnostique</button>
-        </div>
-        {sommative && (
-          <div className="seg" role="tablist" aria-label="Évaluation sommative">
-            <button role="tab" aria-selected={vue === "notees"} className={vue === "notees" ? "active" : ""}
-              onClick={() => setVue("notees")}>🔢 Évaluations notées</button>
-            <button role="tab" aria-selected={vue === "gs"} className={vue === "gs" ? "active" : ""}
-              onClick={() => setVue("gs")}>🎓 Synthèse GS</button>
+      <div className="toolbar toolbar-natures">
+        <div className="seg seg-natures">
+          <div className="seg-nature" role="group" aria-label="Évaluation sommative">
+            <span className="seg-nature-titre" aria-hidden="true">Sommative</span>
+            {vueBouton("notees", "🔢 Évaluations notées")}
+            {vueBouton("gs", "🎓 Synthèse GS")}
           </div>
-        )}
+          <div className="seg-nature" role="group" aria-label="Évaluation diagnostique">
+            <span className="seg-nature-titre" aria-hidden="true">Diagnostique</span>
+            {vueBouton("diagnostique", "🔍 Grilles d'observation")}
+          </div>
+        </div>
         <div className="spacer" />
         {vue === "notees" && <button className="btn primary" onClick={() => setEdit(nouvelleEvaluation())}>+ Évaluation</button>}
       </div>
