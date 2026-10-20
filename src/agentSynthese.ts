@@ -17,7 +17,7 @@ import { lireCompetences, TYPE_DOC_COMPETENCES } from "./competencesTravaillees"
 import { DISPOSITIFS } from "./data/dispositifs";
 import { SECTIONS_SYNTHESE, brouillonDeSection, dansLaPeriode, indicesDeLEleve, type Section } from "./synthese";
 import {
-  ecritsDesObservations, ecritsDesReunions, ecritsDuJournal, prenomDe, redigerSyntheseSuivie, type Ecrit,
+  clesDeLEleve, ecritsDesObservations, ecritsDesReunions, ecritsDuJournal, redigerSyntheseSuivie, type Ecrit,
 } from "./veilleEleve";
 
 /** Une étape de l'agent : ce qu'il lit, et ce qu'il dit en le lisant. */
@@ -189,7 +189,8 @@ export async function lancerLAgent(a: {
   const ecrits: Ecrit[] = [];
   let suivi = "";
   const plans: string[] = [];
-  const prenom = prenomDe(a.eleve.nom);
+  // Son prénom, ou de quoi le distinguer d'un élève de même prénom (voir clesDeLEleve).
+  const prenom = clesDeLEleve(a.eleve.nom, [a.eleve.nom, ...a.autresEleves]);
   const dans = (e: Ecrit) => dansLaPeriodeDu(e.date, a.debut, a.fin);
 
   const lectures: Record<string, () => Promise<number>> = {

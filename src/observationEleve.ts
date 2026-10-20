@@ -19,7 +19,7 @@ import { api, type ObservationEleve } from "./api";
 import { GRILLES } from "./data/evaluationsDiagnostiques";
 import { normaliser } from "./competencesTravaillees";
 import { pseudonymiser, restaurer } from "./confidentialite";
-import { citeLePrenom, phrasesQuiCitent, prenomDe } from "./veilleEleve";
+import { citeLePrenom, clesDeLEleve, phrasesQuiCitent, prenomDe } from "./veilleEleve";
 import { nomsAMasquer } from "./nomsAMasquer";
 
 /** Un observable de la grille, avec d'où il vient. */
@@ -152,7 +152,7 @@ export const observationVide = (o: ObservationEleve) =>
  * ne le regarde pas.
  */
 export function noteDepuisLeBilan(bilan: string, nomEleve: string, noms: string[] = []): string {
-  const part = phrasesQuiCitent(bilan, prenomDe(nomEleve));
+  const part = phrasesQuiCitent(bilan, clesDeLEleve(nomEleve, noms));
   if (part.trim()) return part.trim();
   return noms.some((n) => citeLePrenom(bilan, prenomDe(n))) ? "" : bilan.trim();
 }

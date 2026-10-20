@@ -15,7 +15,7 @@ vi.mock("./api", () => ({
 }));
 
 import {
-  citeLePrenom, dossierDesEcrits, ecritsDesObservations, ecritsDesReunions, ecritsDuJournal,
+  citeLePrenom, clesDeLEleve, dossierDesEcrits, ecritsDesObservations, ecritsDesReunions, ecritsDuJournal,
   lireSyntheseRedigee, nouveauxDepuis, phrasesQuiCitent, poserLaRedaction, prenomDe,
   rassembler, redigerSyntheseSuivie, resumeDesEcrits, type Ecrit,
 } from "./veilleEleve";
@@ -51,6 +51,16 @@ describe("reconnaître l'élève dans un texte", () => {
   it("découpe aussi sur les retours à la ligne", () => {
     expect(phrasesQuiCitent("Atelier cuisine\nCamille a versé seule\nBarnabé a observé", "Camille"))
       .toBe("Camille a versé seule");
+  });
+
+  it("deux élèves de même prénom se reconnaissent à leur nom, ou à l'initiale qui les départage", () => {
+    const classe = ["Zoé Martin", "Zoé Tessier", "Léon Moreau"];
+    expect(clesDeLEleve("Léon Moreau", classe)).toEqual(["Léon"]);
+    expect(clesDeLEleve("Zoé Martin", classe)).toEqual(["Zoé Martin", "Zoé M."]);
+    // Même initiale : seul le nom entier départage.
+    expect(clesDeLEleve("Zoé Martin", [...classe, "Zoé Moreau"])).toEqual(["Zoé Martin"]);
+    // « Zoé » seule ne dit pas laquelle.
+    expect(phrasesQuiCitent("Zoé a lu. Zoé M. a écrit.", clesDeLEleve("Zoé Martin", classe))).toBe("Zoé M. a écrit.");
   });
 
   it("le prénom se tire du nom complet", () => {
