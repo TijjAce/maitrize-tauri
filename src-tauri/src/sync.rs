@@ -525,19 +525,23 @@ pub fn boite_supprimer(db: State<Db>, id: String) -> R<()> {
 
 // ── Partage de la programmation finale ──────────────────────────────────────
 
-/// La programmation de classe de l'année — jamais celle par élève (IME) : ses
-/// objectifs, ses groupes et ses notes concernent des élèves nommément.
-fn lire_programmation(c: &Connection, annee: &str) -> R<ProgrammationFinale> {
+/// La programmation de classe de l'année, ou celle d'un de ses niveaux —
+/// jamais celle par élève (IME) : ses objectifs, ses groupes et ses notes
+/// concernent des élèves nommément.
+fn lire_programmation(c: &Connection, annee: &str, niveau: &str) -> R<ProgrammationFinale> {
+    if niveau.eq_ignore_ascii_case("ime") {
+        return Err("La programmation par élève ne se partage pas.".into());
+    }
     c.query_row("SELECT * FROM programmations_finale
-                  WHERE annee = ?1 AND est_importee = 0 AND COALESCE(niveau, '') <> 'ime' LIMIT 1",
-        [annee], ProgrammationFinale::from_row)
+                  WHERE annee = ?1 AND est_importee = 0 AND COALESCE(niveau, '') = ?2 ORDER BY rowid LIMIT 1",
+        [annee, niveau], ProgrammationFinale::from_row)
         .map_err(|_| "Aucune programmation à partager pour cette année.".to_string())
 }
 
 #[tauri::command]
-pub async fn programmation_partager(db: State<'_, Db>, ami_id: String, annee: String) -> R<()> {
+pub async fn programmation_partager(db: State<'_, Db>, ami_id: String, annee: String, niveau: Option<String>) -> R<()> {
     let ctx = contexte(&db, &ami_id)?;
-    let prog = { let c = db.lock(); lire_programmation(&c, &annee)? };
+    let prog = { let c = db.lock(); lire_programmation(&c, &annee, niveau.as_deref().unwrap_or("").trim())? };
     let key = cle_paire(ctx.priv_, ctx.ami_pub, &ctx.mid);
     let env = EnvProg {
         de: STANDARD.encode(ctx.pub_), nom: ctx.nom.clone(),

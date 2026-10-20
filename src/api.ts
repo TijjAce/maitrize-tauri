@@ -642,8 +642,9 @@ export const api = {
     invoke<ProgressionAnnuelle>("progression_annuelle_ecrire", { annee, niveau, periode, avant, apres }),
   programmationsFinaleList: () => invoke<ProgrammationFinale[]>("programmations_finale_list"),
   /** Écrit l'écart de la programmation de l'année (celle de la classe, ou par élève si `ime`) : une ligne arrivée d'ailleurs reste. */
-  programmationFinaleEcrire: (annee: string, ime: boolean, avant: string, apres: string) =>
-    invoke<ProgrammationFinale>("programmation_finale_ecrire", { annee, ime, avant, apres }),
+  /** Écrit l'écart d'une programmation de l'année : la classe (`niveau` vide), un de ses niveaux, ou celle par élève (`ime`). */
+  programmationFinaleEcrire: (annee: string, ime: boolean, avant: string, apres: string, niveau = "") =>
+    invoke<ProgrammationFinale>("programmation_finale_ecrire", { annee, ime, avant, apres, niveau }),
   /** Écrit l'écart de l'emploi du temps de l'année : un créneau posé ailleurs reste. */
   edtTypiqueEcrire: (annee: string, avant: string, apres: string) =>
     invoke<EdtTypique>("edt_typique_ecrire", { annee, avant, apres }),
@@ -937,7 +938,7 @@ export const api = {
   syncEnvoyer: (amiId: string, texte: string) => invoke<void>("sync_envoyer", { amiId, texte }),
   syncRelever: (amiId: string) => invoke<SyncMessage[]>("sync_relever", { amiId }),
   sequencePartager: (amiId: string, sequenceId: string) => invoke<void>("sequence_partager", { amiId, sequenceId }),
-  programmationPartager: (amiId: string, annee: string) => invoke<void>("programmation_partager", { amiId, annee }),
+  programmationPartager: (amiId: string, annee: string, niveau = "") => invoke<void>("programmation_partager", { amiId, annee, niveau }),
   // Boîte de réception : relever (met en attente), lister, récupérer (importer), jeter.
   boiteRelever: (amiId: string) => invoke<BoiteItem[]>("boite_relever", { amiId }),
   boiteListe: () => invoke<BoiteItem[]>("boite_liste"),

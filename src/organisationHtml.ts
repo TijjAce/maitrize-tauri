@@ -16,16 +16,40 @@ export interface LigneProgrammation {
   periodesFaites?: number[];        // périodes (1..5) marquées réalisées
 }
 
-/** La programmation annuelle : domaines en bandeau, activités par période, ce qui est fait barré. */
-export function htmlProgrammation(annee: string, lignes: LigneProgrammation[]): string {
-  const rows = lignes.map((l) => l.estDomaine
-    ? `<tr style="background:${couleurHex[l.couleur ?? "blue"]}22;font-weight:700"><td colspan="6">📁 ${escapeHtml(l.label)}</td></tr>`
-    : `<tr><td>${escapeHtml(l.label)}</td>${[l.p1, l.p2, l.p3, l.p4, l.p5].map((v, i) => {
+/** Les couleurs officielles des périodes : celles des pastilles P1…P5 et des têtes de colonne. */
+export const COULEUR_PERIODE: Record<number, string> = { 1: "#2e73d9", 2: "#d94033", 3: "#4d4d4d", 4: "#d97319", 5: "#269950" };
+
+/** Une programmation à imprimer : celle de la classe (niveau vide) ou d'un niveau, et la couleur de chaque ligne. */
+export interface TableauDeProgrammation {
+  niveau: string;
+  lignes: LigneProgrammation[];
+  /** Par identifiant de ligne : la couleur de son domaine. */
+  teintes: Record<string, string>;
+}
+
+/**
+ * La programmation de l'année : celle de la classe puis celles des niveaux,
+ * chaque domaine en bandeau de sa couleur et ses activités teintées de même,
+ * comme à l'écran ; ce qui est fait est barré.
+ */
+export function htmlProgrammation(annee: string, tableaux: TableauDeProgrammation[]): string {
+  const corps = tableaux.filter((t) => t.lignes.length > 0).map((t) => {
+    const rows = t.lignes.map((l) => {
+      const c = t.teintes[l.id] ?? couleurHex.blue;
+      if (l.estDomaine) {
+        return `<tr><td colspan="6" style="background:${c}24;border-left:4px solid ${c};font-weight:700">${escapeHtml(l.label)}</td></tr>`;
+      }
+      return `<tr><td style="border-left:4px solid ${c};font-weight:600">${escapeHtml(l.label)}</td>${[l.p1, l.p2, l.p3, l.p4, l.p5].map((v, i) => {
         const fait = (l.periodesFaites ?? []).includes(i + 1);
-        return `<td style="${fait ? "text-decoration:line-through;color:#888" : ""}">${escapeHtml(v ?? "")}</td>`;
-      }).join("")}</tr>`).join("");
-  return `<h1>Programmation annuelle — ${escapeHtml(annee)}</h1>`
-    + `<table><tr><th>Domaine / Activité</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th><th>P5</th></tr>${rows}</table>`;
+        return `<td style="background:${c}12;${fait ? "text-decoration:line-through;color:#888" : ""}">${escapeHtml(v ?? "").replace(/\n/g, "<br>")}</td>`;
+      }).join("")}</tr>`;
+    }).join("");
+    const tete = `<tr><th>Domaine / Activité</th>${[1, 2, 3, 4, 5].map((p) => `<th style="border-top:4px solid ${COULEUR_PERIODE[p]}">P${p}</th>`).join("")}</tr>`;
+    // Les mêmes largeurs d'un tableau à l'autre : les périodes s'alignent sur la page.
+    const largeurs = `<colgroup><col style="width:24%">${"<col style=\"width:15.2%\">".repeat(5)}</colgroup>`;
+    return `${t.niveau ? `<h2>${escapeHtml(t.niveau)}</h2>` : ""}<table style="table-layout:fixed;width:100%">${largeurs}${tete}${rows}</table>`;
+  }).join("");
+  return `<h1>Programmation annuelle — ${escapeHtml(annee)}</h1>${corps}`;
 }
 
 /** Un tableau d'une période : celui de la classe (niveau vide) ou d'un niveau. */

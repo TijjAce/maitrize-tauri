@@ -12,14 +12,18 @@ import { Aide } from "../components/Aide";
 import { chargerVacances, periodesDeLAnnee, type PeriodeDeClasse } from "../vacances";
 import { isoJour } from "../dates";
 import { useCollectionParEcart } from "../ecritureParEcart";
-import { htmlPeriode, htmlProgrammation, type LigneProgrammation, type TableauDePeriode } from "../organisationHtml";
+import { COULEUR_PERIODE, htmlPeriode, htmlProgrammation, type LigneProgrammation, type TableauDePeriode } from "../organisationHtml";
+import {
+  cleNiveauDeLAnnee, copieDesDomaines, deplacerLigne, estALaClasse, ligneNeuve, lireLignes, niveauxDeLAnnee, programmationDe, remettreLigne,
+  sourcesDeDomaines, teintesDesLignes,
+} from "../programmationAnnuelle";
 import {
   avecCase, casesDeLaColonne, cleCase, cleNiveauAjoute, copieDesColonnes, datesDeLaSemaine, deplacerColonne, enJson, LA_CLASSE,
   lireEtat, memeEtat, niveauxDeLaPeriode, nombreDeSemaines, progressionDe, remettreColonne, sansColonne, semainesDeLaPeriode,
   sourcesDeColonnes, titreConnu, titresProposes, type Colonne, type EtatProg, type GroupeDeTitres, type SemaineDeClasse, type SourceDeColonnes,
 } from "../progressionAnnuelle";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
-import { COULEURS, choisirCouleurMatiere, teinteSequence } from "../api";
+import { choisirCouleurMatiere, teinteSequence } from "../api";
 import { printHTML, escapeHtml } from "../print";
 import { PlanSalleTab } from "./PlanSalle";
 import { ProjetPedagogiqueTab } from "./ProjetPedagogique";
@@ -31,24 +35,6 @@ import { lireNiveaux } from "../classe";
 import { duree, plageGrille } from "../heures";
 import { ProgrammationIme } from "../components/ProgrammationIme";
 import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
-
-// Couleurs officielles des périodes (miroir couleursPeriodes).
-const COULEUR_PERIODE: Record<number, string> = { 1: "#2e73d9", 2: "#d94033", 3: "#4d4d4d", 4: "#d97319", 5: "#269950" };
-
-/** Champ texte auto-extensible (affiche tout le contenu, multi-lignes). */
-function AutoText({ value, onChange, bold, style }: {
-  value: string; onChange: (v: string) => void; bold?: boolean; style?: React.CSSProperties;
-}) {
-  const ref = React.useRef<HTMLTextAreaElement>(null);
-  const resize = React.useCallback(() => { const el = ref.current; if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }, []);
-  React.useEffect(resize, [value, resize]);
-  return (
-    <textarea ref={ref} rows={1} value={value} spellCheck={false} onChange={(e) => { onChange(e.target.value); resize(); }}
-      style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 7, padding: "6px 8px", background: "var(--panel)",
-        color: "var(--text)", font: "inherit", fontSize: 13, fontWeight: bold ? 700 : 400, resize: "none", overflow: "hidden",
-        lineHeight: 1.4, minHeight: 32, outline: "none", ...style }} />
-  );
-}
 
 /** Chip de période coloré (P1…P5), sélectionné ou grisé. */
 function PeriodeChip({ p, selected, onClick }: { p: number; selected: boolean; onClick: () => void }) {
@@ -66,35 +52,9 @@ function PeriodeChip({ p, selected, onClick }: { p: number; selected: boolean; o
   );
 }
 
-/** Sélecteur de domaine : matière réelle (→ bonne couleur) ou personnalisé. */
-function DomaineLabel({ label, onChange }: { label: string; onChange: (v: string) => void }) {
-  const estMatiere = MATIERES.includes(label);
-  const [perso, setPerso] = React.useState(!estMatiere && label !== "Nouveau domaine");
-  return (
-    <div style={{ display: "flex", gap: 6, alignItems: "center", flex: 1 }}>
-      <select className="select" value={estMatiere ? label : "__autre"} style={{ maxWidth: 220, fontWeight: 700 }}
-        onChange={(e) => {
-          if (e.target.value === "__autre") { setPerso(true); onChange(""); }
-          else { setPerso(false); onChange(e.target.value); }
-        }}>
-        {MATIERES.map((m) => <option key={m} value={m}>{m}</option>)}
-        <option value="__autre">Autre (personnalisé)…</option>
-      </select>
-      {(perso || (!estMatiere && label !== "")) && (
-        <input className="input" placeholder="Nom du domaine" value={label} spellCheck={false}
-          style={{ fontWeight: 700, maxWidth: 240 }} onChange={(e) => onChange(e.target.value)} />
-      )}
-    </div>
-  );
-}
-
 /** La période à imprimer : le tableau de la classe puis ceux des niveaux, leurs semaines datées, les retours à la ligne des cases. */
 function imprimerProgression(annee: string, periode: number, tableaux: TableauDePeriode[], semainesCal: SemaineDeClasse[]) {
   printHTML(`Progression ${annee} P${periode}`, htmlPeriode(annee, periode, tableaux, semainesCal));
-}
-
-function imprimerProgrammation(annee: string, lignes: Ligne[]) {
-  printHTML(`Programmation ${annee}`, htmlProgrammation(annee, lignes));
 }
 
 const SEGMENTS = [
@@ -170,6 +130,41 @@ interface AnneeProps { annee: string; setAnnee: (a: string) => void }
 // une à la fois par progression, et l'écran relit ce qui arrive d'un autre
 // ordinateur dès qu'il n'a plus rien en route.
 
+/** Les titres que proposent colonnes et domaines : matières et domaines de Réglages, intitulés de l'emploi du temps. */
+function useSourcesDeTitres(): GroupeDeTitres[] {
+  const [sources, setSources] = React.useState<GroupeDeTitres[]>([{ groupe: "Matières", titres: MATIERES }]);
+  React.useEffect(() => {
+    let vivant = true;
+    Promise.all([api.referentielsList().catch(() => []), api.edtTypiqueList().catch(() => [])]).then(([refs, edts]) => {
+      const domaines = refs.filter((r) => r.actif).flatMap((r) => {
+        try { return ((JSON.parse(r.donnees)?.domaines ?? []) as { titre?: string }[]).map((d) => d.titre ?? ""); } catch { return []; }
+      });
+      const duPlanning = edts.flatMap((e) => { try { return (JSON.parse(e.slotsJson) as SlotEdt[]).map((s) => s.titre ?? ""); } catch { return []; } });
+      const choisis = Object.keys(getMatiereOverrides()).filter((m) => !MATIERES.includes(m) && !matiereDuDomaine(m));
+      const intitules = [...new Set([...duPlanning, ...choisis].map((t) => t.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
+      if (vivant) setSources([{ groupe: "Matières", titres: MATIERES }, { groupe: "Domaines de vos référentiels", titres: domaines }, { groupe: "Emploi du temps", titres: intitules }]);
+    });
+    return () => { vivant = false; };
+  }, []);
+  return sources;
+}
+
+/** La couleur d'un titre : celle que lui donne Réglages s'il vient de ses listes, sinon la sienne. */
+const teinteDuTitre = (sources: GroupeDeTitres[], titre: string, couleur?: string) =>
+  couleurHex[titreConnu(sources, titre) ? couleurPourMatiere(titre) : couleur ?? "blue"] ?? couleurHex.blue;
+
+/** Les périodes de l'année scolaire, datées quand le calendrier de la zone est connu. */
+function usePeriodesDeLAnnee(annee: string): PeriodeDeClasse[] {
+  const [periodes, setPeriodes] = React.useState<PeriodeDeClasse[]>([]);
+  React.useEffect(() => {
+    let vivant = true;
+    chargerVacances(isoJour(new Date())).then((v) => { if (vivant) setPeriodes(periodesDeLAnnee(v, parseInt(annee.slice(0, 4), 10))); })
+      .catch(() => { if (vivant) setPeriodes([]); });
+    return () => { vivant = false; };
+  }, [annee]);
+  return periodes;
+}
+
 interface Cible { annee: string; niveau: string; periode: number }
 const cleCible = (c: Cible) => `${c.annee}|${c.niveau}|${c.periode}`;
 const lireCle = (k: string): Cible => { const [a, n, p] = k.split("|"); return { annee: a, niveau: n, periode: Number(p) }; };
@@ -185,30 +180,11 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
   const niveaux = niveauxDeLaPeriode(NIVEAUX_SCOLAIRES, liste, annee, periode, ajoutes);
 
   // Les titres proposés, et la couleur qu'ils donnent à leur colonne.
-  const [sources, setSources] = React.useState<GroupeDeTitres[]>([{ groupe: "Matières", titres: MATIERES }]);
-  React.useEffect(() => {
-    let vivant = true;
-    Promise.all([api.referentielsList().catch(() => []), api.edtTypiqueList().catch(() => [])]).then(([refs, edts]) => {
-      const domaines = refs.filter((r) => r.actif).flatMap((r) => {
-        try { return ((JSON.parse(r.donnees)?.domaines ?? []) as { titre?: string }[]).map((d) => d.titre ?? ""); } catch { return []; }
-      });
-      const duPlanning = edts.flatMap((e) => { try { return (JSON.parse(e.slotsJson) as SlotEdt[]).map((s) => s.titre ?? ""); } catch { return []; } });
-      const choisis = Object.keys(getMatiereOverrides()).filter((m) => !MATIERES.includes(m) && !matiereDuDomaine(m));
-      const intitules = [...new Set([...duPlanning, ...choisis].map((t) => t.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
-      if (vivant) setSources([{ groupe: "Matières", titres: MATIERES }, { groupe: "Domaines de vos référentiels", titres: domaines }, { groupe: "Emploi du temps", titres: intitules }]);
-    });
-    return () => { vivant = false; };
-  }, []);
-  const teinte = (c: Colonne) => couleurHex[titreConnu(sources, c.titre) ? couleurPourMatiere(c.titre) : c.couleur] ?? couleurHex.blue;
+  const sources = useSourcesDeTitres();
+  const teinte = (c: Colonne) => teinteDuTitre(sources, c.titre, c.couleur);
 
   // Les semaines de la période, datées quand le calendrier de la zone est connu.
-  const [periodesCal, setPeriodesCal] = React.useState<PeriodeDeClasse[]>([]);
-  React.useEffect(() => {
-    let vivant = true;
-    chargerVacances(isoJour(new Date())).then((v) => { if (vivant) setPeriodesCal(periodesDeLAnnee(v, parseInt(annee.slice(0, 4), 10))); })
-      .catch(() => { if (vivant) setPeriodesCal([]); });
-    return () => { vivant = false; };
-  }, [annee]);
+  const periodesCal = usePeriodesDeLAnnee(annee);
   const periodeCal = periodesCal.find((p) => p.numero === periode);
   const semainesCal = periodeCal ? semainesDeLaPeriode(periodeCal) : [];
   const dates = periodeCal ? `${datesDeLaSemaine({ numero: 0, debut: periodeCal.debut, fin: periodeCal.fin })} · ${semainesCal.length} semaines` : "";
@@ -443,17 +419,22 @@ function CaseProgression({ valeur, onChange, libelle }: { valeur: string; onChan
   return <textarea ref={ref} rows={1} value={valeur} spellCheck={false} aria-label={libelle} onChange={(e) => onChange(e.target.value)} />;
 }
 
-/** Une colonne : son titre se tire des matières, domaines et intitulés de l'emploi du temps, dont elle prend la couleur. */
-function ColonneForm({ colonne, nouvelle, sources, teinte, onClose, onValider, onSupprimer }: {
+/**
+ * Une colonne de la progression, ou un domaine de la programmation : son titre
+ * se tire des matières, domaines et intitulés de l'emploi du temps, dont il
+ * prend la couleur.
+ */
+function ColonneForm({ colonne, nouvelle, sources, teinte, onClose, onValider, onSupprimer, quoi = "colonne" }: {
   colonne: Colonne; nouvelle: boolean; sources: GroupeDeTitres[]; teinte: (c: Colonne) => string;
   onClose: () => void; onValider: (c: Colonne) => void; onSupprimer?: () => void;
+  quoi?: "colonne" | "domaine";
 }) {
   const [c, setC] = React.useState<Colonne>(colonne);
   const connu = titreConnu(sources, c.titre);
   const groupes = titresProposes(sources, connu ? "" : c.titre);
   const valider = () => c.titre.trim() && onValider({ ...c, titre: c.titre.trim() });
   return (
-    <Modal titre={nouvelle ? "Nouvelle colonne" : "Colonne"} onClose={onClose}
+    <Modal titre={quoi === "domaine" ? (nouvelle ? "Nouveau domaine" : "Domaine") : (nouvelle ? "Nouvelle colonne" : "Colonne")} onClose={onClose}
       footer={<>
         {onSupprimer && <button className="btn danger" style={{ marginRight: "auto" }} onClick={onSupprimer}>Supprimer</button>}
         <button className="btn" onClick={onClose}>Annuler</button>
@@ -464,7 +445,8 @@ function ColonneForm({ colonne, nouvelle, sources, teinte, onClose, onValider, o
           Titre
           <Aide titre="D'où viennent les titres" vers="droite">
             <p>Des matières et des domaines de Réglages › Personnalisation, et des intitulés de votre emploi du temps.
-              La colonne en prend la couleur : la changer là-bas la change ici. Un titre écrit à la main garde la couleur choisie ici.</p>
+              {quoi === "domaine" ? " Le domaine" : " La colonne"} en prend la couleur : la changer là-bas la change ici, dans la
+              progression comme dans la programmation. Un titre écrit à la main garde la couleur choisie ici.</p>
           </Aide>
         </label>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -499,21 +481,25 @@ function ColonneForm({ colonne, nouvelle, sources, teinte, onClose, onValider, o
 function lireListe<T>(json: string | null | undefined): T[] {
   try { const v = JSON.parse(json || "[]"); return Array.isArray(v) ? v as T[] : []; } catch { return []; }
 }
-const lireLignes = (p?: ProgrammationFinale) => lireListe<Ligne>(p?.lignesJson);
-
 /** Le mode de programmation choisi sur ce poste : classe, ou par élève. */
 const CLE_MODE_PROG = "programmationMode";
 
-// ── Programmation finale P1-P5 (domaines colorés, séquences liées, cases faites)
+// ── Programmation de l'année : la classe, puis ses niveaux ─────────────────
+//
+// Comme la progression (l'enseignant, octobre 2026) : sous la programmation
+// de la classe, « + Niveau » en ajoute une par niveau. Les domaines prennent
+// la couleur de leur matière dans Réglages — celle des colonnes de la
+// progression —, leurs activités en ont les cases teintées, et les périodes
+// gardent leur couleur. Chaque tableau s'écrit par écart, comme la progression.
 type Ligne = LigneProgrammation;
 const PCOLS: ("p1" | "p2" | "p3" | "p4" | "p5")[] = ["p1", "p2", "p3", "p4", "p5"];
+/** La couleur d'une activité sans domaine au-dessus d'elle. */
+const TEINTE_NEUTRE = "#94a3b8";
 
 function Programmation({ annee, setAnnee }: AnneeProps) {
-  const nav = useNavigate();
   const { data, reload } = useAsync(() => api.programmationsFinaleList(), []);
+  const liste = React.useMemo(() => data ?? [], [data]);
   const { data: sequences } = useAsync(() => api.sequencesList(), []);
-  const [lien, setLien] = React.useState<{ ligneId: string; col: string } | null>(null);
-  const [partagerOuvert, setPartagerOuvert] = React.useState(false);
   // Programmer par classe ou par élève : le choix de l'enseignant, que la
   // structure ne décide pas (voir classe.ts). Qui programmait par élève parce
   // que son emploi du temps était une « Organisation IME » — réglage que plus
@@ -530,102 +516,44 @@ function Programmation({ annee, setAnnee }: AnneeProps) {
     setMode(m);
     api.settingSet(CLE_MODE_PROG, m).catch(() => {});
   };
-  const fileRefProg = React.useRef<HTMLInputElement>(null);
 
-  // État de la grille avec annuler/rétablir (⌘Z / Ctrl+Z, ⌘⇧Z / Ctrl+Y), écrit par écart :
-  // une ligne ajoutée sur un autre ordinateur reste quand on en modifie une ici.
-  // La ligne « ime » vit à côté de la grille de classe : la prendre ici
-  // ferait lire une programmation par élève comme un tableau de lignes.
-  const { present: lignes, commit: persister } = useCollectionParEcart<Ligne[]>({
-    cle: annee, lecture: data, vide: [], relire: reload, echec: "Programmation non enregistrée",
-    enBase: (k) => lireLignes(data?.find((p) => p.annee === k && !p.estImportee && p.niveau !== "ime")),
-    ecrire: (k, avant, apres) => api.programmationFinaleEcrire(k, false, JSON.stringify(avant), JSON.stringify(apres)),
-  });
+  // Les couleurs : celles de Réglages, comme les colonnes de la progression.
+  const sources = useSourcesDeTitres();
+  const teinteDomaine = (l: Ligne) => teinteDuTitre(sources, l.label, l.couleur);
+  const periodesCal = usePeriodesDeLAnnee(annee);
+  // Les niveaux ajoutés par « + Niveau », le temps qu'ils reçoivent leur programmation.
+  const [ajoutes, setAjoutes] = React.useState<string[]>([]);
+  // Le tableau où l'on travaille : c'est lui que ⌘Z annule.
+  const [actif, setActif] = React.useState("");
+  const niveaux = niveauxDeLAnnee(NIVEAUX_SCOLAIRES, liste, annee, ajoutes);
+  const tableaux = ["", ...niveaux];
 
-  const nouvelle = (estDomaine: boolean): Ligne => ({ id: newId(), estDomaine,
-    label: estDomaine ? "Nouveau domaine" : "Nouvelle activité", couleur: estDomaine ? "blue" : undefined,
-    p1: "", p2: "", p3: "", p4: "", p5: "", seqs: {}, periodesFaites: [] });
-  const ajouterLigne = (estDomaine: boolean) => persister([...lignes, nouvelle(estDomaine)]);
+  // Ce que montre chaque tableau, pour imprimer l'année entière.
+  const etats = React.useRef(new Map<string, Ligne[]>());
+  const lignesDe = (n: string) => etats.current.get(cleNiveauDeLAnnee(annee, n)) ?? lireLignes(programmationDe(liste, annee, n));
+  const imprimer = () => printHTML(`Programmation ${annee}`, htmlProgrammation(annee, tableaux.map((n) => {
+    const lignes = lignesDe(n);
+    return { niveau: n, lignes, teintes: teintesDesLignes(lignes, teinteDomaine, TEINTE_NEUTRE) };
+  })));
 
-  // Export / Import fichier de la programmation finale.
-  const exporterProg = () => {
-    const bundle = { version: 1, type: "programmation", annee, lignes };
-    telechargerTexte(`Programmation_${annee}_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(bundle, null, 2));
+  const ajouterNiveau = (e: React.MouseEvent) => {
+    const libres = NIVEAUX_SCOLAIRES.filter((n) => !niveaux.includes(n));
+    openCtx(e, libres.map((n) => ({ label: n, onClick: () => { setAjoutes((a) => [...a, cleNiveauDeLAnnee(annee, n)]); setActif(n); } })));
   };
-  const importerProg = async (file: File) => {
+  /** Retire un niveau de l'année : sa programmation se vide, et revient par « Annuler ». */
+  const retirerNiveau = async (n: string) => {
+    const avant = lignesDe(n);
+    setAjoutes((a) => a.filter((k) => k !== cleNiveauDeLAnnee(annee, n)));
     try {
-      const b = JSON.parse(await file.text());
-      const ls = b.lignes as Ligne[] | undefined;
-      if (!Array.isArray(ls)) throw new Error();
-      if (lignes.length > 0 && !(await confirmer("Remplacer la programmation actuelle ?", { oui: "Remplacer", danger: true }))) return;
-      persister(ls.map((l) => ({ ...l, id: newId() })));
-    } catch { toast("Fichier de programmation invalide.", { icone: "⚠️" }); }
+      await api.programmationFinaleEcrire(annee, false, JSON.stringify(avant), "[]", n);
+      reload();
+      toastAnnulable(`${n} retiré de la programmation ${annee}.`, async () => {
+        await api.programmationFinaleEcrire(annee, false, "[]", JSON.stringify(avant), n);
+        setAjoutes((a) => [...a, cleNiveauDeLAnnee(annee, n)]);
+        reload();
+      });
+    } catch (err) { toast(`Niveau non retiré : ${String(err)}`, { icone: "⚠️" }); }
   };
-  const majLigne = (id: string, patch: Partial<Ligne>) => persister(lignes.map((l) => l.id === id ? { ...l, ...patch } : l));
-  const supprimer = (id: string) => persister(lignes.filter((l) => l.id !== id));
-  const insererApres = (id: string, estDomaine: boolean) => {
-    const i = lignes.findIndex((l) => l.id === id);
-    const next = [...lignes]; next.splice(i + 1, 0, nouvelle(estDomaine)); persister(next);
-  };
-
-  const seqIdsDe = (l: Ligne, col: string) => l.seqs?.[col] ?? [];
-  const setSeqIds = (ligneId: string, col: string, ids: string[]) => {
-    persister(lignes.map((l) => l.id === ligneId ? { ...l, seqs: { ...(l.seqs ?? {}), [col]: ids } } : l));
-  };
-  const numPeriode = (col: string) => Number(col.slice(1));
-  const estFaite = (l: Ligne, col: string) => (l.periodesFaites ?? []).includes(numPeriode(col));
-  const toggleFaite = (l: Ligne, col: string) => {
-    const p = numPeriode(col); const set = new Set(l.periodesFaites ?? []);
-    set.has(p) ? set.delete(p) : set.add(p);
-    majLigne(l.id, { periodesFaites: [...set] });
-  };
-  const cycleCouleur = (l: Ligne) => {
-    const i = COULEURS.indexOf(l.couleur ?? "blue");
-    majLigne(l.id, { couleur: COULEURS[(i + 1) % COULEURS.length] });
-  };
-  const competenceDe = (seqId: string): string | null => {
-    const s = sequences?.find((x) => x.id === seqId);
-    if (!s?.competenceVisee) return null;
-    try { return labelCourt(JSON.parse(s.competenceVisee) as CompetenceSelectionnee); } catch { return null; }
-  };
-
-  // Couleur d'un domaine : suit la matière des Réglages si le libellé en est
-  // une (couleurPourMatiere = surcharges Réglages incluses), sinon couleur manuelle.
-  const couleurDomaine = (l: Ligne): string =>
-    MATIERES.includes(l.label) ? couleurPourMatiere(l.label) : (l.couleur ?? "blue");
-  // Couleur héritée du domaine parent (domaine le plus proche au-dessus).
-  const couleurParent = (idx: number): string | undefined => {
-    for (let i = idx; i >= 0; i--) if (lignes[i].estDomaine) return couleurDomaine(lignes[i]);
-    return undefined;
-  };
-
-  // ── Drag & drop : réordonner (un domaine déplace tout son groupe) ──────────
-  const [dragId, setDragId] = React.useState<string | null>(null);
-  const [overId, setOverId] = React.useState<string | null>(null);
-  // Reproduit deplacerLigne(source, apres: target) du natif : déplace la
-  // source (+ ses enfants si domaine) APRÈS la cible ; si on dépose un
-  // domaine sur un domaine, on insère après tout le groupe de la cible.
-  const reordonner = (srcId: string, dstId: string) => {
-    if (srcId === dstId) return;
-    const arr = [...lignes];
-    const si = arr.findIndex((l) => l.id === srcId);
-    if (si < 0) return;
-    const groupe: Ligne[] = [arr[si]];
-    if (arr[si].estDomaine) { let j = si + 1; while (j < arr.length && !arr[j].estDomaine) { groupe.push(arr[j]); j++; } }
-    arr.splice(si, groupe.length);
-    const tgt = arr.findIndex((l) => l.id === dstId);
-    if (tgt < 0) { arr.push(...groupe); }
-    else {
-      let insertAt = tgt + 1;
-      if (arr[tgt].estDomaine && groupe[0].estDomaine) {
-        while (insertAt < arr.length && !arr[insertAt].estDomaine) insertAt++;
-      }
-      arr.splice(Math.min(insertAt, arr.length), 0, ...groupe);
-    }
-    persister(arr);
-  };
-
-  const ligneLien = lignes.find((l) => l.id === lien?.ligneId);
 
   if (mode === "ime") {
     return (
@@ -654,115 +582,271 @@ function Programmation({ annee, setAnnee }: AnneeProps) {
           <button onClick={() => choisirMode("ime")}>👧 Par élève (IME)</button>
         </div>
         <div className="spacer" />
-        <input ref={fileRefProg} type="file" accept=".json,application/json" style={{ display: "none" }}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) importerProg(f); e.target.value = ""; }} />
-        <button className="btn" onClick={(e) => openCtx(e, [
-          ...(lignes.length > 0 ? [{ label: "Partager à un ami", icon: "🤝", onClick: () => setPartagerOuvert(true) }] : []),
-          ...(lignes.length > 0 ? [{ label: "Imprimer (PDF)", icon: "🖨", onClick: () => imprimerProgrammation(annee, lignes) }] : []),
-          ...(lignes.length > 0 ? [{ label: "Exporter (fichier)", icon: "⬇️", onClick: exporterProg }] : []),
-          { label: "Importer (fichier)", icon: "⬆️", onClick: () => fileRefProg.current?.click() },
-        ])}>📄 Fichier ▾</button>
-        <button className="btn primary" onClick={(e) => openCtx(e, [
-          { label: "Ajouter une activité", icon: "➕", onClick: () => ajouterLigne(false) },
-          { label: "Ajouter un domaine", icon: "📁", onClick: () => ajouterLigne(true) },
-        ])}>➕ Ajouter ▾</button>
+        <button className="btn" onClick={imprimer} disabled={tableaux.every((n) => lignesDe(n).length === 0)}>🖨 PDF</button>
       </div>
-      {lignes.length === 0 ? <Empty icone="🗂️" titre="Programmation vide" sous="Ajoutez des domaines et activités répartis sur les 5 périodes." /> :
-        <div style={{ overflowX: "auto" }}>
-          <table className="tbl">
-            <thead><tr><th style={{ minWidth: 150 }}>Domaine / Activité</th>{[1, 2, 3, 4, 5].map((p) => <th key={p}>P{p}</th>)}<th></th></tr></thead>
+      {tableaux.map((n) => (
+        <SectionProgrammation key={n || "classe"} annee={annee} niveau={n} liste={liste} lecture={data} relire={reload}
+          sequences={sequences ?? []} sources={sources} teinteDomaine={teinteDomaine} periodesCal={periodesCal}
+          clavier={actif === n} onActif={() => setActif(n)}
+          surLignes={(l) => etats.current.set(cleNiveauDeLAnnee(annee, n), l)}
+          onRetirer={n ? () => { void retirerNiveau(n); } : undefined} />
+      ))}
+      <div className="prog-ajout-niveau">
+        <button className="btn" onClick={ajouterNiveau} title="Ajouter la programmation d'un niveau">+ Niveau</button>
+      </div>
+    </>
+  );
+}
+
+/**
+ * Le tableau d'une programmation : celle de la classe, ou d'un niveau ajouté
+ * à l'année. Il s'écrit par écart, comme tout ce qui se range en collection.
+ */
+function SectionProgrammation({ annee, niveau, liste, lecture, relire, sequences, sources, teinteDomaine, periodesCal, clavier, onActif, surLignes, onRetirer }: {
+  annee: string; niveau: string; liste: ProgrammationFinale[]; lecture: unknown; relire: () => void;
+  sequences: Sequence[]; sources: GroupeDeTitres[]; teinteDomaine: (l: Ligne) => string; periodesCal: PeriodeDeClasse[];
+  clavier: boolean; onActif: () => void; surLignes: (l: Ligne[]) => void; onRetirer?: () => void;
+}) {
+  const nav = useNavigate();
+  const cle = cleNiveauDeLAnnee(annee, niveau);
+  // Une ligne ajoutée sur un autre ordinateur reste quand on en modifie une ici.
+  const { present: lignes, commit: persister, modifier } = useCollectionParEcart<Ligne[]>({
+    cle, lecture, vide: [], relire, echec: "Programmation non enregistrée", clavier,
+    enBase: (k) => { const [a, n = ""] = k.split("|"); return lireLignes(programmationDe(liste, a, n)); },
+    ecrire: (k, avant, apres) => {
+      const [a, n = ""] = k.split("|");
+      return api.programmationFinaleEcrire(a, false, JSON.stringify(avant), JSON.stringify(apres), n);
+    },
+  });
+  surLignes(lignes);
+  const teintes = teintesDesLignes(lignes, teinteDomaine, TEINTE_NEUTRE);
+  const [lien, setLien] = React.useState<{ ligneId: string; col: string } | null>(null);
+  const [partager, setPartager] = React.useState(false);
+  // Le domaine qu'on crée (sous une ligne, ou à la fin), ou qu'on modifie.
+  const [editDomaine, setEditDomaine] = React.useState<{ ligne: Ligne; nouvelle: boolean; apres?: string } | null>(null);
+
+  const majLigne = (id: string, patch: Partial<Ligne>) => persister(lignes.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  const inserer = (ligne: Ligne, apres?: string) => {
+    const i = apres ? lignes.findIndex((l) => l.id === apres) : -1;
+    if (i < 0) { persister([...lignes, ligne]); return; }
+    const next = [...lignes];
+    next.splice(i + 1, 0, ligne);
+    persister(next);
+  };
+  const ajouterActivite = (apres?: string) => inserer(ligneNeuve(newId(), false), apres);
+  const nouveauDomaine = (apres?: string) => setEditDomaine({ ligne: ligneNeuve(newId(), true), nouvelle: true, apres });
+  const validerDomaine = (c: Colonne) => {
+    if (!editDomaine) return;
+    if (editDomaine.nouvelle) inserer({ ...editDomaine.ligne, label: c.titre, couleur: c.couleur }, editDomaine.apres);
+    else majLigne(editDomaine.ligne.id, { label: c.titre, couleur: c.couleur });
+    setEditDomaine(null);
+  };
+  const supprimer = (l: Ligne) => {
+    const place = lignes.findIndex((x) => x.id === l.id);
+    persister(lignes.filter((x) => x.id !== l.id));
+    setEditDomaine(null);
+    toastAnnulable(`${l.estDomaine ? "Domaine" : "Activité"} « ${l.label.trim() || "sans titre"} » supprimé${l.estDomaine ? "" : "e"}.`,
+      () => modifier(cle, (ls) => remettreLigne(ls, l, place)));
+  };
+
+  const seqIdsDe = (l: Ligne, col: string) => l.seqs?.[col] ?? [];
+  const setSeqIds = (ligneId: string, col: string, ids: string[]) =>
+    persister(lignes.map((l) => (l.id === ligneId ? { ...l, seqs: { ...(l.seqs ?? {}), [col]: ids } } : l)));
+  const numPeriode = (col: string) => Number(col.slice(1));
+  const estFaite = (l: Ligne, col: string) => (l.periodesFaites ?? []).includes(numPeriode(col));
+  const basculerFaite = (l: Ligne, col: string) => {
+    const p = numPeriode(col);
+    const faites = new Set(l.periodesFaites ?? []);
+    if (faites.has(p)) faites.delete(p); else faites.add(p);
+    majLigne(l.id, { periodesFaites: [...faites].sort() });
+  };
+  const competenceDe = (seqId: string): string | null => {
+    const s = sequences.find((x) => x.id === seqId);
+    if (!s?.competenceVisee) return null;
+    try { return labelCourt(JSON.parse(s.competenceVisee) as CompetenceSelectionnee); } catch { return null; }
+  };
+
+  // Glisser une ligne : un domaine emporte ses activités.
+  const [dragId, setDragId] = React.useState<string | null>(null);
+  const [overId, setOverId] = React.useState<string | null>(null);
+
+  const menuLigne = (e: React.MouseEvent, l: Ligne) => openCtx(e, [
+    ...(l.estDomaine ? [{ label: "Modifier le domaine…", icon: "✏️", onClick: () => setEditDomaine({ ligne: l, nouvelle: false }) }] : []),
+    { label: "Ajouter une activité dessous", icon: "➕", onClick: () => ajouterActivite(l.id) },
+    { label: "Ajouter un domaine dessous", icon: "📁", onClick: () => nouveauDomaine(l.id) },
+    { label: "Supprimer la ligne", icon: "🗑", danger: true, sep: true, onClick: () => supprimer(l) },
+  ]);
+
+  // Un tableau s'exporte et s'importe seul : il atterrit sur l'année et le niveau affichés.
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const exporter = () => {
+    const bundle = { version: 1, type: "programmation", annee, niveau, lignes };
+    telechargerTexte(`Programmation_${annee}_${niveau || "classe"}_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(bundle, null, 2));
+  };
+  const importer = async (file: File) => {
+    try {
+      const b = JSON.parse(await file.text());
+      const ls = b.lignes as Ligne[] | undefined;
+      if (!Array.isArray(ls)) throw new Error();
+      if (lignes.length > 0 && !(await confirmer("Remplacer ce tableau par celui du fichier ?", { oui: "Remplacer", danger: true }))) return;
+      persister(ls.map((l) => ({ ...l, id: newId() })));
+    } catch { toast("Fichier de programmation invalide.", { icone: "⚠️" }); }
+  };
+  const menuTableau = (e: React.MouseEvent) => openCtx(e, [
+    ...(lignes.length > 0 ? [{ label: "Partager à un ami", icon: "🤝", onClick: () => setPartager(true) }] : []),
+    ...(lignes.length > 0 ? [{ label: "Exporter ce tableau", icon: "⬇️", onClick: exporter }] : []),
+    { label: "Importer un tableau…", icon: "⬆️", onClick: () => fileRef.current?.click() },
+    ...(onRetirer ? [{ label: `Retirer ${niveau} de l'année`, icon: "🗑", danger: true, sep: true, onClick: onRetirer }] : []),
+  ]);
+  const reprises = lignes.length === 0 ? sourcesDeDomaines(liste, annee, niveau) : [];
+
+  const datesDe = (p: number) => {
+    const per = periodesCal.find((x) => x.numero === p);
+    return per ? datesDeLaSemaine({ numero: 0, debut: per.debut, fin: per.fin }) : "";
+  };
+  const ligneLien = lignes.find((l) => l.id === lien?.ligneId);
+
+  return (
+    <section className="prog-section" onFocusCapture={onActif} onMouseDown={onActif}>
+      <div className="prog-section-tete">
+        {niveau ? <h3>{niveau}</h3> : <span />}
+        <div className="spacer" />
+        <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: "none" }}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) void importer(f); e.target.value = ""; }} />
+        <button className="btn sm" onClick={() => nouveauDomaine()}>+ Domaine</button>
+        <button className="btn sm" onClick={() => ajouterActivite()}>+ Activité</button>
+        <button className="btn sm ghost" aria-label={`Actions de la programmation de ${niveau || LA_CLASSE}`} onClick={menuTableau}>⋯</button>
+      </div>
+      {lignes.length === 0 ? (
+        <div className="prog-vide">
+          <Empty icone="🗂️" titre={niveau ? `${niveau} : programmation vide` : "Programmation vide"} />
+          <div className="prog-vide-actions">
+            {reprises.map((s) => (
+              <button key={s.libelle} className="btn" onClick={() => persister(copieDesDomaines(s.domaines, newId))}>
+                Reprendre les domaines de {s.libelle} ({s.domaines.map((d) => d.label).join(", ")})
+              </button>
+            ))}
+            <button className="btn primary" onClick={() => nouveauDomaine()}>+ Domaine</button>
+            <button className="btn" onClick={() => ajouterActivite()}>+ Activité</button>
+          </div>
+        </div>
+      ) : (
+        <div className="prog-cadre">
+          <table className="prog-tableau progm-tableau">
+            {/* Les périodes se partagent la largeur : l'année tient d'un coup d'œil. */}
+            <colgroup><col className="progm-col-libelle" />{PCOLS.map((c) => <col key={c} />)}<col className="progm-col-actions" /></colgroup>
+            <thead>
+              <tr>
+                <th className="progm-libelle">Domaine / Activité</th>
+                {[1, 2, 3, 4, 5].map((p) => (
+                  <th key={p}>
+                    <div className="prog-entete progm-periode" style={{ "--couleur": COULEUR_PERIODE[p] } as React.CSSProperties}>
+                      <b>P{p}</b>{datesDe(p) && <span>{datesDe(p)}</span>}
+                    </div>
+                  </th>
+                ))}
+                <th className="progm-actions"><span className="sr-only">Actions</span></th>
+              </tr>
+            </thead>
             <tbody>
-              {lignes.map((l, idx) => {
-                const couleurNom = l.estDomaine ? couleurDomaine(l) : couleurParent(idx);
-                const matiereDomaine = l.estDomaine && MATIERES.includes(l.label);
-                const teinte = couleurNom ? couleurHex[couleurNom] : undefined;
-                const survol = overId === l.id && dragId !== l.id;
-                const dropProps = {
+              {lignes.map((l) => {
+                const style = { "--couleur": teintes[l.id] } as React.CSSProperties;
+                const survol = overId === l.id && dragId !== l.id ? " progm-survol" : "";
+                const ligneProps = {
+                  style,
                   onDragOver: (e: React.DragEvent) => { e.preventDefault(); setOverId(l.id); },
-                  onDragLeave: () => setOverId((o) => o === l.id ? null : o),
-                  onDrop: (e: React.DragEvent) => { e.preventDefault(); if (dragId) reordonner(dragId, l.id); setDragId(null); setOverId(null); },
+                  onDragLeave: () => setOverId((o) => (o === l.id ? null : o)),
+                  onDrop: (e: React.DragEvent) => {
+                    e.preventDefault();
+                    if (dragId) persister(deplacerLigne(lignes, dragId, l.id));
+                    setDragId(null); setOverId(null);
+                  },
+                  onContextMenu: (e: React.MouseEvent) => menuLigne(e, l),
                 };
-                const handle = {
-                  draggable: true,
-                  onDragStart: (e: React.DragEvent) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", l.id); setDragId(l.id); },
-                  onDragEnd: () => { setDragId(null); setOverId(null); },
-                  title: "Glisser pour déplacer", style: { cursor: "grab", color: "var(--text-2)", userSelect: "none" } as React.CSSProperties,
-                };
-                const ctx = (e: React.MouseEvent) => openCtx(e, [
-                  { label: "Ajouter une activité ici", icon: "➕", onClick: () => insererApres(l.id, false) },
-                  { label: "Ajouter un domaine ici", icon: "📁", onClick: () => insererApres(l.id, true) },
-                  { label: "Supprimer cette ligne", icon: "🗑", danger: true, sep: true, onClick: () => supprimer(l.id) },
-                ]);
-                const borderTop = survol ? "2px solid var(--accent)" : undefined;
+                const poignee = (
+                  <span className="progm-poignee" draggable title="Glisser pour déplacer"
+                    onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", l.id); setDragId(l.id); }}
+                    onDragEnd={() => { setDragId(null); setOverId(null); }}>⠿</span>
+                );
+                const actions = (
+                  <td className="progm-actions">
+                    <button className="prog-plus" aria-label={`Actions de la ligne ${l.label}`} onClick={(e) => menuLigne(e, l)}>⋯</button>
+                  </td>
+                );
                 if (l.estDomaine) return (
-                  <tr key={l.id} {...dropProps} onContextMenu={ctx} style={{ background: teinte + "22", fontWeight: 700, borderTop }}>
+                  <tr key={l.id} className={`progm-domaine${survol}`} {...ligneProps}>
                     <td colSpan={6}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span {...handle}>⠿</span>
-                        <button title={matiereDomaine ? "Couleur de la matière (Réglages)" : "Changer la couleur"}
-                          onClick={() => !matiereDomaine && cycleCouleur(l)}
-                          style={{ width: 16, height: 16, borderRadius: 4, background: teinte, border: "none",
-                            cursor: matiereDomaine ? "default" : "pointer", flexShrink: 0 }} />
-                        <span>📁</span>
-                        <DomaineLabel label={l.label} onChange={(v) => majLigne(l.id, { label: v })} />
+                      <div className="progm-domaine-tete">
+                        {poignee}
+                        <button className="prog-titre" onClick={() => setEditDomaine({ ligne: l, nouvelle: false })} title="Modifier le domaine">
+                          {l.label.trim() || "Domaine sans titre"}
+                        </button>
                       </div>
                     </td>
-                    <td><button className="btn ghost sm" onClick={() => supprimer(l.id)} aria-label="Supprimer">🗑</button></td>
+                    {actions}
                   </tr>
                 );
                 return (
-                  <tr key={l.id} {...dropProps} onContextMenu={ctx}
-                    style={{ background: teinte ? teinte + "10" : undefined, borderTop, borderLeft: teinte ? `3px solid ${teinte}` : undefined }}>
-                    <td style={{ verticalAlign: "top" }}>
-                      <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
-                        <span {...handle} style={{ ...handle.style, paddingTop: 6 }}>⠿</span>
-                        <AutoText value={l.label} onChange={(v) => majLigne(l.id, { label: v })} />
+                  <tr key={l.id} className={`progm-activite${survol}`} {...ligneProps}>
+                    <td className="progm-libelle">
+                      <div className="progm-libelle-ligne">
+                        {poignee}
+                        <CaseProgression valeur={l.label} onChange={(v) => majLigne(l.id, { label: v })}
+                          libelle={`Activité${niveau ? ` (${niveau})` : ""}`} />
                       </div>
                     </td>
                     {PCOLS.map((c) => {
                       const faite = estFaite(l, c);
+                      const seqs = seqIdsDe(l, c);
                       return (
-                        <td key={c} style={{ minWidth: 150, verticalAlign: "top" }}>
-                          <div style={{ position: "relative" }}>
-                            <button title={faite ? "Marquer non fait" : "Marquer fait"} onClick={() => toggleFaite(l, c)}
-                              style={{ position: "absolute", top: 4, right: 4, border: "none", background: "none", cursor: "pointer",
-                                color: faite ? "var(--green)" : "var(--text-2)", fontSize: 14, zIndex: 1 }}>{faite ? "✓" : "○"}</button>
-                            <AutoText value={l[c]} onChange={(v) => majLigne(l.id, { [c]: v } as Partial<Ligne>)}
-                              style={{ paddingRight: 24, textDecoration: faite ? "line-through" : "none", color: faite ? "var(--text-2)" : undefined }} />
-                            {seqIdsDe(l, c).map((sid) => {
-                              const s = sequences?.find((x) => x.id === sid);
-                              const comp = competenceDe(sid);
-                              return s ? <div key={sid} style={{ marginTop: 3, textDecoration: faite ? "line-through" : "none", opacity: faite ? 0.55 : 1 }}>
-                                <span className="chip" style={{ fontSize: 11, cursor: "pointer" }} title="Ouvrir la séquence"
-                                  onClick={() => nav(`/sequences/${sid}`)}>📚 {s.titre} ↗</span>
-                                {comp && <div style={{ fontSize: 10.5, color: "var(--text-2)", marginTop: 1 }}>🎯 {comp}</div>}
-                              </div> : null;
-                            })}
-                            <button className="btn ghost sm" style={{ marginTop: 3, fontSize: 11 }} onClick={() => setLien({ ligneId: l.id, col: c })}>
-                              + séquence{seqIdsDe(l, c).length ? ` (${seqIdsDe(l, c).length})` : ""}
-                            </button>
+                        <td key={c} className={`prog-case progm-case${faite ? " faite" : ""}`}>
+                          <div className="progm-case-haut">
+                            <CaseProgression valeur={l[c] ?? ""} onChange={(v) => majLigne(l.id, { [c]: v } as Partial<Ligne>)}
+                              libelle={`${l.label || "Activité"}, ${c.toUpperCase()}`} />
+                            {/* Au coin de la case, au survol : lier une séquence, marquer fait. */}
+                            <div className="progm-coin">
+                              <button className="progm-lier" title="Lier une séquence" aria-label={`Lier une séquence, ${c.toUpperCase()}`}
+                                onClick={() => setLien({ ligneId: l.id, col: c })}>📚</button>
+                              <button className={`progm-fait${faite ? " fait" : ""}`} aria-pressed={faite}
+                                title={faite ? "Marquer non fait" : "Marquer fait"} onClick={() => basculerFaite(l, c)}>{faite ? "✓" : "○"}</button>
+                            </div>
                           </div>
+                          {seqs.map((sid) => {
+                            const s = sequences.find((x) => x.id === sid);
+                            const comp = competenceDe(sid);
+                            return s ? (
+                              <div key={sid} className="progm-seq">
+                                <button className="chip" title="Ouvrir la séquence" onClick={() => nav(`/sequences/${sid}`)}>📚 {s.titre} ↗</button>
+                                {comp && <div className="meta">🎯 {comp}</div>}
+                              </div>
+                            ) : null;
+                          })}
                         </td>
                       );
                     })}
-                    <td><button className="btn ghost sm" onClick={() => supprimer(l.id)} aria-label="Supprimer">🗑</button></td>
+                    {actions}
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </div>}
+        </div>
+      )}
 
       {lien && ligneLien && (
-        <LierSequences sequences={sequences ?? []} selection={seqIdsDe(ligneLien, lien.col)}
+        <LierSequences sequences={sequences} selection={seqIdsDe(ligneLien, lien.col)}
           onClose={() => setLien(null)}
           onValider={(ids) => { setSeqIds(lien.ligneId, lien.col, ids); setLien(null); }} />
       )}
-      {partagerOuvert && (
-        <EnvoyerProgModal annee={annee} peutEnvoyer={lignes.length > 0}
-          onClose={() => setPartagerOuvert(false)} />
+      {partager && <EnvoyerProgModal annee={annee} niveau={niveau} peutEnvoyer={lignes.length > 0} onClose={() => setPartager(false)} />}
+      {editDomaine && (
+        <ColonneForm quoi="domaine" nouvelle={editDomaine.nouvelle} sources={sources}
+          colonne={{ id: editDomaine.ligne.id, titre: editDomaine.nouvelle ? "" : editDomaine.ligne.label, couleur: editDomaine.ligne.couleur ?? "blue" }}
+          teinte={(c) => teinteDuTitre(sources, c.titre, c.couleur)}
+          onClose={() => setEditDomaine(null)} onValider={validerDomaine}
+          onSupprimer={editDomaine.nouvelle ? undefined : () => supprimer(editDomaine.ligne)} />
       )}
-    </>
+    </section>
   );
 }
 
@@ -770,8 +854,8 @@ function Programmation({ annee, setAnnee }: AnneeProps) {
 // Envoi chiffré de la programmation de l'année. La réception est centralisée
 // dans Réglages › Amis (« Boîte aux lettres ») : les programmations reçues
 // apparaissent automatiquement comme colonnes de comparaison.
-function EnvoyerProgModal({ annee, peutEnvoyer, onClose }: {
-  annee: string; peutEnvoyer: boolean; onClose: () => void;
+function EnvoyerProgModal({ annee, niveau, peutEnvoyer, onClose }: {
+  annee: string; niveau: string; peutEnvoyer: boolean; onClose: () => void;
 }) {
   const { data: amis } = useAsync(() => api.amisList(), []);
   const [msg, setMsg] = React.useState("");
@@ -779,12 +863,12 @@ function EnvoyerProgModal({ annee, peutEnvoyer, onClose }: {
   const [envoyes, setEnvoyes] = React.useState<Record<string, boolean>>({});
   const envoyer = async (a: Ami) => {
     setEnCours(a.id); setMsg("");
-    try { await api.programmationPartager(a.id, annee); setEnvoyes((s) => ({ ...s, [a.id]: true })); setMsg(`Envoyée à ${a.nom || "cet ami"} ✅`); }
+    try { await api.programmationPartager(a.id, annee, niveau); setEnvoyes((s) => ({ ...s, [a.id]: true })); setMsg(`Envoyée à ${a.nom || "cet ami"} ✅`); }
     catch (e) { setMsg(String(e)); }
     finally { setEnCours(""); }
   };
   return (
-    <Modal titre={`Partager la programmation ${annee}`} onClose={onClose}
+    <Modal titre={`Partager la programmation ${niveau ? `${niveau} ` : ""}${annee}`} onClose={onClose}
       footer={<button className="btn" onClick={onClose}>Fermer</button>}>
       {(amis?.length ?? 0) === 0
         ? <Empty icone="🤝" titre="Aucun ami" sous="Ajoutez un collègue dans Réglages › Amis." />
@@ -1323,10 +1407,13 @@ function TravailDeCycle({ annee, setAnnee }: AnneeProps) {
     Promise.all([api.settingGet("niveauClasse"), api.settingGet("enseignantNom")]).then(([n, nm]) => setMoi({ niveau: n ?? "", nom: nm ?? "" }));
   }, []);
 
-  const mienne = (data ?? []).find((p) => p.annee === annee && !p.estImportee && p.niveau !== "ime");
+  // La programmation de la classe, et celles de ses niveaux.
+  const miennes = (data ?? []).filter((p) => p.annee === annee && estALaClasse(p) && lireLignes(p).length > 0);
+  const mienne = miennes.find((p) => !p.niveau) ?? miennes[0];
   const importees = (data ?? []).filter((p) => p.estImportee && p.annee === annee);
   const colonnes = [
-    ...(mienne ? [{ prog: mienne, niveau: moi.niveau || "Ma classe", enseignant: "Moi", mienne: true }] : []),
+    // La classe se distingue de ses niveaux, et se range à son niveau à elle.
+    ...miennes.map((p) => ({ prog: p, niveau: p.niveau || (moi.niveau ? `Ma classe (${moi.niveau})` : "Ma classe"), enseignant: "Moi", mienne: true })),
     ...importees.map((p) => ({ prog: p, niveau: p.niveau || "?", enseignant: p.enseignant || "Collègue", mienne: false })),
   ].sort((a, b) => rangNiveau(a.niveau) - rangNiveau(b.niveau));
 
