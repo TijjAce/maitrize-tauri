@@ -31,17 +31,20 @@ import { isoJour } from "../dates";
 
 const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "dispositifs", "gevasco"] as const;
 /** Ce qu'affiche l'onglet Évaluations : le sommatif (notes, synthèse, synthèse GS) ou le diagnostique. */
-type VueEvaluation = "notees" | "synthese" | "gs" | "diagnostique";
+type VueEvaluation = "notees" | "gs" | "diagnostique";
+/** Le Dossier, ou sa Synthèse : la synthèse vit avec le dossier de l'élève (demande de l'enseignant, octobre 2026). */
+type VueDossier = "dossier" | "synthese";
 export default function Eleves() {
   const [onglet, setOnglet] = React.useState<typeof ELEVES_TABS[number]>("liste");
   const [vueEvaluation, setVueEvaluation] = React.useState<VueEvaluation>("notees");
+  const [vueDossier, setVueDossier] = React.useState<VueDossier>("dossier");
   // Tous les onglets, quelle que soit la structure choisie dans les Réglages : elle ne retire rien.
   useSegmentNav(ELEVES_TABS, onglet, setOnglet);
   useOngletDemande("eleves", ELEVES_TABS, setOnglet, (demande) => {
     // Synthèse et synthèse GS vivent dans l'évaluation sommative : les liens
     // du dossier de l'élève et de ⌘K y mènent toujours.
     if (demande === "synthese") { setOnglet("evaluations"); setVueEvaluation("gs"); return; }
-    if (demande === "syntheseEleve") { setOnglet("evaluations"); setVueEvaluation("synthese"); }
+    if (demande === "syntheseEleve") { setOnglet("dossier"); setVueDossier("synthese"); }
   });
   return (
     <Page titre="Élèves" sous="Classe, observations et évaluations">
@@ -50,7 +53,17 @@ export default function Eleves() {
           .map(([k, l]) => <button key={k} className={onglet === k ? "active" : ""} onClick={() => setOnglet(k as any)}>{l}</button>)}
       </div>
       {onglet === "liste" && <ListeEleves />}
-      {onglet === "dossier" && <DossierTab />}
+      {onglet === "dossier" && (<>
+        <div className="toolbar">
+          <div className="seg" role="tablist" aria-label="Le dossier de l'élève">
+            <button role="tab" aria-selected={vueDossier === "dossier"} className={vueDossier === "dossier" ? "active" : ""}
+              onClick={() => setVueDossier("dossier")}>📁 Dossier</button>
+            <button role="tab" aria-selected={vueDossier === "synthese"} className={vueDossier === "synthese" ? "active" : ""}
+              onClick={() => setVueDossier("synthese")}>📋 Synthèse</button>
+          </div>
+        </div>
+        {vueDossier === "dossier" ? <DossierTab /> : <SyntheseEleveTab />}
+      </>)}
       {onglet === "observations" && <Observations />}
       {onglet === "evaluations" && <Evaluations vue={vueEvaluation} setVue={setVueEvaluation} />}
       {onglet === "papiers" && <Papiers />}
@@ -262,11 +275,11 @@ function Observations() {
   );
 }
 
-// ── Évaluations : sommative (notes, synthèse, synthèse GS) et diagnostique ──
+// ── Évaluations : sommative (notes, synthèse GS) et diagnostique ──────────
 // Deux natures qu'on ne mélange pas : le diagnostique décrit ce que l'élève
 // sait faire en arrivant ; le sommatif fait le point sur ce qui est acquis —
-// épreuves notées ou par compétences, synthèse rédigée d'après le suivi, et
-// synthèse officielle des acquis de fin de GS.
+// épreuves notées ou par compétences, et synthèse officielle des acquis de
+// fin de GS. La synthèse rédigée d'après le suivi vit dans le Dossier.
 function Evaluations({ vue, setVue }: { vue: VueEvaluation; setVue: (v: VueEvaluation) => void }) {
   const { data: evals, reload } = useAsync(() => api.evaluationsList(), []);
   const [edit, setEdit] = React.useState<Evaluation | null>(null);
@@ -287,8 +300,6 @@ function Evaluations({ vue, setVue }: { vue: VueEvaluation; setVue: (v: VueEvalu
           <div className="seg" role="tablist" aria-label="Évaluation sommative">
             <button role="tab" aria-selected={vue === "notees"} className={vue === "notees" ? "active" : ""}
               onClick={() => setVue("notees")}>🔢 Évaluations notées</button>
-            <button role="tab" aria-selected={vue === "synthese"} className={vue === "synthese" ? "active" : ""}
-              onClick={() => setVue("synthese")}>📋 Synthèse</button>
             <button role="tab" aria-selected={vue === "gs"} className={vue === "gs" ? "active" : ""}
               onClick={() => setVue("gs")}>🎓 Synthèse GS</button>
           </div>
@@ -298,7 +309,6 @@ function Evaluations({ vue, setVue }: { vue: VueEvaluation; setVue: (v: VueEvalu
       </div>
 
       {vue === "diagnostique" && <EvaluationDiagnostiqueTab />}
-      {vue === "synthese" && <SyntheseEleveTab />}
       {vue === "gs" && <SyntheseGS />}
       {vue === "notees" && ((evals?.length ?? 0) === 0 ? <Empty icone="📊" titre="Aucune évaluation" /> :
         evals!.map((ev) => (

@@ -14,6 +14,7 @@ import {
 import { nouveauxDepuis, poserLaRedaction, rassembler, resumeDesEcrits, type Ecrit } from "../veilleEleve";
 import { AgentArrete, ETAPES_DE_L_AGENT, lancerLAgent, type AvancementDeLAgent } from "../agentSynthese";
 import { AgentDeSynthese } from "../components/AgentDeSynthese";
+import { eleveAMontrer, eleveDuDossier, retenirEleveDuDossier } from "../eleveDuDossier";
 
 /** Le dossier d'un élève demande l'agent : la synthèse s'ouvre sur lui, et l'agent part (voir DossierEleve.tsx). */
 export const CLE_AGENT_DEMANDE = "maitrize:agent-synthese";
@@ -52,7 +53,8 @@ function ZoneAuto({ valeur, onChange, placeholder, label }: { valeur: string; on
 
 export function SyntheseEleveTab() {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
-  const [eleveId, setEleveId] = React.useState("");
+  const [eleveId, setEleveIdBrut] = React.useState(eleveDuDossier);
+  const setEleveId = (id: string) => { setEleveIdBrut(id); retenirEleveDuDossier(id); };
   const [synthese, setSynthese] = React.useState<SyntheseEleve>(vierge());
   const [indices, setIndices] = React.useState<Indice[]>([]);
   const [charge, setCharge] = React.useState(false);
@@ -69,7 +71,7 @@ export function SyntheseEleveTab() {
   const agentTourne = agent !== null && !agent.fini;
   const [lancerPour, setLancerPour] = React.useState("");
 
-  React.useEffect(() => { if (!eleveId && eleves?.[0]) setEleveId(eleves[0].id); }, [eleves, eleveId]);
+  React.useEffect(() => { if (eleves && eleveAMontrer(eleves, eleveId) !== eleveId) setEleveId(eleveAMontrer(eleves, eleveId)); }, [eleves, eleveId]); // eslint-disable-line react-hooks/exhaustive-deps
   // Venu du dossier d'un élève : on ouvre sa synthèse, et l'agent part dès qu'elle est lue.
   React.useEffect(() => {
     let demande = "";
