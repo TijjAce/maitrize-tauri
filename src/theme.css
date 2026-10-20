@@ -149,31 +149,36 @@
 :root[data-style="vitre"] .sidebar { border-right-color: var(--verre-bord); }
 
 /* ── Liseré lumineux animé autour de la fenêtre ─────────────
-   Overlay plein écran, sans interception des clics. Désactivé
-   quand data-neon="off". L'anneau est obtenu par un masque qui
-   évide le centre du dégradé conique. */
-@property --neon-ang { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
-@keyframes neon-spin { to { --neon-ang: 360deg; } }
-
+   Overlay plein écran, sans interception des clics. Désactivé quand
+   data-neon="off". Un grand carré au dégradé conique, peint une fois,
+   tourne par `transform` : la carte graphique le fait tourner seule, sans
+   rien repeindre ni recalculer. L'anneau est le carré vu à travers un masque
+   qui évide le centre ; le halo, un anneau plus large et plus pâle dessous —
+   le flou de l'ancien halo, recoupé par son masque, ne donnait que cette
+   bande pâle, et se refaisait à chaque image. Avant, le dégradé
+   tournait par une propriété animée (--neon-ang) : style recalculé, deux
+   calques de la taille de la fenêtre repeints et un flou refait, soixante
+   fois par seconde. */
 .neon-frame { display: none; }
 :root[data-neon="on"] .neon-frame {
   display: block; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
 }
-.neon-frame::before, .neon-frame::after {
-  content: ""; position: absolute; inset: 0; padding: 3px;
-  background: conic-gradient(from var(--neon-ang),
-    #ff2d95, #7a5cff, #00e5ff, #39ff14, #ffd000, #ff2d95);
+.neon-anneau, .neon-halo { position: absolute; inset: 0; overflow: hidden; padding: 3px;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor; mask-composite: exclude;
-  animation: neon-spin 9s linear infinite;
+  -webkit-mask-composite: xor; mask-composite: exclude; }
+.neon-halo { padding: 5px; opacity: .5; }
+.neon-anneau i, .neon-halo i {
+  position: absolute; left: 50%; top: 50%; width: 150vmax; height: 150vmax;
+  background: conic-gradient(#ff2d95, #7a5cff, #00e5ff, #39ff14, #ffd000, #ff2d95);
+  transform: translate(-50%, -50%) rotate(0deg); will-change: transform;
+  animation: neon-tourne 9s linear infinite;
 }
-.neon-frame::after { padding: 5px; filter: blur(11px); opacity: .75; } /* halo */
+@keyframes neon-tourne { to { transform: translate(-50%, -50%) rotate(360deg); } }
 /* Pause quand la fenêtre n'a pas le focus (économie de batterie) */
-:root[data-winfocus="0"] .neon-frame::before,
-:root[data-winfocus="0"] .neon-frame::after { animation-play-state: paused; }
+:root[data-winfocus="0"] .neon-anneau i, :root[data-winfocus="0"] .neon-halo i { animation-play-state: paused; }
 /* Respect de la préférence « mouvement réduit » : anneau figé, sans rotation */
 @media (prefers-reduced-motion: reduce) {
-  .neon-frame::before, .neon-frame::after { animation: none; }
+  .neon-anneau i, .neon-halo i { animation: none; }
 }
 
 * { box-sizing: border-box; }

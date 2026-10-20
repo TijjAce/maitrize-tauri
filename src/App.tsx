@@ -278,7 +278,7 @@ export default function App() {
   return (
     <CguGate>
     <div className="app">
-      <div className="neon-frame" aria-hidden="true" />
+      <div className="neon-frame" aria-hidden="true"><div className="neon-halo"><i /></div><div className="neon-anneau"><i /></div></div>
       <nav className="sidebar" aria-label="Navigation principale">
         <div className="brand"><img src={logo} className="brand-logo" alt="" /><span className="brand-text">Maitrize V2{version && <span className="brand-version">v{version}</span>}</span></div>
         <button className="palette-trigger" aria-label="Rechercher dans l'application"
