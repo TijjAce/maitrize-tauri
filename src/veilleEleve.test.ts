@@ -49,7 +49,7 @@ describe("reconnaître l'élève dans un texte", () => {
   });
 
   it("découpe aussi sur les retours à la ligne", () => {
-    expect(phrasesQuiCitent("Atelier cuisine\nCamille a versé seule\nAyyûb a observé", "Camille"))
+    expect(phrasesQuiCitent("Atelier cuisine\nCamille a versé seule\nBarnabé a observé", "Camille"))
       .toBe("Camille a versé seule");
   });
 
