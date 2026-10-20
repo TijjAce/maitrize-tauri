@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  blocClasse, blocContacts, blocEmploiDuTemps, blocEleves, blocMateriel, blocSecurite, feuilleRemplacant,
+  avecEmploiDuTempsAJour, blocClasse, blocContacts, blocEmploiDuTemps, blocEleves, blocMateriel, blocSecurite, feuilleRemplacant,
   BLOCS_REMPLACANT, type DonneesClasse,
 } from "./remplacant";
 import { lireEtablissement } from "./etablissement";
@@ -80,5 +80,34 @@ describe("feuille pour le remplaçant", () => {
     for (const titre of ["Emploi du temps", "Les élèves", "Sécurité et santé", "Contacts utiles", "Travail prévu"]) expect(html).toContain(titre);
     expect(nettoyerHtml(html)).toBe(html);
     expect(BLOCS_REMPLACANT.length).toBe(10);
+  });
+});
+
+describe("l'emploi du temps de la feuille suit celui d'Organisation", () => {
+  const avant = "<h1>Informations</h1><p>Le mot de l'enseignant.</p>"
+    + "<h2>Emploi du temps (organisation IME)</h2><table><thead><tr><th>Horaire</th><th>Lundi</th></tr></thead>"
+    + "<tbody><tr><td>08h00–09h00</td><td><b>Ancien créneau</b></td></tr></tbody></table><h2>Les élèves</h2><p>Gardé.</p>";
+
+  it("refait le tableau sous le titre « Emploi du temps… », et rien d'autre", () => {
+    const apres = avecEmploiDuTempsAJour(avant, donnees());
+    expect(apres).not.toContain("Ancien créneau");
+    expect(apres).toContain(blocEmploiDuTemps(donnees()));
+    expect(apres.startsWith("<h1>Informations</h1><p>Le mot de l'enseignant.</p>")).toBe(true);
+    expect(apres.endsWith("<h2>Les élèves</h2><p>Gardé.</p>")).toBe(true);
+    // Déjà à jour : la feuille ne change pas, même mise en forme autrement.
+    expect(avecEmploiDuTempsAJour(apres, donnees())).toBe(apres);
+    expect(avecEmploiDuTempsAJour(apres.replace(/<\/td>/g, " </td>"), donnees())).toBe(apres.replace(/<\/td>/g, " </td>"));
+  });
+
+  it("remplit le « … » laissé à compléter, mais jamais un texte de l'enseignant", () => {
+    expect(avecEmploiDuTempsAJour("<h2>Emploi du temps</h2><p>…</p>", donnees())).toBe(blocEmploiDuTemps(donnees()));
+    const ecrit = "<h2>Emploi du temps</h2><p>Voir le classeur rouge.</p>";
+    expect(avecEmploiDuTempsAJour(ecrit, donnees())).toBe(ecrit);
+  });
+
+  it("ne touche à rien sans emploi du temps dans Organisation, ni sans le titre", () => {
+    expect(avecEmploiDuTempsAJour(avant, donnees({ edt: [] }))).toBe(avant);
+    const sansTitre = "<h2>Les élèves</h2><table><tr><td>x</td></tr></table>";
+    expect(avecEmploiDuTempsAJour(sansTitre, donnees())).toBe(sansTitre);
   });
 });

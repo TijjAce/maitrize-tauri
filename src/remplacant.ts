@@ -65,6 +65,31 @@ export function blocEmploiDuTemps(d: DonneesClasse): string {
     + `</tbody></table>`;
 }
 
+/** Le texte d'un morceau de HTML, pour comparer deux tableaux sans tenir compte de la mise en forme. */
+const texteDuHtml = (h: string) => h.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+
+/**
+ * La feuille avec l'emploi du temps d'aujourd'hui : le tableau qui suit le
+ * titre « Emploi du temps… » est refait d'après celui d'Organisation
+ * (demande de l'enseignant, octobre 2026). Rien d'autre ne change. Sous ce
+ * titre, seul le tableau, ou le « … » laissé à compléter, est remplacé :
+ * jamais un texte de l'enseignant. Sans emploi du temps dans Organisation,
+ * la feuille garde le sien.
+ */
+export function avecEmploiDuTempsAJour(html: string, d: DonneesClasse): string {
+  if (!d.edt.length) return html;
+  for (const m of html.matchAll(/<h2\b[^>]*>((?:(?!<\/h2>)[\s\S])*)<\/h2>/gi)) {
+    if (!/^emploi du temps\b/i.test(texteDuHtml(m[1]))) continue;
+    const debut = m.index ?? 0;
+    const suite = html.slice(debut + m[0].length).match(/^\s*(?:<table\b[\s\S]*?<\/table>|<p\b[^>]*>\s*(?:…|&hellip;)\s*<\/p>)/i);
+    if (!suite) return html;
+    const ancien = html.slice(debut, debut + m[0].length + suite[0].length);
+    const nouveau = blocEmploiDuTemps(d);
+    return texteDuHtml(ancien) === texteDuHtml(nouveau) ? html : html.slice(0, debut) + nouveau + html.slice(debut + ancien.length);
+  }
+  return html;
+}
+
 export function blocEleves(d: DonneesClasse): string {
   if (!d.eleves.length) return `<h2>Les élèves</h2><p>${aCompleter}</p>`;
   return `<h2>Les élèves</h2><table><thead><tr><th>Élève</th><th>Niveau</th><th>Dispositifs</th><th>À savoir</th></tr></thead><tbody>`
