@@ -243,6 +243,17 @@ pub fn purger_corbeille(conn: &Connection) {
     }
 }
 
+/// Combien de jours un dépôt du téléphone reste retenu une fois rangé (voir
+/// `depots_ranges`) : son effacement sur Nuage a le temps d'aboutir, même
+/// après des vacances loin de l'ordinateur.
+const JOURS_DEPOTS_RANGES: i64 = 183;
+
+/// Oublie les dépôts du téléphone rangés depuis plus de six mois.
+fn purger_depots_ranges(conn: &Connection) {
+    let limite = (chrono::Utc::now() - chrono::Duration::days(JOURS_DEPOTS_RANGES)).to_rfc3339();
+    conn.execute("DELETE FROM depots_ranges WHERE date < ?1", [limite]).ok();
+}
+
 /// Ouvre la base, la met au niveau de cette `version` de l'application.
 pub fn open(version: &str) -> Connection {
     let path = data_dir().join("maitrize.sqlite3");
@@ -317,7 +328,8 @@ pub(crate) fn copie_avant_changement_de_version(conn: &Connection, version: &str
 
 /**
  * Le ménage d'après le démarrage : replier le journal, rendre la place, vider
- * ce que la corbeille garde depuis trop longtemps.
+ * ce que la corbeille garde depuis trop longtemps, oublier les vieux dépôts
+ * du téléphone.
  *
  * Rien de tout cela n'a sa place avant l'ouverture de la fenêtre. La copie
  * de chaque jour, qui se faisait ici, est devenue un instantané pris à part
@@ -333,6 +345,7 @@ pub fn menage_apres_demarrage(conn: &Connection) {
         tasser_si_besoin(conn);
     }
     purger_corbeille(conn);
+    purger_depots_ranges(conn);
 }
 
 /// Rend au disque la place libérée, quand il y en a beaucoup.
@@ -577,6 +590,41 @@ mod tests_copies {
     }
 }
 
+#[cfg(test)]
+mod tests_depots_ranges {
+    use super::*;
+
+    fn retenus(c: &Connection) -> Vec<String> {
+        let mut st = c.prepare("SELECT id FROM depots_ranges ORDER BY id").unwrap();
+        st.query_map([], |r| r.get(0)).unwrap().map(|r| r.unwrap()).collect()
+    }
+
+    #[test]
+    fn les_vocaux_ranges_avant_la_mise_a_jour_sont_retenus() {
+        let c = Connection::open_in_memory().unwrap();
+        migrate(&c);
+        // Une note rangée par une version qui ne retenait pas les dépôts, et qui attend encore d'être versée.
+        c.execute("INSERT INTO vocaux (id, texte, etat) VALUES ('n-avant', 'Une note', 'transcrit')", []).unwrap();
+        assert!(retenus(&c).is_empty());
+        migrate(&c);
+        assert_eq!(retenus(&c), vec!["n-avant"]);
+    }
+
+    #[test]
+    fn un_depot_range_s_oublie_au_bout_de_six_mois() {
+        let c = Connection::open_in_memory().unwrap();
+        migrate(&c);
+        let il_y_a = |jours: i64| (chrono::Utc::now() - chrono::Duration::days(jours)).to_rfc3339();
+        c.execute(
+            "INSERT INTO depots_ranges (id, date) VALUES ('ancien', ?1), ('recent', ?2)",
+            [il_y_a(JOURS_DEPOTS_RANGES + 1), il_y_a(JOURS_DEPOTS_RANGES - 1)],
+        )
+        .unwrap();
+        purger_depots_ranges(&c);
+        assert_eq!(retenus(&c), vec!["recent"]);
+    }
+}
+
 pub(crate) fn migrate(conn: &Connection) {
     conn.execute_batch(
         r#"
@@ -602,6 +650,15 @@ pub(crate) fn migrate(conn: &Connection) {
             etat TEXT NOT NULL DEFAULT 'recu',
             erreur TEXT NOT NULL DEFAULT '',
             date_creation TEXT NOT NULL DEFAULT ''
+        );
+
+        -- Les dépôts du téléphone déjà rangés ici, par leur identifiant : une
+        -- dictée versée quitte `vocaux`, et son dépôt, s'il est resté sur
+        -- Nuage, ne doit pas se ranger de nouveau (voir `portable::deja_range`).
+        -- Locale comme `vocaux`, oubliée au bout de six mois.
+        CREATE TABLE IF NOT EXISTS depots_ranges (
+            id TEXT PRIMARY KEY,
+            date TEXT NOT NULL
         );
 
         CREATE TABLE IF NOT EXISTS sequences (
@@ -1032,6 +1089,9 @@ pub(crate) fn migrate(conn: &Connection) {
     // Une dictée peut aussi aller aux notes rapides (« notes ») plutôt qu'au
     // cahier journal. La table ne se synchronise pas : le défaut ne gêne personne.
     conn.execute("ALTER TABLE vocaux ADD COLUMN destination TEXT NOT NULL DEFAULT ''", []).ok();
+    // Les vocaux rangés avant qu'on retienne les dépôts le sont à leur tour :
+    // versés plus tard, ils ne reviendront pas davantage.
+    conn.execute("INSERT OR IGNORE INTO depots_ranges (id, date) SELECT id, ?1 FROM vocaux", [crate::models::now_iso()]).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN etat TEXT NOT NULL DEFAULT 'idee'", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN etapes_json TEXT NOT NULL DEFAULT '[]'", []).ok();
     conn.execute("ALTER TABLE projets ADD COLUMN domaines TEXT NOT NULL DEFAULT ''", []).ok();
