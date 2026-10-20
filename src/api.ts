@@ -567,7 +567,6 @@ export const api = {
     invoke<ProgressionEleve[]>("progressions_eleve_list", { espaceId: espaceId ?? null }),
   progressionEleveSave: (progression: ProgressionEleve) =>
     invoke<ProgressionEleve>("progression_eleve_save", { progression }),
-  progressionEleveDelete: (id: string) => invoke<void>("progression_eleve_delete", { id }),
 
   // Jeux
   jeuxList: (avecPoubelle = false) => invoke<Jeu[]>("jeux_list", { avecPoubelle }),
@@ -592,9 +591,6 @@ export const api = {
   elevesList: () => invoke<Eleve[]>("eleves_list"),
   eleveSave: (eleve: Eleve) => invoke<Eleve>("eleve_save", { eleve }),
   eleveDelete: (id: string) => invoke<void>("eleve_delete", { id }),
-  appelsList: (date?: string) => invoke<AppelJournalier[]>("appels_list", { date: date ?? null }),
-  appelSave: (appel: AppelJournalier) => invoke<AppelJournalier>("appel_save", { appel }),
-  appelDelete: (id: string) => invoke<void>("appel_delete", { id }),
   commentairesList: (eleveId?: string) =>
     invoke<CommentaireEleve[]>("commentaires_list", { eleveId: eleveId ?? null }),
   commentaireSave: (commentaire: CommentaireEleve) =>
@@ -608,7 +604,6 @@ export const api = {
   notesEleveList: (evaluationId?: string) =>
     invoke<NoteEleve[]>("notes_eleve_list", { evaluationId: evaluationId ?? null }),
   noteEleveSave: (note: NoteEleve) => invoke<NoteEleve>("note_eleve_save", { note }),
-  noteEleveDelete: (id: string) => invoke<void>("note_eleve_delete", { id }),
 
   // Matériel
   textesList: (avecPoubelle = false) => invoke<Texte[]>("textes_list", { avecPoubelle }),
@@ -632,8 +627,6 @@ export const api = {
 
   // Organisation
   progressionsAnnuelleList: () => invoke<ProgressionAnnuelle[]>("progressions_annuelle_list"),
-  progressionAnnuelleSave: (p: ProgressionAnnuelle) =>
-    invoke<ProgressionAnnuelle>("progression_annuelle_save", { p }),
   /**
    * Écrit l'écart entre ce que l'écran montrait (`avant`) et ce qu'il montre
    * (`apres`) : une case arrivée d'ailleurs entre-temps reste. Crée la
@@ -661,13 +654,11 @@ export const api = {
     invoke<ProgrammationFinale>("programmation_finale_save", { p }),
   programmationFinaleDelete: (id: string) => invoke<void>("programmation_finale_delete", { id }),
   edtTypiqueList: () => invoke<EdtTypique[]>("edt_typique_list"),
-  edtTypiqueSave: (edt: EdtTypique) => invoke<EdtTypique>("edt_typique_save", { edt }),
 
   // Pièces jointes
   piecesJointesList: (seanceId?: string) =>
     invoke<PieceJointe[]>("pieces_jointes_list", { seanceId: seanceId ?? null }),
   pieceJointeSave: (piece: PieceJointe) => invoke<PieceJointe>("piece_jointe_save", { piece }),
-  pieceJointeDelete: (id: string) => invoke<void>("piece_jointe_delete", { id }),
 
   // Conversations IA
   conversationsList: () => invoke<PiloteConversation[]>("conversations_list"),
@@ -717,7 +708,6 @@ export const api = {
   // Fichiers
   fichierSave: (nom: string, base64: string) => invoke<string>("fichier_save", { nom, base64 }),
   fichierRead: (nom: string) => invoke<string>("fichier_read", { nom }),
-  fichierPath: (nom: string) => invoke<string>("fichier_path", { nom }),
   fichierOuvrir: (nom: string) => invoke<void>("fichier_ouvrir", { nom }),
   fichierDelete: (nom: string) => invoke<void>("fichier_delete", { nom }),
   fichierImporterDepuisChemin: (chemin: string) => invoke<string>("fichier_importer_depuis_chemin", { chemin }),
@@ -734,7 +724,6 @@ export const api = {
   imprimerPdf: (nom: string) => invoke<void>("imprimer_pdf", { nom }),
   /** Une feuille HTML en PDF, rangée dans les fichiers de l'application ; renvoie son nom. */
   feuilleEnPdf: (html: string) => invoke<string>("feuille_en_pdf", { html }),
-  ouvrirFichier: (nom: string) => invoke<void>("ouvrir_fichier", { nom }),
   ouvrirHtml: (html: string) => invoke<void>("ouvrir_html", { html }),
   /** Le planning, puis le matériel des séances à sa suite ; renvoie ce qui n'a pas pu être joint. */
   imprimerPlanning: (
@@ -929,11 +918,6 @@ export const api = {
   syncEtat: () => invoke<EtatSync>("sync_etat"),
   syncDeltas: () => invoke<ResultatSync>("sync_deltas"),
   syncFichiers: () => invoke<ResultatFichiers>("sync_fichiers"),
-  machinesListe: () => invoke<Machine[]>("machines_liste"),
-  machineOublier: (id: string) => invoke<void>("machine_oublier", { id }),
-  machineNomSet: (nom: string) => invoke<void>("machine_nom_set", { nom }),
-  appairageCode: () => invoke<string>("appairage_code"),
-  appairageAppliquer: (code: string) => invoke<void>("appairage_appliquer", { code }),
   diagOuvrir: () => invoke<void>("diag_ouvrir"),
   /** Le rapport à envoyer quand une fenêtre se fige : les dernières lignes du journal. */
   diagRapport: (lignes = 200) => invoke<string>("diag_rapport", { lignes }),
@@ -946,7 +930,6 @@ export const api = {
   ouvrirReglagesChiffrement: () => invoke<void>("ouvrir_reglages_chiffrement"),
   syncEnvoyer: (amiId: string, texte: string) => invoke<void>("sync_envoyer", { amiId, texte }),
   syncRelever: (amiId: string) => invoke<SyncMessage[]>("sync_relever", { amiId }),
-  sequencePartager: (amiId: string, sequenceId: string) => invoke<void>("sequence_partager", { amiId, sequenceId }),
   programmationPartager: (amiId: string, annee: string, niveau = "") => invoke<void>("programmation_partager", { amiId, annee, niveau }),
   // Boîte de réception : relever (met en attente), lister, récupérer (importer), jeter.
   boiteRelever: (amiId: string) => invoke<BoiteItem[]>("boite_relever", { amiId }),
@@ -980,8 +963,6 @@ export const api = {
   /** Le cahier journal des jours publiés et ses aides à la tâche, pour le téléphone : chiffrés, et seulement ce qui a changé. */
   telephonePublierJournal: (journal: import("./journalTelephone").JournalTelephone, aides: import("./journalTelephone").AideAPublier[]) =>
     invoke<BilanJournal>("telephone_publier_journal", { journal, aides }),
-  /** Les pages scannées, tant que « Scanner avec le téléphone » est ouvert. */
-  telephoneReleverPages: () => invoke<BilanReleve>("telephone_relever_pages"),
 };
 
 /** Ce qu'une publication du cahier journal pour le téléphone a fait. */

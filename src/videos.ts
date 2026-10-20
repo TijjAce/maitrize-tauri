@@ -36,9 +36,6 @@ export function vignetteYoutube(id: string): string {
   return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
 }
 
-/** Adresse d'intégration, pour lire la vidéo dans l'application. */
-export const integrationYoutube = (id: string) => `https://www.youtube.com/embed/${id}`;
-
 /**
  * Transforme un texte déposé ou collé en vidéo.
  *

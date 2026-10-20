@@ -54,7 +54,3 @@ export function lireEtablissement(reglages: Record<string, string>): Etablisseme
   }
   return { contacts, materiel, telephone: lu(reglages, "telephone"), adresse: lu(reglages, "adresse") };
 }
-
-/** Rien de renseigné : les documents le disent, plutôt que d'aligner des « … ». */
-export const etablissementVide = (e: Etablissement) =>
-  !Object.keys(e.contacts).length && !Object.keys(e.materiel).length && !e.telephone && !e.adresse;

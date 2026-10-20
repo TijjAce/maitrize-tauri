@@ -33,7 +33,6 @@ export function typeDocument(nom: string): { icone: string; libelle: string } {
   if (["ppt", "pptx", "odp"].includes(ext)) return { icone: "📽", libelle: "Présentation" };
   return { icone: "📄", libelle: "Document" };
 }
-export const nomDeChemin = (chemin: string) => chemin.split(/[\\/]/).pop() || chemin;
 
 /**
  * Fait d'un élément une zone acceptant le dépôt de fichiers.

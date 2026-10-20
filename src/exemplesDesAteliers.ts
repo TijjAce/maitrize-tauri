@@ -25,8 +25,6 @@ export const MOTS_EXEMPLE = {
   jeux: ["chat", "chien", "vache", "poule", "lapin", "cheval", "mouton", "canard", "cochon", "chèvre", "âne", "oie"],
 } as const;
 
-export type AtelierAExemple = keyof typeof MOTS_EXEMPLE;
-
 /**
  * Des mots de tous les jours qui ont un dessin : la syllabe manquante y prend
  * ceux où l'on entend les syllabes qu'on a choisies — ma, mi, mu au départ.

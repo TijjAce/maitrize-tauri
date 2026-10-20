@@ -89,10 +89,3 @@ export function demarrerSyncAuto(): () => void {
     document.removeEventListener("visibilitychange", auRetour);
   };
 }
-
-/** À appeler après une écriture locale pour faire partir le changement vite. */
-export function synchroniserBientot() {
-  echecs = 0;
-  prochainDelai = PERIODE;
-  programmer(APRES_ECRITURE);
-}
