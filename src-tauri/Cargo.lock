@@ -3587,7 +3587,6 @@ dependencies = [
 name = "maitrize-tauri"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "argon2",
  "aws-sdk-s3",
  "base64 0.22.1",
