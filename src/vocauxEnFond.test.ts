@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const etat = { liste: [] as { id: string; etat: string }[], appels: [] as string[], rate: new Set<string>() };
+const etat = {
+  liste: [] as { id: string; etat: string; debut?: string }[], appels: [] as string[], rate: new Set<string>(),
+  sansSon: new Set<string>(), toasts: [] as { message: string; action?: string }[],
+};
 vi.mock("@tauri-apps/api/event", () => ({ listen: async () => () => {} }));
+vi.mock("./components/Toaster", () => ({
+  toast: (message: string, opts: { action?: { label: string } } = {}) => { etat.toasts.push({ message, action: opts.action?.label }); },
+}));
 vi.mock("./api", () => ({
   api: {
     vocauxList: async () => etat.liste.map((v) => ({ ...v })),
@@ -9,8 +15,9 @@ vi.mock("./api", () => ({
       etat.appels.push(id);
       const v = etat.liste.find((x) => x.id === id)!;
       if (etat.rate.has(id)) { v.etat = "echec"; throw new Error("moteur occupé"); }
-      v.etat = "transcrit";
-      return v;
+      // Comme côté Rust : un son disparu marque le vocal, qui revient sans erreur.
+      v.etat = etat.sansSon.has(id) ? "perdu" : "transcrit";
+      return { ...v };
     },
   },
 }));
@@ -19,7 +26,7 @@ import { EVT_VOCAUX, prochainATranscrire, retranscrire, transcrireCeQuiAttend, v
 
 const evenements: string[] = [];
 beforeEach(() => {
-  etat.liste = []; etat.appels = []; etat.rate = new Set(); evenements.length = 0;
+  etat.liste = []; etat.appels = []; etat.rate = new Set(); etat.sansSon = new Set(); etat.toasts = []; evenements.length = 0;
   // Pas de fenêtre sous Node : une cible d'événements en tient lieu.
   const cible = new EventTarget();
   cible.addEventListener(EVT_VOCAUX, () => evenements.push(vocalEnCours()));
@@ -34,6 +41,11 @@ describe("le prochain vocal à transcrire", () => {
     expect(prochainATranscrire(vocaux, new Set(["r1", "r2"]))).toBe("e1");
     expect(prochainATranscrire(vocaux, new Set(["r1", "r2", "e1"]))).toBe("");
     expect(prochainATranscrire([], new Set())).toBe("");
+  });
+
+  it("ne prend jamais un vocal perdu, même avec la mémoire vide d'une réouverture", () => {
+    expect(prochainATranscrire([{ id: "p1", etat: "perdu" }], new Set())).toBe("");
+    expect(prochainATranscrire([{ id: "p1", etat: "perdu" }, { id: "e1", etat: "echec" }], new Set())).toBe("e1");
   });
 });
 
@@ -62,6 +74,24 @@ describe("la transcription en tâche de fond", () => {
     retranscrire("x");
     await vi.waitFor(() => expect(etat.liste[0].etat).toBe("transcrit"));
     expect(etat.appels).toEqual(["x", "y", "x"]);
+  });
+
+  it("dit une fois qu'une dictée a perdu son son, et ne la reprend plus — même à la réouverture", async () => {
+    etat.liste = [{ id: "p", etat: "recu", debut: "2026-10-14T10:18:18" }, { id: "q", etat: "recu" }];
+    etat.sansSon = new Set(["p"]);
+    await transcrireCeQuiAttend();
+    expect(etat.appels).toEqual(["p", "q"]);
+    expect(etat.liste.map((v) => v.etat)).toEqual(["perdu", "transcrit"]);
+    expect(etat.toasts).toEqual([{
+      message: "La dictée du mercredi 14 octobre à 10h18 n'a plus son enregistrement : elle ne peut pas être transcrite.",
+      action: "Voir",
+    }]);
+    // L'application se rouvre : la mémoire des essais repart de zéro, et le vocal perdu ne repart pas.
+    vi.resetModules();
+    const rouverte = await import("./vocauxEnFond");
+    await rouverte.transcrireCeQuiAttend();
+    expect(etat.appels).toEqual(["p", "q"]);
+    expect(etat.toasts).toHaveLength(1);
   });
 
   it("ne lance pas deux chaînes à la fois", async () => {

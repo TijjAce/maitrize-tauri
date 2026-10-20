@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  creneauDuVocal, creneauRetenu, jourDuVocal, minutesDuVocal, repereDuVocal, verserDansLeBilan,
+  creneauDuVocal, creneauRetenu, jourDuVocal, minutesDuVocal, quandDuVocal, repereDuVocal, verserDansLeBilan,
   vocauxDuJour,
 } from "./vocaux";
 import type { Creneau } from "./api";
@@ -70,6 +70,13 @@ describe("lire un vocal en attente", () => {
 
   it("reste lisible quand l'heure manque", () => {
     expect(repereDuVocal({ debut: "", dureeS: 3 })).toContain("heure inconnue");
+  });
+
+  it("se nomme par son jour et son heure hors de la liste", () => {
+    expect(quandDuVocal("2026-10-14T10:18:18")).toBe("mercredi 14 octobre à 10h18");
+    expect(quandDuVocal("2026-10-14")).toBe("mercredi 14 octobre");
+    expect(quandDuVocal("")).toBe("");
+    expect(quandDuVocal("n'importe quoi")).toBe("");
   });
 });
 

@@ -4,6 +4,7 @@ import { api, texteErreur, type Creneau } from "../api";
 import { Select, TextareaAuto } from "./ui";
 import { toast } from "./Toaster";
 import { confirmer } from "./confirmer";
+import { AideEnLigne } from "./Aide";
 import { VERS_LES_NOTES, creneauRetenu, pourLesNotes, repereDuVocal, type Vocal } from "../vocaux";
 import { EVT_BILAN_VERSE, verserDansLesNotes, verserUnVocal } from "../versementDesVocaux";
 import { EVT_NOTE_AJOUTEE } from "../notesRapides";
@@ -17,7 +18,8 @@ import { EVT_VOCAUX, retranscrire, transcrireCeQuiAttend, vocalEnCours } from ".
 //
 // Ne restent ici que ceux qui attendent : leur transcription, un créneau
 // qu'on n'a pas su trouver, ou un nouvel essai après un échec. On choisit le
-// créneau — ou les notes rapides —, on relit, et l'on verse d'un clic.
+// créneau — ou les notes rapides —, on relit, et l'on verse d'un clic. Un
+// vocal dont le son s'est perdu y reste aussi, le temps qu'on le supprime.
 
 /** Le jour d'un vocal, tel qu'on l'écrit au-dessus du groupe. */
 function jourLisible(iso: string): string {
@@ -147,6 +149,12 @@ export function VocauxRecus() {
                     <p className="meta" style={{ fontSize: 12.5, margin: 0 }}>
                       {transcrit === v.id ? "Transcription en cours…" : "En attente de transcription…"}
                     </p>
+                  ) : v.etat === "perdu" ? (
+                    <AideEnLigne titre="Enregistrement introuvable"
+                      libelle={<span style={{ fontSize: 12.5, color: "var(--danger)" }}>Enregistrement introuvable : rien à transcrire.</span>}>
+                      <p>Le son de cette dictée n'est plus dans les fichiers de Maitrize : elle ne peut pas être transcrite, et l'application ne la reprend plus à l'ouverture.</p>
+                      <p>Si son texte manque au bilan de son créneau, dictez-le de nouveau, puis supprimez-la (🗑).</p>
+                    </AideEnLigne>
                   ) : v.etat === "echec" ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                       <p style={{ fontSize: 12.5, margin: 0, color: "var(--danger)" }}>

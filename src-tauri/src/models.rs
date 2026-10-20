@@ -1143,7 +1143,7 @@ pub struct Vocal {
     /// Ce que Whisper en a fait, vide tant qu'il n'a pas tourné.
     #[serde(default)]
     pub texte: String,
-    /// « recu », « transcrit » ou « echec ».
+    /// « recu », « transcrit », « echec » — ou « perdu » : le son n'est plus là, il ne se reprend plus.
     #[serde(default)]
     pub etat: String,
     #[serde(default)]

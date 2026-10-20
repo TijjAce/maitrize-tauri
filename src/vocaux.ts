@@ -20,7 +20,10 @@ export interface Vocal {
   debut: string;
   dureeS: number;
   texte: string;
-  /** « recu », « transcrit » ou « echec ». */
+  /**
+   * « recu », « transcrit », « echec » — ou « perdu » : le son n'est plus sur
+   * l'ordinateur, le vocal ne se transcrira jamais et ne se reprend plus.
+   */
   etat: string;
   erreur: string;
   /** Le créneau choisi sur le téléphone, vide s'il n'a rien dit. */
@@ -102,6 +105,15 @@ export function repereDuVocal(v: { debut: string; dureeS: number }): string {
   if (s <= 0) return `${heure} · note écrite`;
   const duree = s >= 60 ? `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")}` : `${s} s`;
   return `${heure} · ${duree}`;
+}
+
+/** « mercredi 14 octobre à 10h18 » : de quoi reconnaître un vocal dont on parle hors de sa liste. */
+export function quandDuVocal(debut: string): string {
+  const d = new Date(`${(debut || "").slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  const jour = d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  const m = /T(\d{2}):(\d{2})/.exec(debut);
+  return m ? `${jour} à ${m[1]}h${m[2]}` : jour;
 }
 
 /** Les vocaux d'un jour donné, les plus anciens d'abord. */

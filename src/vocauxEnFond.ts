@@ -8,8 +8,9 @@
 
 import { listen } from "@tauri-apps/api/event";
 import { api } from "./api";
-import { verserCeQuiEstPret } from "./versementDesVocaux";
-import type { Vocal } from "./vocaux";
+import { toast } from "./components/Toaster";
+import { EVT_VOIR_VOCAUX, verserCeQuiEstPret } from "./versementDesVocaux";
+import { quandDuVocal, type Vocal } from "./vocaux";
 
 /** Émis quand un vocal commence ou finit d'être transcrit : l'écran qui les montre se relit. */
 export const EVT_VOCAUX = "maitrize:vocaux";
@@ -24,13 +25,29 @@ export const vocalEnCours = () => enCours;
  */
 const tentes = new Set<string>();
 
-/** Le prochain vocal à transcrire : un vocal reçu d'abord, sinon un échec qu'on n'a pas encore repris. */
+/**
+ * Le prochain vocal à transcrire : un vocal reçu d'abord, sinon un échec qu'on
+ * n'a pas encore repris. Un vocal « perdu » n'en est jamais : son son ne
+ * reviendra pas, et cette mémoire-ci s'efface à chaque ouverture.
+ */
 export function prochainATranscrire(vocaux: Pick<Vocal, "id" | "etat">[], dejaTentes: ReadonlySet<string>): string {
   const libre = (v: Pick<Vocal, "id" | "etat">) => !dejaTentes.has(v.id);
   return (vocaux.find((v) => v.etat === "recu" && libre(v)) ?? vocaux.find((v) => v.etat === "echec" && libre(v)))?.id ?? "";
 }
 
 const signaler = () => window.dispatchEvent(new Event(EVT_VOCAUX));
+
+/**
+ * Dit qu'une dictée a perdu son enregistrement. Une fois pour toutes : elle ne
+ * passe à « perdu » qu'une fois, et ne se reprend plus ensuite.
+ */
+function annoncerLeSonPerdu(v: Vocal) {
+  const quand = quandDuVocal(v.debut);
+  toast(`La dictée ${quand ? `du ${quand} ` : ""}n'a plus son enregistrement : elle ne peut pas être transcrite.`, {
+    icone: "⚠️", duree: 15000,
+    action: { label: "Voir", faire: () => { window.dispatchEvent(new Event(EVT_VOIR_VOCAUX)); } },
+  });
+}
 
 let tourne = false;
 
@@ -50,10 +67,12 @@ export async function transcrireCeQuiAttend(): Promise<void> {
       tentes.add(id);
       enCours = id;
       signaler();
-      // L'échec s'écrit à côté du vocal, côté Rust : rien à faire ici, que passer au suivant.
-      await api.vocalTranscrire(id).catch(() => {});
+      // L'échec s'écrit à côté du vocal, côté Rust : rien à faire ici, que passer au
+      // suivant — sauf un son disparu, qu'on dit, puisqu'il ne se reprendra plus.
+      const fait = await api.vocalTranscrire(id).catch(() => null);
       enCours = "";
       signaler();
+      if (fait?.etat === "perdu") annoncerLeSonPerdu(fait);
       await verserCeQuiEstPret();
     }
   } catch {
