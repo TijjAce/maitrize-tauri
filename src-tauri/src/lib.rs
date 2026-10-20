@@ -17,6 +17,7 @@ mod webdav;
 mod copie_bureau;
 mod retour;
 mod instantanes;
+mod rapport;
 mod db;
 mod disque;
 mod fin_annee;
@@ -154,7 +155,7 @@ pub fn run() {
             // Recherche
             recherche,
             // Export / Import
-            export_data, import_data, exporter_base, instantanes::reparation_annonce,
+            export_data, import_data, exporter_base, instantanes::reparation_annonce, rapport::diag_courriel, rapport::diag_incident_precedent,
             // Vacances scolaires
             vacances_scolaires,
             // IA Mistral
