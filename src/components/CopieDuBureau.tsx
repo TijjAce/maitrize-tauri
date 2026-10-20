@@ -2,7 +2,7 @@ import React from "react";
 import { api, isMac, journal, texteErreur, type BilanCopie } from "../api";
 import { EVT_DONNEES_DISTANTES } from "./ui";
 import { toast } from "./Toaster";
-import { planDeCopie, type DonneesBureau } from "../copieBureau";
+import { planDeCopie, sousLaPartie, PARTIE_PLAN, type DonneesBureau } from "../copieBureau";
 
 // ── La copie du bureau se tient à jour seule ───────────────────────────────
 //
@@ -40,7 +40,8 @@ export function copierLeBureau(): Promise<ResultatCopie> {
   enCours = (async (): Promise<ResultatCopie> => {
     const info = await api.copieBureauInfo();
     if (!info.active) return { bilan: null, aJour: false, desactivee: true };
-    const plan = planDeCopie(await lireBureau(), isMac ? "mac" : "windows");
+    // Le plan de travail est une partie du dossier de tout le travail (voir copie_bureau.rs).
+    const plan = sousLaPartie(PARTIE_PLAN, planDeCopie(await lireBureau(), isMac ? "mac" : "windows"));
     const squelette = plan.fichiers.map((f) => ({
       chemin: f.chemin, empreinte: f.empreinte, fichier: f.source.genre === "fichier" ? f.source.nom : undefined,
     }));
