@@ -1018,9 +1018,9 @@ pub fn progressions_annuelle_list(db: State<Db>) -> R<Vec<ProgressionAnnuelle>> 
 pub fn progression_annuelle_save(db: State<Db>, p: ProgressionAnnuelle) -> R<ProgressionAnnuelle> {
     let c = db.lock();
     c.execute(
-        "INSERT INTO progressions_annuelle (id,annee,periode,colonnes_json,cellules_json,niveau)
-         VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, periode = excluded.periode, colonnes_json = excluded.colonnes_json, cellules_json = excluded.cellules_json, niveau = excluded.niveau",
-        params![p.id, p.annee, p.periode, p.colonnes_json, p.cellules_json, p.niveau],
+        "INSERT INTO progressions_annuelle (id,annee,periode,colonnes_json,cellules_json,niveau,seances_json)
+         VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, periode = excluded.periode, colonnes_json = excluded.colonnes_json, cellules_json = excluded.cellules_json, niveau = excluded.niveau, seances_json = excluded.seances_json",
+        params![p.id, p.annee, p.periode, p.colonnes_json, p.cellules_json, p.niveau, p.seances_json],
     ).map_err(e)?;
     Ok(p)
 }
@@ -1033,6 +1033,9 @@ pub struct EtatProgression {
     pub colonnes_json: String,
     #[serde(default)]
     pub cellules_json: String,
+    /// Absent d'un écran d'avant les séances placées : rien n'y change alors.
+    #[serde(default)]
+    pub seances_json: String,
 }
 
 /// Une collection JSON modifiée par un écran, fusionnée avec ce que la base a.
@@ -1072,20 +1075,22 @@ pub(crate) fn ecrire_progression(
             ProgressionAnnuelle::from_row,
         )
         .optional()?;
-    let (id, colonnes_ici, cellules_ici) = match existante {
-        Some(p) => (p.id, p.colonnes_json, p.cellules_json),
-        None => (new_id(), "[]".to_string(), "{}".to_string()),
+    let (id, colonnes_ici, cellules_ici, seances_ici) = match existante {
+        Some(p) => (p.id, p.colonnes_json, p.cellules_json, p.seances_json),
+        None => (new_id(), "[]".to_string(), "{}".to_string(), "{}".to_string()),
     };
     let ou_vide = |s: &str, vide: &str| if s.trim().is_empty() { vide.to_string() } else { s.to_string() };
     let colonnes = fusionner_ecran(&colonnes_ici, &ou_vide(&avant.colonnes_json, "[]"), &ou_vide(&apres.colonnes_json, "[]"));
     let cellules = fusionner_ecran(&cellules_ici, &ou_vide(&avant.cellules_json, "{}"), &ou_vide(&apres.cellules_json, "{}"));
+    let seances = fusionner_ecran(&ou_vide(&seances_ici, "{}"), &ou_vide(&avant.seances_json, "{}"), &ou_vide(&apres.seances_json, "{}"));
     let p = ProgressionAnnuelle {
         id, annee: annee.to_string(), periode, colonnes_json: colonnes, cellules_json: cellules, niveau: niveau.to_string(),
+        seances_json: seances,
     };
     c.execute(
-        "INSERT INTO progressions_annuelle (id,annee,periode,colonnes_json,cellules_json,niveau)
-         VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(id) DO UPDATE SET colonnes_json = excluded.colonnes_json, cellules_json = excluded.cellules_json",
-        params![p.id, p.annee, p.periode, p.colonnes_json, p.cellules_json, p.niveau],
+        "INSERT INTO progressions_annuelle (id,annee,periode,colonnes_json,cellules_json,niveau,seances_json)
+         VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO UPDATE SET colonnes_json = excluded.colonnes_json, cellules_json = excluded.cellules_json, seances_json = excluded.seances_json",
+        params![p.id, p.annee, p.periode, p.colonnes_json, p.cellules_json, p.niveau, p.seances_json],
     )?;
     Ok(p)
 }
@@ -1100,7 +1105,7 @@ mod tests_progression {
         c
     }
     fn etat(colonnes: &str, cellules: &str) -> EtatProgression {
-        EtatProgression { colonnes_json: colonnes.into(), cellules_json: cellules.into() }
+        EtatProgression { colonnes_json: colonnes.into(), cellules_json: cellules.into(), seances_json: String::new() }
     }
     fn cases(c: &rusqlite::Connection, niveau: &str) -> serde_json::Value {
         let s: String = c.query_row(
@@ -1167,6 +1172,47 @@ mod tests_progression {
             .iter().map(|x| x["id"].as_str().unwrap().to_string()).collect();
         assert_eq!(ids, vec!["c2", "c1", "c3"]);
     }
+
+    #[test]
+    fn les_progressions_de_la_classe_prennent_un_niveau_pour_toute_l_annee() {
+        let c = base();
+        let etat = |col: &str, cel: &str| EtatProgression { colonnes_json: col.into(), cellules_json: cel.into(), seances_json: String::new() };
+        let vide = etat("[]", "{}");
+        ecrire_progression(&c, "2026-2027", "", 1, &vide, &etat(r#"[{"id":"c1","titre":"EPS"}]"#, "{}")).unwrap();
+        ecrire_progression(&c, "2026-2027", "", 2, &vide, &etat(r#"[{"id":"c1","titre":"EPS"}]"#, r#"{"w1_c1":"Courir"}"#)).unwrap();
+        // Le CP a déjà une ligne vide en P2, et une remplie en P3.
+        ecrire_progression(&c, "2026-2027", "CP", 2, &vide, &vide).unwrap();
+        ecrire_progression(&c, "2026-2027", "CP", 3, &vide, &etat(r#"[{"id":"c2","titre":"Lecture"}]"#, "{}")).unwrap();
+        assert_eq!(super::changer_niveau_progressions(&c, "2026-2027", "", "CP").unwrap(), 2);
+        let lignes: Vec<(String, i64)> = c.prepare("SELECT niveau, periode FROM progressions_annuelle ORDER BY periode").unwrap()
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?))).unwrap().flatten().collect();
+        assert_eq!(lignes, vec![("CP".into(), 1), ("CP".into(), 2), ("CP".into(), 3)], "une seule progression par période");
+        let p2: String = c.query_row("SELECT cellules_json FROM progressions_annuelle WHERE periode = 2", [], |r| r.get(0)).unwrap();
+        assert!(p2.contains("Courir"), "la progression remplie est celle qui reste");
+        // Deux progressions remplies dans une même période ne se mélangent pas.
+        ecrire_progression(&c, "2026-2027", "CE1", 3, &vide, &etat(r#"[{"id":"c3","titre":"Maths"}]"#, "{}")).unwrap();
+        let refus = super::changer_niveau_progressions(&c, "2026-2027", "CE1", "CP").unwrap_err();
+        assert!(refus.contains("CP a déjà une progression en P3"), "{refus}");
+    }
+
+    #[test]
+    fn les_seances_placees_dans_une_case_se_gardent_des_deux_cotes() {
+        let c = base();
+        let etat = |sea: &str| EtatProgression { colonnes_json: r#"[{"id":"c1","titre":"Maths"}]"#.into(), cellules_json: "{}".into(), seances_json: sea.into() };
+        ecrire_progression(&c, "2026-2027", "", 1, &etat(""), &etat(r#"{"w1_c1":["s1"]}"#)).unwrap();
+        // L'autre ordinateur a placé une séance dans la même case.
+        c.execute(r#"UPDATE progressions_annuelle SET seances_json = '{"w1_c1":["s1","s2"]}'"#, []).unwrap();
+        // L'écran, qui ne la connaît pas, en place une troisième.
+        let p = ecrire_progression(&c, "2026-2027", "", 1, &etat(r#"{"w1_c1":["s1"]}"#), &etat(r#"{"w1_c1":["s1","s3"]}"#)).unwrap();
+        let v: serde_json::Value = serde_json::from_str(&p.seances_json).unwrap();
+        let mut ids: Vec<&str> = v["w1_c1"].as_array().unwrap().iter().map(|x| x.as_str().unwrap()).collect();
+        ids.sort();
+        assert_eq!(ids, vec!["s1", "s2", "s3"]);
+        // Un écran d'avant les séances placées ne les touche pas.
+        let ancien = EtatProgression { colonnes_json: r#"[{"id":"c1","titre":"Maths"}]"#.into(), cellules_json: "{}".into(), seances_json: String::new() };
+        let p = ecrire_progression(&c, "2026-2027", "", 1, &ancien, &ancien).unwrap();
+        assert!(p.seances_json.contains("s3"));
+    }
 }
 
 #[tauri::command]
@@ -1180,6 +1226,133 @@ pub fn progression_annuelle_ecrire(
 ) -> R<ProgressionAnnuelle> {
     let c = db.lock();
     ecrire_progression(&c, &annee, &niveau, periode, &avant, &apres).map_err(e)
+}
+
+/// Vrai si un JSON range quelque chose : une liste non vide, ou un objet
+/// dont une valeur n'est ni vide ni nulle.
+fn json_rempli(s: &str) -> bool {
+    match serde_json::from_str::<serde_json::Value>(s) {
+        Ok(serde_json::Value::Array(a)) => !a.is_empty(),
+        Ok(serde_json::Value::Object(o)) => o.values().any(|x| match x {
+            serde_json::Value::String(s) => !s.is_empty(),
+            serde_json::Value::Array(a) => !a.is_empty(),
+            serde_json::Value::Null => false,
+            _ => true,
+        }),
+        _ => false,
+    }
+}
+
+/// « La classe » pour le niveau vide, sinon le niveau lui-même.
+fn nom_du_niveau(niveau: &str) -> String {
+    if niveau.is_empty() { "La classe".into() } else { niveau.to_string() }
+}
+
+/// Passe d'un niveau à l'autre : les lignes de `de` prennent le niveau `vers`.
+///
+/// Une ligne `(identifiant, période, remplie)` par progression ou
+/// programmation. Refusé si les deux niveaux ont quelque chose dans une même
+/// période : deux tableaux ne se mélangent pas en silence. Sinon, la ligne
+/// vide de chaque période s'efface — jamais deux pour une même période —, et
+/// celles de `de` changent de niveau.
+fn changer_de_niveau(
+    c: &rusqlite::Connection, table: &str, depart: &[(String, i64, bool)], arrivee: &[(String, i64, bool)], vers: &str, quoi: &str,
+) -> Result<usize, String> {
+    let remplie = |ls: &[(String, i64, bool)], p: i64| ls.iter().any(|(_, q, r)| *q == p && *r);
+    let mut conflits: Vec<i64> = depart.iter().filter(|(_, p, r)| *r && remplie(arrivee, *p)).map(|(_, p, _)| *p).collect();
+    conflits.sort();
+    conflits.dedup();
+    if !conflits.is_empty() {
+        let ou = if table == "progressions_annuelle" {
+            format!(" en {}", conflits.iter().map(|p| format!("P{p}")).collect::<Vec<_>>().join(", "))
+        } else {
+            String::new()
+        };
+        return Err(format!("{} a déjà {quoi}{ou} : retirez-la d'abord, ou choisissez un autre niveau.", nom_du_niveau(vers)));
+    }
+    let faire = || -> rusqlite::Result<usize> {
+        for (id, p, _) in depart {
+            if remplie(arrivee, *p) {
+                c.execute(&format!("DELETE FROM {table} WHERE id = ?1"), params![id])?;
+            }
+        }
+        for (id, p, _) in arrivee {
+            if !remplie(arrivee, *p) {
+                c.execute(&format!("DELETE FROM {table} WHERE id = ?1"), params![id])?;
+            }
+        }
+        let mut n = 0;
+        for (id, p, _) in depart {
+            if !remplie(arrivee, *p) {
+                n += c.execute(&format!("UPDATE {table} SET niveau = ?2 WHERE id = ?1"), params![id, vers])?;
+            }
+        }
+        Ok(n)
+    };
+    c.execute_batch("BEGIN IMMEDIATE").map_err(e)?;
+    match faire() {
+        Ok(n) => c.execute_batch("COMMIT").map(|_| n).map_err(e),
+        Err(err) => {
+            c.execute_batch("ROLLBACK").ok();
+            Err(err.to_string())
+        }
+    }
+}
+
+/// Donne un autre niveau aux progressions d'une année, pour toutes ses
+/// périodes : la classe (niveau vide) devient « CP », un niveau en devient
+/// un autre. Rend le nombre de progressions passées au nouveau niveau.
+pub(crate) fn changer_niveau_progressions(c: &rusqlite::Connection, annee: &str, de: &str, vers: &str) -> Result<usize, String> {
+    let (de, vers) = (de.trim(), vers.trim());
+    if de == vers {
+        return Ok(0);
+    }
+    let lignes = |niveau: &str| -> Result<Vec<(String, i64, bool)>, String> {
+        let mut st = c.prepare(
+            "SELECT id, periode, colonnes_json, cellules_json, seances_json FROM progressions_annuelle WHERE annee = ?1 AND niveau = ?2",
+        ).map_err(e)?;
+        let it = st.query_map(params![annee, niveau], |r| {
+            let (col, cel, sea): (String, String, String) = (r.get(2)?, r.get(3)?, r.get(4)?);
+            Ok((r.get(0)?, r.get(1)?, json_rempli(&col) || json_rempli(&cel) || json_rempli(&sea)))
+        }).map_err(e)?;
+        it.collect::<rusqlite::Result<_>>().map_err(e)
+    };
+    let (depart, arrivee) = (lignes(de)?, lignes(vers)?);
+    changer_de_niveau(c, "progressions_annuelle", &depart, &arrivee, vers, "une progression")
+}
+
+#[tauri::command]
+pub fn progression_annuelle_niveau(db: State<Db>, annee: String, de: String, vers: String) -> R<usize> {
+    let c = db.lock();
+    changer_niveau_progressions(&c, &annee, &de, &vers)
+}
+
+/// Donne un autre niveau à la programmation d'une année : celle de la classe
+/// devient celle du CP, celle d'un niveau celle d'un autre. Ni celle par
+/// élève (« ime ») ni celles reçues des collègues ne bougent.
+pub(crate) fn changer_niveau_programmations(c: &rusqlite::Connection, annee: &str, de: &str, vers: &str) -> Result<usize, String> {
+    let (de, vers) = (de.trim(), vers.trim());
+    if de.eq_ignore_ascii_case("ime") || vers.eq_ignore_ascii_case("ime") {
+        return Err("« ime » est la programmation par élève : elle ne change pas de niveau.".into());
+    }
+    if de == vers {
+        return Ok(0);
+    }
+    let lignes = |niveau: &str| -> Result<Vec<(String, i64, bool)>, String> {
+        let mut st = c.prepare(
+            "SELECT id, lignes_json FROM programmations_finale WHERE annee = ?1 AND est_importee = 0 AND COALESCE(niveau, '') = ?2",
+        ).map_err(e)?;
+        let it = st.query_map(params![annee, niveau], |r| Ok((r.get(0)?, 0, json_rempli(&r.get::<_, String>(1)?)))).map_err(e)?;
+        it.collect::<rusqlite::Result<_>>().map_err(e)
+    };
+    let (depart, arrivee) = (lignes(de)?, lignes(vers)?);
+    changer_de_niveau(c, "programmations_finale", &depart, &arrivee, vers, "sa programmation")
+}
+
+#[tauri::command]
+pub fn programmation_finale_niveau(db: State<Db>, annee: String, de: String, vers: String) -> R<usize> {
+    let c = db.lock();
+    changer_niveau_programmations(&c, &annee, &de, &vers)
 }
 
 #[tauri::command]
@@ -1356,6 +1529,22 @@ mod tests_ecritures_par_ecart {
                    VALUES ('x', '2026-2027', '[]', 'CP', 'Collègue', 1)", []).unwrap();
         assert_eq!(ecrire_programmation(&c, "2026-2027", false, "CP", "[]", "[]").unwrap().id, cp.id);
         assert!(ecrire_programmation(&c, "2026-2027", false, "IME", "[]", "[]").is_err(), "« ime » est réservé");
+    }
+
+    #[test]
+    fn la_programmation_de_la_classe_prend_un_niveau_sans_jamais_en_ecraser_une_autre() {
+        let c = base();
+        ecrire_programmation(&c, "2026-2027", false, "", "[]", r#"[{"id":"l1","label":"Lecture"}]"#).unwrap();
+        // Une ligne vide du CP, laissée par un niveau ajouté puis retiré.
+        ecrire_programmation(&c, "2026-2027", false, "CP", "[]", "[]").unwrap();
+        assert_eq!(super::changer_niveau_programmations(&c, "2026-2027", "", "CP").unwrap(), 1);
+        let niveaux: Vec<String> = c.prepare("SELECT niveau FROM programmations_finale ORDER BY niveau").unwrap()
+            .query_map([], |r| r.get(0)).unwrap().flatten().collect();
+        assert_eq!(niveaux, vec!["CP"], "une seule programmation du CP, celle qui était remplie");
+        // Le CE1 rempli ne peut pas devenir CP : il l'écraserait.
+        ecrire_programmation(&c, "2026-2027", false, "CE1", "[]", r#"[{"id":"l2","label":"Accords"}]"#).unwrap();
+        assert!(super::changer_niveau_programmations(&c, "2026-2027", "CE1", "CP").unwrap_err().contains("CP a déjà"));
+        assert!(super::changer_niveau_programmations(&c, "2026-2027", "CE1", "ime").is_err());
     }
 
     #[test]

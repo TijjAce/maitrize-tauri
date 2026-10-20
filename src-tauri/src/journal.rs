@@ -723,6 +723,7 @@ fn fusionner_champs(
 const COLLECTIONS_JSON: &[(&str, &str)] = &[
     ("progressions_annuelle", "colonnes_json"),
     ("progressions_annuelle", "cellules_json"),
+    ("progressions_annuelle", "seances_json"),
     ("programmations_finale", "lignes_json"),
     ("edt_typique", "slots_json"),
 ];

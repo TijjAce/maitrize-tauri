@@ -819,6 +819,9 @@ pub struct ProgressionAnnuelle {
     /// Le niveau qu'elle suit (« CP », « CE1 »…) ; vide, elle vaut pour tous les niveaux.
     #[serde(default)]
     pub niveau: String,
+    /// Par case (« w3_<colonne> »), les séances de séquences qu'on y a placées.
+    #[serde(default = "vide_obj")]
+    pub seances_json: String,
 }
 
 impl ProgressionAnnuelle {
@@ -830,6 +833,7 @@ impl ProgressionAnnuelle {
             colonnes_json: r.get("colonnes_json")?,
             cellules_json: r.get("cellules_json")?,
             niveau: r.get("niveau")?,
+            seances_json: r.get::<_, Option<String>>("seances_json").ok().flatten().unwrap_or_else(|| "{}".into()),
         })
     }
 }

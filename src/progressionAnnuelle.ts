@@ -4,13 +4,23 @@
 //
 // Une classe à plusieurs niveaux en tient une par niveau (demande de
 // l'enseignant, octobre 2026). Celles d'avant n'ont pas de niveau : elles
-// valent pour tous, et restent là où elles étaient.
+// valent pour tous, et restent là où elles étaient. Un niveau vaut pour toute
+// l'année : il a son tableau à chaque période. Dans les cases, on place aussi
+// les séances des séquences créées.
 
 import type { ProgressionAnnuelle } from "./api";
 import type { PeriodeDeClasse } from "./vacances";
 
 export interface Colonne { id: string; titre: string; couleur: string }
-export interface EtatProg { colonnes: Colonne[]; cellules: Record<string, string> }
+export interface EtatProg {
+  colonnes: Colonne[];
+  cellules: Record<string, string>;
+  /** Par case, les séances placées (identifiants), dans l'ordre où on les a choisies. */
+  seances: Record<string, string[]>;
+}
+
+/** Une progression vide. */
+export const ETAT_VIDE: EtatProg = { colonnes: [], cellules: {}, seances: {} };
 
 /** La progression sans niveau : celle de la classe, en tête de la période. */
 export const LA_CLASSE = "la classe";
@@ -21,9 +31,10 @@ export const SEMAINES_PAR_DEFAUT = 8;
 export const cleCase = (semaine: number, colonne: string) => `w${semaine}_${colonne}`;
 
 /** Ce que montre une progression ; rien d'illisible ne fait tomber l'écran. */
-export function lireEtat(p?: Pick<ProgressionAnnuelle, "colonnesJson" | "cellulesJson"> | null): EtatProg {
+export function lireEtat(p?: Pick<ProgressionAnnuelle, "colonnesJson" | "cellulesJson"> & { seancesJson?: string } | null): EtatProg {
   let colonnes: Colonne[] = [];
   let cellules: Record<string, string> = {};
+  const seances: Record<string, string[]> = {};
   try {
     const v = JSON.parse(p?.colonnesJson || "[]");
     if (Array.isArray(v)) {
@@ -37,20 +48,33 @@ export function lireEtat(p?: Pick<ProgressionAnnuelle, "colonnesJson" | "cellule
       for (const [k, x] of Object.entries(v)) if (typeof x === "string" && x !== "") cellules[k] = x;
     }
   } catch { /* illisible : vide */ }
-  return { colonnes, cellules };
+  try {
+    const v = JSON.parse(p?.seancesJson || "{}");
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      for (const [k, x] of Object.entries(v)) {
+        const ids = Array.isArray(x) ? x.filter((i): i is string => typeof i === "string" && i !== "") : [];
+        if (ids.length) seances[k] = ids;
+      }
+    }
+  } catch { /* illisible : vide */ }
+  return { colonnes, cellules, seances };
 }
 
 /** L'état en JSON, tel que la base le range : une case vide n'y est pas. */
-export function enJson(e: EtatProg): { colonnesJson: string; cellulesJson: string } {
+export function enJson(e: EtatProg): { colonnesJson: string; cellulesJson: string; seancesJson: string } {
   const cellules = Object.fromEntries(Object.entries(e.cellules).filter(([, v]) => v !== ""));
-  return { colonnesJson: JSON.stringify(e.colonnes), cellulesJson: JSON.stringify(cellules) };
+  const seances = Object.fromEntries(Object.entries(e.seances ?? {}).filter(([, v]) => v.length > 0));
+  return { colonnesJson: JSON.stringify(e.colonnes), cellulesJson: JSON.stringify(cellules), seancesJson: JSON.stringify(seances) };
 }
+
+const parCle = <V>(o: Record<string, V>) => Object.entries(o).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0));
 
 /** Deux états identiques, quel que soit l'ordre des cases : la base les range par clé. */
 export function memeEtat(a: EtatProg, b: EtatProg): boolean {
   const signature = (e: EtatProg) => JSON.stringify([
     e.colonnes.map((c) => [c.id, c.titre, c.couleur]),
-    Object.entries(e.cellules).filter(([, v]) => v !== "").sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)),
+    parCle(e.cellules).filter(([, v]) => v !== ""),
+    parCle(e.seances ?? {}).filter(([, v]) => v.length > 0),
   ]);
   return signature(a) === signature(b);
 }
@@ -85,11 +109,12 @@ export function semainesDeLaPeriode(p: PeriodeDeClasse): SemaineDeClasse[] {
  * mais jamais moins que la dernière semaine remplie. Une case écrite ne
  * disparaît pas parce que le calendrier compte une semaine de moins.
  */
-export function nombreDeSemaines(duCalendrier: number, cellules: Record<string, string>): number {
+export function nombreDeSemaines(duCalendrier: number, cellules: Record<string, string>, seances: Record<string, string[]> = {}): number {
   let derniere = 0;
-  for (const [k, v] of Object.entries(cellules)) {
+  const remplies = [...Object.entries(cellules).filter(([, v]) => v.trim()), ...Object.entries(seances).filter(([, v]) => v.length)];
+  for (const [k] of remplies) {
     const m = /^w(\d+)_/.exec(k);
-    if (m && v.trim()) derniere = Math.max(derniere, Number(m[1]));
+    if (m) derniere = Math.max(derniere, Number(m[1]));
   }
   return Math.max(duCalendrier > 0 ? duCalendrier : SEMAINES_PAR_DEFAUT, derniere);
 }
@@ -105,26 +130,36 @@ export function datesDeLaSemaine(s: SemaineDeClasse): string {
     : `${a.getUTCDate()} ${MOIS[a.getUTCMonth()]} – ${b.getUTCDate()} ${MOIS[b.getUTCMonth()]}`;
 }
 
-/** Vrai si une progression a quelque chose : une colonne ou une case. */
-const remplie = (p?: ProgressionAnnuelle) => { const e = lireEtat(p); return e.colonnes.length > 0 || Object.keys(e.cellules).length > 0; };
+/** Vrai si une progression a quelque chose : une colonne, une case, une séance placée. */
+export const remplie = (p?: ProgressionAnnuelle) => {
+  const e = lireEtat(p);
+  return e.colonnes.length > 0 || Object.keys(e.cellules).length > 0 || Object.keys(e.seances).length > 0;
+};
 
-/** La clé d'un niveau ajouté à une période, le temps qu'il reçoive sa progression. */
-export const cleNiveauAjoute = (annee: string, periode: number, niveau: string) => `${annee}|${periode}|${niveau}`;
+/** La clé d'un niveau ajouté à l'année, le temps qu'il reçoive sa progression. */
+export const cleNiveauAjoute = (annee: string, niveau: string) => `${annee}|${niveau}`;
 
 /**
- * Les niveaux d'une période, sous le tableau de la classe : ceux qui y ont
- * une progression, et ceux qu'on vient d'ajouter par « + Niveau », dans
- * l'ordre de l'école. Un niveau se décide période par période.
+ * Les niveaux de l'année : ceux qui ont une progression à l'une de ses
+ * périodes, et ceux qu'on vient d'ajouter par « + Niveau », dans l'ordre de
+ * l'école. Chacun a son tableau à chaque période.
  */
-export function niveauxDeLaPeriode(ordre: string[], liste: ProgressionAnnuelle[], annee: string, periode: number, ajoutes: string[]): string[] {
-  const vus = new Set(liste.filter((p) => p.annee === annee && p.periode === periode && (p.niveau ?? "") !== "" && remplie(p)).map((p) => p.niveau));
+export function niveauxDeLaProgression(ordre: string[], liste: ProgressionAnnuelle[], annee: string, ajoutes: string[]): string[] {
+  const vus = new Set(liste.filter((p) => p.annee === annee && (p.niveau ?? "") !== "" && remplie(p)).map((p) => p.niveau));
   for (const k of ajoutes) {
-    const [a, p, n] = k.split("|");
-    if (a === annee && Number(p) === periode && n) vus.add(n);
+    const [a, n] = k.split("|");
+    if (a === annee && n) vus.add(n);
   }
   const rang = (n: string) => { const i = ordre.indexOf(n); return i < 0 ? ordre.length : i; };
   return [...vus].sort((a, b) => rang(a) - rang(b) || a.localeCompare(b, "fr"));
 }
+
+/**
+ * Le tableau sans niveau se montre s'il a quelque chose dans l'année, ou
+ * s'il n'y a pas de niveau : c'est par lui qu'on commence.
+ */
+export const tableauSansNiveau = (liste: ProgressionAnnuelle[], annee: string, niveaux: string[]) =>
+  niveaux.length === 0 || liste.some((p) => p.annee === annee && (p.niveau ?? "") === "" && remplie(p));
 
 /** Un groupe de titres à proposer pour une colonne. */
 export interface GroupeDeTitres { groupe: string; titres: string[] }
@@ -180,25 +215,27 @@ export function sourcesDeColonnes(liste: ProgressionAnnuelle[], annee: string, n
 export const copieDesColonnes = (colonnes: Colonne[], nouvelId: () => string): Colonne[] =>
   colonnes.map((c) => ({ ...c, id: nouvelId() }));
 
-/** Sans une colonne : ses cases partent avec elle. */
+/** Sans une colonne : ses cases et leurs séances partent avec elle. */
 export function sansColonne(e: EtatProg, id: string): EtatProg {
-  return {
-    colonnes: e.colonnes.filter((c) => c.id !== id),
-    cellules: Object.fromEntries(Object.entries(e.cellules).filter(([k]) => !k.endsWith(`_${id}`))),
-  };
+  const hors = <V>(o: Record<string, V>) => Object.fromEntries(Object.entries(o).filter(([k]) => !k.endsWith(`_${id}`)));
+  return { colonnes: e.colonnes.filter((c) => c.id !== id), cellules: hors(e.cellules), seances: hors(e.seances ?? {}) };
 }
 
+/** Ce qu'une colonne retirée emporte : ses cases et leurs séances. */
+export interface CasesDUneColonne { cellules: Record<string, string>; seances: Record<string, string[]> }
+
 /** Une colonne retirée, et de quoi la remettre à sa place avec ses cases. */
-export function casesDeLaColonne(e: EtatProg, id: string): Record<string, string> {
-  return Object.fromEntries(Object.entries(e.cellules).filter(([k]) => k.endsWith(`_${id}`)));
+export function casesDeLaColonne(e: EtatProg, id: string): CasesDUneColonne {
+  const siennes = <V>(o: Record<string, V>) => Object.fromEntries(Object.entries(o).filter(([k]) => k.endsWith(`_${id}`)));
+  return { cellules: siennes(e.cellules), seances: siennes(e.seances ?? {}) };
 }
 
 /** Remet une colonne retirée à sa place, avec ses cases, sans toucher au reste. */
-export function remettreColonne(e: EtatProg, c: Colonne, place: number, cases: Record<string, string>): EtatProg {
+export function remettreColonne(e: EtatProg, c: Colonne, place: number, cases: CasesDUneColonne): EtatProg {
   if (e.colonnes.some((x) => x.id === c.id)) return e;
   const colonnes = [...e.colonnes];
   colonnes.splice(Math.min(place, colonnes.length), 0, c);
-  return { colonnes, cellules: { ...e.cellules, ...cases } };
+  return { colonnes, cellules: { ...e.cellules, ...cases.cellules }, seances: { ...(e.seances ?? {}), ...cases.seances } };
 }
 
 /** Déplace une colonne d'un cran vers la gauche (-1) ou la droite (1). */
@@ -209,6 +246,15 @@ export function deplacerColonne(e: EtatProg, id: string, sens: -1 | 1): EtatProg
   const colonnes = [...e.colonnes];
   [colonnes[i], colonnes[j]] = [colonnes[j], colonnes[i]];
   return { ...e, colonnes };
+}
+
+/** Les séances placées dans une case (aucune : la clé disparaît). */
+export function avecSeances(e: EtatProg, semaine: number, colonne: string, ids: string[]): EtatProg {
+  const seances = { ...(e.seances ?? {}) };
+  const cle = cleCase(semaine, colonne);
+  if (ids.length) seances[cle] = [...new Set(ids)];
+  else delete seances[cle];
+  return { ...e, seances };
 }
 
 /** Une case écrite (vide, elle disparaît). */

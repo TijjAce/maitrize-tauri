@@ -21,6 +21,19 @@ export function jsonRange(v: unknown): string {
 
 export const memeJson = (a: unknown, b: unknown) => jsonRange(a) === jsonRange(b);
 
+/** Combien d'écritures sont en route, tous écrans confondus. */
+let enRoute = 0;
+
+/**
+ * Attend que plus rien ne soit en route — avant de déplacer ce qu'on édite
+ * (donner un autre niveau à un tableau) : une écriture arrivée après coup
+ * recréerait le tableau là où il n'est plus.
+ */
+export async function ecrituresTerminees(delaiMax = 10000): Promise<void> {
+  const fin = Date.now() + delaiMax;
+  while (enRoute > 0 && Date.now() < fin) await new Promise((r) => setTimeout(r, 40));
+}
+
 /** Les écritures d'une clé : ce que la base a déjà reçu, ce qui reste à envoyer. */
 interface Ecrivain<T> { envoye: T; aEnvoyer: T | null; actif: boolean }
 
@@ -76,6 +89,7 @@ export function useCollectionParEcart<T>(o: OptionsEcriture<T>) {
 
   const vider = async (cle: string, w: Ecrivain<T>) => {
     w.actif = true;
+    enRoute++;
     try {
       while (w.aEnvoyer !== null) {
         const version = w.aEnvoyer;
@@ -89,6 +103,7 @@ export function useCollectionParEcart<T>(o: OptionsEcriture<T>) {
       toast(`${opts.current.echec} : ${String(err)}`, { icone: "⚠️" });
     } finally {
       w.actif = false;
+      enRoute--;
     }
     if (!occupe(w)) opts.current.relire();
   };

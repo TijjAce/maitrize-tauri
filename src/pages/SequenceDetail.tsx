@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Page } from "../App";
 import { demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre, type Demarche } from "../demarches";
 import { MATERIEL_DES_MOTS, avecLaSeanceDesMots, estLaSeanceDesMots } from "../motsDesProblemes";
@@ -45,6 +45,15 @@ export default function SequenceDetail() {
   const { suivis, aujourdHui, recharger: rechargerSuivi } = useSuiviSequences();
   const [edit, setEdit] = React.useState<Seance | null>(null);
   const [voir, setVoir] = React.useState<Seance | null>(null);
+  // « ?seance=… » : on arrive d'une case de la progression, sur la séance qu'elle place.
+  const [params, setParams] = useSearchParams();
+  const aOuvrir = params.get("seance");
+  React.useEffect(() => {
+    if (!aOuvrir || !seances) return;
+    const s = seances.find((x) => x.id === aOuvrir);
+    if (s) setVoir(s);
+    setParams((p) => { p.delete("seance"); return p; }, { replace: true });
+  }, [aOuvrir, seances, setParams]);
   const [del, setDel] = React.useState<Seance | null>(null);
   const [modifier, setModifier] = React.useState(false);
   // Le glisser-déposer des séances : celle qu'on tient, celle qu'on survole.

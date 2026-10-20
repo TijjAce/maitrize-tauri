@@ -128,8 +128,9 @@ pub fn run() {
             referentiels_list, referentiel_save, referentiel_delete,
             notes_competence_list, note_competence_save,
             // Organisation
-            progressions_annuelle_list, progression_annuelle_save, progression_annuelle_ecrire,
+            progressions_annuelle_list, progression_annuelle_save, progression_annuelle_ecrire, progression_annuelle_niveau,
             programmations_finale_list, programmation_finale_save, programmation_finale_ecrire, programmation_finale_delete,
+            programmation_finale_niveau,
             edt_typique_list, edt_typique_save, edt_typique_ecrire,
             // Pièces jointes
             pieces_jointes_list, piece_jointe_save, piece_jointe_delete,
