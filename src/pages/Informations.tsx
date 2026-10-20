@@ -12,7 +12,7 @@ import { avecImages } from "../components/imagesTexte";
 import { documentRempli } from "../dossier";
 import { organisationPour } from "../organisation";
 import { structureDe } from "../classe";
-import { BLOCS_REMPLACANT, DOSSIER_INFORMATIONS, feuilleRemplacant, type DonneesClasse } from "../remplacant";
+import { BLOCS_REMPLACANT, DOSSIER_INFORMATIONS, avecEmploiDuTempsAJour, feuilleRemplacant, type DonneesClasse } from "../remplacant";
 import { lireEtablissement } from "../etablissement";
 
 // ── Organisation → Informations ────────────────────────────────────────────
@@ -95,20 +95,13 @@ export function InformationsTab({ annee }: { annee: string }) {
     reload();
   };
 
+  // Les feuilles en onglets au-dessus : toute la largeur va à la feuille (demande de l'enseignant, octobre 2026).
   return (
     <div className="informations">
-      <aside className="informations-liste" aria-label="Feuilles d'informations">
-        <button className="btn primary" style={{ width: "100%" }} onClick={(e) => openCtx(e, [
-          { label: "Feuille pour un remplaçant (pré-remplie)", icon: "📋", onClick: () => creer(true) },
-          { label: "Feuille vierge", icon: "📄", onClick: () => creer(false) },
-        ])}>＋ Nouvelle feuille</button>
-        {feuilles.length === 0 && (
-          <p style={{ fontSize: 13, color: "var(--text-2)" }}>
-            Préparez ce qu'il faut savoir pour vous remplacer : la classe, l'emploi du temps, les élèves, la sécurité, les contacts.
-          </p>
-        )}
+      <div className="informations-onglets" role="tablist" aria-label="Feuilles d'informations">
         {feuilles.map((f) => (
-          <button key={f.id} className={`informations-feuille${f.id === choisie ? " active" : ""}`} onClick={() => setChoisie(f.id)}
+          <button key={f.id} role="tab" aria-selected={f.id === choisie} className={`informations-feuille${f.id === choisie ? " active" : ""}`}
+            onClick={() => setChoisie(f.id)}
             onContextMenu={(e) => openCtx(e, [
               { label: "Dupliquer", icon: "📑", onClick: () => dupliquer(f) },
               { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: () => supprimer(f) },
@@ -117,7 +110,11 @@ export function InformationsTab({ annee }: { annee: string }) {
             <span className="informations-feuille-date">{new Date(f.dateModification || f.dateCreation).toLocaleDateString("fr-FR")}</span>
           </button>
         ))}
-      </aside>
+        <button className="btn sm" onClick={(e) => openCtx(e, [
+          { label: "Feuille pour un remplaçant (pré-remplie)", icon: "📋", onClick: () => creer(true) },
+          { label: "Feuille vierge", icon: "📄", onClick: () => creer(false) },
+        ])}>＋ Nouvelle feuille</button>
+      </div>
       <section style={{ minWidth: 0 }}>
         {feuille
           ? <EditeurFeuille key={feuille.id} feuille={feuille} annee={annee} onEnregistre={reload}
@@ -133,6 +130,20 @@ function EditeurFeuille({ feuille, annee, onEnregistre, onDupliquer, onSupprimer
 }) {
   const { titre, setTitre, contenu, setContenu, etat, sauver } = useTexteAutosave(feuille, onEnregistre);
   const editeur = React.useRef<EditeurRicheHandle>(null);
+  // L'emploi du temps de la feuille suit celui d'Organisation : refait à l'ouverture, avant que l'éditeur ne la montre.
+  const [depart, setDepart] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    let vivant = true;
+    lireDonneesClasse(annee).then((d) => avecEmploiDuTempsAJour(feuille.contenu, d)).catch(() => feuille.contenu).then((html) => {
+      if (!vivant) return;
+      setDepart(html);
+      if (html !== feuille.contenu) {
+        setContenu(html);
+        toast("L'emploi du temps de la feuille suit celui d'Organisation : il est à jour.", { icone: "🗓" });
+      }
+    });
+    return () => { vivant = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Menu sous le bouton. L'événement réel est gardé pour arrêter sa
   // propagation : sinon le clic, remontant jusqu'à la fenêtre, refermerait le
@@ -153,7 +164,9 @@ function EditeurFeuille({ feuille, annee, onEnregistre, onDupliquer, onSupprimer
   const imprimer = async () => {
     await sauver();
     printHTML(titre || "Informations", await avecImages(nettoyerHtml(contenu)),
-      "h1 { font-size: 20px; } h2 { page-break-after: avoid; } table { page-break-inside: auto; } tr { page-break-inside: avoid; }");
+      "h1 { font-size: 20px; } h2 { page-break-after: avoid; } table { page-break-inside: auto; } tr { page-break-inside: avoid; }"
+      // Un mot ne se coupe pas lettre à lettre dans une colonne étroite (« Horair-e », « Lund-i »).
+      + " th, td { word-break: normal; overflow-wrap: break-word; }");
   };
 
   return (
@@ -166,12 +179,14 @@ function EditeurFeuille({ feuille, annee, onEnregistre, onDupliquer, onSupprimer
         <button className="btn ghost" onClick={onDupliquer} title="Dupliquer">📑</button>
         <button className="btn ghost" onClick={onSupprimer} title="Supprimer" aria-label="Supprimer la feuille">🗑</button>
       </div>
-      <EditeurRiche ref={editeur} valeur={feuille.contenu} onChange={setContenu} minHauteur="58vh"
-        placeholder="Écrivez, ou « Insérer » pour reprendre l'emploi du temps, les élèves…"
-        outils={<button type="button" className="btn sm" onMouseDown={(e) => e.preventDefault()} onClick={inserer}>📥 Insérer ▾</button>} />
+      {depart === null ? <div style={{ minHeight: "58vh" }} /> : (
+        <EditeurRiche ref={editeur} valeur={depart} onChange={setContenu} minHauteur="58vh"
+          placeholder="Écrivez, ou « Insérer » pour reprendre l'emploi du temps, les élèves…"
+          outils={<button type="button" className="btn sm" onMouseDown={(e) => e.preventDefault()} onClick={inserer}>📥 Insérer ▾</button>} />
+      )}
       <div style={{ fontSize: 12, color: "var(--text-2)" }}>
         « Insérer » reprend l'emploi du temps de l'année, les élèves et leurs dispositifs, les axes de travail, les ateliers.
-        Relisez avant d'imprimer : la feuille sort de l'application.
+        L'emploi du temps se met à jour tout seul d'après Organisation. Relisez avant d'imprimer : la feuille sort de l'application.
       </div>
     </div>
   );
