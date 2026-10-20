@@ -15,7 +15,7 @@
 //! de l'état graphique dans lequel la page s'est arrêtée.
 
 use lopdf::content::{Content, Operation};
-use lopdf::{Dictionary, Document, Object, ObjectId, Stream, StringFormat};
+use lopdf::{Dictionary, Document, Encoding, Object, ObjectId, Stream, StringFormat};
 use std::path::PathBuf;
 
 /// Un document à joindre, et ce qu'on écrit en haut de sa première page.
@@ -197,7 +197,7 @@ fn ecrire_bandeau(doc: &mut Document, page: ObjectId, texte: &str) -> Result<(),
             Operation::new("Tf", vec![Object::Name(POLICE_BANDEAU.to_vec()), corps.into()]),
             Operation::new("rg", vec![0.42_f32.into(), 0.44_f32.into(), 0.53_f32.into()]),
             Operation::new("Td", vec![(x0 + 28.0).into(), (y1 - 16.0).into()]),
-            Operation::new("Tj", vec![Object::String(Document::encode_text(Some("WinAnsiEncoding"), &texte), StringFormat::Literal)]),
+            Operation::new("Tj", vec![Object::String(Document::encode_text(&Encoding::SimpleEncoding(b"WinAnsiEncoding"), &texte), StringFormat::Literal)]),
             Operation::new("ET", vec![]),
         ],
     }
@@ -246,7 +246,7 @@ fn ajouter_ressource(doc: &mut Document, page: ObjectId, categorie: &[u8], nom: 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lopdf::dictionary;
+    use ::lopdf::dictionary;
     use printpdf::*;
 
     /// Un PDF de `pages` pages portant chacune un mot, comme printpdf les écrit.
@@ -286,14 +286,14 @@ mod tests {
         let pages = doc.get_pages();
         assert_eq!(pages.len(), 3);
         for n in 2..=3 {
-            let contenu = String::from_utf8_lossy(&doc.get_page_content(pages[&n]).unwrap()).into_owned();
+            let contenu = String::from_utf8_lossy(&doc.get_page_content(pages[&n])).into_owned();
             // Le contenu d'origine est pris entre un changement d'échelle centré et son Q.
             assert!(contenu.contains("0.8000 0 0 0.8000 59.528 84.189 cm"), "page {n} : {contenu}");
             let page = doc.get_dictionary(pages[&n]).unwrap();
             assert!(page.has(b"MediaBox"), "le format ne change pas");
         }
         // Le bandeau, lui, reste à sa taille : il vient après le Q de l'échelle.
-        let deux = String::from_utf8_lossy(&doc.get_page_content(pages[&2]).unwrap()).into_owned();
+        let deux = String::from_utf8_lossy(&doc.get_page_content(pages[&2])).into_owned();
         assert!(deux.rfind("/MtzBandeau").unwrap() > deux.rfind("cm").unwrap());
         let _ = std::fs::remove_file(fiche);
     }
@@ -312,10 +312,10 @@ mod tests {
         let pages = doc.get_pages();
         assert_eq!(pages.len(), 5);
         // Le bandeau est sur la première page jointe, pas sur la suivante.
-        let troisieme = doc.get_page_content(pages[&3]).unwrap();
+        let troisieme = doc.get_page_content(pages[&3]);
         assert!(String::from_utf8_lossy(&troisieme).contains("/MtzBandeau"));
         assert!(String::from_utf8_lossy(&troisieme).starts_with("q\n"), "l'existant est protégé par q … Q");
-        let quatrieme = doc.get_page_content(pages[&4]).unwrap();
+        let quatrieme = doc.get_page_content(pages[&4]);
         assert!(!String::from_utf8_lossy(&quatrieme).contains("/MtzBandeau"));
         // Chaque page jointe a gardé son format et ses ressources.
         for n in 3..=5 {
@@ -335,7 +335,7 @@ mod tests {
         let doc = Document::load_mem(&sortie).expect("le résultat se relit");
         let pages = doc.get_pages();
         assert_eq!(pages.len(), 2);
-        let jointe = doc.get_page_content(pages[&2]).unwrap();
+        let jointe = doc.get_page_content(pages[&2]);
         assert!(!String::from_utf8_lossy(&jointe).contains("/MtzBandeau"), "pas de bandeau sur la fiche d'un élève");
         let _ = std::fs::remove_file(std::env::temp_dir().join(format!("maitrize-fusion-{}-eleve.pdf", std::process::id())));
     }
@@ -355,6 +355,28 @@ mod tests {
         assert!(manques[1].starts_with("Abîmé : "));
         assert_eq!(Document::load_mem(&sortie).unwrap().get_pages().len(), 2);
         let _ = std::fs::remove_file(abime);
+    }
+
+    #[test]
+    fn un_pdf_piege_ne_fait_pas_tomber_l_application() {
+        // Des tableaux imbriqués cent mille fois : lopdf avant la 0.42 s'y
+        // enfonçait jusqu'à déborder la pile, et l'application s'arrêtait net
+        // à l'impression du cahier journal (avis de sécurité de lopdf).
+        let profondeur = 100_000;
+        let mut piege = b"%PDF-1.4\n".to_vec();
+        let objet = piege.len();
+        piege.extend_from_slice(b"1 0 obj\n<< /Type /Catalog /Piege ");
+        piege.extend(std::iter::repeat_n(b'[', profondeur));
+        piege.extend(std::iter::repeat_n(b']', profondeur));
+        piege.extend_from_slice(b" >>\nendobj\n");
+        let xref = piege.len();
+        piege.extend_from_slice(format!("xref\n0 2\n0000000000 65535 f \n{objet:010} 00000 n \ntrailer\n<< /Size 2 /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n").as_bytes());
+        let chemin = fichier("piege.pdf", &piege);
+        let joints = vec![joint("Piégé", chemin.clone()), joint("Bonne fiche", fichier("bonne2.pdf", &pdf("Bonne", 1)))];
+        let (sortie, manques) = joindre(&pdf("Journal", 1), &joints).expect("fusion");
+        assert!(manques.len() == 1 && manques[0].starts_with("Piégé : "), "{manques:?}");
+        assert_eq!(Document::load_mem(&sortie).unwrap().get_pages().len(), 2);
+        let _ = std::fs::remove_file(chemin);
     }
 
     #[test]
