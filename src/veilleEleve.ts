@@ -50,14 +50,37 @@ const LETTRE = /[\p{L}\p{N}'’-]/u;
 export const prenomDe = (nom: string) => nom.trim().split(/\s+/)[0] ?? "";
 
 /**
+ * Ce qui désigne un élève dans un texte de la classe : son prénom, s'il est
+ * le seul à le porter. Deux élèves de même prénom ne se reconnaissent qu'à
+ * leur nom entier, ou à leur prénom suivi de l'initiale du nom (« Zoé M. »)
+ * quand elle les départage : « Zoé a lu » ne dit pas laquelle, et la phrase
+ * allait aux deux (notes du bilan, fiches, synthèse). `classe` : les noms de
+ * toute la classe, l'élève compris ou non.
+ */
+export function clesDeLEleve(nom: string, classe: string[]): string[] {
+  const plie = (t: string) => t.trim().toLocaleLowerCase("fr");
+  const entier = nom.trim().split(/\s+/).join(" ");
+  const prenom = prenomDe(entier);
+  if (!prenom) return [];
+  const homonymes = classe.map((n) => n.trim().split(/\s+/).join(" "))
+    .filter((n) => plie(n) !== plie(entier) && plie(prenomDe(n)) === plie(prenom));
+  if (!homonymes.length) return [prenom];
+  const cles = entier.includes(" ") ? [entier] : [];
+  const initiale = (n: string) => plie(n.split(" ")[1]?.[0] ?? "");
+  const lui = initiale(entier);
+  if (lui && !homonymes.some((n) => initiale(n) === lui)) cles.push(`${prenom} ${entier.split(" ")[1][0].toLocaleUpperCase("fr")}.`);
+  return cles;
+}
+
+/**
  * Le texte nomme-t-il cette personne ?
  *
  * Mot entier et initiale majuscule : « Rose a rangé » parle d'une élève,
  * « une fleur rose » non. Même règle que le masquage des noms, pour que ce
  * qui est repéré ici soit bien ce qui sera masqué avant l'envoi.
  */
-export function citeLePrenom(texte: string, prenom: string): boolean {
-  return positionsDuPrenom(texte, prenom).length > 0;
+export function citeLePrenom(texte: string, prenom: string | string[]): boolean {
+  return (Array.isArray(prenom) ? prenom : [prenom]).some((p) => positionsDuPrenom(texte, p).length > 0);
 }
 
 /** Où le texte nomme cette personne, selon la même règle : le début de chaque mention. */
@@ -86,7 +109,7 @@ export function positionsDuPrenom(texte: string, prenom: string): number[] {
  * Un bilan de créneau raconte six élèves : en verser l'intégralité dans la
  * synthèse de l'un d'eux serait faux, et indiscret pour les cinq autres.
  */
-export function phrasesQuiCitent(texte: string, prenom: string): string {
+export function phrasesQuiCitent(texte: string, prenom: string | string[]): string {
   // Découpage à la main : la recherche en arrière (lookbehind) plante les
   // webviews de macOS 11, et c'est la seule façon simple de couper « après »
   // un point sans le perdre.
@@ -95,7 +118,12 @@ export function phrasesQuiCitent(texte: string, prenom: string): string {
   for (const ch of texte) {
     if (ch === "\n") { phrases.push(courante); courante = ""; continue; }
     courante += ch;
-    if (".!?…".includes(ch)) { phrases.push(courante); courante = ""; }
+    if (".!?…".includes(ch)) {
+      // « Zoé M. a lu », « M. Durand » : le point d'une initiale ne finit pas la phrase.
+      const lettre = courante[courante.length - 2] ?? "", avant = courante[courante.length - 3] ?? " ";
+      if (ch === "." && lettre !== lettre.toLocaleLowerCase("fr") && /\s/.test(avant)) continue;
+      phrases.push(courante); courante = "";
+    }
   }
   phrases.push(courante);
   return phrases.map((p) => p.trim()).filter((p) => p && citeLePrenom(p, prenom)).join(" ");
@@ -121,7 +149,7 @@ export function ecritsDesObservations(observations: CommentaireEleve[], eleveId:
  * On lit le bilan et le prévu des créneaux où il était, et l'on n'en garde
  * que les phrases qui le nomment : le reste appartient au groupe.
  */
-export function ecritsDuJournal(creneaux: Creneau[], eleveId: string, prenom: string): Ecrit[] {
+export function ecritsDuJournal(creneaux: Creneau[], eleveId: string, prenom: string | string[]): Ecrit[] {
   const ecrits: Ecrit[] = [];
   for (const c of creneaux) {
     if (c.nature === "reunion") continue;
@@ -146,7 +174,7 @@ export function ecritsDuJournal(creneaux: Creneau[], eleveId: string, prenom: st
 }
 
 /** Ce qu'une réunion a dit de lui : compte rendu, ou résumés de tranches. */
-export function ecritsDesReunions(reunions: Reunion[], prenom: string): Ecrit[] {
+export function ecritsDesReunions(reunions: Reunion[], prenom: string | string[]): Ecrit[] {
   const ecrits: Ecrit[] = [];
   for (const r of reunions) {
     const morceaux: string[] = [];
@@ -175,8 +203,10 @@ export function rassembler(sources: {
   reunions: Reunion[];
   eleveId: string;
   nom: string;
+  /** Les noms de la classe : deux élèves de même prénom ne se confondent pas (voir clesDeLEleve). */
+  classe?: string[];
 }): Ecrit[] {
-  const prenom = prenomDe(sources.nom);
+  const prenom = clesDeLEleve(sources.nom, sources.classe ?? []);
   return [
     ...ecritsDesObservations(sources.observations, sources.eleveId),
     ...ecritsDuJournal(sources.creneaux, sources.eleveId, prenom),

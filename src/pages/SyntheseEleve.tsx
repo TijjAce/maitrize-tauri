@@ -117,7 +117,7 @@ export function SyntheseEleveTab() {
       api.reunionsList().catch(() => []),
     ]).then(([observations, creneaux, reunions]) => {
       if (!actif) return;
-      const tout = rassembler({ observations, creneaux, reunions, eleveId, nom: nomEleve });
+      const tout = rassembler({ observations, creneaux, reunions, eleveId, nom: nomEleve, classe: (eleves ?? []).map((e) => e.nom) });
       setEcrits(tout.filter((e) => (!synthese.debut || e.date >= synthese.debut) && (!synthese.fin || e.date <= synthese.fin)));
     }).catch(() => { if (actif) setEcrits([]); });
     return () => { actif = false; };

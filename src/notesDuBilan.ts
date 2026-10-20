@@ -11,7 +11,7 @@
 import { api, nowIso, type CommentaireEleve, type Creneau, type Eleve, type ObservationEleve } from "./api";
 import { natureDe } from "./heures";
 import { fichesANourrir, observationVide } from "./observationEleve";
-import { phrasesQuiCitent, prenomDe } from "./veilleEleve";
+import { clesDeLEleve, phrasesQuiCitent } from "./veilleEleve";
 
 /** La note qu'un créneau a portée au dossier d'un élève : la même à chaque reprise du bilan. */
 export const idNoteDuBilan = (creneauId: string, eleveId: string) => `bilan:${creneauId}:${eleveId}`;
@@ -33,10 +33,12 @@ export function notesDuBilan(
   const aEcrire: CommentaireEleve[] = [];
   const aRetirer: string[] = [];
   const nouvelles: string[] = [];
+  const classe = eleves.map((e) => e.nom);
   for (const e of eleves) {
     const id = idNoteDuBilan(creneau.id, e.id);
     const deja = parId.get(id);
-    const dit = phrasesQuiCitent(bilan ?? "", prenomDe(e.nom)).trim();
+    // Son prénom, ou de quoi le distinguer d'un élève de même prénom.
+    const dit = phrasesQuiCitent(bilan ?? "", clesDeLEleve(e.nom, classe)).trim();
     if (!dit) { if (deja) aRetirer.push(id); continue; }
     const texte = titre ? `${titre} : ${dit}` : dit;
     if (deja && deja.texte === texte && deja.date === date) continue;

@@ -38,6 +38,15 @@ describe("le bilan, jusqu'aux notes des élèves", () => {
     const [n] = notesDuBilan([], { ...creneau, nature: "reunion" }, "ESS de Rose : maintien des aménagements.", eleves).aEcrire;
     expect([n.eleveId, n.type]).toEqual(["e3", "divers"]);
   });
+
+  it("deux élèves de même prénom : seul celui que le bilan désigne reçoit la note", () => {
+    const deuxZoe = [{ id: "z1", nom: "Zoé Martin" }, { id: "z2", nom: "Zoé Tessier" }, { id: "e1", nom: "AMEDEE" }];
+    const qui = (bilan: string) => notesDuBilan([], creneau, bilan, deuxZoe).aEcrire.map((n) => n.eleveId);
+    // « Zoé » seule ne dit pas laquelle : aucune des deux.
+    expect(qui("Zoé a lu seule.")).toEqual([]);
+    expect(qui("Zoé M. a lu seule.")).toEqual(["z1"]);
+    expect(qui("Zoé Tessier a lu seule. AMEDEE l'a aidée.")).toEqual(["z2", "e1"]);
+  });
 });
 
 describe("les fiches nées des bilans d'avant", () => {
