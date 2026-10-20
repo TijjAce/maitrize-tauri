@@ -1097,6 +1097,12 @@ const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const toMin = (s: string) => { const [h, m] = s.split(":").map(Number); return (h || 0) * 60 + (m || 0); };
 const minHHMM = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 const EDT_H_PX = 56;
+/** La colonne des heures, à gauche de la grille. */
+const EDT_COL_HEURES = 52;
+/** En dessous de cette hauteur, un créneau tient sur une ligne : l'heure, puis l'intitulé. */
+const EDT_COMPACT_PX = 40;
+/** À partir de cette hauteur, une troisième ligne tient entière : les élèves présents. */
+const EDT_ELEVES_PX = 56;
 
 // Répartit en colonnes (lanes) les slots qui se chevauchent dans un jour.
 function layoutSlots(ss: Slot[]): Map<string, { lane: number; lanes: number }> {
@@ -1341,8 +1347,8 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
     const onMove = (ev: MouseEvent) => {
       const cur = dragRef.current; const box = colsRef.current?.getBoundingClientRect();
       if (!cur || !box) return;
-      const colW = (box.width - 44) / 5;
-      const ji = Math.max(0, Math.min(4, Math.floor((ev.clientX - box.left - 44) / colW)));
+      const colW = (box.width - EDT_COL_HEURES) / 5;
+      const ji = Math.max(0, Math.min(4, Math.floor((ev.clientX - box.left - EDT_COL_HEURES) / colW)));
       const yMin = EDT_H_DEBUT * 60 + (ev.clientY - box.top) / hpx * 60 - cur.grabOffMin;
       const start = Math.max(EDT_H_DEBUT * 60, Math.min(EDT_H_FIN * 60 - cur.durMin, Math.round(yMin / 15) * 15));
       majDrag({ ...cur, jourIndex: ji, startMin: start });
@@ -1402,31 +1408,39 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
         </div>
       )}
 
-      <div ref={cadre} className="card" style={{ padding: 0, overflow: "hidden" }}>
-        {/* En-têtes jours */}
-        <div style={{ display: "grid", gridTemplateColumns: `44px repeat(5, 1fr)`, borderBottom: "1px solid var(--border)" }}>
-          <div />
-          {JOURS.map((j) => <div key={j} style={{ textAlign: "center", padding: "8px 0", borderLeft: "1px solid var(--border)", background: "var(--panel-2)", fontWeight: 700, fontSize: 13 }}>{j}</div>)}
+      {/* Dans les couleurs de la progression : le même cadre, les jours en tête
+          comme ses semaines, chaque créneau en case teintée de sa couleur. */}
+      <div ref={cadre} className="edt-cadre">
+        <div className="edt-tete" style={{ gridTemplateColumns: `${EDT_COL_HEURES}px repeat(5, 1fr)` }}>
+          <div className="edt-coin">Heure</div>
+          {JOURS.map((j) => (
+            <div key={j} className="edt-jour">
+              <b>{j}</b>
+              {temps.jours[j].total > 0 && <span>{duree(temps.jours[j].total)}</span>}
+            </div>
+          ))}
         </div>
         {/* Grille */}
-        <div ref={colsRef} style={{ display: "grid", gridTemplateColumns: `44px repeat(5, 1fr)` }}>
-          <div style={{ position: "relative", height: hauteur }}>
-            {heures.map((h, i) => <div key={h} style={{ position: "absolute", top: Math.min(i * hpx - 7, hauteur - 14), right: 6, fontSize: 11, color: "var(--text-2)" }}>{h}h</div>)}
+        <div ref={colsRef} style={{ display: "grid", gridTemplateColumns: `${EDT_COL_HEURES}px repeat(5, 1fr)` }}>
+          <div className="edt-heures" style={{ height: hauteur }}>
+            {heures.map((h, i) => <div key={h} className="edt-heure" style={{ top: Math.max(3, Math.min(i * hpx - 7, hauteur - 14)) }}>{h}h</div>)}
           </div>
           {JOURS.map((j, ji) => {
             const dayNormal = slots.filter((s) => s.jour === j && s.id !== drag?.id);
             const lay = layoutSlots(dayNormal);
             const dragged = drag && drag.jourIndex === ji ? slots.find((s) => s.id === drag.id) : null;
             return (
-              <div key={j} onClick={(e) => { if (!deplacer) creerA(j, e); }}
-                style={{ position: "relative", height: hauteur, borderLeft: "1px solid var(--border)", cursor: deplacer ? "default" : "pointer" }}>
-                {heures.map((_, i) => <div key={i} style={{ position: "absolute", top: i * hpx, left: 0, right: 0, borderTop: "1px solid var(--border)", opacity: 0.5 }} />)}
+              <div key={j} className="edt-colonne" onClick={(e) => { if (!deplacer) creerA(j, e); }}
+                style={{ height: hauteur, cursor: deplacer ? "default" : "pointer" }}>
+                {heures.map((_, i) => <div key={i} className="edt-ligne" style={{ top: i * hpx }} />)}
                 {dayNormal.map((s) => {
                   const top = (toMin(s.heureDebut) - EDT_H_DEBUT * 60) / 60 * hpx;
                   const h = Math.max(20, (toMin(s.heureFin) - toMin(s.heureDebut)) / 60 * hpx);
                   const { lane, lanes } = lay.get(s.id) || { lane: 0, lanes: 1 };
+                  const titre = `${natureDuSlot(s) === "reunion" ? "🗣️ " : ""}${s.titre}`;
+                  const court = h < EDT_COMPACT_PX;
                   return (
-                    <div key={s.id} className="cren-block"
+                    <div key={s.id} className={`cren-block edt-creneau${court ? " compact" : ""}${deplacer ? " deplacable" : ""}`}
                       onMouseDown={(e) => onDragStart(s, e)}
                       onClick={(e) => { e.stopPropagation(); if (!deplacer) setEdit(s); }}
                       onContextMenu={(e) => openCtx(e, [
@@ -1434,18 +1448,25 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
                         { label: "Dupliquer", icon: "📑", onClick: () => persister([...slots, { ...s, id: newId() }]) },
                         { label: "Supprimer", icon: "🗑", danger: true, sep: true, onClick: () => supprimer(s.id) },
                       ])}
-                      style={{ position: "absolute", top, height: h - 2, left: `calc(${(lane / lanes) * 100}% + 3px)`, width: `calc(${100 / lanes}% - 6px)`,
-                        background: couleurHex[couleurPourMatiere(s.titre)] || couleurHex.blue, borderRadius: 7, color: "#fff", padding: "3px 6px",
-                        overflow: "hidden", fontSize: 11, lineHeight: 1.25, boxShadow: "0 1px 3px rgba(0,0,0,.2)",
-                        outline: deplacer ? "2px dashed rgba(255,255,255,.7)" : "none", cursor: deplacer ? "grab" : "pointer", userSelect: "none" }}>
-                      <div style={{ opacity: 0.9 }}>{s.heureDebut}–{s.heureFin}</div>
-                      <div style={{ fontWeight: 700 }}>{natureDuSlot(s) === "reunion" ? "🗣️ " : ""}{s.titre}</div>
-                      {(s.eleves?.length ?? 0) > 0 && (
-                        <div style={{ opacity: 0.92, fontSize: 10, lineHeight: 1.2 }}>
-                          👥 {s.eleves!.length} · {s.eleves!
-                            .map((id) => (eleves ?? []).find((e) => e.id === id)?.nom.split(" ")[0])
-                            .filter(Boolean).join(", ")}
-                        </div>
+                      style={{ top, height: h - 2, left: `calc(${(lane / lanes) * 100}% + 3px)`, width: `calc(${100 / lanes}% - 6px)`,
+                        "--couleur": couleurHex[couleurPourMatiere(s.titre)] || couleurHex.blue } as React.CSSProperties}>
+                      {court ? (
+                        <>
+                          <span className="edt-creneau-heure">{s.heureDebut}</span>
+                          <span className="edt-creneau-titre">{titre}</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="edt-creneau-heure">{s.heureDebut}–{s.heureFin}</div>
+                          <div className="edt-creneau-titre">{titre}</div>
+                          {h >= EDT_ELEVES_PX && (s.eleves?.length ?? 0) > 0 && (
+                            <div className="edt-creneau-eleves">
+                              👥 {s.eleves!.length} · {s.eleves!
+                                .map((id) => (eleves ?? []).find((e) => e.id === id)?.nom.split(" ")[0])
+                                .filter(Boolean).join(", ")}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   );
@@ -1453,12 +1474,23 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
                 {dragged && (() => {
                   const top = (drag!.startMin - EDT_H_DEBUT * 60) / 60 * hpx;
                   const h = Math.max(20, drag!.durMin / 60 * hpx);
+                  const debut = minHHMM(drag!.startMin), fin = minHHMM(drag!.startMin + drag!.durMin);
+                  const court = h < EDT_COMPACT_PX;
                   return (
-                    <div className="cren-block" style={{ position: "absolute", top, height: h - 2, left: 3, width: "calc(100% - 6px)",
-                      background: couleurHex[couleurPourMatiere(dragged.titre)] || couleurHex.blue, borderRadius: 7, color: "#fff", padding: "3px 6px",
-                      overflow: "hidden", fontSize: 11, lineHeight: 1.25, boxShadow: "0 4px 14px rgba(0,0,0,.35)", opacity: 0.92, zIndex: 10, userSelect: "none" }}>
-                      <div style={{ opacity: 0.9 }}>{minHHMM(drag!.startMin)}–{minHHMM(drag!.startMin + drag!.durMin)}</div>
-                      <div style={{ fontWeight: 700 }}>{dragged.titre}</div>
+                    <div className={`cren-block edt-creneau glisse${court ? " compact" : ""}`}
+                      style={{ top, height: h - 2, left: 3, width: "calc(100% - 6px)",
+                        "--couleur": couleurHex[couleurPourMatiere(dragged.titre)] || couleurHex.blue } as React.CSSProperties}>
+                      {court ? (
+                        <>
+                          <span className="edt-creneau-heure">{debut}</span>
+                          <span className="edt-creneau-titre">{dragged.titre}</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="edt-creneau-heure">{debut}–{fin}</div>
+                          <div className="edt-creneau-titre">{dragged.titre}</div>
+                        </>
+                      )}
                     </div>
                   );
                 })()}
