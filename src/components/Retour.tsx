@@ -16,7 +16,6 @@ import { PageVisibleContext } from "./ui";
 export type MenuLieux = { to: string; label: string }[];
 
 export const RACCOURCI_RETOUR = isMac ? "⌘⌥←" : "Ctrl+Alt+←";
-export const RACCOURCI_AVANCE = isMac ? "⌘⌥→" : "Ctrl+Alt+→";
 
 /** L'historique, tel que React le voit. */
 export const useHistorique = () => React.useSyncExternalStore(historique.abonner, historique.lire);

@@ -32,15 +32,6 @@ import { nomsAMasquer } from "./nomsAMasquer";
 export const TRANCHE_S = 300;
 
 /**
- * Le morceau d'audio envoyé à la transcription.
- *
- * C'est le rythme auquel le texte s'écrit à l'écran : trois quarts de minute,
- * assez court pour voir la réunion s'écrire, assez long pour qu'une phrase
- * coupée en deux reste rare.
- */
-export const MORCEAU_S = 45;
-
-/**
  * Le rangement au fil de l'eau : dès la phrase suivante.
  *
  * Il ne s'agit pas d'attendre d'avoir de quoi résumer, mais de ne jamais
@@ -79,8 +70,6 @@ export const GENRES = [
   "Autre réunion",
 ] as const;
 
-export type Genre = (typeof GENRES)[number];
-
 export type EtatTranche = "attente" | "transcription" | "resume" | "fait" | "echec";
 
 /** Cinq minutes de réunion : ce qui a été dit, et ce qu'on en retient. */
@@ -110,16 +99,11 @@ export function dureeLisible(secondes: number): string {
   return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}`;
 }
 
-/** Ce qui reste avant la prochaine coupe. */
-export function restantAvantLaCoupe(secondesDeLaTranche: number, tranche = TRANCHE_S): number {
-  return Math.max(0, tranche - secondesDeLaTranche);
-}
-
-// ── Lecture et écriture des tranches ──────────────────────────────────────
+// ── Lecture des tranches ──────────────────────────────────────────────────
 //
-// Une tranche encore en cours de transcription n'a pas à être enregistrée
-// comme telle : si l'application se ferme entre-temps, l'audio est perdu et
-// l'état « transcription en cours » ne voudrait plus rien dire au retour.
+// Une tranche relue n'est jamais « en cours » : si l'application s'est fermée
+// pendant sa transcription, l'audio est perdu, et cet état ne voudrait plus
+// rien dire au retour.
 
 export function lireTranches(json: string): Tranche[] {
   let brut: unknown;
@@ -145,18 +129,6 @@ export function lireTranches(json: string): Tranche[] {
     }];
   });
 }
-
-export function ecrireTranches(tranches: Tranche[]): string {
-  const posables = tranches
-    .filter((t) => t.etat === "fait" || t.etat === "echec")
-    .map((t) => ({
-      id: t.id, rang: t.rang, debut: t.debut, fin: t.fin,
-      transcription: t.transcription, resume: t.resume, etat: t.etat,
-      ...(t.erreur ? { erreur: t.erreur } : {}),
-    }));
-  return JSON.stringify(posables);
-}
-
 
 // ── Le texte de la réunion, et ses résumés ────────────────────────────────
 //
@@ -359,7 +331,6 @@ export function promptCompteRendu(r: {
     { role: "user" as const, content: `${entete}\n\nRésumés successifs :\n${r.resumes}` },
   ];
 }
-
 
 // ── Le compte rendu vivant ────────────────────────────────────────────────
 //

@@ -258,8 +258,6 @@ export function situationDe(id: SituationId, perso: SituationPerso = PERSO_VIDE)
   };
 }
 
-export const nomDeLaSituation = (id: SituationId, perso?: SituationPerso) => situationDe(id, perso).nom;
-
 // ── Les réglages ──────────────────────────────────────────────────────────
 
 /** Jusqu'où vont les quantités à chaque âge, d'après le programme 2025 : trois, voire quatre ; six ; dix. */

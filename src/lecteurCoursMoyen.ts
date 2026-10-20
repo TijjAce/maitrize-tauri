@@ -16,15 +16,6 @@ import { feuille } from "./cartesImprimables";
 
 export type ExerciceLecteurCM = "carnet" | "relier" | "lectures" | "cercle" | "presenter" | "entrees";
 
-export const EXERCICES_LECTEUR_CM: { id: ExerciceLecteurCM; libelle: string }[] = [
-  { id: "carnet", libelle: "La page du carnet de lecteur" },
-  { id: "relier", libelle: "Relier deux œuvres" },
-  { id: "lectures", libelle: "Mes lectures de l'année" },
-  { id: "cercle", libelle: "Le cercle de lecture : les rôles" },
-  { id: "presenter", libelle: "Présenter un livre : défi lecture, podcast" },
-  { id: "entrees", libelle: "Choisir ses lectures : les six entrées" },
-];
-
 export interface ReglagesLecteurCM { classe: "CM1" | "CM2"; exercice: ExerciceLecteurCM; livre: string; titre?: string }
 export const REGLAGES_LECTEUR_CM: ReglagesLecteurCM = { classe: "CM1", exercice: "carnet", livre: "" };
 

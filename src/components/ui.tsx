@@ -153,10 +153,6 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (c: 
   );
 }
 
-export function Dot({ couleur }: { couleur: string }) {
-  return <span className="dot" style={{ background: couleurHex[couleur] || couleurHex.blue }} />;
-}
-
 /**
  * Demande une courte saisie à l'enseignant.
  *

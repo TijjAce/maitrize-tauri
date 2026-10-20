@@ -16,7 +16,6 @@ import { api } from "../api";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { graineAuHasard, hasard } from "../hasard";
 import { useGraine } from "../modifierFeuille";
-import { SONS, syllabes } from "../lectureSons";
 import {
   PAIRES_DISTINCTIVES, REGLAGES_LETTRES, REGLAGES_LOTO_SYLLABES, STYLE_JEUX_SONS, dominos, htmlDominos, htmlIntrus, htmlLettres,
   htmlLotoSyllabes, htmlPaires, lignesIntrus, motsDesPaires, nbSyllabes, pairesQuiSenchainent, planchesLotoSyllabes,
@@ -418,9 +417,3 @@ export function LettresTab() {
     />
   );
 }
-
-/** Les syllabes d'un son, pour remplir d'autres jeux (le jeu de l'oie). */
-export const syllabesDuSon = (id: string) => {
-  const son = SONS.find((s) => s.id === id);
-  return son ? syllabes(son, 10) : [];
-};

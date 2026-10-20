@@ -649,6 +649,3 @@ export const STYLE_VPC = `
   .feuille.vp .vp-canard-deco figcaption { font-size: 13px; font-weight: 700; color: #4a5168; }
   ${STYLE_CANARDS_DESSINES}
 `;
-
-/** La feuille d'un atelier réutilisé, son style : pour l'aperçu de l'atelier « Le Vilain Petit Canard ». */
-export const STYLES_DES_ATELIERS: Record<FeuilleVpc["atelier"], string> = { categoriser: STYLE_CATEGORISER, suites: STYLE_SUITES, vilainPetitCanard: STYLE_VPC };

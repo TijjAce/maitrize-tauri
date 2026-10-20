@@ -173,10 +173,6 @@ export function domaineDeLaSeance(seance: Pick<Seance, "competences">, sequence?
 /** Les étapes d'une séance pour l'élève — ses consignes, ou ses phases dites pour lui (voir aidesALaTache). */
 export type EtapesDeLaSeance = (s: Seance) => string[];
 
-/** Les élèves qui ont des fiches au créneau, par leur prénom, dans l'ordre du prévu : chacun a sa tablette. */
-export const elevesDesFiches = (fiches: MaterielItem[]): string[] =>
-  [...new Set(fiches.map((m) => eleveDeLaFiche(m)?.prenom ?? "").filter(Boolean))];
-
 /** Les élèves qui ont quelque chose à faire au créneau — une fiche, une séance —, dans l'ordre du prévu. */
 export const elevesDuCreneau = (aFaire: AFaire[]): string[] => [...new Set(aFaire.map((x) => x.eleve).filter(Boolean))];
 

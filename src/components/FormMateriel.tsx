@@ -1,10 +1,9 @@
 import React from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { api, MaterielItem, Referentiel, CYCLES } from "../api";
 import { Modal, Field, Input, Textarea, Select, useAsync } from "./ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "./CompetenceTree";
 import { FileListEditor } from "./SeanceParts";
-import { lireVideos, lireLien, vignetteYoutube, integrationYoutube, nomVideo, Video } from "../videos";
+import { lireVideos, lireLien, nomVideo, Video } from "../videos";
 
 // Fiche d'un matériel, ouverte depuis le plan de travail.
 //
@@ -68,62 +67,7 @@ export function FormMateriel({ m, onClose, onSaved }: { m: MaterielItem; onClose
   );
 }
 
-
 // ── Vidéos ─────────────────────────────────────────────────────────────────
-//
-// Les vignettes viennent de YouTube et demandent donc le réseau. Hors ligne,
-// la case affiche le nom plutôt qu'un cadre cassé : le lien reste utilisable,
-// c'est lui qui compte.
-
-export function Vignettes({ videos }: { videos: Video[] }) {
-  const [lecture, setLecture] = React.useState<Video | null>(null);
-  if (!videos.length) return null;
-  return (
-    <>
-      <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-        {videos.map((v, i) => (
-          <button key={i} onClick={() => setLecture(v)} title={nomVideo(v)}
-            style={{ border: "1px solid var(--border)", borderRadius: 8, padding: 0, cursor: "pointer",
-              background: "var(--panel-2)", width: 104, overflow: "hidden", textAlign: "left" }}>
-            {v.youtubeId ? (
-              <img src={vignetteYoutube(v.youtubeId)} alt="" loading="lazy"
-                style={{ width: "100%", aspectRatio: "16/9", objectFit: "cover", display: "block" }}
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-            ) : (
-              <div style={{ width: "100%", aspectRatio: "16/9", display: "flex", alignItems: "center",
-                justifyContent: "center", fontSize: 20 }}>🎬</div>
-            )}
-            <div style={{ fontSize: 10.5, padding: "3px 5px", color: "var(--text-2)",
-              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {nomVideo(v)}
-            </div>
-          </button>
-        ))}
-      </div>
-      {lecture && <LecteurVideo video={lecture} onClose={() => setLecture(null)} />}
-    </>
-  );
-}
-
-/** Lit une vidéo dans l'application, avec une sortie vers le navigateur. */
-export function LecteurVideo({ video, onClose }: { video: Video; onClose: () => void }) {
-  return (
-    <Modal titre={nomVideo(video)} onClose={onClose} large
-      footer={<>
-        <button className="btn" onClick={() => openUrl(video.url).catch(() => window.open(video.url, "_blank"))}>
-          ↗ Ouvrir dans le navigateur
-        </button>
-        <button className="btn primary" onClick={onClose}>Fermer</button>
-      </>}>
-      {video.youtubeId ? (
-        <iframe src={integrationYoutube(video.youtubeId)} title="Vidéo" allowFullScreen
-          style={{ width: "100%", aspectRatio: "16/9", border: "none", borderRadius: 8 }} />
-      ) : (
-        <p style={{ fontSize: 13, wordBreak: "break-all" }}>{video.url}</p>
-      )}
-    </Modal>
-  );
-}
 
 /**
  * Ajout de liens vidéo : collés, ou déposés depuis le navigateur.
