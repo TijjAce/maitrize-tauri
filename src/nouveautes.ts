@@ -18,6 +18,19 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.34",
+    titre: "L'agent de synthèse, quatre styles bien distincts, et des générateurs qui posent leurs questions",
+    points: [
+      { quoi: "L'agent de synthèse : il lit sur votre ordinateur tout ce qui concerne l'élève — observations, temps d'observation, cahier journal, évaluations, PAP, PPRE et PPS, PPI, GEVA-Sco, réunions —, puis Mistral rédige la synthèse. Un petit chat avance sur la barre et laisse une empreinte à chaque source lue. Ni la santé, ni les coordonnées, ni la famille ne sont lues, et les noms partent remplacés par des repères, ceux des adultes compris.", ou: "Élèves › Dossier › Synthèse" },
+      { quoi: "La Synthèse rejoint le Dossier : « 📁 Dossier » et « 📋 Synthèse » en tête de l'onglet, avec le même élève d'une vue à l'autre. « 🐈 Synthèse par l'agent » la lance depuis le dossier.", ou: "Élèves › Dossier" },
+      { quoi: "Mes générateurs : décrivez la feuille voulue. Quand la demande ne suffit pas, l'IA pose ses questions une à une, quatre au plus, avec des réponses à cliquer ; « Passer » et « Créer maintenant » vont plus vite. L'écran de création est plus clair.", ou: "Fabriquer › Mes générateurs" },
+      { quoi: "Quatre styles d'interface bien distincts : Doux, Épuré, Contrasté et Vitré changent pour de bon les arrondis, les bordures, les ombres et le fond. Chaque bouton montre l'aperçu de son style.", ou: "Réglages › Apparence › Style d'interface" },
+      { quoi: "Plus fluide : en Vitré, le flou ne reste que sous les fenêtres et les menus, et le liseré lumineux tourne sans rien redessiner. La fenêtre ramait un peu depuis ces styles.", ou: "Réglages › Apparence" },
+      { quoi: "La feuille pour un remplaçant : son emploi du temps se remet à jour d'après celui d'Organisation à chaque ouverture. Les feuilles se rangent en onglets, et la feuille ouverte prend toute la largeur.", ou: "Organisation › Informations" },
+      { quoi: "Et aussi : les périodes de la progression se choisissent à côté de l'année ; les évaluations tiennent dans une seule barre rangée par nature, Sommative (évaluations notées, synthèse GS) et Diagnostique (grilles d'observation) ; en Vitré sur un thème sombre, l'onglet choisi se voit enfin.", ou: "Organisation › Progression · Élèves › Évaluations" },
+    ],
+  },
+  {
     version: "1.6.33",
     titre: "Revenir en arrière, votre travail sur le Bureau, et la progression par niveau",
     points: [
