@@ -349,14 +349,19 @@ pub fn nom_du_href(href: &str) -> String {
 }
 
 /// L'inverse de `encoder` : « %C3%A9 » redevient « é ».
+///
+/// Lu octet par octet : découper le texte après un « % » tombait au milieu
+/// d'une lettre accentuée (« %é »), et une adresse renvoyée par le serveur
+/// faisait paniquer l'application.
 fn decoder(texte: &str) -> String {
+    let chiffre = |o: u8| (o as char).to_digit(16).map(|d| d as u8);
     let octets = texte.as_bytes();
     let mut sortie: Vec<u8> = Vec::with_capacity(octets.len());
     let mut i = 0;
     while i < octets.len() {
         if octets[i] == b'%' && i + 2 < octets.len() {
-            if let Ok(v) = u8::from_str_radix(&texte[i + 1..i + 3], 16) {
-                sortie.push(v);
+            if let (Some(haut), Some(bas)) = (chiffre(octets[i + 1]), chiffre(octets[i + 2])) {
+                sortie.push(haut << 4 | bas);
                 i += 3;
                 continue;
             }
@@ -789,6 +794,16 @@ mod tests {
     fn le_nom_se_relit_dans_l_adresse() {
         assert_eq!(nom_du_href("/remote.php/dav/files/c/%C3%89quipe/exo%20un.pdf"), "exo un.pdf");
         assert_eq!(nom_du_href("/remote.php/dav/files/c/Maths/"), "Maths");
+    }
+
+    #[test]
+    fn une_adresse_piegee_ne_fait_pas_paniquer() {
+        // Un « % » suivi d'une lettre accentuée, ou de rien : laissé tel quel.
+        assert_eq!(decoder("a%éb"), "a%éb");
+        assert_eq!(decoder("%é"), "%é");
+        assert_eq!(decoder("fin%2"), "fin%2");
+        assert_eq!(decoder("%zz%41"), "%zzA");
+        assert_eq!(decoder("%C3%A9t%C3%A9"), "été");
     }
 
     /// Une réponse telle que Nextcloud la renvoie : le dossier demandé en
