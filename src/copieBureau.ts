@@ -21,6 +21,18 @@ import { infosDuJeu, jeuxCites, regleEcrite, sansMarqueurs, STYLE_REGLES } from 
 /** Change quand la forme des fichiers écrits change : ils sont alors tous réécrits. */
 const VERSION = "1";
 
+/** Le plan de travail, dans le dossier de tout le travail (« Maitrize/Plan de travail »). */
+export const PARTIE_PLAN = "Plan de travail";
+
+/** Range un plan sous une partie du dossier : ses chemins et ses dossiers en prennent le nom devant. */
+export function sousLaPartie<P extends { fichiers: { chemin: string }[]; dossiers: string[] }>(partie: string, plan: P): P {
+  return {
+    ...plan,
+    fichiers: plan.fichiers.map((f) => ({ ...f, chemin: `${partie}/${f.chemin}` })),
+    dossiers: [partie, ...plan.dossiers.map((d) => `${partie}/${d}`)],
+  };
+}
+
 export interface DonneesBureau {
   sequences: Sequence[];
   seances: Seance[];

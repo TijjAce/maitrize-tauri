@@ -20,8 +20,15 @@ use tauri::State;
 
 type R<T> = Result<T, String>;
 
-/// Le dossier créé dans l'emplacement choisi.
-pub const NOM_RACINE: &str = "Maitrize — copie du bureau";
+/// Le dossier créé dans l'emplacement choisi : tout le travail, rangé par parties.
+pub const NOM_RACINE: &str = "Maitrize";
+/// Le dossier d'avant, quand la copie ne couvrait que le plan de travail : il
+/// devient « Maitrize/Plan de travail » (voir `migrer_ancienne_racine`).
+const ANCIENNE_RACINE: &str = "Maitrize — copie du bureau";
+/// Le plan de travail, dans le dossier de tout le travail.
+pub const DOSSIER_PLAN: &str = "Plan de travail";
+/// Les parties du dossier : chacune est gardée telle quelle si ses données manquent.
+const PARTIES: &[&str] = &[DOSSIER_PLAN, "Élèves", "Organisation", "Cahier journal", "Ressources"];
 pub const DOSSIER_ARCHIVES: &str = "Anciennes versions";
 /// Le journal d'incidents, recopié à côté du travail : on le trouve sans ouvrir Maitrize.
 pub const DOSSIER_INCIDENTS: &str = "Rapport d'incidents";
@@ -35,13 +42,23 @@ const JOURS_ARCHIVES: i64 = 90;
 pub const CLE_ACTIVE: &str = "copieBureauActive";
 pub const CLE_EMPLACEMENT: &str = "copieBureauEmplacement";
 
-const TEXTE_A_LIRE: &str = "\u{feff}Copie du bureau de Maitrize
-==============================
+const TEXTE_A_LIRE: &str = "\u{feff}Le travail de Maitrize
+======================
 
-Ce dossier est une copie de sécurité du bureau (plan de travail) de Maitrize.
-L'application la tient à jour toute seule sur cet ordinateur, quelques minutes
-après chaque modification.
+Ce dossier est une copie de sécurité de tout le travail rangé dans Maitrize,
+en fichiers qui s'ouvrent sans l'application. Elle se tient à jour toute
+seule sur cet ordinateur, quelques minutes après chaque modification.
 
+- « Plan de travail » : le bureau de Maitrize, dossier pour dossier.
+- « Élèves » : un dossier par élève, sa fiche et ses documents.
+- « Organisation » : emploi du temps, progressions, programmation.
+- « Cahier journal » : une page par semaine.
+- « Ressources » : les documents du coffre.
+
+Ces dossiers parlent d'élèves : si ce dossier est synchronisé (iCloud Drive,
+OneDrive…), ils partent avec lui.
+
+Dans le plan de travail :
 - Chaque dossier du bureau est un dossier ici.
 - Les documents déposés (PDF, Word, Excel, images…) sont recopiés tels quels.
 - Les textes et les séquences sont des pages web (.html) : un double-clic les
@@ -361,6 +378,22 @@ fn appliquer(racine: &Path, fichiers: &Path, entrees: &[Entree], dossiers: &[Str
 
     let voulus: BTreeMap<&str, &Entree> = entrees.iter().map(|e| (e.chemin.as_str(), e)).collect();
 
+    // Une partie (« Élèves », « Plan de travail »…) qui avait des fichiers et
+    // n'en a plus aucun : des données absentes plutôt qu'une partie vidée.
+    // Elle reste telle quelle, et rien d'une autre partie n'en dépend.
+    let partie = |c: &str| c.split('/').next().unwrap_or_default().to_string();
+    let parties_voulues: BTreeSet<String> = entrees.iter().map(|e| partie(&e.chemin)).collect();
+    let parties_absentes: BTreeSet<String> = ancien.fichiers.keys().map(|c| partie(c))
+        .filter(|p| PARTIES.contains(&p.as_str()) && !parties_voulues.contains(p)).collect();
+    let garde = |c: &str| parties_absentes.contains(&partie(c));
+    for p in &parties_absentes {
+        bilan.erreurs.push(format!("« {p} » paraît vide : par précaution, la copie n'en a rien retiré."));
+    }
+    for (chemin, trace) in ancien.fichiers.iter().filter(|(c, _)| garde(c)) {
+        nouveau.fichiers.insert(chemin.clone(), trace.clone());
+    }
+    voulus_dossiers.extend(ancien.dossiers.iter().filter(|d| garde(d)).cloned());
+
     // Un document rangé ailleurs ou renommé dans Maitrize est déplacé tel quel
     // dans la copie : ni recopié, ni rangé aux anciennes versions.
     let mut deplaces: BTreeSet<String> = BTreeSet::new();
@@ -370,8 +403,9 @@ fn appliquer(racine: &Path, fichiers: &Path, entrees: &[Entree], dossiers: &[Str
         if ancien.fichiers.contains_key(*chemin) || cible.exists() {
             continue;
         }
+        // Jamais depuis une partie gardée : ses fichiers restent où ils sont.
         let depart = ancien.fichiers.iter().find(|(c, t)| {
-            !voulus.contains_key(c.as_str()) && !deplaces.contains(*c) && t.empreinte == e.empreinte
+            !voulus.contains_key(c.as_str()) && !deplaces.contains(*c) && !garde(c) && t.empreinte == e.empreinte
                 && chemin_valide(c).is_some_and(|r| intact(&racine.join(r), t))
         });
         let Some((ancien_chemin, trace)) = depart else { continue };
@@ -387,7 +421,7 @@ fn appliquer(racine: &Path, fichiers: &Path, entrees: &[Entree], dossiers: &[Str
     // Ce qui n'a plus sa place part aux anciennes versions — avant d'écrire,
     // pour qu'un fichier qui en remplace un autre trouve la place libre.
     for (chemin, trace) in &ancien.fichiers {
-        if voulus.contains_key(chemin.as_str()) || deplaces.contains(chemin) {
+        if voulus.contains_key(chemin.as_str()) || deplaces.contains(chemin) || garde(chemin) {
             continue;
         }
         let Some(relatif) = chemin_valide(chemin) else { continue };
@@ -524,7 +558,7 @@ fn appliquer(racine: &Path, fichiers: &Path, entrees: &[Entree], dossiers: &[Str
     let mut a_retirer: Vec<String> = ancien.dossiers.iter()
         .filter(|d| !voulus_dossiers.contains(*d))
         .cloned()
-        .chain(ancien.fichiers.keys().filter(|c| !voulus.contains_key(c.as_str())).flat_map(|c| parents(c).collect::<Vec<_>>()))
+        .chain(ancien.fichiers.keys().filter(|c| !voulus.contains_key(c.as_str()) && !garde(c)).flat_map(|c| parents(c).collect::<Vec<_>>()))
         .filter(|d| !voulus_dossiers.contains(d))
         .collect::<BTreeSet<_>>()
         .into_iter()
@@ -591,7 +625,7 @@ fn reglage(db: &Db, cle: &str) -> String {
 /// déplace pas sans le dire, les Réglages préviennent.
 fn emplacement_par_defaut() -> PathBuf {
     let bureau = dirs::desktop_dir();
-    if let Some(b) = bureau.as_ref().filter(|b| b.join(NOM_RACINE).is_dir()) {
+    if let Some(b) = bureau.as_ref().filter(|b| b.join(NOM_RACINE).join(MANIFESTE).is_file() || b.join(ANCIENNE_RACINE).is_dir()) {
         return b.clone();
     }
     dirs::home_dir().or(bureau).unwrap_or_else(std::env::temp_dir)
@@ -625,6 +659,49 @@ fn info(db: &Db) -> InfoCopie {
 
 /// Une seule copie à la fois : deux passages simultanés se disputeraient les fichiers.
 static EN_COURS: Mutex<()> = Mutex::new(());
+
+/// La copie d'avant devient « Maitrize/Plan de travail » : un renommage sur le
+/// même disque, rien n'est recopié — dans iCloud, même un fichier retiré du
+/// Mac se déplace sans être téléchargé. Ses anciennes versions et son rapport
+/// d'incidents montent d'un cran ; son manifeste suit, ses chemins préfixés.
+/// Rend vrai si quelque chose a été déplacé.
+fn migrer_ancienne_racine(lieu: &Path) -> std::io::Result<bool> {
+    let ancienne = lieu.join(ANCIENNE_RACINE);
+    let racine = lieu.join(NOM_RACINE);
+    let plan = racine.join(DOSSIER_PLAN);
+    if !ancienne.is_dir() || racine.join(MANIFESTE).exists() || plan.exists() {
+        return Ok(false);
+    }
+    std::fs::create_dir_all(&racine)?;
+    std::fs::rename(&ancienne, &plan)?;
+    for nom in [DOSSIER_ARCHIVES, DOSSIER_INCIDENTS] {
+        if plan.join(nom).exists() && !racine.join(nom).exists() {
+            std::fs::rename(plan.join(nom), racine.join(nom)).ok();
+        }
+    }
+    std::fs::remove_file(plan.join(A_LIRE)).ok();
+    let ancien = lire_manifeste(&plan);
+    let prefixe = |c: &str| format!("{DOSSIER_PLAN}/{c}");
+    let nouveau = Manifeste {
+        fichiers: ancien.fichiers.iter().map(|(c, t)| (prefixe(c), t.clone())).collect(),
+        dossiers: ancien.dossiers.iter().map(|d| prefixe(d)).chain(std::iter::once(DOSSIER_PLAN.to_string())).collect(),
+        derniere: ancien.derniere,
+    };
+    let octets = serde_json::to_vec_pretty(&nouveau).map_err(std::io::Error::other)?;
+    ecrire_atomique(&racine.join(MANIFESTE), &octets)?;
+    std::fs::remove_file(plan.join(MANIFESTE)).ok();
+    Ok(true)
+}
+
+/// Fait la migration avant un passage, et la note dans le journal.
+fn migrer_si_besoin(racine: &Path) {
+    let Some(lieu) = racine.parent() else { return };
+    match migrer_ancienne_racine(lieu) {
+        Ok(true) => crate::commands::diag_ecrire(format!("COPIE : « {ANCIENNE_RACINE} » devient « {NOM_RACINE}/{DOSSIER_PLAN} »")),
+        Ok(false) => {}
+        Err(err) => crate::commands::diag_ecrire(format!("COPIE : déplacement de « {ANCIENNE_RACINE} » impossible ({err})")),
+    }
+}
 
 // ── Le rapport d'incidents, à côté du travail ─────────────────────────────
 //
@@ -715,7 +792,10 @@ pub async fn copie_bureau_preparer(db: State<'_, Db>, entrees: Vec<Entree>, doss
         return Ok(Preparation::default());
     }
     let racine = PathBuf::from(i.racine);
-    tauri::async_runtime::spawn_blocking(move || preparer(&racine, &fichiers_dir(), &entrees, &dossiers))
+    tauri::async_runtime::spawn_blocking(move || {
+        migrer_si_besoin(&racine);
+        preparer(&racine, &fichiers_dir(), &entrees, &dossiers)
+    })
         .await
         .map_err(|e| e.to_string())
 }
@@ -731,6 +811,7 @@ pub async fn copie_bureau_appliquer(db: State<'_, Db>, entrees: Vec<Entree>, dos
         let Ok(_verrou) = EN_COURS.try_lock() else {
             return Err("Une copie est déjà en cours.".to_string());
         };
+        migrer_si_besoin(&racine);
         let bilan = std::panic::catch_unwind(|| appliquer(&racine, &fichiers_dir(), &entrees, &dossiers, chrono::Local::now()))
             .map_err(|_| "La copie s'est interrompue.".to_string())?;
         if !bilan.erreurs.is_empty() {
@@ -818,6 +899,54 @@ mod tests {
 
     fn texte(chemin: &str, contenu: &str) -> Entree {
         Entree { chemin: chemin.into(), empreinte: format!("t-{contenu}"), fichier: None, contenu: Some(contenu.into()) }
+    }
+
+    #[test]
+    fn l_ancienne_copie_devient_le_plan_de_travail_sans_rien_recopier() {
+        let base = std::env::temp_dir().join(format!("maitrize-migration-{}", uuid::Uuid::new_v4()));
+        let ancienne = base.join(ANCIENNE_RACINE);
+        let fichiers = base.join("Fichiers");
+        std::fs::create_dir_all(&fichiers).unwrap();
+        // L'ancienne copie, écrite par l'ancienne version : chemins sans partie.
+        appliquer(&ancienne, &fichiers, &[texte("Maths/Notes.html", "<p>notes</p>")], &["Maths".into()], chrono::Local::now());
+        std::fs::create_dir_all(ancienne.join(DOSSIER_ARCHIVES).join("2026-10-01")).unwrap();
+        std::fs::create_dir_all(ancienne.join(DOSSIER_INCIDENTS)).unwrap();
+
+        assert!(migrer_ancienne_racine(&base).unwrap());
+        let racine = base.join(NOM_RACINE);
+        assert!(!ancienne.exists());
+        assert!(racine.join(DOSSIER_PLAN).join("Maths/Notes.html").is_file());
+        assert!(racine.join(DOSSIER_ARCHIVES).join("2026-10-01").is_dir(), "les anciennes versions montent d'un cran");
+        assert!(racine.join(DOSSIER_INCIDENTS).is_dir());
+        // Le passage suivant, aux chemins préfixés, ne réécrit rien.
+        let bilan = appliquer(&racine, &fichiers, &[texte("Plan de travail/Maths/Notes.html", "<p>notes</p>")],
+            &["Plan de travail/Maths".into()], chrono::Local::now());
+        assert!(bilan.erreurs.is_empty(), "{:?}", bilan.erreurs);
+        assert_eq!((bilan.ecrits, bilan.archives), (0, 0));
+        // Une seconde fois : rien à faire.
+        assert!(!migrer_ancienne_racine(&base).unwrap());
+        std::fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn une_partie_dont_les_donnees_manquent_reste_telle_quelle() {
+        let bac = Bac::nouveau("partie-absente");
+        bac.appliquer(&[texte("Élèves/A/Fiche.html", "<p>A</p>"), texte("Plan de travail/Maths/N.html", "<p>n</p>")],
+            &[], "2026-10-20");
+        // Les élèves ne sont pas arrivés à ce passage : leur partie ne bouge pas.
+        let bilan = bac.appliquer(&[texte("Plan de travail/Maths/N.html", "<p>n</p>")], &[], "2026-10-20");
+        assert_eq!(bilan.archives, 0);
+        assert!(bilan.erreurs.iter().any(|e| e.contains("Élèves")), "{:?}", bilan.erreurs);
+        assert_eq!(bac.lire("Élèves/A/Fiche.html").as_deref(), Some("<p>A</p>"));
+        // Un même document demandé hors de la partie gardée : il est recopié, pas pris à la partie.
+        let bilan = bac.appliquer(&[texte("Plan de travail/Maths/N.html", "<p>n</p>"), texte("A/Fiche.html", "<p>A</p>")], &[], "2026-10-20");
+        assert_eq!(bac.lire("Élèves/A/Fiche.html").as_deref(), Some("<p>A</p>"), "la partie gardée n'a pas bougé");
+        assert_eq!(bac.lire("A/Fiche.html").as_deref(), Some("<p>A</p>"));
+        assert_eq!(bilan.archives, 0);
+        // Elle revient : tout est en ordre.
+        let bilan = bac.appliquer(&[texte("Élèves/A/Fiche.html", "<p>A</p>"), texte("Plan de travail/Maths/N.html", "<p>n</p>")],
+            &[], "2026-10-20");
+        assert!(bilan.erreurs.is_empty(), "{:?}", bilan.erreurs);
     }
     fn fichier(chemin: &str, nom: &str) -> Entree {
         Entree { chemin: chemin.into(), empreinte: nom.into(), fichier: Some(nom.into()), contenu: None }
