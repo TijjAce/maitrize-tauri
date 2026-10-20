@@ -641,6 +641,7 @@ fn emplacement(db: &Db) -> (PathBuf, bool) {
 }
 
 fn info(db: &Db) -> InfoCopie {
+    retenir_les_noms(db);
     let (lieu, par_defaut) = emplacement(db);
     let racine = lieu.join(NOM_RACINE);
     let active = reglage(db, CLE_ACTIVE) != "non";
@@ -714,6 +715,30 @@ fn migrer_si_besoin(racine: &Path) {
 static RACINE_ACTIVE: Mutex<Option<PathBuf>> = Mutex::new(None);
 /// Le dernier miroir, en secondes.
 static DERNIER_MIROIR: AtomicI64 = AtomicI64::new(0);
+/// Les mots des noms des élèves, retenus avec le dossier : le journal recopié
+/// à côté du travail — sur un Bureau souvent synchronisé — les masque, comme
+/// le rapport envoyé par e-mail ; un chemin d'erreur porte le nom d'un élève.
+static MOTS_A_MASQUER: Mutex<Option<std::collections::HashSet<String>>> = Mutex::new(None);
+
+fn retenir_les_noms(db: &Db) {
+    let noms: Vec<String> = {
+        let c = db.lock();
+        let Ok(mut st) = c.prepare("SELECT nom FROM eleves") else { return };
+        let Ok(lignes) = st.query_map([], |r| r.get::<_, String>(0)) else { return };
+        lignes.flatten().collect()
+    };
+    if let Ok(mut m) = MOTS_A_MASQUER.lock() {
+        *m = Some(crate::rapport::mots_des_noms(&noms));
+    }
+}
+
+/// Le journal tel qu'il se recopie : sans les noms des élèves, le dossier de
+/// l'utilisateur ni les adresses (voir `rapport::nettoyer`).
+fn journal_masque(rapport: &str) -> String {
+    let mots = MOTS_A_MASQUER.lock().ok().and_then(|m| m.clone()).unwrap_or_default();
+    let maison = dirs::home_dir().map(|m| m.to_string_lossy().to_string());
+    crate::rapport::nettoyer(rapport, &mots, maison.as_deref())
+}
 
 /// Écrit le rapport dans « Rapport d'incidents » s'il a changé ; vrai s'il a été écrit.
 ///
@@ -744,7 +769,7 @@ pub fn miroir_incidents(tout_de_suite: bool) {
     }
     DERNIER_MIROIR.store(maintenant, Ordering::Relaxed);
     if let Ok(rapport) = crate::commands::diag_rapport(2000) {
-        ecrire_rapport(&racine, &rapport);
+        ecrire_rapport(&racine, &journal_masque(&rapport));
     }
 }
 
@@ -847,6 +872,17 @@ mod tests {
         // Le bureau ne peut pas écrire dans ce dossier.
         assert!(chemin_valide("Rapport d'incidents/autre.txt").is_none());
         std::fs::remove_dir_all(&racine).ok();
+    }
+
+    #[test]
+    fn le_journal_recopie_ne_garde_ni_les_noms_ni_le_dossier_personnel() {
+        *MOTS_A_MASQUER.lock().unwrap() = Some(crate::rapport::mots_des_noms(&["Barnabé Quillévic".to_string()]));
+        let maison = dirs::home_dir().unwrap().to_string_lossy().to_string();
+        let ligne = format!("20/10 10:00:00 ERREUR COPIE : {maison}/Desktop/Maitrize/Élèves/Barnabé Quillévic/bilan.pdf illisible");
+        let propre = journal_masque(&ligne);
+        assert!(!propre.contains("Barnabé") && !propre.contains("Quillévic"), "{propre}");
+        assert!(!propre.contains(&maison), "{propre}");
+        assert!(propre.contains("bilan.pdf illisible"), "{propre}");
     }
 
     struct Bac {

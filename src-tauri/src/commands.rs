@@ -1987,12 +1987,45 @@ pub fn coffre_save(db: State<Db>, document: DocumentCoffre) -> R<DocumentCoffre>
     Ok(document)
 }
 
+/// Le plus lourd des documents officiels du coffre fait une trentaine de mégaoctets.
+const COFFRE_MAX_OCTETS: usize = 200 * 1024 * 1024;
+
+/// Un PDF commence par « %PDF- » (la norme le tolère dans le premier kilooctet).
+fn est_un_pdf(octets: &[u8]) -> bool {
+    octets[..octets.len().min(1024)].windows(5).any(|f| f == b"%PDF-")
+}
+
 /// Télécharge un PDF distant (URL) dans le coffre-fort.
+///
+/// En https seulement, redirections comprises, au plus `COFFRE_MAX_OCTETS`,
+/// et seulement un PDF : l'adresse vient de l'interface, et le fichier
+/// s'ouvre ensuite d'un clic.
 #[tauri::command]
 pub async fn coffre_download(db: State<'_, Db>, url: String, nom: String) -> R<DocumentCoffre> {
-    let resp = reqwest::get(&url).await.map_err(|e| format!("Réseau : {e}"))?;
+    if !url.starts_with("https://") {
+        return Err("Seuls les documents servis en https se téléchargent.".into());
+    }
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::custom(|essai| {
+            if essai.url().scheme() == "https" && essai.previous().len() < 10 { essai.follow() } else { essai.stop() }
+        }))
+        .build()
+        .map_err(|e| format!("Réseau : {e}"))?;
+    let mut resp = client.get(&url).send().await.map_err(|e| format!("Réseau : {e}"))?;
     if !resp.status().is_success() { return Err(format!("HTTP {}", resp.status())); }
-    let bytes = resp.bytes().await.map_err(|e| format!("Téléchargement : {e}"))?;
+    if resp.content_length().is_some_and(|n| n as usize > COFFRE_MAX_OCTETS) {
+        return Err("Document trop lourd pour le coffre.".into());
+    }
+    let mut bytes = Vec::new();
+    while let Some(morceau) = resp.chunk().await.map_err(|e| format!("Téléchargement : {e}"))? {
+        bytes.extend_from_slice(&morceau);
+        if bytes.len() > COFFRE_MAX_OCTETS {
+            return Err("Document trop lourd pour le coffre.".into());
+        }
+    }
+    if !est_un_pdf(&bytes) {
+        return Err("Ce document n'est pas un PDF.".into());
+    }
     let fichier = format!("{}.pdf", new_id());
     std::fs::write(fichiers_dir().join(&fichier), &bytes).map_err(e)?;
     let doc = DocumentCoffre {
@@ -2162,7 +2195,34 @@ pub fn fichier_ouvrir(nom: String) -> R<()> {
     if !chemin.exists() {
         return Err("Ce fichier n'existe plus.".into());
     }
-    tauri_plugin_opener::open_path(&chemin, None::<&str>).map_err(e)
+    ouvrir_ou_montrer(&chemin)
+}
+
+/// Les sortes de fichiers qu'on ouvre d'un clic dans leur application :
+/// documents, images, son, vidéo. Une pièce jointe peut venir d'un collègue,
+/// d'un bureau commun, du téléphone : un programme, un script, un raccourci
+/// (`.command`, `.terminal`, `.app`, `.exe`, `.lnk`…) ou un document à macros
+/// ne doit pas se lancer d'un clic.
+const OUVERTS_D_UN_CLIC: &[&str] = &[
+    "pdf", "png", "jpg", "jpeg", "gif", "webp", "heic", "heif", "bmp", "tif", "tiff",
+    "txt", "md", "rtf", "csv", "odt", "ods", "odp", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+    "pages", "numbers", "key", "epub", "obz", "obf",
+    "mp3", "m4a", "wav", "aac", "ogg", "opus", "flac", "mp4", "mov", "m4v", "webm", "avi", "mkv",
+];
+
+pub(crate) fn s_ouvre_d_un_clic(chemin: &std::path::Path) -> bool {
+    chemin.extension().and_then(|x| x.to_str())
+        .is_some_and(|x| OUVERTS_D_UN_CLIC.contains(&x.to_ascii_lowercase().as_str()))
+}
+
+/// Ouvre un fichier dans son application s'il est d'une sorte sûre ; sinon le
+/// montre dans le Finder ou l'Explorateur, sans le lancer.
+pub(crate) fn ouvrir_ou_montrer(chemin: &std::path::Path) -> R<()> {
+    if s_ouvre_d_un_clic(chemin) {
+        tauri_plugin_opener::open_path(chemin, None::<&str>).map_err(e)
+    } else {
+        tauri_plugin_opener::reveal_item_in_dir(chemin).map_err(e)
+    }
 }
 
 /// Copie un fichier externe (chemin absolu, ex. glisser-déposer depuis le
@@ -2850,8 +2910,7 @@ pub fn imprimer_pdf(nom: String) -> R<()> {
     if !path.exists() {
         return Err("Fichier introuvable".to_string());
     }
-    tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
-    Ok(())
+    ouvrir_ou_montrer(&path)
 }
 
 #[tauri::command(async)]
@@ -2864,11 +2923,16 @@ pub fn fichier_delete(db: State<Db>, nom: String) -> R<()> {
 /// Un fichier du dossier de l'application, d'après son nom : un nom seul, jamais un chemin. Une page
 /// détournée ne peut ainsi ni lire ni effacer ailleurs sur l'ordinateur (« ../../ », chemin absolu).
 pub(crate) fn fichier_de_l_application(nom: &str) -> R<std::path::PathBuf> {
-    let simple = std::path::Path::new(nom).file_name().is_some_and(|f| f == std::ffi::OsStr::new(nom));
-    if nom.is_empty() || !simple || nom.contains('/') || nom.contains('\\') || nom.contains("..") {
+    if !nom_de_fichier_simple(nom) {
         return Err("Nom de fichier invalide.".into());
     }
     Ok(fichiers_dir().join(nom))
+}
+
+/// Un nom de fichier seul : ni dossier, ni remontée, ni chemin absolu.
+pub(crate) fn nom_de_fichier_simple(nom: &str) -> bool {
+    let simple = std::path::Path::new(nom).file_name().is_some_and(|f| f == std::ffi::OsStr::new(nom));
+    !nom.is_empty() && simple && !nom.contains('/') && !nom.contains('\\') && !nom.contains("..")
 }
 
 // ============================================================
@@ -3589,6 +3653,14 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
         } else {
             c.execute(&format!("DELETE FROM {t}"), []).map_err(e)?;
         }
+        // Les colonnes viennent du fichier : seules celles de la table passent.
+        // Un nom de colonne piégé (« cle,valeur) SELECT … -- ») aurait réécrit la
+        // requête — de quoi poser un réglage du poste, ou copier une autre table.
+        let colonnes: std::collections::HashSet<String> = {
+            let mut st = c.prepare(&format!("PRAGMA table_info({t})")).map_err(e)?;
+            let noms = st.query_map([], |r| r.get::<_, String>(1)).map_err(e)?;
+            noms.filter_map(|n| n.ok()).collect()
+        };
         for row in arr {
             let Some(o) = row.as_object() else { continue };
             if *t == "settings" && o.get("cle").and_then(|v| v.as_str())
@@ -3596,11 +3668,11 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
                     || crate::journal::reglage_secret(k)) {
                 continue;
             }
-            let cols: Vec<&String> = o.keys().collect();
+            let cols: Vec<&String> = o.keys().filter(|k| colonnes.contains(k.as_str())).collect();
             if cols.is_empty() { continue; }
             let placeholders: Vec<String> = (1..=cols.len()).map(|i| format!("?{i}")).collect();
             let sql = format!("INSERT OR REPLACE INTO {t} ({}) VALUES ({})",
-                cols.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(","),
+                cols.iter().map(|s| format!("\"{s}\"")).collect::<Vec<_>>().join(","),
                 placeholders.join(","));
             let vals: Vec<rusqlite::types::Value> = cols.iter().map(|k| {
                 match &o[*k] {
@@ -3915,6 +3987,27 @@ mod tests_restauration {
 }
 
 #[cfg(test)]
+mod tests_import_piege {
+    /// Une sauvegarde piégée ne réécrit pas la requête d'import par ses noms de colonnes.
+    #[test]
+    fn un_nom_de_colonne_piege_est_ignore() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        let piege = "cle,valeur) SELECT 'copieBureauEmplacement', ?1 --";
+        let json = serde_json::json!({ "settings": [
+            { "cle": "ecole", "valeur": "École des Lilas" },
+            { piege: "/tmp/ailleurs" },
+            { piege: "/tmp/ailleurs", "cle": "theme", "valeur": "aurore" },
+        ]}).to_string();
+        super::import_json_brut(&c, &json).unwrap();
+        let lu = |cle: &str| c.query_row("SELECT valeur FROM settings WHERE cle = ?1", [cle], |r| r.get::<_, String>(0)).ok();
+        assert_eq!(lu("ecole").as_deref(), Some("École des Lilas"));
+        assert_eq!(lu("theme").as_deref(), Some("aurore"));
+        assert_eq!(lu("copieBureauEmplacement"), None, "le réglage du poste a été posé par la sauvegarde");
+    }
+}
+
+#[cfg(test)]
 mod tests_textes {
     use crate::models::Texte;
 
@@ -3948,6 +4041,26 @@ mod tests_fichiers {
         assert!(super::fichier_de_l_application("a1b2c3.pdf").is_ok());
         for mauvais in ["", "..", "../maitrize.sqlite3", "../../.ssh/id_rsa", "/etc/passwd", "sous/dossier.pdf", "..\\x.pdf", "C:\\x.pdf"] {
             assert!(super::fichier_de_l_application(mauvais).is_err(), "{mauvais} doit être refusé");
+        }
+    }
+
+    #[test]
+    fn le_coffre_ne_garde_que_des_pdf() {
+        assert!(super::est_un_pdf(b"%PDF-1.7\n..."));
+        assert!(super::est_un_pdf(b"\xef\xbb\xbf\n%PDF-1.4"));
+        assert!(!super::est_un_pdf(b"<!doctype html><html>"));
+        assert!(!super::est_un_pdf(b""));
+    }
+
+    #[test]
+    fn un_programme_recu_ne_se_lance_pas_d_un_clic() {
+        use std::path::Path;
+        for sur in ["fiche.pdf", "photo.JPG", "bilan.docx", "dictee.m4a", "classeur.obz"] {
+            assert!(super::s_ouvre_d_un_clic(Path::new(sur)), "{sur} s'ouvre");
+        }
+        for piege in ["lancer.command", "x.terminal", "Appli.app", "setup.exe", "raccourci.lnk", "script.sh",
+                      "macros.docm", "page.html", "dessin.svg", "sans-extension", "archive.zip"] {
+            assert!(!super::s_ouvre_d_un_clic(Path::new(piege)), "{piege} se montre sans se lancer");
         }
     }
 }

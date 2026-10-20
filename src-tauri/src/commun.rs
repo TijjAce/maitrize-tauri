@@ -720,11 +720,15 @@ pub async fn commun_ouvrir(db: State<'_, Db>, bureau: String, chemin: String) ->
         std::fs::create_dir_all(&dossier).map_err(e)?;
         let fichier = dossier.join(&nom);
         std::fs::write(&fichier, octets).map_err(e)?;
-        return tauri_plugin_opener::open_path(&fichier, None::<&str>).map_err(e);
+        // Déposé par un participant : un programme ou un script se montre, il ne se lance pas.
+        return crate::commands::ouvrir_ou_montrer(&fichier);
     }
     let r = racine_de(&b)?;
     let p = dans(&r, &chemin)?;
-    tauri_plugin_opener::open_path(&p, None::<&str>).map_err(e)
+    if p.is_dir() {
+        return tauri_plugin_opener::open_path(&p, None::<&str>).map_err(e);
+    }
+    crate::commands::ouvrir_ou_montrer(&p)
 }
 
 #[cfg(test)]

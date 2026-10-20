@@ -330,9 +330,13 @@ fn inserer_sequence(c: &Connection, mut s: Sequence, seances: Vec<Seance>, image
     s.projet_id = projet_id;
     // Image de couverture : écrite localement si transmise, sinon on neutralise
     // le nom (sinon vignette cassée pointant vers un fichier absent).
+    // L'extension vient de l'envoyeur : seule celle d'une image passe, une
+    // couverture « .command » ne se lancerait pas moins d'un clic.
     let ext = s.image_nom.as_deref()
         .and_then(|n| std::path::Path::new(n).extension().and_then(|e| e.to_str()))
-        .unwrap_or("png").to_string();
+        .map(str::to_ascii_lowercase)
+        .filter(|x| ["png", "jpg", "jpeg", "gif", "webp"].contains(&x.as_str()))
+        .unwrap_or_else(|| "png".into());
     s.image_nom = image_b64.and_then(|b| ecrire_image(&b, &ext));
     c.execute(
         "INSERT INTO sequences (id,titre,matiere,cycle,objectifs,competences,competence_visee,image_nom,couleur,
@@ -1742,6 +1746,18 @@ fn fichiers_locaux() -> std::collections::HashSet<String> {
         .unwrap_or_default()
 }
 
+/// Les noms des fichiers rangés sous un préfixe du stockage. Seuls les noms
+/// simples restent : le nom vient du stockage, et un nom piégé
+/// (« ../../Library/… », chemin absolu) aurait écrit ou mis à la corbeille un
+/// fichier hors du dossier de l'application.
+fn noms_sous(cles: Vec<String>, prefixe: &str) -> Noms {
+    cles.iter()
+        .filter_map(|k| k.strip_prefix(prefixe))
+        .filter(|n| crate::commands::nom_de_fichier_simple(n))
+        .map(str::to_string)
+        .collect()
+}
+
 /// Échange les pièces jointes manquantes de part et d'autre.
 ///
 /// Chiffrées comme le reste : le stockage ne voit passer ni les photos
@@ -1763,11 +1779,8 @@ pub async fn sync_fichiers(db: State<'_, Db>) -> R<ResultatFichiers> {
     };
 
     let cl = client(&cfg);
-    let sous = |cles: Vec<String>, prefixe: &str| -> Noms {
-        cles.iter().filter_map(|k| k.strip_prefix(prefixe)).filter(|n| !n.is_empty()).map(str::to_string).collect()
-    };
-    let la_bas = sous(cles_sous(&cl, &cfg, PREFIXE_FICHIER).await?, PREFIXE_FICHIER);
-    let marques = sous(cles_sous(&cl, &cfg, PREFIXE_EFFACE).await?, PREFIXE_EFFACE);
+    let la_bas = noms_sous(cles_sous(&cl, &cfg, PREFIXE_FICHIER).await?, PREFIXE_FICHIER);
+    let marques = noms_sous(cles_sous(&cl, &cfg, PREFIXE_EFFACE).await?, PREFIXE_EFFACE);
     let plan = planifier_fichiers(&fichiers_locaux(), &la_bas, &marques, &a_publier, &rendus);
 
     let mut res = ResultatFichiers::default();
@@ -1853,6 +1866,20 @@ mod tests_plan_fichiers {
 
     fn n(v: &[&str]) -> Noms { v.iter().map(|x| x.to_string()).collect() }
     fn l(v: &[&str]) -> Vec<String> { v.iter().map(|x| x.to_string()).collect() }
+
+    #[test]
+    fn un_nom_piege_venu_du_stockage_est_ignore() {
+        let cles = l(&[
+            "maitrize/fichiers/photo.png",
+            "maitrize/fichiers/../../../Library/LaunchAgents/x.plist",
+            "maitrize/fichiers//Users/quelquun/.zshrc",
+            "maitrize/fichiers/dossier/photo.png",
+            "maitrize/fichiers/..",
+            "maitrize/fichiers/",
+            "ailleurs/fichiers/autre.png",
+        ]);
+        assert_eq!(noms_sous(cles, "maitrize/fichiers/"), n(&["photo.png"]));
+    }
 
     #[test]
     fn sans_effacement_on_echange_ce_qui_manque() {
