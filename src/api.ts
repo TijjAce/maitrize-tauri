@@ -465,6 +465,9 @@ export interface Ecart {
   revenues: number; parties: number; changees: number;
   exemplesRevenues: string[]; exemplesParties: string[]; exemplesChangees: string[];
 }
+/** Le rapport d'erreur par e-mail (voir rapport.rs) : ce qu'il dit, et si la messagerie s'est ouverte. */
+export interface RapportCourriel { sujet: string; corps: string; ouvert: boolean }
+
 /** Ce qu'un retour a fait ; revenir à `copie` l'annule. */
 export interface BilanRetour { copie: string; ecarts: Ecart[]; fichiers: number }
 
@@ -786,6 +789,10 @@ export const api = {
   retourEtats: () => invoke<EtatPasse[]>("retour_etats"),
   retourEcarts: (nom: string) => invoke<Ecart[]>("retour_ecarts", { nom }),
   retourRevenir: (nom: string) => invoke<BilanRetour>("retour_revenir", { nom }),
+  /** Ouvre la messagerie sur le rapport d'erreur, adressé à l'éditeur ; `motif` : ce qui vient d'arriver. */
+  diagCourriel: (motif?: string) => invoke<RapportCourriel>("diag_courriel", { motif: motif ?? null }),
+  /** Ce que la session d'avant a laissé de grave : [phrase, clé], ou rien. */
+  diagIncidentPrecedent: () => invoke<[string, string] | null>("diag_incident_precedent"),
   /** Ce que le démarrage a dû réparer (base disparue ou abîmée), une seule fois. */
   reparationAnnonce: () => invoke<string | null>("reparation_annonce"),
   // Copie du bureau dans un vrai dossier de l'ordinateur

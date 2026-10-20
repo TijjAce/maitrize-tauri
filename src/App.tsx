@@ -43,6 +43,7 @@ import { Retour, useSuiviDesLieux, useTitreDuLieu } from "./components/Retour";
 import { getVersion } from "@tauri-apps/api/app";
 import { Toaster, toast } from "./components/Toaster";
 import { useAnnonceDuRetour } from "./components/RevenirEnArriere";
+import { proposerApresUnIncident } from "./rapportErreur";
 import { ConfirmerHost } from "./components/confirmer";
 import { FinDAnneeHost } from "./components/FinDAnnee";
 import { LecteurMarkdownHost } from "./components/LecteurMarkdown";
@@ -158,6 +159,11 @@ export default function App() {
   // Une base abîmée ou disparue a été remplacée au démarrage par le dernier état sain : le dire.
   React.useEffect(() => {
     api.reparationAnnonce().then((t) => { if (t) toast(t, { icone: "🛟", duree: 60000 }); }).catch(() => {});
+  }, []);
+  // La session d'avant s'est arrêtée sur une erreur, figée ou fermée brutalement : proposer d'en envoyer le rapport.
+  React.useEffect(() => {
+    const id = window.setTimeout(() => { void proposerApresUnIncident(); }, 4000);
+    return () => window.clearTimeout(id);
   }, []);
   React.useEffect(() => { bootTheme(); }, []);
   React.useEffect(() => { getVersion().then(setVersion).catch(() => {}); }, []);

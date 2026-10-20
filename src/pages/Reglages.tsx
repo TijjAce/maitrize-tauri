@@ -25,6 +25,7 @@ import { listen } from "@tauri-apps/api/event";
 import { Licences } from "../components/Licences";
 import { ChiffrementDisqueCard } from "../components/ChiffrementDisque";
 import { RevenirEnArriere } from "../components/RevenirEnArriere";
+import { envoyerLeRapport } from "../rapportErreur";
 import { FenetreCouleurs, LegendeTla, garderPaletteParDefaut, usePaletteParDefaut } from "../components/CouleursTla";
 
 const ONGLETS = [
@@ -1088,12 +1089,17 @@ export function JournalIncidents() {
             blocages (avec leur durée et l'écran), plantages et arrêts forcés. Il s'écrit tout seul, au fil de l'eau, et se
             recopie dans le dossier de votre travail, sous « Rapport d'incidents ». Il note les erreurs, jamais ce que vous
             écrivez — relisez-le tout de même avant de l'envoyer, il cite des noms de fichiers.</p>
+          <p><b>« ✉️ Envoyer à l'éditeur »</b> ouvre votre messagerie sur un e-mail déjà écrit à contact@maitrize.com : les
+            dernières erreurs, la version et le système. Les prénoms et noms de vos élèves y sont remplacés par « [élève] », et
+            rien ne part sans vous : vous le relisez, vous ajoutez ce que vous faisiez, vous l'envoyez. Quand un vrai bug
+            survient, une notification le propose d'elle-même.</p>
           <p><b>Pour aider un collègue dont la fenêtre se bloque :</b> demandez-lui d'ouvrir Réglages › Données & synchro ›
             Avancé, de cliquer « 📋 Copier le rapport » et de vous l'envoyer. Si l'application ne répond plus du tout, elle a
             quand même écrit le blocage sur son disque : le rapport le montrera au prochain démarrage.</p>
         </Aide>
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button className="btn" onClick={() => { void envoyerLeRapport(); }}>✉️ Envoyer à l'éditeur</button>
         <button className="btn" onClick={ouvrir}>Ouvrir le journal</button>
         <button className="btn" disabled={occupe} onClick={() => faire(() => { /* lecture seule */ })}>
           {occupe ? "Lecture…" : "Voir les dernières lignes"}
