@@ -12,7 +12,7 @@ import {
   choixIci, paroleMinimale, plafondDuMorceau, sortieDeLAudio, transcrire, type Choix, type Moteur,
 } from "../transcription";
 import {
-  GENRES, ajouterAuDocument, ajouterAuTexte, assezPourResumer, convertirAnciennes,
+  GENRES, ajouterAuDocument, ajouterAuTexte, apresLaPasse, assezPourResumer, convertirAnciennes,
   dureeLisible, ecrireResumes, lirePlan, lireResumes, mettreAuPropre,
   assezPourRelire, nomDeLaReunion, phrasesEnAttente, planVide, rangerLeDocument,
   reformulerPassage, relireLeDocument, texteACopier, type Resume,
@@ -306,7 +306,11 @@ export default function Reunions() {
     if (!assezPourRelire(maintenant - secondesRelues.current)) return;
     secondesRelues.current = maintenant;
     try {
-      const suite = await relireLeDocument(compteRenduRef.current, contexte.current);
+      const envoye = compteRenduRef.current;
+      const rendu = await relireLeDocument(envoye, contexte.current);
+      // Ce qui s'est écrit pendant la relecture suit ; une retouche ailleurs l'emporte.
+      const suite = apresLaPasse(envoye, compteRenduRef.current, rendu);
+      if (suite === null) return;
       compteRenduRef.current = suite;
       setCompteRendu(suite);
       majReunion({ compteRendu: suite }, true);
@@ -344,7 +348,17 @@ export default function Reunions() {
     resumesRef.current = avec;
     setResumes(avec);
     try {
-      const suite = await rangerLeDocument(compteRenduRef.current, contexte.current);
+      const envoye = compteRenduRef.current;
+      const rendu = await rangerLeDocument(envoye, contexte.current);
+      // La parole a continué de s'écrire pendant le rangement : elle suit la
+      // version rangée. Retouché ailleurs entre-temps, le compte rendu reste
+      // tel que l'enseignant l'a laissé, et ce passage se refera au suivant.
+      const suite = apresLaPasse(envoye, compteRenduRef.current, rendu);
+      if (suite === null) {
+        resumesRef.current = resumesRef.current.filter((r) => r.id !== id);
+        setResumes(resumesRef.current);
+        return;
+      }
       compteRenduRef.current = suite;
       setCompteRendu(suite);
       majResume(id, { etat: "fait" });
@@ -500,7 +514,14 @@ export default function Reunions() {
     if (!courante) return;
     setOccupe("Mise au propre…");
     try {
-      const t = await mettreAuPropre(courante, compteRenduRef.current);
+      const envoye = compteRenduRef.current;
+      const rendu = await mettreAuPropre(courante, envoye);
+      const t = apresLaPasse(envoye, compteRenduRef.current, rendu);
+      if (t === null) {
+        toast("Le compte rendu a été retouché pendant la mise au propre : rien n'est remplacé. Relancez-la quand vous aurez fini.",
+          { icone: "✍️", duree: 8000 });
+        return;
+      }
       compteRenduRef.current = t;
       setCompteRendu(t);
       majReunion({ compteRendu: t }, true);
@@ -702,6 +723,11 @@ export default function Reunions() {
                 </>
               ) : (
                 <>
+                  {/* Il n'était que dans le menu de la liste, qu'on ne voit pas réunion ouverte. */}
+                  {rangeEnLigne(mode) && !planVide(lirePlan(compteRendu)) && (
+                    <button className="btn" disabled={!!occupe} onClick={() => { void auPropre(); }}
+                      title="Rédiger le compte rendu au propre (l'IA, noms masqués)">✍️ Mettre au propre</button>
+                  )}
                   <button className="btn primary" onClick={demarrer}>🎧 Écouter</button>
                   <button className="btn ghost" onClick={() => setCourante(null)}>← Mes réunions</button>
                 </>

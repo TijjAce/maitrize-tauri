@@ -262,6 +262,20 @@ export function ajouterAuDocument(document: string, morceau: string): string {
   return `${document.trimEnd()}\n\n${propre}`;
 }
 
+/**
+ * Le compte rendu après une passe de l'IA (rangement, relecture, mise au
+ * propre), quand il a pu changer pendant qu'elle travaillait. Ce qui s'est
+ * ajouté à la fin — la parole qui continue de s'écrire, une ligne tapée —
+ * suit la version rendue : la réponse le remplaçait, et il disparaissait.
+ * Une retouche ailleurs, l'IA ne la connaît pas : le texte de l'enseignant
+ * reste, et la passe est à refaire (`null`).
+ */
+export function apresLaPasse(envoye: string, actuel: string, rendu: string): string | null {
+  if (actuel === envoye) return rendu;
+  if (actuel.startsWith(envoye)) return ajouterAuDocument(rendu, actuel.slice(envoye.length));
+  return null;
+}
+
 /** Ajoute ce qui vient d'être transcrit au texte de la réunion. */
 export function ajouterAuTexte(texte: string, morceau: string): string {
   const propre = morceau.trim();

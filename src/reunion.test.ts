@@ -16,7 +16,7 @@ vi.mock("./api", () => ({
 }));
 
 import {
-  PHRASES_PAR_RANGEMENT, SECONDES_PAR_RELECTURE, RUBRIQUES, TRANCHE_S, ajouterAuTexte,
+  PHRASES_PAR_RANGEMENT, SECONDES_PAR_RELECTURE, RUBRIQUES, TRANCHE_S, ajouterAuTexte, apresLaPasse,
   assezPourRelire, assezPourResumer, convertirAnciennes,
   decouperEnPhrases, dureeLisible, ecrirePlan, ecrireResumes, fusionnerPlan,
   lirePlan, lireResumes, lireTranches, mettreAuPropre, nettoyer, nomDeLaReunion, promptRelecture,
@@ -66,6 +66,26 @@ describe("le rythme des deux agents", () => {
   it("un texte raccourci à la main ne bloque pas les résumés suivants", () => {
     // Le repère dépassait la fin du texte : plus rien n'était jamais résumé.
     expect(phrasesEnAttente("Un. Deux.", [resume({ de: 0, a: 40 })])).toEqual({ de: 2, phrases: [] });
+  });
+});
+
+describe("une passe de l'IA pendant que la réunion continue", () => {
+  const envoye = "# Ordre du jour\nlecture du projet\nla famille est d'accord";
+  const rendu = "## Projet\n- Lecture du projet : la famille est d'accord.";
+
+  it("rend la version rangée quand rien n'a bougé", () => {
+    expect(apresLaPasse(envoye, envoye, rendu)).toBe(rendu);
+  });
+
+  it("garde ce qui s'est écrit à la fin pendant qu'elle travaillait", () => {
+    // La parole continuait de s'écrire : la réponse l'effaçait.
+    const actuel = `${envoye}\n\non reprend en janvier`;
+    expect(apresLaPasse(envoye, actuel, rendu)).toBe(`${rendu}\n\non reprend en janvier`);
+  });
+
+  it("ne remplace rien quand l'enseignant a retouché le texte ailleurs", () => {
+    const retouche = envoye.replace("lecture", "Lecture à voix haute");
+    expect(apresLaPasse(envoye, retouche, rendu)).toBeNull();
   });
 });
 
