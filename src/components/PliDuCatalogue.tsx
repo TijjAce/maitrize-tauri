@@ -35,7 +35,11 @@ export function PliDuCatalogue({ ouvert, onBasculer, icone, titre, aide, nombre,
   );
 }
 
-/** Une partie d'une famille — un domaine du programme —, qui se plie aussi, plus discrète : son nom et son nombre d'ateliers. */
+/**
+ * Une partie d'une famille — un domaine du programme —, qui se plie aussi, plus discrète : une ligne sous la
+ * carte de sa famille, son nom aligné sur celui de la famille, son nombre d'ateliers et sa flèche à la même
+ * place que ceux de la carte.
+ */
 export function SousPliDuCatalogue({ ouvert, onBasculer, titre, nombre, children }: {
   ouvert: boolean; onBasculer: (ouvert: boolean) => void; titre: string; nombre: number; children: React.ReactNode;
 }) {
@@ -43,9 +47,9 @@ export function SousPliDuCatalogue({ ouvert, onBasculer, titre, nombre, children
     <details className="sous-pli-catalogue" open={ouvert}
       onToggle={(e) => { const o = e.currentTarget.open; if (o !== ouvert) onBasculer(o); }}>
       <summary>
-        <span className="pli-chevron" aria-hidden="true">›</span>
         <b>{titre}</b>
         <span className="pli-nombre">{`${nombre} atelier${nombre > 1 ? "s" : ""}`}</span>
+        <span className="pli-chevron" aria-hidden="true">›</span>
       </summary>
       {children}
     </details>

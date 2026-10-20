@@ -61,7 +61,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
   },
   {
     id: "perso", libelle: "✨ Mes générateurs",
-    aide: "Les générateurs que vous faites faire à l'IA de Mistral, en décrivant le support que vous voulez ; vous les retouchez, avec vos pictos et vos photos.",
+    aide: "Décrivez le support voulu : l'IA de Mistral en fait un générateur, que vous retouchez.",
     outils: [
       { id: "perso", nom: "Créer un générateur avec l'IA", icone: "✨", cycles: "De la maternelle au CM2",
         quoi: "Décrivez la feuille que vous voulez : l'IA en fait un générateur, que vous retouchez — les mots, les pictos, vos photos, la place des images." },
@@ -129,7 +129,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
   },
   {
     id: "ecrit", libelle: "✍️ Lecture et écriture",
-    aide: "Des textes à comprendre, le carnet de lecteur, les dictées, la production d'écrits, la grammaire, l'oral ; des mots et des phrases à manipuler : étiquettes à trier, phrases à remettre en ordre, textes à trous, mots mêlés ; et l'écriture cursive.",
+    aide: "Comprendre, écrire, la grammaire, l'oral, les dictées ; des mots et des phrases à manipuler ; la cursive.",
     outils: [
       { id: "comprehension", nom: "Comprendre un texte", icone: "📖", cycles: "Cycle 2",
         quoi: "Des récits, documentaires, règles, poèmes et scènes de théâtre à la longueur de chaque classe, lignes numérotées : questions à justifier, résumé, moments du récit, reprises, inférences, émotions, mots inconnus, types de textes, écoute — et le corrigé." },
@@ -157,7 +157,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
   },
   {
     id: "maths", libelle: "🔢 Mathématiques",
-    aide: "Les nombres, le calcul, les problèmes, les grandeurs et mesures, l'espace et la géométrie, les données — rangés comme les programmes.",
+    aide: "Les nombres, le calcul, les problèmes, les grandeurs, la géométrie, les données — comme les programmes.",
     outils: [
       { id: "martiniere", nom: "Calcul mental", icone: "🧮", cycles: "Cycles 2 et 3",
         quoi: "Un fait numérique ou une procédure à la fois, d'après les programmes : à l'oral (La Martinière) ou en test de fluence." },
@@ -245,7 +245,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
   },
   {
     id: "aides", libelle: "🧩 Aides à la tâche",
-    aide: "Structurer la tâche pour que chacun y entre et la mène au bout — d'après Cap école inclusive (Réseau Canopé). Les deux premières se glissent aussi dans les séquences qu'on crée.",
+    aide: "Structurer la tâche pour que chacun y entre et la mène au bout, d'après Cap école inclusive (Canopé).",
     outils: [
       { id: "sequentiel", nom: "Décomposer la tâche", icone: "📋", pictos: true, cycles: "De la maternelle au lycée",
         quoi: "Les étapes d'une tâche, numérotées, avec le picto de chaque geste : check-list à cocher, séquentiel visuel, logigramme ou frise ; le chaînage qui cache l'étape apprise, le soliloque." },
