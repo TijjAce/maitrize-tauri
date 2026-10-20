@@ -3,7 +3,7 @@ import type { ProgressionAnnuelle } from "./api";
 import {
   avecCase, casesDeLaColonne, copieDesColonnes, datesDeLaSemaine, deplacerColonne, enJson, lireEtat, memeEtat,
   nombreDeSemaines, progressionDe, remettreColonne, sansColonne, semainesDeLaPeriode, sourcesDeColonnes, titreConnu,
-  titresProposes, LA_CLASSE, niveauxDeLaPeriode, cleNiveauAjoute,
+  titresProposes, LA_CLASSE, niveauxDeLaProgression, cleNiveauAjoute, tableauSansNiveau, avecSeances, ETAT_VIDE,
 } from "./progressionAnnuelle";
 
 const NIVEAUX = ["TPS", "PS", "MS", "GS", "CP", "CE1", "CE2", "CM1", "CM2"];
@@ -14,14 +14,14 @@ const prog = (annee: string, niveau: string, periode: number, colonnes: { id: st
 
 describe("la progression annuelle", () => {
   it("se lit sans tomber sur un JSON abîmé, et ne garde pas les cases vides", () => {
-    expect(lireEtat({ colonnesJson: "{pas du json", cellulesJson: "[]" })).toEqual({ colonnes: [], cellules: {} });
+    expect(lireEtat({ colonnesJson: "{pas du json", cellulesJson: "[]" })).toEqual(ETAT_VIDE);
     const e = lireEtat({ colonnesJson: '[{"id":"c1","titre":"EPS","couleur":"red"},{"titre":"sans id"}]', cellulesJson: '{"w1_c1":"Courir","w2_c1":""}' });
     expect(e.colonnes.map((c) => c.titre)).toEqual(["EPS"]);
     expect(e.cellules).toEqual({ w1_c1: "Courir" });
     expect(JSON.parse(enJson(avecCase(e, 1, "c1", "")).cellulesJson)).toEqual({});
     // La base range les cases par clé : le même état, dans un autre ordre, reste le même.
-    expect(memeEtat({ colonnes: [], cellules: { w2_a: "x", w1_a: "y" } }, { colonnes: [], cellules: { w1_a: "y", w2_a: "x", w3_a: "" } })).toBe(true);
-    expect(memeEtat({ colonnes: [], cellules: { w1_a: "y" } }, { colonnes: [], cellules: { w1_a: "z" } })).toBe(false);
+    expect(memeEtat({ ...ETAT_VIDE, cellules: { w2_a: "x", w1_a: "y" } }, { ...ETAT_VIDE, cellules: { w1_a: "y", w2_a: "x", w3_a: "" } })).toBe(true);
+    expect(memeEtat({ ...ETAT_VIDE, cellules: { w1_a: "y" } }, { ...ETAT_VIDE, cellules: { w1_a: "z" } })).toBe(false);
   });
 
   it("trouve la progression d'une année, d'un niveau et d'une période ; celles d'avant valent pour tous les niveaux", () => {
@@ -46,18 +46,35 @@ describe("la progression annuelle", () => {
     expect(nombreDeSemaines(0, {})).toBe(8);
     expect(nombreDeSemaines(7, { w9_c1: "Fête de l'école" })).toBe(9);
     expect(nombreDeSemaines(7, { w9_c1: "  " })).toBe(7);
+    // Une semaine où l'on n'a placé qu'une séance compte aussi.
+    expect(nombreDeSemaines(7, {}, { w10_c1: ["s1"] })).toBe(10);
   });
 
-  it("montre sous la classe les niveaux de la période : ceux qui y ont une progression et ceux qu'on vient d'ajouter", () => {
+  it("place des séances dans une case, sans doublon, et les relit telles quelles", () => {
+    const e = avecSeances(ETAT_VIDE, 3, "c1", ["s1", "s2", "s1"]);
+    expect(e.seances).toEqual({ w3_c1: ["s1", "s2"] });
+    const json = enJson(e);
+    expect(lireEtat({ ...json }).seances).toEqual({ w3_c1: ["s1", "s2"] });
+    expect(memeEtat(e, avecSeances(e, 3, "c1", ["s1"]))).toBe(false);
+    expect(avecSeances(e, 3, "c1", []).seances).toEqual({});
+    // Un JSON abîmé ou des identifiants qui n'en sont pas ne font rien tomber.
+    expect(lireEtat({ colonnesJson: "[]", cellulesJson: "{}", seancesJson: '{"w1_a":[1,"s9",""],"w2_a":"x"}' }).seances).toEqual({ w1_a: ["s9"] });
+  });
+
+  it("montre les niveaux de l'année à chaque période : ceux qui ont une progression et ceux qu'on vient d'ajouter", () => {
     const liste = [
       prog("2026-2027", "CM1", 1, [{ id: "a", titre: "EPS" }]),
       prog("2026-2027", "CP", 1),                                   // vide : retirée, elle ne se montre plus
-      prog("2026-2027", "CE1", 2, [{ id: "b", titre: "EPS" }]),     // une autre période
+      prog("2026-2027", "CE1", 2, [{ id: "b", titre: "EPS" }]),     // une autre période : le niveau vaut pour l'année
       prog("2025-2026", "CM2", 1, [{ id: "c", titre: "EPS" }]),     // une autre année
     ];
-    expect(niveauxDeLaPeriode(NIVEAUX, liste, "2026-2027", 1, [cleNiveauAjoute("2026-2027", 1, "GS"), cleNiveauAjoute("2026-2027", 2, "PS")]))
-      .toEqual(["GS", "CM1"]);
-    expect(niveauxDeLaPeriode(NIVEAUX, [], "2026-2027", 1, [])).toEqual([]);
+    expect(niveauxDeLaProgression(NIVEAUX, liste, "2026-2027", [cleNiveauAjoute("2026-2027", "GS"), cleNiveauAjoute("2027-2028", "PS")]))
+      .toEqual(["GS", "CE1", "CM1"]);
+    expect(niveauxDeLaProgression(NIVEAUX, [], "2026-2027", [])).toEqual([]);
+    // Le tableau sans niveau : tant qu'il n'y a pas de niveau, ou qu'il a quelque chose dans l'année.
+    expect(tableauSansNiveau(liste, "2026-2027", ["CE1", "CM1"])).toBe(false);
+    expect(tableauSansNiveau([], "2026-2027", [])).toBe(true);
+    expect(tableauSansNiveau([...liste, prog("2026-2027", "", 3, [{ id: "d", titre: "Rituel" }])], "2026-2027", ["CE1", "CM1"])).toBe(true);
   });
 
   it("tire les titres des matières, des domaines et des intitulés, chacun une fois, et les filtre sans accents", () => {
@@ -88,12 +105,16 @@ describe("la progression annuelle", () => {
   });
 
   it("retire une colonne avec ses cases, la remet à sa place, la déplace", () => {
-    const e = { colonnes: [{ id: "a", titre: "EPS", couleur: "red" }, { id: "b", titre: "Rituel", couleur: "indigo" }], cellules: { w1_a: "Courir", w1_b: "Météo" } };
+    const e = {
+      colonnes: [{ id: "a", titre: "EPS", couleur: "red" }, { id: "b", titre: "Rituel", couleur: "indigo" }],
+      cellules: { w1_a: "Courir", w1_b: "Météo" }, seances: { w2_a: ["s1"] },
+    };
     const sans = sansColonne(e, "a");
-    expect(sans).toEqual({ colonnes: [e.colonnes[1]], cellules: { w1_b: "Météo" } });
+    expect(sans).toEqual({ colonnes: [e.colonnes[1]], cellules: { w1_b: "Météo" }, seances: {} });
     const remise = remettreColonne({ ...sans, cellules: { ...sans.cellules, w2_b: "Calendrier" } }, e.colonnes[0], 0, casesDeLaColonne(e, "a"));
     expect(remise.colonnes.map((c) => c.id)).toEqual(["a", "b"]);
     expect(remise.cellules).toEqual({ w1_a: "Courir", w1_b: "Météo", w2_b: "Calendrier" });
+    expect(remise.seances).toEqual({ w2_a: ["s1"] });
     expect(deplacerColonne(e, "a", 1).colonnes.map((c) => c.id)).toEqual(["b", "a"]);
     expect(deplacerColonne(e, "a", -1)).toBe(e);
   });

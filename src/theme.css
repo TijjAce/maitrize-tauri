@@ -1806,6 +1806,27 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .prog-section-tete h3 { margin: 0; font-size: 15px; }
 .prog-ajout-niveau { display: flex; justify-content: center; padding: 4px 0 12px; }
 .prog-ajout-niveau .btn { border-style: dashed; }
+/* Le niveau d'un tableau, en tête : un titre qu'on clique pour en changer. */
+.prog-niveau { border: none; background: none; margin-left: -8px; padding: 3px 8px; border-radius: 8px; font: inherit;
+  font-size: 15px; font-weight: 700; color: var(--text); cursor: pointer; }
+.prog-niveau:hover { background: var(--panel-2); }
+.prog-niveau span { font-size: 11px; color: var(--text-2); }
+.prog-niveau-vide { color: var(--text-2); }
+/* Les séances placées dans une case de la progression. */
+.progm-case-haut.un-bouton textarea { padding-right: 28px; }
+.prog-seances { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; margin-top: 4px; }
+.prog-seance { max-width: 100%; border: none; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+.prog-seance:hover { color: var(--text); background: color-mix(in srgb, var(--couleur) 16%, var(--panel-2)); }
+.prog-seance-nom { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* La fenêtre qui les choisit : les séquences de la matière d'abord, leurs séances à cocher. */
+.choix-seances { display: flex; flex-direction: column; gap: 12px; max-height: 55vh; overflow-y: auto; margin-top: 12px; }
+.choix-seq-titre { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; font-size: 13.5px; font-weight: 700; }
+.choix-seq-titre .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.choix-seq-titre .meta { margin-left: 2px; font-size: 11.5px; font-weight: 500; }
+.choix-seance { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 18px; border-radius: 7px; font-size: 13px; cursor: pointer; }
+.choix-seance:hover { background: var(--panel-2); }
+.choix-seances details > summary { cursor: pointer; margin-bottom: 8px; }
+.choix-seances details[open] { display: flex; flex-direction: column; gap: 12px; }
 /* La programmation de l'année, dans les couleurs de la progression : chaque
    domaine en bandeau de la couleur de sa matière, ses activités en cases
    teintées de même, les périodes coiffées de leur couleur. */

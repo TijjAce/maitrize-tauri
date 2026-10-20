@@ -279,6 +279,8 @@ export interface ProgressionAnnuelle {
   id: string; annee: string; periode: number; colonnesJson: string; cellulesJson: string;
   /** Le niveau qu'elle suit (« CP »…) ; vide, elle vaut pour tous les niveaux. */
   niveau: string;
+  /** Par case (« w3_<colonne> »), les séances de séquences qu'on y a placées. */
+  seancesJson?: string;
 }
 
 export interface ProgrammationFinale {
@@ -638,8 +640,15 @@ export const api = {
    * progression à la première écriture, une seule fois.
    */
   progressionAnnuelleEcrire: (annee: string, niveau: string, periode: number,
-    avant: { colonnesJson: string; cellulesJson: string }, apres: { colonnesJson: string; cellulesJson: string }) =>
+    avant: { colonnesJson: string; cellulesJson: string; seancesJson?: string },
+    apres: { colonnesJson: string; cellulesJson: string; seancesJson?: string }) =>
     invoke<ProgressionAnnuelle>("progression_annuelle_ecrire", { annee, niveau, periode, avant, apres }),
+  /** Donne aux progressions d'une année le niveau `vers` à la place de `de` (vide : la classe), toutes périodes. */
+  progressionAnnuelleNiveau: (annee: string, de: string, vers: string) =>
+    invoke<number>("progression_annuelle_niveau", { annee, de, vers }),
+  /** Donne à la programmation d'une année le niveau `vers` à la place de `de` (vide : la classe). */
+  programmationFinaleNiveau: (annee: string, de: string, vers: string) =>
+    invoke<number>("programmation_finale_niveau", { annee, de, vers }),
   programmationsFinaleList: () => invoke<ProgrammationFinale[]>("programmations_finale_list"),
   /** Écrit l'écart de la programmation de l'année (celle de la classe, ou par élève si `ime`) : une ligne arrivée d'ailleurs reste. */
   /** Écrit l'écart d'une programmation de l'année : la classe (`niveau` vide), un de ses niveaux, ou celle par élève (`ime`). */

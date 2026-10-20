@@ -120,6 +120,9 @@ export function planDuTravail(d: DonneesTravail): PlanDeCopie {
     page(PARTIE_ORGANISATION, `Emploi du temps ${edt.annee}`, `edt|${edt.annee}|${edt.slotsJson}`,
       `Emploi du temps ${edt.annee}`, () => htmlEmploiDuTemps(edt.annee, slots));
   }
+  // Les séances placées dans les cases se nomment comme à l'écran.
+  const seanceParId = new Map(d.seances.map((s) => [s.id, s]));
+  const nomSeance = (id: string) => { const s = seanceParId.get(id); return s ? `S${s.numero} · ${s.titre || "Sans titre"}` : undefined; };
   const periodes = new Map<string, ProgressionAnnuelle[]>();
   for (const p of d.progressions) {
     const e = lireEtat(p);
@@ -133,11 +136,13 @@ export function planDuTravail(d: DonneesTravail): PlanDeCopie {
     const ranges = [...progs].sort((a, b) => rangDuNiveau(a.niveau ?? "") - rangDuNiveau(b.niveau ?? "") || (a.niveau ?? "").localeCompare(b.niveau ?? "", "fr"));
     const tableaux: TableauDePeriode[] = ranges.map((p) => {
       const e = lireEtat(p);
-      return { niveau: p.niveau ?? "", colonnes: e.colonnes.map((c) => ({ ...c, teinte: teinteDe(c) })), cellules: e.cellules };
+      return { niveau: p.niveau ?? "", colonnes: e.colonnes.map((c) => ({ ...c, teinte: teinteDe(c) })), cellules: e.cellules, seances: e.seances };
     });
+    // Une séance renommée refait la page qui la cite.
+    const cite = tableaux.flatMap((t) => Object.values(t.seances ?? {}).flat().map(nomSeance));
     page(`${PARTIE_ORGANISATION}/Progression ${annee}`, `Période ${periode}`,
-      `progression|${cle}|${JSON.stringify(ranges.map((p) => [p.niveau, p.colonnesJson, p.cellulesJson]))}`,
-      `Progression ${annee} P${periode}`, () => htmlPeriode(annee, Number(periode), tableaux));
+      `progression|${cle}|${JSON.stringify(ranges.map((p) => [p.niveau, p.colonnesJson, p.cellulesJson, p.seancesJson ?? ""]))}|${JSON.stringify(cite)}`,
+      `Progression ${annee} P${periode}`, () => htmlPeriode(annee, Number(periode), tableaux, [], nomSeance));
   }
   // Celles des collègues ne sont pas le travail de l'enseignant.
   for (const p of d.programmations) {

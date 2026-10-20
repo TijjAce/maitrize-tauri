@@ -1105,6 +1105,9 @@ pub(crate) fn migrate(conn: &Connection) {
     // Une classe à plusieurs niveaux tient une progression par niveau. Les
     // progressions d'avant n'en ont pas : elles valent pour tous les niveaux.
     conn.execute("ALTER TABLE progressions_annuelle ADD COLUMN niveau TEXT NOT NULL DEFAULT ''", []).ok();
+    // Les séances des séquences placées dans les cases de la progression :
+    // par case (« w3_<colonne> »), la liste de leurs identifiants.
+    conn.execute("ALTER TABLE progressions_annuelle ADD COLUMN seances_json TEXT NOT NULL DEFAULT '{}'", []).ok();
     migrer_documents_eleve(conn);
 
     // Élèves présents sur un créneau (organisation IME, groupes restreints).

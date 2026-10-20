@@ -57,17 +57,26 @@ export interface TableauDePeriode {
   niveau: string;
   colonnes: { id: string; titre: string; teinte: string }[];
   cellules: Record<string, string>;
+  /** Par case, les séances placées (identifiants). */
+  seances?: Record<string, string[]>;
 }
 
-/** Une période de la progression : le tableau de la classe puis ceux des niveaux, semaines datées si le calendrier est là. */
-export function htmlPeriode(annee: string, periode: number, tableaux: TableauDePeriode[], semainesCal: SemaineDeClasse[] = []): string {
+/**
+ * Une période de la progression : le tableau de la classe puis ceux des
+ * niveaux, semaines datées si le calendrier est là, et sous le texte de
+ * chaque case les séances qu'on y a placées (`nomSeance` les nomme).
+ */
+export function htmlPeriode(annee: string, periode: number, tableaux: TableauDePeriode[], semainesCal: SemaineDeClasse[] = [],
+  nomSeance: (id: string) => string | undefined = () => undefined): string {
   const corps = tableaux.filter((t) => t.colonnes.length > 0).map((t) => {
-    const nb = nombreDeSemaines(semainesCal.length, t.cellules);
+    const nb = nombreDeSemaines(semainesCal.length, t.cellules, t.seances ?? {});
+    const seancesDe = (cle: string) => (t.seances?.[cle] ?? []).map(nomSeance).filter((x): x is string => !!x)
+      .map((x) => `<div style="margin-top:3px;font-size:10.5px;color:#555">📚 ${escapeHtml(x)}</div>`).join("");
     const head = `<tr><th>Semaine</th>${t.colonnes.map((c) => `<th style="border-top:4px solid ${c.teinte}">${escapeHtml(c.titre)}</th>`).join("")}</tr>`;
     const rows = Array.from({ length: nb }, (_, i) => i + 1).map((n) => {
       const s = semainesCal[n - 1];
       return `<tr><td><b>S${n}</b>${s ? `<br><small>${escapeHtml(datesDeLaSemaine(s))}</small>` : ""}</td>${t.colonnes.map((c) =>
-        `<td>${escapeHtml(t.cellules[cleCase(n, c.id)] ?? "").replace(/\n/g, "<br>")}</td>`).join("")}</tr>`;
+        `<td>${escapeHtml(t.cellules[cleCase(n, c.id)] ?? "").replace(/\n/g, "<br>")}${seancesDe(cleCase(n, c.id))}</td>`).join("")}</tr>`;
     }).join("");
     return `${t.niveau ? `<h2>${escapeHtml(t.niveau)}</h2>` : ""}<table>${head}${rows}</table>`;
   }).join("");
