@@ -246,6 +246,14 @@ pub fn purger_corbeille(conn: &Connection) {
 /// Ouvre la base, la met au niveau de cette `version` de l'application.
 pub fn open(version: &str) -> Connection {
     let path = data_dir().join("maitrize.sqlite3");
+    // Une base disparue ou abîmée est mise de côté, et l'on repart du
+    // dernier état sain (voir instantanes.rs) : la fenêtre s'ouvre toujours.
+    if let Some(fait) = crate::instantanes::reparer_si_besoin(
+        &path, &sauvegardes_dir(), &data_dir().join(crate::instantanes::DOSSIER_DE_COTE), &std::env::temp_dir(),
+    ) {
+        crate::commands::diag_ecrire(format!("RÉPARATION AU DÉMARRAGE : {fait}"));
+        crate::instantanes::annoncer(format!("Au démarrage, {fait}."));
+    }
     let conn = Connection::open(path).expect("ouverture base SQLite");
     conn.pragma_update(None, "journal_mode", "WAL").ok();
     conn.pragma_update(None, "foreign_keys", "ON").ok();

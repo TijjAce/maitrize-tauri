@@ -18,6 +18,7 @@ use rusqlite::Connection;
 use std::collections::HashSet;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 /// La base, dans l'archive.
 const ENTREE: &str = "maitrize.sqlite3";
@@ -260,6 +261,106 @@ pub fn prendre_si_du(db: &Db, dossier: &Path, maintenant: NaiveDateTime) -> Opti
     }
 }
 
+// ── Réparer au démarrage ───────────────────────────────────────────────────
+//
+// « L'application revient même à un état passé si jamais il y a un problème »
+// (l'enseignant, octobre 2026). Une base qui ne se lit plus empêchait même
+// d'ouvrir la fenêtre : on la met de côté, jamais on ne l'efface, et l'on
+// repart du plus récent état qui se lit.
+
+/// Ce que le démarrage a dû réparer, à dire une fois la fenêtre ouverte.
+static REPARATION: Mutex<Option<String>> = Mutex::new(None);
+
+/// Le dossier où vont les bases mises de côté.
+pub const DOSSIER_DE_COTE: &str = "Bases mises de côté";
+
+/// Une erreur qui dit que le fichier lui-même est abîmé. Une base occupée
+/// (l'application ouverte deux fois), un disque plein ou un droit refusé ne
+/// sont pas des défauts de la base : on n'y touche pas.
+fn abimee(e: &rusqlite::Error) -> bool {
+    matches!(e.sqlite_error_code(), Some(rusqlite::ErrorCode::DatabaseCorrupt | rusqlite::ErrorCode::NotADatabase))
+}
+
+/// Le défaut de la base, si elle en a un sûr.
+fn defaut(c: &Connection) -> Option<String> {
+    c.busy_timeout(std::time::Duration::from_secs(5)).ok();
+    match c.query_row("PRAGMA quick_check", [], |r| r.get::<_, String>(0)) {
+        Ok(r) if r == "ok" => None,
+        Ok(r) => Some(format!("abîmée ({r})")),
+        Err(e) if abimee(&e) => Some(format!("illisible ({e})")),
+        Err(_) => None,
+    }
+}
+
+/// Une copie qui se lit entière.
+fn lisible(chemin: &Path) -> bool {
+    Connection::open(chemin).is_ok_and(|c| c.query_row("PRAGMA quick_check", [], |r| r.get::<_, String>(0)).is_ok_and(|r| r == "ok"))
+}
+
+/// Pourquoi la base ne peut pas servir telle quelle, s'il y a lieu. Une base
+/// absente ou vide n'est un défaut que si des états existent : sans eux,
+/// c'est un premier lancement.
+fn defaut_de_la_base(chemin: &Path, il_y_a_des_etats: bool) -> Option<String> {
+    let taille = std::fs::metadata(chemin).map(|m| m.len()).unwrap_or(0);
+    if taille == 0 {
+        return il_y_a_des_etats.then(|| "la base avait disparu".to_string());
+    }
+    match Connection::open(chemin) {
+        Ok(c) => defaut(&c).map(|e| format!("la base était {e}")),
+        Err(e) if abimee(&e) => Some(format!("la base était illisible ({e})")),
+        Err(_) => None,
+    }
+}
+
+/// « 20/10 à 08:56 », d'après la date d'un état.
+fn date_en_clair(e: &EtatPasse) -> String {
+    match quand(e) {
+        Some(q) if e.date.len() > 10 => q.format("%d/%m à %H:%M").to_string(),
+        Some(q) => q.format("%d/%m").to_string(),
+        None => e.date.clone(),
+    }
+}
+
+/// Si la base de `chemin` a disparu ou ne se lit plus : la met de côté dans
+/// `de_cote` et la remplace par le plus récent état de `etats` qui se lit.
+/// Rend ce qui a été fait, s'il y a eu quelque chose à faire.
+pub(crate) fn reparer_si_besoin(chemin: &Path, etats: &Path, de_cote: &Path, provisoires: &Path) -> Option<String> {
+    let liste = etats_dans(etats);
+    let defaut = defaut_de_la_base(chemin, !liste.is_empty())?;
+    // Mettre de côté, avec son journal d'écriture : rien ne s'efface.
+    let horodatage = chrono::Local::now().format("%Y-%m-%d-%H%M%S");
+    for suffixe in ["", "-wal", "-shm"] {
+        let source = PathBuf::from(format!("{}{suffixe}", chemin.display()));
+        if !source.exists() {
+            continue;
+        }
+        let cible = de_cote.join(format!("maitrize-{horodatage}.sqlite3{suffixe}"));
+        if std::fs::create_dir_all(de_cote).and_then(|_| std::fs::rename(&source, &cible)).is_err() {
+            return Some(format!("{defaut}, et elle n'a pas pu être mise de côté : rien n'a été touché"));
+        }
+    }
+    for e in &liste {
+        let Ok(base) = ouvrir(&etats.join(&e.nom), provisoires) else { continue };
+        if lisible(&base.chemin) && std::fs::copy(&base.chemin, chemin).is_ok() {
+            return Some(format!("{defaut} : Maitrize est reparti de l'état du {}, et l'a gardée à part", date_en_clair(e)));
+        }
+    }
+    Some(format!("{defaut}, et aucun état passé ne se lit : Maitrize repart d'une base vide, et l'a gardée à part"))
+}
+
+/// Retient ce que le démarrage a réparé, pour la fenêtre.
+pub fn annoncer(texte: String) {
+    if let Ok(mut r) = REPARATION.lock() {
+        *r = Some(texte);
+    }
+}
+
+/// Ce que le démarrage a réparé, une seule fois.
+#[tauri::command]
+pub fn reparation_annonce() -> Option<String> {
+    REPARATION.lock().ok()?.take()
+}
+
 fn maintenant() -> NaiveDateTime {
     chrono::Local::now().naive_local()
 }
@@ -361,6 +462,41 @@ mod tests {
         // Repasser ne change rien : ce qui reste est stable.
         let reste: Vec<(String, NaiveDateTime)> = etats.iter().filter(|(n, _)| !effaces.contains(n)).cloned().collect();
         assert!(a_effacer(&reste, maintenant).is_empty());
+    }
+
+    #[test]
+    fn une_base_illisible_est_mise_de_cote_et_l_application_repart_du_dernier_etat_sain() {
+        let d = dossier();
+        let db = base(&d);
+        let s = d.join("Sauvegardes");
+        db.lock().execute("INSERT INTO projets (id, titre, date_creation) VALUES ('p1', 'Le potager', '2026-10-01')", []).unwrap();
+        prendre_si_du(&db, &s, le("2026-10-20 09:00")).unwrap();
+        drop(db);
+        let chemin = d.join("ici.sqlite3");
+        // Une base saine ne bouge pas.
+        assert_eq!(reparer_si_besoin(&chemin, &s, &d.join("De côté"), &d), None);
+        // Une base dont le début est écrasé ne se lit plus.
+        let mut octets = std::fs::read(&chemin).unwrap();
+        for o in octets.iter_mut().take(4096) {
+            *o = 0x5a;
+        }
+        std::fs::write(&chemin, &octets).unwrap();
+        let dit = reparer_si_besoin(&chemin, &s, &d.join("De côté"), &d).expect("une réparation");
+        assert!(dit.contains("20/10 à 09:00"), "{dit}");
+        let c = Connection::open(&chemin).unwrap();
+        let titre: String = c.query_row("SELECT titre FROM projets WHERE id = 'p1'", [], |r| r.get(0)).unwrap();
+        assert_eq!(titre, "Le potager");
+        let gardees: Vec<_> = std::fs::read_dir(d.join("De côté")).unwrap().flatten().collect();
+        assert!(!gardees.is_empty(), "la base abîmée est gardée");
+        // Une base disparue revient aussi ; sans aucun état, c'est un premier lancement.
+        drop(c);
+        std::fs::remove_file(&chemin).unwrap();
+        assert!(reparer_si_besoin(&chemin, &s, &d.join("De côté"), &d).is_some());
+        assert!(chemin.exists());
+        let vide = d.join("neuf");
+        std::fs::create_dir_all(&vide).unwrap();
+        assert_eq!(reparer_si_besoin(&vide.join("maitrize.sqlite3"), &vide.join("Sauvegardes"), &vide.join("De côté"), &d), None);
+        std::fs::remove_dir_all(&d).ok();
     }
 
     #[test]

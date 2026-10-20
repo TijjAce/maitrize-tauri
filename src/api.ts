@@ -787,6 +787,8 @@ export const api = {
   retourEtats: () => invoke<EtatPasse[]>("retour_etats"),
   retourEcarts: (nom: string) => invoke<Ecart[]>("retour_ecarts", { nom }),
   retourRevenir: (nom: string) => invoke<BilanRetour>("retour_revenir", { nom }),
+  /** Ce que le démarrage a dû réparer (base disparue ou abîmée), une seule fois. */
+  reparationAnnonce: () => invoke<string | null>("reparation_annonce"),
   // Copie du bureau dans un vrai dossier de l'ordinateur
   copieBureauInfo: () => invoke<InfoCopie>("copie_bureau_info"),
   copieBureauRegler: (active: boolean, emplacement?: string) =>

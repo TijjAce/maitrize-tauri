@@ -38,7 +38,7 @@ import { Onboarding } from "./components/Onboarding";
 import { ContextMenuHost } from "./components/ctxmenu";
 import { CguGate } from "./components/CGU";
 import { bootTheme } from "./theme";
-import { raccourci, isMac } from "./api";
+import { api, raccourci, isMac } from "./api";
 import { Retour, useSuiviDesLieux, useTitreDuLieu } from "./components/Retour";
 import { getVersion } from "@tauri-apps/api/app";
 import { Toaster, toast } from "./components/Toaster";
@@ -155,6 +155,10 @@ export default function App() {
   useSuiviDesLieux(location.pathname + location.search);
   // Après un retour en arrière, la fenêtre s'est rechargée : le dire, et offrir d'annuler.
   useAnnonceDuRetour();
+  // Une base abîmée ou disparue a été remplacée au démarrage par le dernier état sain : le dire.
+  React.useEffect(() => {
+    api.reparationAnnonce().then((t) => { if (t) toast(t, { icone: "🛟", duree: 60000 }); }).catch(() => {});
+  }, []);
   React.useEffect(() => { bootTheme(); }, []);
   React.useEffect(() => { getVersion().then(setVersion).catch(() => {}); }, []);
   // Synchronisation de fond : rien à cliquer, les écrans se relisent d'eux-mêmes
