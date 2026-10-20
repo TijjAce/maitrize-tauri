@@ -18,6 +18,22 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.33",
+    titre: "Revenir en arrière, votre travail sur le Bureau, et la progression par niveau",
+    points: [
+      { quoi: "Revenir en arrière : Maitrize garde un état de votre travail à chaque heure où quelque chose change — tous sur deux jours, puis un par jour sur un mois, un par semaine sur six mois, un par mois sur un an. On voit ce qui changerait, on revient, et « Annuler » défait le retour.", ou: "Réglages › Données & synchro › Revenir en arrière" },
+      { quoi: "Votre travail sur le Bureau, dans un dossier « Maitrize » qui se lit sans l'application : le plan de travail, chaque élève et son dossier, l'emploi du temps, la progression et la programmation, le cahier journal semaine par semaine, les ressources, et le rapport d'incidents.", ou: "Réglages › Données & synchro › Mon travail sur le Bureau" },
+      { quoi: "Avant chaque mise à jour, une copie de la base telle qu'elle était. Au démarrage, une base abîmée ou disparue est mise de côté et repart du dernier état sain, et la fenêtre le dit. Un fichier joint effacé passe un an dans la corbeille.", ou: "Réglages › Données & synchro" },
+      { quoi: "La progression par niveau : le tableau de la classe, puis un tableau par niveau (« + Niveau »), son niveau valant pour l'année. Les colonnes prennent les matières, les domaines et les intitulés de Réglages, avec leur couleur ; les semaines sont datées ; 📚 au coin d'une case y place des séances de vos séquences.", ou: "Organisation › Progression" },
+      { quoi: "La programmation suit : la classe, puis un tableau par niveau, aux couleurs de la progression. ↑ ↓ en tête d'un tableau le monte ou le descend, dans la progression comme dans la programmation.", ou: "Organisation › Programmation" },
+      { quoi: "L'emploi du temps prend les couleurs de la progression : des cases teintées, et le temps de travail de chaque jour en tête de sa colonne.", ou: "Organisation › Emploi du temps" },
+      { quoi: "Fabriquer : Langage, Sons et lecture, Lecture et écriture se rangent dans « Français », comme les domaines dans « Mathématiques ». Chaque générateur montre un exemple de sa feuille avant qu'on ait rien choisi ; « Partir de cet exemple » le reprend.", ou: "Fabriquer › Par domaine" },
+      { quoi: "Un problème dans Maitrize ? Une notification propose d'en envoyer le rapport à l'éditeur depuis votre messagerie : un e-mail déjà écrit, sans les noms de la classe, que vous relisez avant de l'envoyer.", ou: "Réglages › Données & synchro › Avancé › Journal d'incidents" },
+      { quoi: "Et aussi : un onglet Nuage pour partager vos dossiers ; un seul réglage de transcription pour les réunions, le Dictaphone et les dictées ; le bouton « Dictée d'atelier » d'Élèves s'en va ; les réponses de Mistral Large 4 se lisent.", ou: "Réglages › Nuage · Réglages › Assistant IA" },
+      { quoi: "Corrigé : modifier ou déplacer un créneau effaçait le bilan qu'on venait d'écrire au cahier journal. Entre minuit et 2 h, l'accueil prenait la veille pour aujourd'hui, et plusieurs écrans dataient de la veille. Une dictée du téléphone sans son ne se reprend plus à chaque ouverture, et un dépôt relevé deux fois ne se range qu'une fois.", ou: "Planning › Cahier journal · Accueil" },
+    ],
+  },
+  {
     version: "1.6.32",
     titre: "Le CM1 et le CM2 au complet, les séquences toutes faites dans leur onglet, et vos générateurs faits avec l'IA",
     points: [
