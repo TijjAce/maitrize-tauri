@@ -1791,6 +1791,12 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .prog-niveau:hover { background: var(--panel-2); }
 .prog-niveau span { font-size: 11px; color: var(--text-2); }
 .prog-niveau-vide { color: var(--text-2); }
+/* ↑ ↓ : le tableau monte ou descend parmi ceux de l'année. */
+.prog-deplacer { display: inline-flex; gap: 2px; margin-left: 2px; }
+.prog-deplacer button { width: 26px; height: 26px; border: none; border-radius: 7px; background: none; color: var(--text-2);
+  font: inherit; font-size: 15px; line-height: 1; cursor: pointer; }
+.prog-deplacer button:hover:not(:disabled) { background: var(--panel-2); color: var(--text); }
+.prog-deplacer button:disabled { opacity: .3; cursor: default; }
 /* Les séances placées dans une case de la progression. */
 .progm-case-haut.un-bouton textarea { padding-right: 28px; }
 .prog-seances { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; margin-top: 4px; }

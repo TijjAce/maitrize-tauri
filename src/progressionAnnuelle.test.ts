@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProgressionAnnuelle } from "./api";
 import {
+  cleOrdreDesTableaux, dansLOrdre, deplacerTableau, lireOrdreDesTableaux, renommerDansLOrdre,
   avecCase, casesDeLaColonne, copieDesColonnes, datesDeLaSemaine, deplacerColonne, enJson, lireEtat, memeEtat,
   nombreDeSemaines, progressionDe, remettreColonne, sansColonne, semainesDeLaPeriode, sourcesDeColonnes, titreConnu,
   titresProposes, LA_CLASSE, niveauxDeLaProgression, cleNiveauAjoute, tableauSansNiveau, avecSeances, ETAT_VIDE,
@@ -117,5 +118,33 @@ describe("la progression annuelle", () => {
     expect(remise.seances).toEqual({ w2_a: ["s1"] });
     expect(deplacerColonne(e, "a", 1).colonnes.map((c) => c.id)).toEqual(["b", "a"]);
     expect(deplacerColonne(e, "a", -1)).toBe(e);
+  });
+});
+
+describe("l'ordre des tableaux de l'année", () => {
+  it("range les tableaux dans l'ordre choisi ; un niveau nouveau vient après, dans l'ordre de l'école", () => {
+    expect(dansLOrdre(["", "CP", "CE1"], [])).toEqual(["", "CP", "CE1"]);
+    expect(dansLOrdre(["", "CP", "CE1"], ["CE1", "", "CP"])).toEqual(["CE1", "", "CP"]);
+    expect(dansLOrdre(["", "CP", "CE1", "CE2"], ["CE1", "CP"])).toEqual(["CE1", "CP", "", "CE2"]);
+    // Un niveau retiré de l'année ne laisse pas de trou.
+    expect(dansLOrdre(["", "CE1"], ["CE1", "CP", ""])).toEqual(["CE1", ""]);
+  });
+
+  it("monte et descend d'une place, sans sortir de la liste", () => {
+    expect(deplacerTableau(["", "CP", "CE1"], "CE1", -1)).toEqual(["", "CE1", "CP"]);
+    expect(deplacerTableau(["", "CP", "CE1"], "", 1)).toEqual(["CP", "", "CE1"]);
+    expect(deplacerTableau(["", "CP"], "", -1)).toEqual(["", "CP"]);
+    expect(deplacerTableau(["", "CP"], "CP", 1)).toEqual(["", "CP"]);
+    expect(deplacerTableau(["", "CP"], "CM2", 1)).toEqual(["", "CP"]);
+  });
+
+  it("garde sa place à un tableau qui change de niveau, et se lit sans erreur", () => {
+    expect(renommerDansLOrdre(["CP", "", "CE1"], "CP", "CE2")).toEqual(["CE2", "", "CE1"]);
+    expect(renommerDansLOrdre(["CP", "", "CE2"], "CP", "CE2")).toEqual(["CE2", ""]);
+    expect(renommerDansLOrdre(["", "CE1"], "CP", "CE2")).toEqual(["", "CE1"]);
+    expect(lireOrdreDesTableaux('["CE1",""]')).toEqual(["CE1", ""]);
+    expect(lireOrdreDesTableaux("pas du json")).toEqual([]);
+    expect(lireOrdreDesTableaux(null)).toEqual([]);
+    expect(cleOrdreDesTableaux("2026-2027")).toBe("ordreDesTableaux:2026-2027");
   });
 });

@@ -161,6 +161,47 @@ export function niveauxDeLaProgression(ordre: string[], liste: ProgressionAnnuel
 export const tableauSansNiveau = (liste: ProgressionAnnuelle[], annee: string, niveaux: string[]) =>
   niveaux.length === 0 || liste.some((p) => p.annee === annee && (p.niveau ?? "") === "" && remplie(p));
 
+/**
+ * Où se range l'ordre des tableaux de l'année — « » pour celui de la classe,
+ * puis chaque niveau —, que ↑ ↓ changent (demande de l'enseignant, octobre
+ * 2026). La progression et la programmation le partagent : c'est l'ordre de
+ * ses niveaux.
+ */
+export const cleOrdreDesTableaux = (annee: string) => `ordreDesTableaux:${annee}`;
+
+/** L'ordre enregistré ; rien s'il n'y en a pas, ou s'il est illisible. */
+export function lireOrdreDesTableaux(brut: string | null | undefined): string[] {
+  try {
+    const v: unknown = JSON.parse(brut ?? "");
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Les tableaux dans l'ordre choisi : ceux que l'ordre connaît à leur place,
+ * les autres — un niveau qu'on vient d'ajouter — ensuite, dans l'ordre de
+ * l'école.
+ */
+export function dansLOrdre(tableaux: string[], ordre: string[]): string[] {
+  const rang = (n: string) => { const i = ordre.indexOf(n); return i < 0 ? ordre.length : i; };
+  return tableaux.map((n, i) => ({ n, i })).sort((a, b) => rang(a.n) - rang(b.n) || a.i - b.i).map((x) => x.n);
+}
+
+/** Les tableaux après en avoir monté (−1) ou descendu (+1) un ; les mêmes s'il est déjà au bout. */
+export function deplacerTableau(tableaux: string[], n: string, sens: -1 | 1): string[] {
+  const i = tableaux.indexOf(n), j = i + sens;
+  if (i < 0 || j < 0 || j >= tableaux.length) return tableaux;
+  const suite = [...tableaux];
+  [suite[i], suite[j]] = [suite[j], suite[i]];
+  return suite;
+}
+
+/** Un tableau qui change de niveau garde sa place : « CP » devient « CE1 » là où il était. */
+export const renommerDansLOrdre = (ordre: string[], de: string, vers: string) =>
+  ordre.includes(de) ? ordre.filter((x) => x !== vers).map((x) => (x === de ? vers : x)) : ordre;
+
 /** Un groupe de titres à proposer pour une colonne. */
 export interface GroupeDeTitres { groupe: string; titres: string[] }
 
