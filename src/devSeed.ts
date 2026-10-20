@@ -105,7 +105,7 @@ export async function genererDonneesTest(anneeChoisie?: string): Promise<string>
     ];
     const prog: ProgrammationFinale = {
       id: newId(), annee, lignesJson: JSON.stringify(lignes),
-      niveau: "CE1", enseignant: "Données de démo", estImportee: false,
+      niveau: "", enseignant: "Données de démo", estImportee: false,
     };
     await api.programmationFinaleSave(prog);
   }

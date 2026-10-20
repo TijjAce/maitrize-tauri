@@ -1202,21 +1202,25 @@ pub fn programmation_finale_save(db: State<Db>, p: ProgrammationFinale) -> R<Pro
     Ok(p)
 }
 
-/// Écrit une modification de la programmation de l'année : celle de la
-/// classe, ou celle par élève (`ime`). Comme pour la progression, seul
-/// l'écart avec ce que l'écran montrait s'écrit, et la programmation se
-/// crée une seule fois.
-pub(crate) fn ecrire_programmation(c: &rusqlite::Connection, annee: &str, ime: bool, avant: &str, apres: &str) -> rusqlite::Result<ProgrammationFinale> {
-    let sql = if ime {
-        "SELECT * FROM programmations_finale WHERE annee = ?1 AND niveau = 'ime' ORDER BY rowid LIMIT 1"
-    } else {
-        "SELECT * FROM programmations_finale WHERE annee = ?1 AND est_importee = 0 AND niveau <> 'ime' ORDER BY rowid LIMIT 1"
-    };
-    let existante = c.query_row(sql, params![annee], ProgrammationFinale::from_row).optional()?;
+/// Écrit une modification d'une programmation de l'année : celle de la
+/// classe (`niveau` vide), celle d'un niveau (« CP »…) dans une classe à
+/// plusieurs niveaux, ou celle par élève (`ime`). Comme pour la progression,
+/// seul l'écart avec ce que l'écran montrait s'écrit, et chaque programmation
+/// se crée une seule fois.
+pub(crate) fn ecrire_programmation(c: &rusqlite::Connection, annee: &str, ime: bool, niveau: &str, avant: &str, apres: &str) -> rusqlite::Result<ProgrammationFinale> {
+    let niveau = if ime { "ime" } else { niveau.trim() };
+    // « ime » nomme la programmation par élève : un niveau ne peut pas s'appeler ainsi.
+    if !ime && niveau.eq_ignore_ascii_case("ime") {
+        return Err(rusqlite::Error::InvalidParameterName(format!("niveau réservé : {niveau}")));
+    }
+    let existante = c.query_row(
+        "SELECT * FROM programmations_finale WHERE annee = ?1 AND est_importee = 0 AND COALESCE(niveau, '') = ?2 ORDER BY rowid LIMIT 1",
+        params![annee, niveau], ProgrammationFinale::from_row,
+    ).optional()?;
     let vide = if ime { "{}" } else { "[]" };
     let mut p = existante.unwrap_or_else(|| ProgrammationFinale {
         id: new_id(), annee: annee.to_string(), lignes_json: vide.to_string(),
-        niveau: if ime { "ime".into() } else { String::new() }, enseignant: String::new(), est_importee: false,
+        niveau: niveau.to_string(), enseignant: String::new(), est_importee: false,
     });
     let avant = if avant.trim().is_empty() { vide } else { avant };
     p.lignes_json = fusionner_ecran(&p.lignes_json, avant, apres);
@@ -1229,9 +1233,9 @@ pub(crate) fn ecrire_programmation(c: &rusqlite::Connection, annee: &str, ime: b
 }
 
 #[tauri::command]
-pub fn programmation_finale_ecrire(db: State<Db>, annee: String, ime: bool, avant: String, apres: String) -> R<ProgrammationFinale> {
+pub fn programmation_finale_ecrire(db: State<Db>, annee: String, ime: bool, avant: String, apres: String, niveau: Option<String>) -> R<ProgrammationFinale> {
     let c = db.lock();
-    ecrire_programmation(&c, &annee, ime, &avant, &apres).map_err(e)
+    ecrire_programmation(&c, &annee, ime, niveau.as_deref().unwrap_or(""), &avant, &apres).map_err(e)
 }
 
 #[tauri::command]
@@ -1297,13 +1301,13 @@ mod tests_ecritures_par_ecart {
     fn une_ligne_ajoutee_ailleurs_reste_quand_l_ecran_modifie_une_autre_ligne() {
         let c = base();
         let depart = r#"[{"id":"d1","estDomaine":true,"label":"Français"},{"id":"l1","estDomaine":false,"label":"Lecture","p1":""}]"#;
-        let p1 = ecrire_programmation(&c, "2026-2027", false, "[]", depart).unwrap();
+        let p1 = ecrire_programmation(&c, "2026-2027", false, "", "[]", depart).unwrap();
         // Un autre ordinateur ajoute une activité sous « Français ».
         let ailleurs = r#"[{"id":"d1","estDomaine":true,"label":"Français"},{"id":"l2","estDomaine":false,"label":"Écriture"},{"id":"l1","estDomaine":false,"label":"Lecture","p1":""}]"#;
         c.execute("UPDATE programmations_finale SET lignes_json = ?1", [ailleurs]).unwrap();
         // L'écran, qui ne la connaît pas, remplit P1 de « Lecture ».
         let ecran = r#"[{"id":"d1","estDomaine":true,"label":"Français"},{"id":"l1","estDomaine":false,"label":"Lecture","p1":"Albums"}]"#;
-        let p2 = ecrire_programmation(&c, "2026-2027", false, depart, ecran).unwrap();
+        let p2 = ecrire_programmation(&c, "2026-2027", false, "", depart, ecran).unwrap();
         assert_eq!(p1.id, p2.id, "une seule programmation de classe");
         let v = json(&p2.lignes_json);
         let labels: Vec<&str> = v.as_array().unwrap().iter().map(|l| l["label"].as_str().unwrap()).collect();
@@ -1314,8 +1318,8 @@ mod tests_ecritures_par_ecart {
     #[test]
     fn la_programmation_par_eleve_vit_a_part_de_celle_de_la_classe() {
         let c = base();
-        ecrire_programmation(&c, "2026-2027", false, "[]", r#"[{"id":"l1","label":"Lecture"}]"#).unwrap();
-        let ime = ecrire_programmation(&c, "2026-2027", true, "{}", r#"{"objectifs":[{"id":"o1","titre":"Se repérer"}],"groupes":[]}"#).unwrap();
+        ecrire_programmation(&c, "2026-2027", false, "", "[]", r#"[{"id":"l1","label":"Lecture"}]"#).unwrap();
+        let ime = ecrire_programmation(&c, "2026-2027", true, "", "{}", r#"{"objectifs":[{"id":"o1","titre":"Se repérer"}],"groupes":[]}"#).unwrap();
         assert_eq!(ime.niveau, "ime");
         let n: i64 = c.query_row("SELECT COUNT(*) FROM programmations_finale", [], |r| r.get(0)).unwrap();
         assert_eq!(n, 2);
@@ -1324,12 +1328,34 @@ mod tests_ecritures_par_ecart {
             r#"UPDATE programmations_finale SET lignes_json = '{"objectifs":[{"id":"o1","titre":"Se repérer","periodes":[1]}],"groupes":[]}' WHERE niveau = 'ime'"#,
             [],
         ).unwrap();
-        let p = ecrire_programmation(&c, "2026-2027", true,
+        let p = ecrire_programmation(&c, "2026-2027", true, "",
             r#"{"objectifs":[{"id":"o1","titre":"Se repérer"}],"groupes":[]}"#,
             r#"{"objectifs":[{"id":"o1","titre":"Se repérer dans la classe"}],"groupes":[]}"#).unwrap();
         let v = json(&p.lignes_json);
         assert_eq!(v["objectifs"][0]["titre"], "Se repérer dans la classe");
         assert_eq!(v["objectifs"][0]["periodes"], json("[1]"));
+    }
+
+    #[test]
+    fn chaque_niveau_a_sa_programmation_a_cote_de_celle_de_la_classe() {
+        let c = base();
+        let classe = ecrire_programmation(&c, "2026-2027", false, "", "[]", r#"[{"id":"l1","label":"Lecture"}]"#).unwrap();
+        let cp = ecrire_programmation(&c, "2026-2027", false, "CP", "[]", r#"[{"id":"l2","label":"Les sons"}]"#).unwrap();
+        let ce1 = ecrire_programmation(&c, "2026-2027", false, "CE1", "[]", r#"[{"id":"l3","label":"Les accords"}]"#).unwrap();
+        assert_eq!((classe.niveau.as_str(), cp.niveau.as_str(), ce1.niveau.as_str()), ("", "CP", "CE1"));
+        // Écrire au CP ne touche ni la classe ni le CE1.
+        let cp2 = ecrire_programmation(&c, "2026-2027", false, "CP",
+            r#"[{"id":"l2","label":"Les sons"}]"#, r#"[{"id":"l2","label":"Les sons complexes"}]"#).unwrap();
+        assert_eq!(cp2.id, cp.id);
+        let lire = |id: &str| -> String { c.query_row("SELECT lignes_json FROM programmations_finale WHERE id = ?1", [id], |r| r.get(0)).unwrap() };
+        assert_eq!(json(&lire(&classe.id))[0]["label"], "Lecture");
+        assert_eq!(json(&lire(&ce1.id))[0]["label"], "Les accords");
+        assert_eq!(json(&lire(&cp.id))[0]["label"], "Les sons complexes");
+        // Une programmation importée d'un collègue, de même niveau, n'est jamais la sienne.
+        c.execute("INSERT INTO programmations_finale (id, annee, lignes_json, niveau, enseignant, est_importee)
+                   VALUES ('x', '2026-2027', '[]', 'CP', 'Collègue', 1)", []).unwrap();
+        assert_eq!(ecrire_programmation(&c, "2026-2027", false, "CP", "[]", "[]").unwrap().id, cp.id);
+        assert!(ecrire_programmation(&c, "2026-2027", false, "IME", "[]", "[]").is_err(), "« ime » est réservé");
     }
 
     #[test]

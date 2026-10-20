@@ -16,7 +16,7 @@
 // vient de ses données, pas de sa mise en page.
 
 import {
-  couleurHex, couleurPourMatiere, MATIERES, matiereDuDomaine, type CommentaireEleve, type Creneau, type DocumentCoffre,
+  couleurHex, couleurPourMatiere, getMatiereOverrides, MATIERES, matiereDuDomaine, NIVEAUX_SCOLAIRES, type CommentaireEleve, type Creneau, type DocumentCoffre,
   type DocumentEleve, type EdtTypique, type Eleve, type Evaluation, type NoteEleve, type ObservationEleve, type PapierEleve,
   type ProgrammationFinale, type ProgressionAnnuelle, type ProgressionEleve, type Seance,
 } from "./api";
@@ -25,9 +25,10 @@ import { empreinte, extensionDe, Noms, nomSur, sansExtension, type FichierCopie,
 import { corpsDeLExport, STYLE_EXPORT } from "./dossierHtml";
 import {
   anneeScolaireDe, creneauRempli, htmlEmploiDuTemps, htmlPeriode, htmlProgrammation, htmlSemaineDuJournal, lundiDe,
-  type LigneProgrammation, type TableauDePeriode,
+  type LigneProgrammation, type TableauDePeriode, type TableauDeProgrammation,
 } from "./organisationHtml";
 import { lireEtat } from "./progressionAnnuelle";
+import { estALaClasse, teintesDesLignes } from "./programmationAnnuelle";
 import { htmlParEleve, lire as lireProgrammationIme } from "./programmationIme";
 import type { SlotEdt } from "./organisation";
 
@@ -60,9 +61,18 @@ const liste = <T>(json: string | null | undefined): T[] => {
   try { const v = JSON.parse(json || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
 };
 
-/** La couleur d'une colonne de progression : celle de sa matière, de son domaine, sinon la sienne. */
-const teinteDe = (c: { titre: string; couleur: string }) =>
-  couleurHex[MATIERES.includes(c.titre) || matiereDuDomaine(c.titre) ? couleurPourMatiere(c.titre) : c.couleur] ?? couleurHex.blue;
+/**
+ * La couleur d'une colonne de progression ou d'un domaine de programmation :
+ * celle de sa matière, de son domaine ou de l'intitulé choisi dans Réglages,
+ * sinon la sienne.
+ */
+const teinteDe = (c: { titre: string; couleur?: string }) => {
+  const connu = MATIERES.includes(c.titre) || !!matiereDuDomaine(c.titre) || Object.prototype.hasOwnProperty.call(getMatiereOverrides(), c.titre);
+  return couleurHex[connu ? couleurPourMatiere(c.titre) : c.couleur ?? "blue"] ?? couleurHex.blue;
+};
+
+/** La classe d'abord, puis les niveaux dans l'ordre de l'école. */
+const rangDuNiveau = (n: string) => (n ? 1 + Math.max(0, NIVEAUX_SCOLAIRES.indexOf(n)) : 0);
 
 /** Les fichiers des élèves, de l'organisation, du cahier journal et des ressources. */
 export function planDuTravail(d: DonneesTravail): PlanDeCopie {
@@ -120,7 +130,7 @@ export function planDuTravail(d: DonneesTravail): PlanDeCopie {
   for (const [cle, progs] of [...periodes].sort(([a], [b]) => a.localeCompare(b))) {
     const [annee, periode] = cle.split("|");
     // La classe d'abord, puis les niveaux dans l'ordre où on les a écrits.
-    const ranges = [...progs].sort((a, b) => (a.niveau ? 1 : 0) - (b.niveau ? 1 : 0) || a.niveau.localeCompare(b.niveau, "fr"));
+    const ranges = [...progs].sort((a, b) => rangDuNiveau(a.niveau ?? "") - rangDuNiveau(b.niveau ?? "") || (a.niveau ?? "").localeCompare(b.niveau ?? "", "fr"));
     const tableaux: TableauDePeriode[] = ranges.map((p) => {
       const e = lireEtat(p);
       return { niveau: p.niveau ?? "", colonnes: e.colonnes.map((c) => ({ ...c, teinte: teinteDe(c) })), cellules: e.cellules };
@@ -129,20 +139,29 @@ export function planDuTravail(d: DonneesTravail): PlanDeCopie {
       `progression|${cle}|${JSON.stringify(ranges.map((p) => [p.niveau, p.colonnesJson, p.cellulesJson]))}`,
       `Progression ${annee} P${periode}`, () => htmlPeriode(annee, Number(periode), tableaux));
   }
+  // Celles des collègues ne sont pas le travail de l'enseignant.
   for (const p of d.programmations) {
-    if (p.estImportee) continue; // celles des collègues ne sont pas le travail de l'enseignant
-    if (p.niveau === "ime") {
-      const prog = lireProgrammationIme(p.lignesJson);
-      if (!prog.objectifs.length) continue;
-      const eleves = parNom.map((e) => ({ id: e.id, nom: e.nom }));
-      page(PARTIE_ORGANISATION, `Programmation par élève ${p.annee}`, `ime|${p.annee}|${p.lignesJson}|${JSON.stringify(eleves)}`,
-        `Programmation par élève ${p.annee}`, () => htmlParEleve(p.annee, prog, eleves));
-    } else {
+    if (p.estImportee || p.niveau !== "ime") continue;
+    const prog = lireProgrammationIme(p.lignesJson);
+    if (!prog.objectifs.length) continue;
+    const eleves = parNom.map((e) => ({ id: e.id, nom: e.nom }));
+    page(PARTIE_ORGANISATION, `Programmation par élève ${p.annee}`, `ime|${p.annee}|${p.lignesJson}|${JSON.stringify(eleves)}`,
+      `Programmation par élève ${p.annee}`, () => htmlParEleve(p.annee, prog, eleves));
+  }
+  // Une page par année : la programmation de la classe, puis celles de ses niveaux.
+  const parAnnee = new Map<string, ProgrammationFinale[]>();
+  for (const p of d.programmations) {
+    if (!estALaClasse(p) || !liste(p.lignesJson).length) continue;
+    parAnnee.set(p.annee, [...(parAnnee.get(p.annee) ?? []), p]);
+  }
+  for (const [annee, progs] of [...parAnnee].sort(([a], [b]) => a.localeCompare(b))) {
+    const ranges = [...progs].sort((a, b) => rangDuNiveau(a.niveau ?? "") - rangDuNiveau(b.niveau ?? "") || (a.niveau ?? "").localeCompare(b.niveau ?? "", "fr"));
+    const tableaux: TableauDeProgrammation[] = ranges.map((p) => {
       const lignes = liste<LigneProgrammation>(p.lignesJson);
-      if (!lignes.length) continue;
-      page(PARTIE_ORGANISATION, `Programmation ${p.annee}`, `programmation|${p.annee}|${p.lignesJson}`,
-        `Programmation ${p.annee}`, () => htmlProgrammation(p.annee, lignes));
-    }
+      return { niveau: p.niveau ?? "", lignes, teintes: teintesDesLignes(lignes, (l) => teinteDe({ titre: l.label, couleur: l.couleur }), "#94a3b8") };
+    });
+    page(PARTIE_ORGANISATION, `Programmation ${annee}`, `programmation|${annee}|${JSON.stringify(ranges.map((p) => [p.niveau, p.lignesJson]))}`,
+      `Programmation ${annee}`, () => htmlProgrammation(annee, tableaux));
   }
 
   // ── Cahier journal : une page par semaine ──

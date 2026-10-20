@@ -8,6 +8,7 @@
 //   niveau de classe, nombre d'élèves, titres de séquences, programmation.
 import { api } from "./api";
 import { lire as lireIme } from "./programmationIme";
+import { estALaClasse, lireLignes } from "./programmationAnnuelle";
 
 export async function construireContexteIA(): Promise<string> {
   const [niveau, eleves, sequences, progs, annee] = await Promise.all([
@@ -29,15 +30,16 @@ export async function construireContexteIA(): Promise<string> {
     lignes.push(`Séquences déjà créées : ${titres}.`);
   }
 
-  const prog = (progs ?? []).find((p) => !p.estImportee && p.niveau !== "ime" && (!annee || p.annee === annee));
-  if (prog) {
-    try {
-      const ls = JSON.parse(prog.lignesJson) as { estDomaine: boolean; label: string }[];
-      const items = ls.filter((l) => (l.label || "").trim())
-        .map((l) => (l.estDomaine ? `\n- ${l.label}` : ` · ${l.label}`)).join("");
-      if (items.trim()) lignes.push(`Programmation de l'année :${items}`);
-    } catch { /* lignes illisibles */ }
+  // La programmation de la classe, puis celles de ses niveaux, d'une seule année.
+  const anneeProg = annee || (progs ?? []).find(estALaClasse)?.annee;
+  const miennes = (progs ?? []).filter((p) => estALaClasse(p) && p.annee === anneeProg)
+    .sort((a, b) => (a.niveau ? 1 : 0) - (b.niveau ? 1 : 0));
+  for (const p of miennes) {
+    const items = lireLignes(p).filter((l) => (l.label || "").trim())
+      .map((l) => (l.estDomaine ? `\n- ${l.label}` : ` · ${l.label}`)).join("");
+    if (items.trim()) lignes.push(`Programmation de l'année${p.niveau ? ` (${p.niveau})` : ""} :${items}`);
   }
+  const prog = miennes[0];
 
   // En IME, la programmation est par élève. On n'en transmet que les
   // intitulés travaillés, jamais qui les travaille : la règle ci-dessus vaut
