@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { chercherAteliers } from "./pages/Jeux";
+import { chercherAteliers, lirePlis } from "./pages/Jeux";
 
 const familles = [
   { libelle: "🗣 Langage", outils: [
@@ -32,6 +32,26 @@ describe("chercher un atelier", () => {
     expect(chercherAteliers(familles, "")).toEqual([]);
     expect(chercherAteliers(familles, "   ")).toEqual([]);
     expect(chercherAteliers(familles, "trombone")).toEqual([]);
+  });
+});
+
+describe("le français, rassemblé en trois parties", () => {
+  it("trouve encore un atelier par le nom de sa partie", () => {
+    const francais = [{ id: "francais", libelle: "📖 Français", outils: [
+      { id: "jeux" as const, nom: "Loto", icone: "🎲", quoi: "Des planches et leurs cartes à découper." },
+      { id: "fluence" as const, nom: "Grille de fluence", icone: "⏱", quoi: "Des mots à lire en une minute." },
+    ] }];
+    expect(chercherAteliers(francais, "langage").map((o) => o.id)).toEqual(["jeux"]);
+    expect(chercherAteliers(francais, "sons et lecture").map((o) => o.id)).toEqual(["fluence"]);
+    expect(chercherAteliers(francais, "francais").map((o) => o.id)).toEqual(["jeux", "fluence"]);
+  });
+
+  it("garde les plis des anciennes familles : leur partie reste repliée, et le français aussi quand les trois l'étaient", () => {
+    expect(lirePlis(["famille:sons", "famille:maths"])).toEqual(["famille:maths", "famille:francais:sons"]);
+    expect(lirePlis(["famille:langage", "famille:sons", "famille:ecrit"]).sort())
+      .toEqual(["famille:francais", "famille:francais:ecrit", "famille:francais:langage", "famille:francais:sons"]);
+    expect(lirePlis(["famille:francais:sons", "famille:maths:calcul"])).toEqual(["famille:francais:sons", "famille:maths:calcul"]);
+    expect(lirePlis("rien")).toEqual([]);
   });
 });
 
