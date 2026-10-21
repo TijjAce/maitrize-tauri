@@ -2070,3 +2070,119 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .agent-etapes li.fait > span { color: var(--green, #16a34a); font-weight: 700; }
 .agent-etapes li.en-cours { color: var(--accent); font-weight: 650; }
 .agent-etapes small { font-size: 11px; color: var(--text-2); font-weight: 400; }
+/* ── La page d'une séance : le document à gauche, ce qui l'accompagne à droite ── */
+.seance-fil { color: var(--text-2); text-decoration: none; font-size: 12px; }
+.seance-fil:hover { color: var(--accent); text-decoration: underline; }
+.seance-etat { font-size: 12.5px; color: var(--text-2); white-space: nowrap; }
+.seance-etat.erreur { color: var(--danger); }
+.seance-page { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 22px; align-items: start; }
+@media (max-width: 1000px) { .seance-page { grid-template-columns: 1fr; } }
+.seance-doc { min-width: 0; background: var(--panel); border: var(--bw) solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: var(--r-grand); box-shadow: var(--shadow); padding: 26px 36px 34px; }
+.seance-titre { width: 100%; border: none; outline: none; background: transparent; color: var(--text); font: inherit; font-size: 26px;
+  font-weight: 800; letter-spacing: -.01em; padding: 0; margin: 0 0 10px; }
+.seance-titre::placeholder { color: var(--text-2); opacity: .6; }
+.seance-pastilles { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 16px; }
+.seance-pastille { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: none; border-radius: var(--r-pastille);
+  background: var(--panel-2); font: inherit; font-size: 12.5px; font-weight: 650; color: var(--text-2); cursor: pointer; }
+.seance-pastille:hover { color: var(--text); }
+.seance-pastille.on { background: var(--accent-soft); color: var(--accent); }
+.seance-pastille select { border: none; background: transparent; font: inherit; color: inherit; padding: 0; outline: none; cursor: pointer;
+  -webkit-appearance: none; appearance: none; }
+.seance-date { flex-basis: 100%; display: flex; align-items: center; gap: 6px; }
+.seance-date .input { max-width: 180px; }
+.seance-objectif { display: block; padding: 10px 14px; margin-bottom: 20px; border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0;
+  background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.seance-objectif > span { display: block; margin-bottom: 2px; color: var(--accent); font-size: 11px; font-weight: 750; letter-spacing: .07em;
+  text-transform: uppercase; }
+.seance-objectif-texte { display: block; width: 100%; border: none; outline: none; background: transparent; padding: 0; color: var(--text);
+  font: inherit; font-size: 15px; line-height: 1.5; }
+.seance-cote { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.seance-carte { background: var(--panel); border: var(--bw) solid color-mix(in srgb, var(--border) 60%, transparent); border-radius: var(--r-carte);
+  box-shadow: var(--shadow); padding: 14px 16px; }
+.seance-carte h4 { display: flex; align-items: center; margin: 0 0 10px; font-size: 10.5px; font-weight: 750; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text-2); }
+.seance-carte h4 .lien { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 650; text-decoration: none; }
+.seance-vide { font-size: 12.5px; color: var(--text-2); font-style: italic; }
+.seance-chip { display: inline-flex; margin: 0 4px 6px 0; padding: 3px 9px; border-radius: var(--r-pastille); background: var(--panel-2);
+  font-size: 12px; font-weight: 650; color: var(--text-2); }
+.seance-phases { margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.6; }
+.seance-note { min-height: 0; font-size: 13.5px; }
+.seance-support { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13.5px; }
+.seance-support + .seance-support { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.seance-support-ico { width: 30px; height: 30px; flex: none; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  border: none; padding: 0; border-radius: 8px; background: var(--panel-2); font-size: 15px; }
+.seance-support-vignette { cursor: pointer; }
+.seance-support-vignette img, .seance-support-vignette canvas { max-width: 100%; max-height: 100%; }
+.seance-support-texte { flex: 1; min-width: 0; }
+.seance-support-texte .lien { color: var(--text); text-decoration: none; text-align: left; font-weight: 600; overflow-wrap: anywhere; }
+.seance-support-texte .lien:hover:not(:disabled) { color: var(--accent); text-decoration: underline; }
+.seance-support-texte .meta { font-size: 11.5px; }
+.seance-support-actions { display: flex; align-items: center; gap: 2px; flex: none; }
+.seance-support-actions .btn { padding: 3px 6px; box-shadow: none; }
+.seance-cite { padding: 0 4px; font-size: 11.5px; color: var(--text-2); white-space: nowrap; }
+.seance-support-pied { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+/* Le déroulement, écrit comme un document : la barre d'outils reste sous la barre du haut. */
+.doc { display: flex; flex-direction: column; }
+.doc-barre { position: sticky; top: var(--haut-topbar, 0px); z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 3px;
+  padding: 5px; margin: 0 -10px 16px; border-radius: 12px; background: var(--panel-2); }
+/* En ligne et non en flex : l'espace qui ouvre un libellé (« • Liste ») compte. */
+.doc-outil { height: 30px; padding: 0 10px; display: inline-block; line-height: 30px; vertical-align: middle; border: none; border-radius: 8px; background: none;
+  color: var(--text); font: inherit; font-size: 13px; font-weight: 650; white-space: nowrap; cursor: pointer; }
+.doc-outil:hover, .doc-outil[aria-pressed="true"] { background: var(--panel); }
+.doc-outil[aria-pressed="true"] { color: var(--accent); }
+.doc-outil-accent { color: var(--accent); }
+select.doc-outil { -webkit-appearance: none; appearance: none; max-width: 150px; text-overflow: ellipsis; }
+.doc-sep { width: 1px; align-self: stretch; margin: 6px 3px; background: var(--border); }
+/* Hors de la vue, mais pas hors du nom que lisent les aides techniques. */
+.doc-barre.compacte .doc-libelle { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.doc-envoi { margin-left: auto; padding-right: 6px; font-size: 12px; color: var(--text-2); }
+.doc-page { position: relative; }
+.doc-placeholder { position: absolute; inset: 0 0 auto 0; color: var(--text-2); font-size: 15px; line-height: 1.65; pointer-events: none; }
+.doc-editeur { min-height: 240px; outline: none; }
+.doc-editeur, .doc-lu { counter-reset: phase; font-size: 15px; line-height: 1.65; color: var(--text); overflow-wrap: anywhere; }
+.doc-lu { font-size: 14.5px; }
+.doc-editeur p, .doc-lu p { margin: 4px 0; }
+.doc-editeur ul, .doc-lu ul { margin: 4px 0 8px; padding-left: 20px; }
+.doc-editeur .doc-phase, .doc-lu .doc-phase { position: relative; margin: 22px 0 6px; padding-left: 36px; font-size: 18px; font-weight: 750; line-height: 1.35; }
+.doc-editeur > .doc-phase:first-child, .doc-lu > .doc-phase:first-child { margin-top: 4px; }
+.doc-editeur .doc-phase { counter-increment: phase; }
+.doc-editeur .doc-phase::before, .doc-lu .doc-numero { content: counter(phase); position: absolute; left: 0; top: -1px; width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--accent); color: #fff;
+  font-size: 13px; font-weight: 800; }
+/* Sous une phase, son texte s'aligne sur son titre. */
+.doc-editeur .doc-phase ~ :not(.doc-phase), .doc-lu .doc-phase ~ :not(.doc-phase) { margin-left: 36px; }
+.doc-duree { display: inline-block; margin-left: 10px; padding: 2px 9px; vertical-align: 2px; border-radius: var(--r-pastille); background: var(--panel-2);
+  color: var(--text-2); font-size: 12.5px; font-weight: 700; line-height: 1.5; white-space: nowrap; }
+.doc-editeur .doc-duree { cursor: pointer; user-select: none; }
+.doc-editeur .doc-duree:hover { color: var(--accent); }
+.doc-editeur .doc-phase[data-duree=""] .doc-duree { font-style: italic; font-weight: 600; opacity: .7; }
+.doc-image { margin: 10px 0; }
+.doc-image img { display: block; max-width: min(100%, 440px); max-height: 340px; object-fit: contain; border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .08); }
+.doc-image img:not([src]) { width: 200px; height: 130px; background: var(--panel-2); }
+.doc-image.choisie img { outline: 3px solid var(--accent); outline-offset: 2px; }
+.cite { --cite: var(--accent); display: inline-block; padding: 0 7px; border-radius: 7px; font-size: .9em; font-weight: 650; line-height: 1.6;
+  white-space: nowrap; background: color-mix(in srgb, var(--cite) 14%, transparent); color: color-mix(in srgb, var(--cite) 82%, var(--text)); }
+.doc-editeur .cite { cursor: pointer; }
+.cite-outil { --cite: #3b82f6; }
+.cite-affichage { --cite: #f59e0b; }
+.cite-evaluation { --cite: #10b981; }
+.cite-jeu { --cite: #8b5cf6; }
+.cite-materiel { --cite: #64748b; }
+.doc-citation { display: inline-block; padding: 2px 10px; border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--accent) 6%, transparent); color: var(--text-2); font-style: italic; }
+.doc-source { font-style: normal; font-size: 12px; }
+.doc-mentions { position: fixed; z-index: 420; width: 360px; max-height: 320px; overflow-y: auto; display: flex; flex-direction: column;
+  padding: 6px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); box-shadow: 0 14px 40px rgba(0, 0, 0, .18); }
+.doc-mentions .input { margin-bottom: 4px; }
+.doc-mentions-titre { padding: 8px 10px 4px; font-size: 10.5px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; color: var(--text-2); }
+.doc-mention { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border: none; border-radius: 9px; background: none;
+  color: var(--text); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; }
+.doc-mention.on { background: var(--accent-soft); color: var(--accent); }
+.doc-mention-titre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-mention-detail { font-size: 11.5px; color: var(--text-2); white-space: nowrap; }
+.doc-mention-creer { margin-top: 4px; border-top: 1px solid var(--border); border-radius: 0 0 9px 9px; color: var(--text-2); }
+.doc-mentions-vide { padding: 8px 10px; font-size: 12.5px; font-style: italic; color: var(--text-2); }
+.doc-durees { width: 170px; }

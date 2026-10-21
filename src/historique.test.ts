@@ -76,6 +76,7 @@ describe("l'historique des lieux", () => {
     expect(libelleDuChemin("/plan", MENU)).toBe("Plan de travail");
     expect(libelleDuChemin("/eleves?onglet=x", MENU)).toBe("Élèves");
     expect(libelleDuChemin("/sequences/abc", MENU)).toBe("Séquence");
+    expect(libelleDuChemin("/seances/abc", MENU)).toBe("Séance");
     expect(libelleDuChemin("/", MENU)).toBe("Tableau de bord");
     expect(libelleDuChemin("/inconnu", MENU)).toBe("/inconnu");
   });

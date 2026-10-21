@@ -1149,10 +1149,30 @@ function journalDuCreneau(c) {
     + (bilan ? '<div class="sd-l"><b>Fait · bilan</b>' + nl(bilan) + '</div>' : '');
 }
 
+/** Le déroulement d'une séance en texte simple, comme l'imprime l'ordinateur (voir documentSeance.ts) :
+    les phases numérotées et leur durée, les supports cités par leur titre, sans images ni mise en forme. */
+function deroulementLisible(t) {
+  let n = 0;
+  return String(t || '').split('\n').filter(l => !/^\s*\[img:[^\]]+\]\s*$/.test(l)).map(l => {
+    const p = /^##\s+(.*)$/.exec(l);
+    if (p) {
+      n++;
+      const d = /\s*\(\s*(\d+(?:\s*[-–]\s*\d+)?\s*(?:min(?:utes?)?|h(?:\s*\d+)?|'))\s*\)\s*$/i.exec(p[1]);
+      return n + '. ' + (d ? p[1].slice(0, d.index).trim() + ' — ' + d[1] : p[1].trim());
+    }
+    return l.replace(/^\s*(?:[-•]|\*(?=\s))\s+/, '• ')
+      .replace(/\[@[a-z]+:[^|\]]+\|([^\]]*)\]/g, '$1')
+      .replace(/\[(img|cite):[^\]]+\]/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\w)/g, '$1$2');
+  }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 function seanceBody(s) {
   const det = [];
+  const deroulement = deroulementLisible(s.deroulement);
   if (s.objectifs) det.push('<div class="sd-l"><b>Objectifs</b>' + nl(s.objectifs) + '</div>');
-  if (s.deroulement) det.push('<div class="sd-l"><b>Déroulement</b>' + nl(s.deroulement) + '</div>');
+  if (deroulement) det.push('<div class="sd-l"><b>Déroulement</b>' + nl(deroulement) + '</div>');
   if (s.materiel) det.push('<div class="sd-l"><b>Matériel</b>' + nl(s.materiel) + '</div>');
   return det.length ? det.join('') : '<div class="sd-l" style="color:var(--txt2)">Pas de détail saisi pour cette séance.</div>';
 }

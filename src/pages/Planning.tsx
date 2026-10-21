@@ -14,7 +14,7 @@ import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree
 import { CahierJournal, ecrireLeCahierJournal } from "../components/CahierJournal";
 import { EVT_JOUR } from "../components/CommandPalette";
 import { EVT_BILAN_VERSE } from "../versementDesVocaux";
-import { jeuxCites, reglesImprimees, STYLE_REGLES } from "../jeuxCites";
+import { jeuxCites, reglesImprimees, sansMarqueurs, STYLE_REGLES } from "../jeuxCites";
 import { sequencesCitees, sequencesImprimees, STYLE_SEQUENCES } from "../sequencesCitees";
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
 import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
@@ -31,6 +31,7 @@ import { STYLE_TAPUSCRIT, lireConsignes } from "../tapuscrit";
 import { tapuscritImprimable, useTapuscritDuJournal } from "../components/Tapuscrit";
 import { creneauxAvecTapuscrit } from "../journalTapuscrit";
 import { mentionDesPictos, type RefPicto } from "../pictosAppoint";
+import { aDesPhases, texteDuDeroulement } from "../documentSeance";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const JOURS7 = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -176,7 +177,7 @@ export default function Planning() {
     await api.creneauSave({ ...c, seanceId: seance.id });
     setEdit(null);
     reload();
-    navigate(`/sequences/${seq.id}`);
+    navigate(`/seances/${seance.id}`);
   };
 
   // Tap sur un créneau : fiche de la séance liée, sinon édition du créneau.
@@ -339,7 +340,9 @@ export default function Planning() {
       try { grid = s?.tableauDeroulement ? JSON.parse(s.tableauDeroulement) : []; } catch { /* */ }
       let illus: string[] = [];
       try { illus = s?.imagesDeroulement ? JSON.parse(s.imagesDeroulement) : []; } catch { /* */ }
-      const deroul = (s?.deroulement || "").replace(reImg, "").replace(/\[cite:[^\]]+\]/g, "").trim();
+      // Un déroulement en phases les porte déjà : le tableau qu'on en tire ne se répète pas.
+      const deroul = texteDuDeroulement(s?.deroulement || "");
+      if (aDesPhases(s?.deroulement || "")) grid = [];
       const prenoms = prenomsDe(c);
       const observees = observationsDe(c);
       const body = [
@@ -358,7 +361,7 @@ export default function Planning() {
         illus.length ? `<div class="imgs">${illus.map(imgTag).join("")}</div>` : "",
         tapuscrits[c.id] ? `<div class="f"><span class="fl">Consignes en pictogrammes :</span></div>${tapuscrits[c.id]}` : "",
         c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt prevu">${rendreCell(c.prevu.trim())}</div>` : "",
-        reglesImprimees(aImprimer(jeuxCites(`${c.prevu ?? ""}\n${deroul}`, jeux), (j) => masqueJeu(j.id), masques[c.id] ?? [])),
+        reglesImprimees(aImprimer(jeuxCites(`${c.prevu ?? ""}\n${sansMarqueurs(s?.deroulement ?? "")}`, jeux), (j) => masqueJeu(j.id), masques[c.id] ?? [])),
         sequencesImprimees(aImprimer(sequencesCitees(c.prevu ?? "", sequences ?? [], seances ?? []), (x) => masqueSequence(x.sequence.id, x.seance?.id), masques[c.id] ?? []), seances ?? []),
         rituelsImprimes(aImprimer(rituelsCites(c.prevu ?? "", rituels), (r) => masqueRituel(r.id), masques[c.id] ?? [])),
         c.bilan?.trim() ? `<div class="f"><span class="fl">Fait · bilan :</span></div><div class="txt">${escapeHtml(c.bilan.trim())}</div>` : "",
@@ -466,7 +469,7 @@ export default function Planning() {
         matiere: c.matiere || "Créneau", seance: s?.titre ?? "",
         couleur: teinteCreneau(c),
         objectifs: nettoie(s?.objectifs ?? ""),
-        deroulement: nettoie(s?.deroulement ?? ""),
+        deroulement: texteDuDeroulement(s?.deroulement ?? ""),
         // Le PDF n'a que du texte : le déroulement des rituels cités suit le prévu.
         prevu: avecRituels((c.prevu ?? "").trim(), aImprimer(rituels, (r) => masqueRituel(r.id), masques[c.id] ?? [])),
         bilan: (c.bilan ?? "").trim(),
@@ -574,7 +577,7 @@ export default function Planning() {
 
       {voirSeance && <SeanceReadView seance={voirSeance}
         onClose={() => setVoirSeance(null)}
-        onEdit={() => { const sid = voirSeance.sequenceId; setVoirSeance(null); if (sid) navigate(`/sequences/${sid}`); }} />}
+        onEdit={() => { const id = voirSeance.id; setVoirSeance(null); navigate(`/seances/${id}`); }} />}
       {edit && <CreneauForm creneau={edit} seances={seances ?? []} sequences={sequences ?? []}
         onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }}
         onDelete={() => { setDel(edit); setEdit(null); }} onCreerSeance={creerSeanceDepuisCreneau} />}

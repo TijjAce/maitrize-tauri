@@ -341,7 +341,7 @@ function Outil({ titre, children, onClick, actif }: { titre: string; children: R
   );
 }
 
-function MenuStyles({ onChoisir }: { onChoisir: (s: Style) => void }) {
+export function MenuStyles({ onChoisir }: { onChoisir: (s: Style) => void }) {
   return (
     <div className="editeur-riche-menu" role="menu" onMouseDown={(e) => e.preventDefault()}>
       {STYLES.map((s) => (

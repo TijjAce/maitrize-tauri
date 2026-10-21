@@ -87,6 +87,12 @@ describe("le PDF du jour", () => {
     expect(html).toContain("1. Lecture du corpus");
     expect(html).not.toContain("[img:");
     expect(sequencesImprimees([])).toBe("");
+    // Une séance écrite en phases : numérotées, avec leur durée ; les supports par leur titre.
+    const enPhases = seance("d", "s1", 3, "Trier les mots", { deroulement: "## Tri (15 min)\nPar deux, avec [@outil:o1|Étiquettes-mots].\n[img:tri.png]" });
+    const texte = sequencesImprimees(sequencesCitees(ligneDeSequence(reseau, enPhases), toutes, [...seances, enPhases]), [...seances, enPhases]);
+    expect(texte).toContain("1. Tri — 15 min\nPar deux, avec Étiquettes-mots.");
+    expect(texte).not.toContain("##");
+    expect(texte).not.toContain("[@");
     // Sans séance précisée : les objectifs de la séquence.
     expect(sequencesImprimees(sequencesCitees("organiser les mots en réseau", toutes, seances))).toContain("Catégoriser le vocabulaire.");
   });

@@ -12,6 +12,7 @@
 import type { Seance, Sequence } from "./api";
 import { escapeHtml } from "./print";
 import { citeAutreChose } from "./lignesCitees";
+import { texteDuDeroulement } from "./documentSeance";
 
 export interface CitationSequence { sequence: Sequence; seance: Seance | null }
 
@@ -101,8 +102,8 @@ export function insererLigne(texte: string, ligne: string, curseur: number | nul
   return `${texte.slice(0, finDeLigne)}\n${ligne}${texte.slice(finDeLigne)}`;
 }
 
-/** Un texte de séance sans ses marqueurs d'images et de citations. */
-export const texteDeSeance = (texte: string) => (texte ?? "").replace(/\[(img|cite):[^\]]+\]/g, "").replace(/\n{3,}/g, "\n\n").trim();
+/** Un texte de séance sans ses marqueurs : phases numérotées, supports par leur titre, sans images ni citations. */
+export const texteDeSeance = (texte: string) => texteDuDeroulement(texte);
 
 /** Les séquences citées, pour le PDF du jour. */
 export function sequencesImprimees(citations: CitationSequence[], seances: Seance[] = []): string {
