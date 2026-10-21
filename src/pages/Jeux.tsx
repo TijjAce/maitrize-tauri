@@ -21,7 +21,7 @@ import { MaterielDeLAtelier, MaterielDeLaClasse } from "../components/MaterielDe
 import { MODES_IMAGES, listeSelonMode } from "../imagesSelonMode";
 import { deposerSurLeBureau } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
-import { BandeauModification } from "../components/BandeauModification";
+import { BandeauModification, BandeauPourLaSeance } from "../components/BandeauModification";
 import { DominosTab, FluenceTab, IntrusTab, LettresTab, LotoSyllabesTab, PairesTab, SyllabaireTab } from "./AteliersSons";
 import {
   ArbreCalculTab, OperationsPoseesTab, CartesCalculTab, CartesNombresTab, CompteEstBonTab, CubesTab, FractionsTab, HeureTab, JeuDeLOieTab, MartiniereTab, NumerationTab, PyramidesTab,
@@ -259,7 +259,15 @@ export default function Jeux() {
     setOngletBrut(o);
     try { localStorage.setItem(ONGLET_MEMORISE, o); } catch { /* stockage indisponible */ }
   }, []);
-  useOngletDemande("jeux", ONGLETS, setOnglet);
+  // Une famille de générateurs demandée d'ailleurs — « Nouveau support › Avec
+  // un générateur » du plan de travail — : le catalogue s'ouvre sur elle, dépliée.
+  useOngletDemande("jeux", ONGLETS, setOnglet, (demande) => {
+    if (!demande.startsWith("famille:")) return;
+    const id = demande.slice("famille:".length);
+    setOnglet(""); setRecherche(""); setRangement("famille");
+    plier(`famille:${id}`, false);
+    window.setTimeout(() => document.getElementById(`famille-${id}`)?.scrollIntoView({ block: "start" }), 120);
+  });
   const [etat, setEtat] = React.useState<EtatBanque | null>(null);
   const [progression, setProgression] = React.useState<{ etape: string; faits: number; total: number } | null>(null);
   const rafraichir = React.useCallback(() => { api.arasaacEtat().then(setEtat).catch(() => {}); }, []);
@@ -311,6 +319,7 @@ export default function Jeux() {
           title="Le matériel réel que les programmes nomment — balance, thermomètre, globe… — et ce que votre classe en possède">🧰 Le matériel de la classe</button>}>
         {inventaireOuvert && <MaterielDeLaClasse onClose={() => setInventaireOuvert(false)} />}
         <BandeauModification atelier="" onReprendre={(a) => setOnglet(a as Onglet)} />
+        <BandeauPourLaSeance />
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
           {rangement !== "sequences" && (
             <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
@@ -363,7 +372,7 @@ export default function Jeux() {
           // Le français en trois parties, les mathématiques par domaine du programme ; chaque partie se plie aussi. Dans chacune, les ateliers vont par moment.
           const parties = partiesDeLaFamille(f);
           return (
-            <section key={f.id} className="famille-catalogue">
+            <section key={f.id} id={`famille-${f.id}`} className="famille-catalogue">
               <PliDuCatalogue ouvert={!plis.includes(`famille:${f.id}`)} onBasculer={(o) => plier(`famille:${f.id}`, !o)}
                 icone={iconeEtNom(f.libelle)[0]} titre={iconeEtNom(f.libelle)[1]} aide={f.aide} nombre={f.outils.length + (f.id === "perso" ? generateurs.length : 0)}>
                 {f.id === "perso" ? (
@@ -391,6 +400,7 @@ export default function Jeux() {
     <Page titre={outil ? `${outil.icone} ${dossierDe(outil)}${outil.nom}` : "Fabriquer"} sous={outil?.quoi}
       actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>}>
       <BandeauModification atelier={onglet} onReprendre={(a) => setOnglet(a as Onglet)} />
+      <BandeauPourLaSeance />
       {outil && <FeuilleDeLAtelier atelier={outil.id} nom={outil.nom} />}
       {outil && <MaterielDeLAtelier atelier={outil.id} />}
       {outil && <ProjetDuMomentBandeau atelier={outil.id} />}

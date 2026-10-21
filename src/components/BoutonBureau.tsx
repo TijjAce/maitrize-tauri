@@ -5,6 +5,7 @@ import { texteErreur } from "../api";
 import { EVT_CHERCHER_BUREAU } from "../bureauAteliers";
 import { AtelierContext } from "./AtelierContext";
 import { useModification } from "../modifierFeuille";
+import { cheminDeLaSeance, usePourLaSeance } from "../feuillePourLaSeance";
 
 // « Sur le bureau » : à côté d'« Imprimer », la même feuille en PDF, déposée
 // sur le plan de travail — pour la retrouver, la mettre dans une séance, la
@@ -22,6 +23,9 @@ export function BoutonBureau({ onEnregistrer, disabled, className = "btn sm" }: 
   const atelier = React.useContext(AtelierContext);
   const modification = useModification();
   const remplace = modification && modification.atelier === atelier ? modification : null;
+  // Fabriquée pour une séance (voir feuillePourLaSeance) : la feuille y va.
+  const pourLaSeance = usePourLaSeance();
+  const seance = remplace ? null : pourLaSeance;
   // Le bandeau ramène à la tuile : on va au plan de travail, qui la désigne.
   const voir = (m: { id: string; titre: string }) => {
     navigate("/plan");
@@ -36,6 +40,10 @@ export function BoutonBureau({ onEnregistrer, disabled, className = "btn sm" }: 
           icone: "✏️", duree: 9000,
           action: m.sequenceId ? { label: "Voir la séquence", faire: () => navigate(`/sequences/${m.sequenceId}`) } : { label: "Voir", faire: () => voir(m) },
         });
+      } else if (seance) {
+        toast(`« ${m.titre} » est dans la séance « ${seance.titre} » : elle s'imprimera avec le cahier journal.`, {
+          icone: "📚", duree: 8000, action: { label: "Voir la séance", faire: () => navigate(cheminDeLaSeance(seance)) },
+        });
       } else {
         toast(`« ${m.titre} » est sur le bureau, dans le plan de travail.`, { icone: "🗂", duree: 8000, action: { label: "Voir", faire: () => voir(m) } });
       }
@@ -46,9 +54,10 @@ export function BoutonBureau({ onEnregistrer, disabled, className = "btn sm" }: 
     }
   };
   return (
-    <button type="button" className={remplace ? `${className} primary` : className} disabled={disabled || occupe} onClick={agir}
-      title={remplace ? `Mettre cette feuille à la place de « ${remplace.titre} », ${remplace.ou}` : "Enregistrer la feuille en PDF sur le plan de travail"}>
-      {occupe ? "⏳ Enregistrement…" : remplace ? "✏️ Remplacer la feuille" : "🗂 Sur le bureau"}
+    <button type="button" className={remplace || seance ? `${className} primary` : className} disabled={disabled || occupe} onClick={agir}
+      title={remplace ? `Mettre cette feuille à la place de « ${remplace.titre} », ${remplace.ou}`
+        : seance ? `Enregistrer la feuille en PDF dans la séance « ${seance.titre} »` : "Enregistrer la feuille en PDF sur le plan de travail"}>
+      {occupe ? "⏳ Enregistrement…" : remplace ? "✏️ Remplacer la feuille" : seance ? "📚 Dans la séance" : "🗂 Sur le bureau"}
     </button>
   );
 }

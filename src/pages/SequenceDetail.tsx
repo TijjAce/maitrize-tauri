@@ -15,6 +15,7 @@ import { ajouterManuelle, consigneSousCompetences, estManuelle, lireSousCompeten
 import { pseudonymiserTout, restaurer } from "../confidentialite";
 import { nomsAMasquer } from "../nomsAMasquer";
 import { TableauEditor, MaterielSeance, imageDuPresse, fileToBase64 } from "../components/SeanceParts";
+import { genreDeSupport, lireRenvoi } from "../supportsDeSeance";
 import { IllustrationsEditor, DeroulementRead, CelluleContenu, FichierImg, CitationButton } from "../components/Deroulement";
 import { fichierToBlobUrl } from "../components/PdfViewer";
 import { printHTML, dataUrlImage, partDeColonne } from "../print";
@@ -527,9 +528,12 @@ export function SeanceForm({ seance, cycle = "", sequence, onClose, onSaved }: {
     setComps(suite); setPropositions(null);
   };
 
-  const save = async () => {
+  const enregistrerLaSeance = () => {
     const bilanDate = s.bilan && s.bilan !== seance.bilan ? nowIso() : s.bilanDate;
-    await api.seanceSave({ ...s, date: dateActive ? (s.date ?? nowIso()) : null, bilanDate });
+    return api.seanceSave({ ...s, titre: s.titre.trim() || `Séance ${s.numero}`, date: dateActive ? (s.date ?? nowIso()) : null, bilanDate });
+  };
+  const save = async () => {
+    await enregistrerLaSeance();
     onSaved();
   };
 
@@ -647,8 +651,11 @@ export function SeanceForm({ seance, cycle = "", sequence, onClose, onSaved }: {
         <Textarea value={s.materiel} onChange={(e) => up({ materiel: e.target.value })} placeholder="Matériel nécessaire…" />
       </Card>
 
-      <Card titre="Matériel pédagogique (PDF)">
-        <MaterielSeance seanceId={s.id} cycle={cycle} />
+      <Card titre="Supports de la séance">
+        {/* Fabriquer une feuille quitte la page : la séance s'enregistre d'abord, sans quoi ce qu'on vient d'y écrire se perdrait. */}
+        <MaterielSeance seanceId={s.id} sequenceId={s.sequenceId ?? sequence?.id ?? null}
+          titreSeance={`Séance ${s.numero}${s.titre.trim() ? ` — ${s.titre.trim()}` : ""}`} cycle={cycle}
+          avantDeFabriquer={async () => { await enregistrerLaSeance(); }} />
       </Card>
 
       <Card titre="Bilan (après la séance)">
@@ -709,9 +716,12 @@ export function SeanceReadView({ seance: s, onClose, onEdit }: { seance: Seance;
         </div>
       </Section>}
       {s.materiel && <Section titre="Matériel"><div style={{ whiteSpace: "pre-wrap" }}><TexteAvecLiens texte={s.materiel} /></div></Section>}
-      {(materiels?.length ?? 0) > 0 && <Section titre="Matériel pédagogique (PDF)">
+      {(materiels?.length ?? 0) > 0 && <Section titre="Supports de la séance">
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {materiels!.map((m) => <span key={m.id} className="chip">📄 {m.titre}</span>)}
+          {materiels!.map((m) => {
+            const r = lireRenvoi(m.supportJson);
+            return <span key={m.id} className="chip">{r ? genreDeSupport(r.genre).ico : "📄"} {m.titre}</span>;
+          })}
         </div>
       </Section>}
       {s.bilan && <Section titre="Bilan"><div style={{ whiteSpace: "pre-wrap" }}>{s.bilan}</div></Section>}

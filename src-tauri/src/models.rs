@@ -657,6 +657,10 @@ pub struct MaterielItem {
     // (voir `modifierFeuille.ts`). Vide pour tout autre matériel.
     #[serde(default)]
     pub fabrication_json: String,
+    // Un support de la séance qui renvoie à un élément du bureau : sa sorte et
+    // son identifiant (voir `supportsDeSeance.ts`). Vide pour tout autre matériel.
+    #[serde(default)]
+    pub support_json: String,
 }
 
 impl MaterielItem {
@@ -680,6 +684,7 @@ impl MaterielItem {
             coffre_json: r.get("coffre_json").unwrap_or_else(|_| "[]".into()),
             // NULL : une ligne d'avant la colonne, ou reçue d'une version qui ne la connaît pas.
             fabrication_json: r.get::<_, Option<String>>("fabrication_json").ok().flatten().unwrap_or_default(),
+            support_json: r.get::<_, Option<String>>("support_json").ok().flatten().unwrap_or_default(),
         })
     }
 }

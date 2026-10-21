@@ -21,6 +21,7 @@ import { ATELIERS_D_AIDE } from "./journalTelephone";
 import { documentImprimable, escapeHtml, printHTML } from "./print";
 import type { MaterielItem } from "./api";
 import { ecrireFabrication, fabricationDuMoment, lireFabrication, modificationEnCours, type Fabrication, type Modification } from "./modifierFeuille";
+import { feuillePourLaSeance } from "./feuillePourLaSeance";
 import { sansReferences } from "./references";
 import { STYLE_DYS, cleModeDys, lireModeDys } from "./presentationFeuille";
 import { STYLE_CONSIGNES_STRUCTUREES } from "./consignesStructurees";
@@ -272,8 +273,11 @@ export async function deposerSurLeBureau(atelier: string, titre: string, fichier
   const refaite = await remplacerLaFeuille(atelier, async () => fichier, async () => consigne);
   if (refaite) return refaite;
   const { api, newId, nowIso } = await import("./api");
+  // Fabriquée pour une séance (voir feuillePourLaSeance) : elle va dans la séance, pas à la racine du bureau.
+  const pour = feuillePourLaSeance.lire();
   const materiel: MaterielItem = {
     ...materielDuBureau(atelier, titre, fichier, await competencesDeLAtelier(atelier), newId(), nowIso()),
+    ...(pour ? { seanceId: pour.seanceId, sequenceId: pour.sequenceId } : {}),
     fabricationJson: ecrireFabrication(fabricationDuMoment(atelier, consigne ? { consigne } : {})),
   };
   await api.materielSave(materiel);

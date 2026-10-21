@@ -1,4 +1,6 @@
 import { modificationEnCours, useModification } from "../modifierFeuille";
+import { useNavigate } from "react-router-dom";
+import { cheminDeLaSeance, feuillePourLaSeance, usePourLaSeance } from "../feuillePourLaSeance";
 import { nomDeLAtelier } from "../catalogueAteliers";
 
 /**
@@ -21,6 +23,26 @@ export function BandeauModification({ atelier, onReprendre }: { atelier: string;
       </div>
       {!ici && <button className="btn sm" onClick={() => onReprendre(m.atelier)}>Y retourner</button>}
       <button className="btn ghost sm" onClick={() => modificationEnCours.finir()} title="Laisser la feuille telle qu'elle est">Abandonner</button>
+    </div>
+  );
+}
+
+/**
+ * Fabriquer pour une séance (voir `feuillePourLaSeance`) : les feuilles
+ * enregistrées y vont. « Terminé » rend aux générateurs leur bureau.
+ */
+export function BandeauPourLaSeance() {
+  const p = usePourLaSeance();
+  const navigate = useNavigate();
+  if (!p) return null;
+  return (
+    <div className="bandeau-modif" role="status">
+      <span className="bandeau-modif-ico" aria-hidden="true">📚</span>
+      <div className="bandeau-modif-texte">
+        <b>Pour la séance « {p.titre} »</b> : les feuilles enregistrées y vont.
+      </div>
+      <button className="btn sm" onClick={() => navigate(cheminDeLaSeance(p))}>Revenir à la séance</button>
+      <button className="btn ghost sm" onClick={() => feuillePourLaSeance.finir()} title="Les feuilles iront de nouveau sur le bureau">Terminé</button>
     </div>
   );
 }
