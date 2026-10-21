@@ -201,4 +201,18 @@ describe("sur le bureau", () => {
     expect(materiels).toHaveLength(1);
     expect(m).toMatchObject({ id: "id-neuf", titre: "Les nombres en cubes", pdfsJson: '["pdf-1.pdf"]', dateCreation: "2026-09-28T10:00:00.000Z" });
   });
+
+  it("fabriquée pour une séance, la feuille va dans la séance, pas sur le bureau", async () => {
+    const { feuillePourLaSeance } = await import("./feuillePourLaSeance");
+    feuillePourLaSeance.poser({ seanceId: "s3", sequenceId: "q1", titre: "Séance 3 — Les nombres" });
+    try {
+      const m = await enregistrerSurLeBureau("cubes", "Les nombres en cubes", "<div class=\"feuille\">…</div>", ".feuille { }");
+      expect(m).toMatchObject({ seanceId: "s3", sequenceId: "q1", dossier: "", pdfsJson: '["pdf-1.pdf"]' });
+    } finally {
+      feuillePourLaSeance.finir();
+    }
+    // « Terminé » : la suivante revient sur le bureau.
+    const ensuite = await enregistrerSurLeBureau("cubes", "Encore", "<div></div>");
+    expect([ensuite.seanceId, ensuite.sequenceId]).toEqual([null, null]);
+  });
 });

@@ -15,6 +15,9 @@ import { PdfViewer } from "./PdfViewer";
 import { filDAriane } from "../dossiers";
 import { chercherPdfs, copiePourLaSeance, lirePdfs, pdfsDuBureau } from "../materielSeance";
 import { MoletteEchelle } from "./MoletteEchelle";
+import { ChoixDeSupport, FicheDuSupport, LigneDeSupport, lireLeBureau } from "./SupportsDeLaSeance";
+import { lireRenvoi, renvoiVers, supportsDeLaSeance, type RenvoiDeSupport, type SourcesDuBureau } from "../supportsDeSeance";
+import { fabriquerPourLaSeance } from "../feuillePourLaSeance";
 
 // ============================================================
 // Tableau de déroulement — grille [[string]] éditable
@@ -243,20 +246,39 @@ export function imageDuPresse(e: React.ClipboardEvent): File | null {
   return null;
 }
 
-// Matériel pédagogique d'une séance : PDF uniquement, chaque ajout crée un
-// matériel lié à la séance (seanceId) — qui reste chez elle, sans paraître
-// sur le bureau, et s'imprime à la suite du cahier journal.
-export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cycle?: string }) {
+// Les supports d'une séance. Ses feuilles PDF : chaque ajout crée un matériel
+// lié à la séance (seanceId) — qui reste chez elle, sans paraître sur le
+// bureau, et s'imprime à la suite du cahier journal. Ses outils pour l'élève,
+// affichages, jeux, évaluations et matériel : ils restent sur le plan de
+// travail, la séance y renvoie (voir supportsDeSeance). Et « Fabriquer une
+// feuille » ouvre les générateurs pour elle (voir feuillePourLaSeance).
+export function MaterielSeance({ seanceId, sequenceId = null, titreSeance = "", cycle = "", avantDeFabriquer }: {
+  seanceId: string; sequenceId?: string | null; titreSeance?: string; cycle?: string;
+  /** Avant d'ouvrir Fabriquer — qui quitte la page —, enregistrer la séance. */
+  avantDeFabriquer?: () => Promise<void>;
+}) {
   const [items, setItems] = React.useState<MaterielItem[]>([]);
+  const [bureau, setBureau] = React.useState<SourcesDuBureau>({ outils: [], jeux: [], materiel: [] });
   const pdfInput = React.useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   // Le PDF qu'on regarde, en grand, dans la visionneuse.
   const [vu, setVu] = React.useState<{ nom: string; titre: string; materiel: MaterielItem } | null>(null);
 
-  const reload = React.useCallback(() => {
-    api.materielList().then((all) => setItems(all.filter((m) => m.seanceId === seanceId)));
+  const reload = React.useCallback(async () => {
+    const lu = await lireLeBureau();
+    setItems(lu.materiel.filter((m) => m.seanceId === seanceId));
+    setBureau(lu);
   }, [seanceId]);
-  React.useEffect(() => { reload(); }, [reload]);
+  React.useEffect(() => { void reload(); }, [reload]);
+  const supports = supportsDeLaSeance(items, seanceId);
+  const feuilles = items.filter((m) => !lireRenvoi(m.supportJson));
+  const [choixOuvert, setChoixOuvert] = React.useState(false);
+  const [fiche, setFiche] = React.useState<RenvoiDeSupport | null>(null);
+  const poser = async (renvoi: RenvoiDeSupport, titre: string) => {
+    await api.materielSave(renvoiVers({ id: seanceId, sequenceId }, renvoi, titre, newId(), nowIso()));
+    await reload();
+  };
+  const retirer = async (lien: MaterielItem) => { await api.materielDelete(lien.id); await reload(); };
 
   const creerMateriel = async (titre: string, nomFichier: string) => {
     await api.materielSave({
@@ -279,12 +301,11 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
 
   // Un PDF déjà sur le bureau : on le copie dans la séance, fichier compris,
   // pour que le bureau garde le sien et que supprimer l'un ne touche pas l'autre.
-  const [bureauOuvert, setBureauOuvert] = React.useState(false);
   const prendreSurLeBureau = async (m: MaterielItem) => {
     const copies: string[] = [];
     for (const nom of lirePdfs(m.pdfsJson)) copies.push(await api.fichierSave(nom, await api.fichierRead(nom)));
     await api.materielSave(copiePourLaSeance(m, seanceId, copies, newId(), nowIso()));
-    reload();
+    await reload();
   };
 
   // Glisser-déposer natif depuis le Finder/Aperçu (un PDF ouvert dans Aperçu
@@ -303,16 +324,27 @@ export function MaterielSeance({ seanceId, cycle = "" }: { seanceId: string; cyc
         onChange={(e) => { Array.from(e.target.files ?? []).forEach((f) => ajouter(f)); e.target.value = ""; }} />
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button className="btn sm" onClick={() => pdfInput.current?.click()}>📄 Ajouter un PDF</button>
-        <button className="btn sm" onClick={() => setBureauOuvert(true)}>🗂 Prendre sur le bureau</button>
+        <button className="btn sm" onClick={() => setChoixOuvert(true)}
+          title="Une feuille PDF, un outil pour l'élève, un affichage, un jeu, une évaluation, du matériel : pris sur le plan de travail, ou créé">🧰 Ajouter un support</button>
+        <button className="btn sm" onClick={async () => {
+          try { await avantDeFabriquer?.(); } catch (e) { toast("La séance n'a pas pu être enregistrée : " + String(e), { icone: "⚠️" }); return; }
+          fabriquerPourLaSeance({ seanceId, sequenceId, titre: titreSeance || "cette séance" }, navigate);
+        }}
+          title="Ouvrir les générateurs de Fabriquer : la feuille enregistrée viendra dans cette séance">✨ Fabriquer une feuille</button>
       </div>
       <div style={{ fontSize: 12, color: "var(--text-2)", margin: "6px 0 10px" }}>
-        Ces PDF restent dans la séance et s'impriment à la suite du cahier journal — glissez-en un depuis le Finder ou Aperçu,
-        ou reprenez un PDF du plan de travail, qui y reste à sa place.
+        Les feuilles PDF s'impriment à la suite du cahier journal ; les autres supports restent sur le plan de travail.
       </div>
-      {bureauOuvert && <ChoixPdfDuBureau onPrendre={prendreSurLeBureau} onClose={() => setBureauOuvert(false)} />}
+      {choixOuvert && <ChoixDeSupport bureau={bureau} poses={supports} onPoser={poser} onPrendrePdf={prendreSurLeBureau}
+        onRecharger={reload} onClose={() => setChoixOuvert(false)} />}
+      {fiche && <FicheDuSupport renvoi={fiche} bureau={bureau} onClose={() => setFiche(null)}
+        onSaved={() => { setFiche(null); void reload(); }} />}
+      {supports.map((lien) => (
+        <LigneDeSupport key={lien.id} lien={lien} bureau={bureau} onOuvrir={setFiche} onRetirer={() => { void retirer(lien); }} />
+      ))}
       {items.length === 0 ? (
-        <div style={{ fontSize: 13, color: "var(--text-2)", fontStyle: "italic" }}>Aucun PDF pour cette séance.</div>
-      ) : items.map((m) => {
+        <div style={{ fontSize: 13, color: "var(--text-2)", fontStyle: "italic" }}>Aucun support pour cette séance.</div>
+      ) : feuilles.map((m) => {
         const pdfs = lirePdfs(m.pdfsJson);
         const voir = (nom = pdfs[0]) => { if (nom) setVu({ nom, titre: m.titre, materiel: m }); };
         const fabrication = lireFabrication(m.fabricationJson);

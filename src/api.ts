@@ -253,6 +253,8 @@ export interface MaterielItem {
   coffreJson: string;
   /** Une feuille fabriquée : l'atelier qui l'a faite, et de quoi l'y refaire (voir `modifierFeuille`), en JSON ; vide sinon. */
   fabricationJson?: string;
+  /** Un support de séance qui renvoie à un élément du bureau : sa sorte et son identifiant (voir `supportsDeSeance`), en JSON ; vide sinon. */
+  supportJson?: string;
 }
 
 /** Un fichier texte du plan de travail. */

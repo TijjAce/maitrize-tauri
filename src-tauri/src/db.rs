@@ -1165,6 +1165,10 @@ pub(crate) fn migrate(conn: &Connection) {
     // Une feuille fabriquée retient son atelier, pour s'y refaire. NULL permis : une
     // version plus ancienne, sur un autre ordinateur, envoie la ligne sans ce champ.
     conn.execute("ALTER TABLE materiel_items ADD COLUMN fabrication_json TEXT", []).ok();
+    // Un support posé dans une séance (outil, affichage, jeu, évaluation, matériel du
+    // bureau) : sa sorte et l'élément du bureau auquel il renvoie. NULL permis, comme
+    // ci-dessus : une version plus ancienne envoie la ligne sans ce champ.
+    conn.execute("ALTER TABLE materiel_items ADD COLUMN support_json TEXT", []).ok();
     // Plan de travail : séquences et matériel se rangent dans les mêmes dossiers.
     conn.execute("ALTER TABLE sequences ADD COLUMN dossier TEXT NOT NULL DEFAULT ''", []).ok();
     // La programmation d'une séquence : le niveau pour lequel elle est pensée, à côté de sa période.

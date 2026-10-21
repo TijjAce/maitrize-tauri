@@ -45,6 +45,9 @@ import {
   destinationDossier, reporterCouleurs, lireCouleurs, PREFIXE_COULEUR, SANS_COULEUR, couleurDe,
   materielsDeCreationDeDossier, POUBELLE, estALaPoubelle, versLaPoubelle, horsDeLaPoubelle,
 } from "../dossiers";
+import { FAMILLES_DE_SUPPORTS } from "../catalogueAteliers";
+import { iconeEtNom } from "../components/PliDuCatalogue";
+import { ouvrirOnglet } from "../ongletDemande";
 
 // ── Le bureau ──────────────────────────────────────────────────────────────
 //
@@ -1274,6 +1277,11 @@ export default function PlanDeTravail() {
               { label: "Jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu(), dossier }) },
               { label: "Évaluation", icon: "📋", onClick: () => setEditO({ ...nouvelOutil("evaluation"), dossier }) },
               { label: "Affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage"), dossier }) },
+              // Les générateurs de Fabriquer, famille par famille : la feuille enregistrée vient sur le bureau.
+              { label: "Avec un générateur", icon: "✨", sep: true, enfants: FAMILLES_DE_SUPPORTS.map((f) => {
+                const [icone, nom] = iconeEtNom(f.libelle);
+                return { label: nom, icon: icone, onClick: () => { nav("/jeux"); setTimeout(() => ouvrirOnglet("jeux", `famille:${f.id}`), 140); } };
+              }) },
             ] },
             { label: "Nouvel atelier ou espace", icon: "🧩", enfants: [
               { label: "Atelier", icon: "🧩", onClick: () => setEditA({ ...nouvelAtelier(), dossier }) },

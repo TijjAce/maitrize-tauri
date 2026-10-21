@@ -339,6 +339,16 @@ input, textarea, select { font-family: inherit; font-size: 14px; }
 .vignette-seance:hover img { outline: 2px solid var(--accent); }
 .vignette-seance img { max-width: 100% !important; max-height: 100% !important; }
 .lien.titre-seance { color: inherit; text-decoration: none; text-align: left; font-weight: inherit; }
+/* Les supports d'une séance (outils, affichages, jeux, évaluations, matériel) et la fenêtre qui les prend sur le bureau. */
+.choix-support-onglets { display: flex; flex-wrap: wrap; height: auto; }
+.choix-support-onglets button { white-space: nowrap; }
+.choix-support-ligne, .support-seance { gap: 12px; margin-bottom: 6px; }
+.choix-support-vignette { width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center;
+  font-size: 22px; border-radius: var(--r-bouton); background: var(--panel-2); overflow: hidden; }
+.choix-support-vignette img { max-width: 100%; max-height: 100%; }
+.choix-support-texte { flex: 1; min-width: 0; }
+.choix-support-texte .title, .choix-support-texte .meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.choix-support-vide { padding: 14px 2px; color: var(--text-2); font-size: 13px; font-style: italic; }
 .lien.titre-seance:hover { color: var(--accent); text-decoration: underline; }
 /* Le suivi d'une séquence : son état d'après le cahier journal, et sa barre d'avancement. */
 .suivi-etat { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; padding: 1px 8px;
