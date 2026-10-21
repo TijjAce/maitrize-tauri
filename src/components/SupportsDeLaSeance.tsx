@@ -7,9 +7,11 @@ import { OutilForm } from "./OutilForm";
 import { JeuForm } from "./JeuForm";
 import { FormMateriel } from "./FormMateriel";
 import { filDAriane } from "../dossiers";
-import { chercherPdfs, lirePdfs, pdfsDuBureau } from "../materielSeance";
+import { chercherPdfs, copiePourLaSeance, lirePdfs, pdfsDuBureau } from "../materielSeance";
+import { fichierEnBase64 } from "../dragdrop";
+import type { Citable } from "./EditeurDeroulement";
 import {
-  GENRES_DE_SUPPORT, chercherElements, dejaPose, elementDuRenvoi, elementsDuBureau, genreDeSupport, lireRenvoi,
+  GENRES_DE_SUPPORT, chercherElements, dejaPose, elementDuRenvoi, elementsDuBureau, genreDeSupport, lireRenvoi, renvoiVers, supportsDeLaSeance,
   type ElementDeSupport, type GenreDeSupport, type RenvoiDeSupport, type SourcesDuBureau,
 } from "../supportsDeSeance";
 
@@ -213,4 +215,84 @@ export function FicheDuSupport({ renvoi, bureau, onClose, onSaved }: {
 export async function lireLeBureau(): Promise<SourcesDuBureau> {
   const [materiel, outils, jeux] = await Promise.all([api.materielList(), api.outilsClasseList(), api.jeuxList()]);
   return { materiel, outils, jeux };
+}
+
+// ── Les supports d'une séance, pour sa page ───────────────────────────────
+
+/** Les supports d'une séance et ce qu'on en fait : les poser, les retirer, prendre une feuille du bureau, ajouter un PDF. */
+export function useSupportsDeLaSeance(seanceId: string, sequenceId: string | null, cycle = "") {
+  const [items, setItems] = React.useState<MaterielItem[]>([]);
+  const [bureau, setBureau] = React.useState<SourcesDuBureau>({ outils: [], jeux: [], materiel: [] });
+  const reload = React.useCallback(async () => {
+    const lu = await lireLeBureau();
+    setItems(lu.materiel.filter((m) => m.seanceId === seanceId));
+    setBureau(lu);
+  }, [seanceId]);
+  React.useEffect(() => { void reload(); }, [reload]);
+  const supports = supportsDeLaSeance(items, seanceId);
+  const feuilles = items.filter((m) => !lireRenvoi(m.supportJson)).sort((a, b) => a.dateCreation.localeCompare(b.dateCreation));
+  const poser = async (renvoi: RenvoiDeSupport, titre: string) => {
+    const lien = renvoiVers({ id: seanceId, sequenceId }, renvoi, titre, newId(), nowIso());
+    await api.materielSave(lien);
+    await reload();
+    return lien;
+  };
+  const retirer = async (lien: MaterielItem) => { await api.materielDelete(lien.id); await reload(); };
+  /** Une feuille du bureau, copiée dans la séance, fichiers compris : le bureau garde la sienne. */
+  const prendrePdf = async (m: MaterielItem) => {
+    const copies: string[] = [];
+    for (const nom of lirePdfs(m.pdfsJson)) copies.push(await api.fichierSave(nom, await api.fichierRead(nom)));
+    const copie = copiePourLaSeance(m, seanceId, copies, newId(), nowIso());
+    await api.materielSave({ ...copie, sequenceId });
+    await reload();
+    return copie;
+  };
+  const ajouterPdf = async (fichier: File) => {
+    const nom = await api.fichierSave(fichier.name, await fichierEnBase64(fichier));
+    const m: MaterielItem = {
+      id: newId(), titre: fichier.name.replace(/\.[^.]+$/, ""), descriptionMateriel: "", competenceId: "", competenceTitre: "",
+      domaineTitre: "", sousDomaineTitre: "", cycle, imagesJson: "[]", pdfsJson: JSON.stringify([nom]), dateCreation: nowIso(),
+      seanceId, sequenceId, dossier: "", videosJson: "[]", coffreJson: "[]",
+    };
+    await api.materielSave(m);
+    await reload();
+    return m;
+  };
+  const supprimerFeuille = async (m: MaterielItem) => {
+    for (const f of lirePdfs(m.pdfsJson)) await api.fichierDelete(f).catch(() => {});
+    await api.materielDelete(m.id);
+    await reload();
+  };
+  return { items, bureau, supports, feuilles, reload, poser, retirer, prendrePdf, ajouterPdf, supprimerFeuille };
+}
+
+export type SupportsDeLaSeanceEtat = ReturnType<typeof useSupportsDeLaSeance>;
+
+/**
+ * Ce que le menu « @ » propose : les supports de la séance, puis ceux du
+ * bureau — qui se posent dans la séance en même temps qu'on les cite ; une
+ * feuille du bureau y est copiée.
+ */
+export function citablesDeLaSeance(etat: SupportsDeLaSeanceEtat): Citable[] {
+  const { bureau, supports, feuilles, poser, prendrePdf } = etat;
+  const dansLaSeance: Citable[] = [
+    ...supports.flatMap((lien): Citable[] => {
+      const r = lireRenvoi(lien.supportJson)!;
+      const e = elementDuRenvoi(r, bureau);
+      return [{ genre: r.genre, id: r.source, titre: e?.titre || lien.titre, detail: genreDeSupport(r.genre).nom.toLowerCase(), groupe: "seance" }];
+    }),
+    ...feuilles.map((m): Citable => ({ genre: "feuille", id: m.id, titre: m.titre || "Feuille", detail: "feuille", groupe: "seance" })),
+  ];
+  const poses = new Set(dansLaSeance.map((c) => `${c.genre}:${c.id}`));
+  const duBureau: Citable[] = GENRES_DE_SUPPORT.flatMap((g) => elementsDuBureau(g.id, bureau, aDesPdfs)
+    .filter((e) => !poses.has(`${e.renvoi.genre}:${e.renvoi.source}`))
+    .map((e): Citable => ({
+      genre: e.renvoi.genre, id: e.renvoi.source, titre: e.titre, detail: [g.nom.toLowerCase(), e.detail].filter(Boolean).join(" · "), groupe: "bureau",
+      poser: async () => { await poser(e.renvoi, e.titre); return { genre: e.renvoi.genre, id: e.renvoi.source, titre: e.titre }; },
+    })));
+  const pdfs: Citable[] = pdfsDuBureau(bureau.materiel).map((m) => ({
+    genre: "feuille", id: m.id, titre: m.titre || "Feuille", detail: "feuille du bureau, copiée dans la séance", groupe: "bureau",
+    poser: async () => { const copie = await prendrePdf(m); return { genre: "feuille", id: copie.id, titre: copie.titre || "Feuille" }; },
+  }));
+  return [...dansLaSeance, ...duBureau, ...pdfs];
 }

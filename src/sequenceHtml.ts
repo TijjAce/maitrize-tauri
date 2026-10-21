@@ -8,9 +8,10 @@
 
 import { formatDuree, type Jeu, type PieceJointe, type Seance, type Sequence } from "./api";
 import type { CompetenceSelectionnee } from "./components/CompetenceTree";
-import { colonnesDuTableau, escapeHtml } from "./print";
+import { escapeHtml } from "./print";
 import { jeuxCites, reglesImprimees, sansMarqueurs } from "./jeuxCites";
 import { lireConsignes } from "./tapuscrit";
+import { documentDeLaSeance, documentEnHtml } from "./documentSeance";
 
 const liste = <T>(json: string | null | undefined): T[] => {
   try { const v = JSON.parse(json || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
@@ -31,36 +32,33 @@ export function imagesDeLaSequence(seances: Seance[], pieces: PieceJointe[]): st
   return [...noms];
 }
 
+/** Le déroulement imprimé : ses phases numérotées, leur durée, les supports cités. */
+export const STYLE_DOCUMENT = `
+  .doc-lu p { margin: 3px 0; }
+  .doc-lu ul { margin: 3px 0 3px 18px; padding: 0; }
+  .doc-lu .doc-phase { display: flex; align-items: baseline; gap: 8px; font-size: 13.5px; margin: 12px 0 4px;
+    padding-bottom: 3px; border-bottom: 1px solid #e3e6ef; break-after: avoid; page-break-after: avoid; }
+  .doc-lu .doc-numero { display: inline-block; min-width: 20px; height: 20px; line-height: 20px; text-align: center;
+    border-radius: 50%; background: #eef0fe; color: #4338ca; font-size: 11px; font-weight: 700; }
+  .doc-lu .doc-duree { margin-left: auto; font-size: 11px; font-weight: 600; color: #687087; }
+  .doc-lu .cite { border-radius: 5px; padding: 0 5px; background: #f0f2f8; font-weight: 600; }
+  .doc-lu .doc-citation { display: block; border-left: 3px solid #6366f1; background: #eef0fe; margin: 6px 0; padding: 4px 10px; font-style: italic; }
+  .doc-lu .doc-source { font-style: normal; font-size: 11px; color: #687087; }
+  .doc-lu .doc-image { margin: 6px 0; break-inside: avoid; }
+`;
+
 /** Le corps de la page d'une séquence. */
 export function htmlDeLaSequence(
   seq: Sequence, seances: Seance[], pieces: PieceJointe[], jeux: Jeu[], image: (nom: string) => string | undefined,
 ): string {
   const img = (nom: string) => { const src = image(nom); return src ? `<img alt="" src="${src}">` : ""; };
-  const rendreTexte = (txt: string) => {
-    const re = /\[(img|cite):([^\]]+)\]/g;
-    let out = "", last = 0, m: RegExpExecArray | null;
-    while ((m = re.exec(txt))) {
-      out += escapeHtml(txt.slice(last, m.index));
-      if (m[1] === "img") out += img(m[2]);
-      else {
-        try {
-          const c = JSON.parse(decodeURIComponent(escape(atob(m[2]))));
-          out += `<blockquote>« ${escapeHtml(c.texte)} »${c.source || c.page ? `<div style="font-size:11px;color:#687087">— ${escapeHtml(c.source)}${c.page ? ", p. " + escapeHtml(c.page) : ""}</div>` : ""}</blockquote>`;
-        } catch { /* citation illisible */ }
-      }
-      last = m.index + m[0].length;
-    }
-    out += escapeHtml(txt.slice(last));
-    return `<div class="pre">${out}</div>`;
-  };
-
   let comp = "";
   try { const c = seq.competenceVisee ? JSON.parse(seq.competenceVisee) : null; if (c) comp = labelCourt(c); } catch { /* ignore */ }
 
   const seancesHtml = seances.map((s) => {
     const comps = liste<CompetenceSelectionnee>(s.competences);
-    const grid = liste<string[]>(s.tableauDeroulement);
-    const illus = liste<string>(s.imagesDeroulement);
+    // Le déroulement en document : ses phases, ses images, le tableau et les illustrations d'avant compris.
+    const doc = documentDeLaSeance(s);
     const pj = pieces.filter((p) => p.seanceId === s.id && p.type === "image").map((p) => p.nomFichier);
     return `<div class="seance">
       <h3>Séance ${s.numero} — ${escapeHtml(s.titre)}</h3>
@@ -68,9 +66,7 @@ export function htmlDeLaSequence(
       ${s.objectifs ? `<div class="label">Objectifs</div><div class="pre">${escapeHtml(s.objectifs)}</div>` : ""}
       ${lireConsignes(s.consignes).length ? `<div class="label">Consignes pour les élèves</div><ol class="consignes">${lireConsignes(s.consignes).map((c) => `<li>${escapeHtml(c)}</li>`).join("")}</ol>` : ""}
       ${comps.length ? `<div class="label">Compétences</div>${comps.map((c) => `<span class="chip">${escapeHtml(labelCourt(c))}</span>`).join("")}` : ""}
-      ${s.deroulement ? `<div class="label">Déroulement</div>${rendreTexte(s.deroulement)}${reglesImprimees(jeuxCites(sansMarqueurs(s.deroulement), jeux))}` : ""}
-      ${grid.length ? `<table class="colonnes">${colonnesDuTableau(grid[0])}${grid.map((row, r) => `<tr>${row.map((c) => r === 0 ? `<th>${escapeHtml(c)}</th>` : `<td>${rendreTexte(c)}</td>`).join("")}</tr>`).join("")}</table>` : ""}
-      ${illus.map(img).join("")}
+      ${doc ? `<div class="label">Déroulement</div><div class="doc-lu">${documentEnHtml(doc, { image })}</div>${reglesImprimees(jeuxCites(sansMarqueurs(doc), jeux))}` : ""}
       ${s.materiel ? `<div class="label">Matériel</div><div class="pre">${escapeHtml(s.materiel)}</div>` : ""}
       ${pj.map(img).join("")}
       ${s.bilan ? `<div class="label">Bilan</div><div class="pre">${escapeHtml(s.bilan)}</div>` : ""}

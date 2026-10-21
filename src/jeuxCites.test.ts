@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { nouveauJeu, type Jeu } from "./api";
 import {
-  CANEVAS_REGLE, LIGNES_DU_CANEVAS, infosDuJeu, jeuxCites, motsCompares, nomSousLeCurseur, questionRegle, regleEcrite, reglesImprimees, texteSimple,
+  CANEVAS_REGLE, LIGNES_DU_CANEVAS, infosDuJeu, jeuxCites, motsCompares, nomSousLeCurseur, questionRegle, regleEcrite, reglesImprimees, sansMarqueurs,
+  texteSimple,
 } from "./jeuxCites";
 
 const jeu = (id: string, titre: string, regles = "", p: Partial<Jeu> = {}): Jeu => ({ ...nouveauJeu(), id, titre, regles, ...p });
@@ -49,6 +50,15 @@ describe("jeux cités dans un texte", () => {
 
   it("compare sans accents, majuscules ni lettres doublées", () => {
     expect(motsCompares("Mémory HALLI-galli Œuf")).toEqual(["memori", "hali", "gali", "oeuf"]);
+  });
+});
+
+describe("les supports cités dans un déroulement", () => {
+  it("un jeu cité d'un « @ » garde son nom ; une feuille au nom d'un jeu n'en est pas un", () => {
+    const ludotheque = [jeu("hg", "Halli Galli"), jeu("mm", "Mots mêlés")];
+    const doc = "## Fin de séance (10 min)\nSur [@feuille:f1|Mots mêlés d'automne], puis [@jeu:hg|Halli Galli].\n[img:photo.png]";
+    expect(sansMarqueurs(doc)).not.toContain("[");
+    expect(titres(jeuxCites(sansMarqueurs(doc), ludotheque))).toEqual(["Halli Galli"]);
   });
 });
 

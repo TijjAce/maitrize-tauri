@@ -3,22 +3,23 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Page } from "../App";
 import { demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre, type Demarche } from "../demarches";
 import { MATERIEL_DES_MOTS, avecLaSeanceDesMots, estLaSeanceDesMots } from "../motsDesProblemes";
-import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, nowIso, newId, DUREES, formatDuree, telechargerTexte, teinteSequence } from "../api";
+import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, nowIso, newId, formatDuree, telechargerTexte, teinteSequence } from "../api";
 import { decalee, deplacee, ordonnees, renumerotees } from "../ordreSeances";
 import { useSuiviSequences } from "../components/useSuiviSequences";
 import { BadgeSuivi } from "../components/SuiviSequence";
 import { avancement, dateCourte, jourProche, libelleDuPassage, libelleDuSuivi } from "../suiviSequences";
 import { EVT_JOUR } from "../components/CommandPalette";
-import { Modal, Field, Input, Textarea, TextareaAuto, Select, Stars, Empty, Confirm, useAsync } from "../components/ui";
-import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
-import { ajouterManuelle, consigneSousCompetences, estManuelle, lireSousCompetences } from "../sousCompetences";
-import { pseudonymiserTout, restaurer } from "../confidentialite";
-import { nomsAMasquer } from "../nomsAMasquer";
-import { TableauEditor, MaterielSeance, imageDuPresse, fileToBase64 } from "../components/SeanceParts";
+import { Modal, Stars, Empty, Confirm, useAsync } from "../components/ui";
+import { CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
+import { estManuelle } from "../sousCompetences";
+import { fileToBase64 } from "../components/SeanceParts";
 import { genreDeSupport, lireRenvoi } from "../supportsDeSeance";
-import { IllustrationsEditor, DeroulementRead, CelluleContenu, FichierImg, CitationButton } from "../components/Deroulement";
+import { FichierImg } from "../components/Deroulement";
+import { DeroulementLu } from "../components/EditeurDeroulement";
+import { documentDeLaSeance } from "../documentSeance";
+import { EVT_SEANCE_ENREGISTREE } from "./SeancePage";
 import { fichierToBlobUrl } from "../components/PdfViewer";
-import { printHTML, dataUrlImage, partDeColonne } from "../print";
+import { printHTML, dataUrlImage } from "../print";
 import { openCtx } from "../components/ctxmenu";
 import { PhotoTelephone } from "../components/PhotoTelephone";
 import { useFileDropZone, estDocument, estImage, fichierEnBase64 } from "../dragdrop";
@@ -28,11 +29,10 @@ import { FormSequence } from "../components/FormSequence";
 import { ReglesCitees, useLudotheque } from "../components/ReglesDesJeux";
 import { SupportsDeLaSequence } from "../components/SupportsDeTravail";
 import { sansMarqueurs, STYLE_REGLES } from "../jeuxCites";
-import { htmlDeLaSequence, imagesDeLaSequence } from "../sequenceHtml";
-import { useCorrecteur, ZoneCorrigeable } from "../components/CorrigerSelection";
+import { htmlDeLaSequence, imagesDeLaSequence, STYLE_DOCUMENT } from "../sequenceHtml";
 import { ExercicesDesManuels } from "../components/ExercicesDesManuels";
 import { libelleDeProgrammation } from "../programmation";
-import { ConsignesSeance, TapuscritVue } from "../components/Tapuscrit";
+import { TapuscritVue } from "../components/Tapuscrit";
 import { lireConsignes } from "../tapuscrit";
 import { TexteAvecLiens } from "../components/TexteAvecLiens";
 
@@ -44,8 +44,13 @@ export default function SequenceDetail() {
   const { data: mats, reload: reloadMat } = useAsync(() => api.materielList().then((all) => all.filter((m) => m.sequenceId === id)), [id]);
   // Où en est la séquence d'après le cahier journal : ses passages en classe, séance par séance.
   const { suivis, aujourdHui, recharger: rechargerSuivi } = useSuiviSequences();
-  const [edit, setEdit] = React.useState<Seance | null>(null);
   const [voir, setVoir] = React.useState<Seance | null>(null);
+  // Une séance écrite sur sa page, qu'on vient de quitter : la liste se relit quand l'écriture finit.
+  React.useEffect(() => {
+    const relire = () => reload();
+    window.addEventListener(EVT_SEANCE_ENREGISTREE, relire);
+    return () => window.removeEventListener(EVT_SEANCE_ENREGISTREE, relire);
+  }, [reload]);
   // « ?seance=… » : on arrive d'une case de la progression, sur la séance qu'elle place.
   const [params, setParams] = useSearchParams();
   const aOuvrir = params.get("seance");
@@ -206,7 +211,7 @@ export default function SequenceDetail() {
         <button className="btn" onClick={supprimerSequence} aria-label="Supprimer la séquence">🗑</button>
         <button className="btn" onClick={() => imprimerSequence(seq, seances ?? [])}>🖨 Imprimer / PDF</button>
         <button className="btn" onClick={() => exporterSequence(seq, seances ?? [])}>⬇️ Exporter</button>
-        <button className="btn primary" onClick={() => setEdit(nouvelleSeance(seq.id, next))}>+ Séance</button>
+        <button className="btn primary" onClick={() => { const neuve = nouvelleSeance(seq.id, next); nav(`/seances/${neuve.id}`, { state: { nouvelle: neuve } }); }}>+ Séance</button>
       </>}>
       <div className="card" style={{ marginBottom: 18, borderTop: `3px solid ${teinteSequence(seq)}` }}>
         {seq.imageNom && <FichierImg nom={seq.imageNom} style={{ width: "100%", maxHeight: 200, objectFit: "cover", marginBottom: 12 }} />}
@@ -344,7 +349,7 @@ export default function SequenceDetail() {
               }}
               onContextMenu={(e) => openCtx(e, [
                 { label: "Voir", icon: "👁", onClick: () => setVoir(s) },
-                { label: "Modifier", icon: "✏️", onClick: () => setEdit(s) },
+                { label: "Modifier", icon: "✏️", onClick: () => nav(`/seances/${s.id}`) },
                 { label: "Monter", icon: "⬆️", sep: true, onClick: () => deplacer(s, -1) },
                 { label: "Descendre", icon: "⬇️", onClick: () => deplacer(s, 1) },
                 { label: "Dupliquer la séance", icon: "📑", onClick: () => dupliquerSeance(s) },
@@ -377,17 +382,16 @@ export default function SequenceDetail() {
                 disabled={ordonnees(liste)[liste.length - 1]?.id === s.id}
                 title="Descendre cette séance" aria-label="Descendre cette séance">⬇</button>
               <button className="btn ghost sm" onClick={() => setVoir(s)}>Voir</button>
-              <button className="btn ghost sm" onClick={() => setEdit(s)}>Modifier</button>
+              <button className="btn ghost sm" onClick={() => nav(`/seances/${s.id}`)}>Modifier</button>
               <button className="btn ghost sm" onClick={() => setDel(s)} aria-label="Supprimer">🗑</button>
             </div>
           );
         })
       )}
 
-      {voir && <SeanceReadView seance={voir} onClose={() => setVoir(null)} onEdit={() => { setEdit(voir); setVoir(null); }} />}
+      {voir && <SeanceReadView seance={voir} onClose={() => setVoir(null)} onEdit={() => { setVoir(null); nav(`/seances/${voir.id}`); }} />}
       {modifier && <FormSequence sequence={seq} onClose={() => setModifier(false)}
         onSaved={() => { setModifier(false); reloadSeq(); }} />}
-      {edit && <SeanceForm seance={edit} cycle={seq.cycle} sequence={seq} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
       {del && <Confirm message={`Supprimer la séance « ${del.titre || del.numero} » ?`}
         onYes={() => api.seanceDelete(del.id).then(reload)} onClose={() => setDel(null)} />}
     </Page>
@@ -410,7 +414,7 @@ async function imprimerSequence(seq: Sequence, seances: Seance[]) {
   await Promise.all(imagesDeLaSequence(seances, pieces).map(async (n) => {
     try { dataUrls[n] = dataUrlImage(n, await api.fichierRead(n)); } catch { /* ignore */ }
   }));
-  printHTML(seq.titre || "Séquence", htmlDeLaSequence(seq, seances, pieces, jeux, (n) => dataUrls[n]), STYLE_REGLES);
+  printHTML(seq.titre || "Séquence", htmlDeLaSequence(seq, seances, pieces, jeux, (n) => dataUrls[n]), STYLE_REGLES + STYLE_DOCUMENT);
 }
 
 // Vidéo explicative : YouTube (iframe), lien direct, ou fichier importé.
@@ -441,236 +445,11 @@ function RatingLine({ label, value, onChange }: { label: string; value: number; 
   );
 }
 
-function Card({ titre, children, right }: { titre: string; children: React.ReactNode; right?: React.ReactNode }) {
-  return (
-    <div className="card" style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
-        <div style={{ fontWeight: 700, fontSize: 13, textTransform: "uppercase", letterSpacing: ".4px", color: "var(--text-2)" }}>{titre}</div>
-        <div className="spacer" />{right}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-export function SeanceForm({ seance, cycle = "", sequence, onClose, onSaved }: {
-  seance: Seance; cycle?: string; sequence?: Sequence; onClose: () => void; onSaved: () => void;
-}) {
-  const [s, setS] = React.useState<Seance>(seance);
-  const { jeux, recharger: rechargerJeux } = useLudotheque();
-  const up = (p: Partial<Seance>) => setS((cur) => ({ ...cur, ...p }));
-  const [dateActive, setDateActive] = React.useState(!!seance.date);
-  // Dernière position du curseur dans le déroulement (pour insérer une image au bon endroit).
-  const curseurDer = React.useRef<number | null>(null);
-  // Un passage surligné dans le déroulement se corrige d'un bouton.
-  const zoneDer = React.useRef<HTMLTextAreaElement | null>(null);
-  const correcteur = useCorrecteur({
-    valeur: s.deroulement, onChange: (deroulement) => up({ deroulement }), zone: zoneDer,
-  });
-  // Insère le marqueur [img:nom] à la position du curseur (ou à la fin).
-  const insererImage = (nom: string) => {
-    const t = s.deroulement;
-    const pos = curseurDer.current ?? t.length;
-    const next = (t.slice(0, pos).trimEnd() + `\n[img:${nom}]\n` + t.slice(pos).trimStart()).replace(/^\n/, "");
-    up({ deroulement: next });
-  };
-
-  let comps: CompetenceSelectionnee[] = [];
-  try { comps = s.competences ? JSON.parse(s.competences) : []; } catch { /* ignore */ }
-  let grid: string[][] = [];
-  try { grid = JSON.parse(s.tableauDeroulement || "[]"); } catch { /* ignore */ }
-  let illustrations: string[] = [];
-  try { illustrations = JSON.parse(s.imagesDeroulement || "[]"); } catch { /* ignore */ }
-
-  const setComps = (next: CompetenceSelectionnee[]) => up({ competences: JSON.stringify(next) });
-  const toggleComp = (c: CompetenceSelectionnee) => {
-    // Une compétence du référentiel se reconnaît à son entrée ; une compétence
-    // écrite à la main, à elle-même — deux manuelles ne se confondent pas.
-    const exists = comps.find((x) => x.id === c.id
-      || (!!c.competenceRefId && x.competenceRefId === c.competenceRefId));
-    setComps(exists ? comps.filter((x) => x !== exists) : [...comps, c]);
-  };
-
-  // ── Les sous-compétences : écrites à la main, ou proposées par l'assistant ──
-  //
-  // La compétence de la séquence est celle du programme ; la séance y mène
-  // par des marches plus petites, que le référentiel n'écrit pas.
-  let competenceVisee: CompetenceSelectionnee | null = null;
-  try { competenceVisee = sequence?.competenceVisee ? JSON.parse(sequence.competenceVisee) : null; } catch { /* ignore */ }
-  const contexteManuel = { domaineTitre: competenceVisee?.domaineTitre ?? sequence?.matiere ?? "", competenceVisee: competenceVisee?.competenceTitre ?? "" };
-  const [saisie, setSaisie] = React.useState("");
-  const ajouterSaisie = () => {
-    const suite = ajouterManuelle(comps, saisie, contexteManuel);
-    if (suite === comps && saisie.trim()) toast("Cette compétence est déjà là.", { icone: "ℹ️" });
-    setComps(suite); setSaisie("");
-  };
-  const [propositions, setPropositions] = React.useState<{ texte: string; cochee: boolean }[] | null>(null);
-  const [proposeEnCours, setProposeEnCours] = React.useState(false);
-  const proposer = async () => {
-    setProposeEnCours(true);
-    try {
-      const consigne = consigneSousCompetences({
-        competenceVisee: competenceVisee?.competenceTitre ?? "", domaineTitre: contexteManuel.domaineTitre, cycle: sequence?.cycle ?? cycle,
-        titreSeance: s.titre, objectifs: s.objectifs, dejaLa: comps.map((c) => c.competenceTitre),
-      });
-      // Le titre et l'objectif de la séance partent sans les noms connus.
-      const masque = pseudonymiserTout(consigne.map((m) => m.content), await nomsAMasquer());
-      const reponse = restaurer(await api.mistralChat(consigne.map((m, i) => ({ ...m, content: masque.textes[i] }))), masque.table).texte;
-      const lues = lireSousCompetences(reponse);
-      if (!lues.length) { toast("L'assistant n'a rien proposé de lisible ; réessayez.", { icone: "⚠️" }); return; }
-      setPropositions(lues.map((texte) => ({ texte, cochee: true })));
-    } catch (e) { toast(String(e), { icone: "⚠️" }); }
-    finally { setProposeEnCours(false); }
-  };
-  const garderPropositions = () => {
-    let suite = comps;
-    for (const p of propositions ?? []) if (p.cochee) suite = ajouterManuelle(suite, p.texte, contexteManuel);
-    setComps(suite); setPropositions(null);
-  };
-
-  const enregistrerLaSeance = () => {
-    const bilanDate = s.bilan && s.bilan !== seance.bilan ? nowIso() : s.bilanDate;
-    return api.seanceSave({ ...s, titre: s.titre.trim() || `Séance ${s.numero}`, date: dateActive ? (s.date ?? nowIso()) : null, bilanDate });
-  };
-  const save = async () => {
-    await enregistrerLaSeance();
-    onSaved();
-  };
-
-  return (
-    <Modal large titre={`Séance ${s.numero}`} onClose={onClose}
-      footer={<>
-        <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" onClick={save} disabled={!s.titre.trim()}>Enregistrer</button>
-      </>}>
-      <Card titre="Informations">
-        <div className="row">
-          <Field label="Titre"><Input value={s.titre} autoFocus onChange={(e) => up({ titre: e.target.value })} /></Field>
-          <Field label="Durée">
-            <Select value={s.duree} onChange={(e) => up({ duree: +e.target.value })} style={{ maxWidth: 130 }}>
-              {DUREES.map((d) => <option key={d} value={d}>{formatDuree(d)}</option>)}
-            </Select>
-          </Field>
-        </div>
-        <Field label="Date prévue">
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <input type="checkbox" checked={dateActive} onChange={(e) => setDateActive(e.target.checked)} />
-            {dateActive ? <Input type="date" value={(s.date ?? nowIso()).slice(0, 10)} onChange={(e) => up({ date: e.target.value })} style={{ maxWidth: 180 }} />
-              : <span style={{ color: "var(--text-2)" }}>Non définie</span>}
-          </div>
-        </Field>
-      </Card>
-
-      <Card titre="Objectifs">
-        <Textarea value={s.objectifs} onChange={(e) => up({ objectifs: e.target.value })} placeholder="Ce que les élèves doivent apprendre…" />
-      </Card>
-
-      <Card titre="Consignes pour les élèves">
-        <ConsignesSeance valeur={s.consignes ?? ""} onChange={(consignes) => up({ consignes })} />
-      </Card>
-
-      <Card titre="Compétences">
-        {comps.length > 0 && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-            {comps.map((c, i) => (
-              <span key={i} className="chip" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-                title={estManuelle(c) ? "Sous-compétence écrite à la main" : c.referentielNom}>
-                {estManuelle(c) ? "✍️ " : ""}{labelCourt(c)} <button className="btn ghost sm" style={{ padding: 0, marginLeft: 4 }} onClick={() => toggleComp(c)} aria-label="Retirer">✕</button>
-              </span>
-            ))}
-          </div>
-        )}
-        {competenceVisee && (
-          <div className="meta" style={{ fontSize: 12.5, marginBottom: 6 }}>🎯 Vers : {labelCourt(competenceVisee)}</div>
-        )}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
-          <Input value={saisie} onChange={(e) => setSaisie(e.target.value)} placeholder="Écrire une sous-compétence : Reconnaître son prénom parmi trois étiquettes…"
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); ajouterSaisie(); } }} style={{ flex: 1, minWidth: 220 }} aria-label="Sous-compétence à écrire" />
-          <button type="button" className="btn sm" disabled={!saisie.trim()} onClick={ajouterSaisie}>＋ Ajouter</button>
-          <button type="button" className="btn sm" disabled={proposeEnCours} onClick={proposer}
-            title="L'assistant propose des sous-compétences à partir de la compétence visée et de l'objectif ; vous gardez celles qui conviennent.">
-            {proposeEnCours ? "L'assistant cherche…" : "✨ Proposer des sous-compétences"}
-          </button>
-        </div>
-        {propositions && (
-          <div className="deroulement-propose" style={{ marginBottom: 10 }}>
-            <b>✨ Propositions de l'assistant</b>
-            <div className="meta" style={{ fontSize: 12.5, margin: "2px 0 6px" }}>Décochez ce qui ne convient pas ; le reste s'écrit comme une sous-compétence, modifiable ensuite.</div>
-            {propositions.map((p, i) => (
-              <label key={i} className="pb-coche">
-                <input type="checkbox" checked={p.cochee} onChange={(e) => setPropositions(propositions.map((x, k) => (k === i ? { ...x, cochee: e.target.checked } : x)))} />
-                <span>{p.texte}</span>
-              </label>
-            ))}
-            <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-              <button type="button" className="btn primary sm" disabled={!propositions.some((p) => p.cochee)} onClick={garderPropositions}>
-                ✓ Garder les cochées ({propositions.filter((p) => p.cochee).length})
-              </button>
-              <button type="button" className="btn ghost sm" onClick={() => setPropositions(null)}>Ne rien garder</button>
-            </div>
-          </div>
-        )}
-        <CompetenceTree mode="multi" selection={comps} onToggle={(c) => toggleComp(c)} />
-      </Card>
-
-      <Card titre="Déroulement">
-        <ZoneCorrigeable>
-        {correcteur.bulle}
-        <TextareaAuto ref={zoneDer} value={s.deroulement} onChange={(e) => up({ deroulement: e.target.value })}
-          onSelect={(e) => { curseurDer.current = e.currentTarget.selectionStart; correcteur.surSelection(); }}
-          onKeyUp={(e) => { curseurDer.current = e.currentTarget.selectionStart; correcteur.surSelection(); }}
-          onClick={(e) => { curseurDer.current = e.currentTarget.selectionStart; correcteur.surSelection(); }}
-          placeholder="Phases de la séance, consignes, organisation… (collez une image directement)"
-          onPaste={async (e) => {
-            const file = imageDuPresse(e);
-            if (!file) return;
-            e.preventDefault();
-            const el = e.currentTarget; const pos = el.selectionStart ?? s.deroulement.length;
-            const nom = await api.fichierSave(file.name || "image.png", await fileToBase64(file));
-            const t = s.deroulement;
-            const next = (t.slice(0, pos).trimEnd() + `\n[img:${nom}]\n` + t.slice(pos).trimStart()).replace(/^\n/, "");
-            up({ deroulement: next, imagesDeroulement: JSON.stringify([...illustrations, nom]) });
-          }} />
-        </ZoneCorrigeable>
-        <ReglesCitees texte={sansMarqueurs(s.deroulement)} jeux={jeux} onJeuModifie={rechargerJeux} />
-        <div style={{ marginTop: 8 }}>
-          <CitationButton onInsert={(mq) => up({ deroulement: (s.deroulement.trimEnd() + "\n" + mq + "\n").trimStart() })} />
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <TableauEditor grid={grid} illustrations={illustrations} onChange={(g) => up({ tableauDeroulement: JSON.stringify(g) })} />
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 650, color: "var(--text-2)", marginBottom: 4 }}>Illustrations (insérables au fil du texte)</div>
-          <IllustrationsEditor texte={s.deroulement} fichiers={illustrations}
-            onChange={(f) => up({ imagesDeroulement: JSON.stringify(f) })}
-            onInsert={insererImage} />
-        </div>
-      </Card>
-
-      <Card titre="Notes matériel">
-        <Textarea value={s.materiel} onChange={(e) => up({ materiel: e.target.value })} placeholder="Matériel nécessaire…" />
-      </Card>
-
-      <Card titre="Supports de la séance">
-        {/* Fabriquer une feuille quitte la page : la séance s'enregistre d'abord, sans quoi ce qu'on vient d'y écrire se perdrait. */}
-        <MaterielSeance seanceId={s.id} sequenceId={s.sequenceId ?? sequence?.id ?? null}
-          titreSeance={`Séance ${s.numero}${s.titre.trim() ? ` — ${s.titre.trim()}` : ""}`} cycle={cycle}
-          avantDeFabriquer={async () => { await enregistrerLaSeance(); }} />
-      </Card>
-
-      <Card titre="Bilan (après la séance)">
-        <Textarea value={s.bilan} onChange={(e) => up({ bilan: e.target.value })} placeholder="Ce qui a marché, à reprendre, pour la prochaine fois…" />
-      </Card>
-    </Modal>
-  );
-}
-
 // ── Vue lecture d'une séance ───────────────────────────────────────────────
 export function SeanceReadView({ seance: s, onClose, onEdit }: { seance: Seance; onClose: () => void; onEdit: () => void }) {
   let comps: CompetenceSelectionnee[] = [];
   try { comps = s.competences ? JSON.parse(s.competences) : []; } catch { /* ignore */ }
-  let grid: string[][] = [];
-  try { grid = JSON.parse(s.tableauDeroulement || "[]"); } catch { /* ignore */ }
+  const doc = documentDeLaSeance(s);
   const { data: materiels } = useAsync(() => api.materielList().then((all) => all.filter((m) => m.seanceId === s.id)), [s.id]);
   const { jeux, recharger: rechargerJeux } = useLudotheque();
 
@@ -695,26 +474,12 @@ export function SeanceReadView({ seance: s, onClose, onEdit }: { seance: Seance;
           {comps.map((c, i) => <span key={i} className="chip" style={{ background: "var(--accent-soft)", color: "var(--accent)" }} title={estManuelle(c) ? "Sous-compétence écrite à la main" : c.referentielNom}>{estManuelle(c) ? "✍️ " : ""}{labelCourt(c)}</span>)}
         </div>
       </Section>}
-      {s.deroulement && <Section titre="Déroulement"><DeroulementRead texte={s.deroulement} /></Section>}
-      {s.deroulement && (
+      {doc && <Section titre="Déroulement"><DeroulementLu document={doc} /></Section>}
+      {doc && (
         <div style={{ marginTop: -10, marginBottom: 16 }}>
-          <ReglesCitees texte={sansMarqueurs(s.deroulement)} jeux={jeux} onJeuModifie={rechargerJeux} />
+          <ReglesCitees texte={sansMarqueurs(doc)} jeux={jeux} onJeuModifie={rechargerJeux} />
         </div>
       )}
-      {grid.length > 0 && <Section titre="Tableau">
-        <div style={{ overflowX: "auto" }}>
-          <table className="tbl" style={{ tableLayout: "fixed", width: "100%" }}>
-            {/* Chaque colonne à sa mesure : la durée tient en trois chiffres, la description porte tout. */}
-            <colgroup>{(() => {
-              const parts = grid[0].map(partDeColonne);
-              const total = parts.reduce((a, b) => a + b, 0) || 1;
-              return parts.map((p, c) => <col key={c} style={{ width: `${(p / total) * 100}%` }} />);
-            })()}</colgroup>
-            <tbody>{grid.map((row, r) => <tr key={r} style={r === 0 ? { fontWeight: 700, background: "var(--panel-2)" } : undefined}>
-              {row.map((cell, c) => <td key={c} style={{ verticalAlign: "top" }}>{r === 0 ? cell : <CelluleContenu texte={cell} />}</td>)}</tr>)}</tbody>
-          </table>
-        </div>
-      </Section>}
       {s.materiel && <Section titre="Matériel"><div style={{ whiteSpace: "pre-wrap" }}><TexteAvecLiens texte={s.materiel} /></div></Section>}
       {(materiels?.length ?? 0) > 0 && <Section titre="Supports de la séance">
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

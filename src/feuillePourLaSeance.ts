@@ -61,4 +61,4 @@ export function fabriquerPourLaSeance(p: PourLaSeance, aller: (chemin: string) =
 }
 
 /** Le chemin de la séance, pour y revenir : sa séquence. */
-export const cheminDeLaSeance = (p: PourLaSeance) => (p.sequenceId ? `/sequences/${p.sequenceId}` : "/plan");
+export const cheminDeLaSeance = (p: PourLaSeance) => `/seances/${p.seanceId}`;

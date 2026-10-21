@@ -66,8 +66,14 @@ const LONGUEUR_TOLERANTE = 7;
 
 interface Trouve { jeu: Jeu; debut: number; fin: number; longueur: number }
 
-/** Un texte de séance sans ses marqueurs d'images et de citations. */
-export const sansMarqueurs = (texte: string) => (texte ?? "").replace(/\[(img|cite):[^\]]+\]/g, " ");
+/**
+ * Un texte de séance sans ses marqueurs d'images et de citations. Un jeu cité
+ * d'un « @ » garde son nom ; les autres supports cités s'effacent — une
+ * feuille « Mots mêlés d'automne » n'est pas le jeu des mots mêlés.
+ */
+export const sansMarqueurs = (texte: string) => (texte ?? "")
+  .replace(/\[@([a-z]+):[^|\]]+\|([^\]]*)\]/g, (_m, genre: string, titre: string) => (genre === "jeu" ? ` ${titre} ` : " "))
+  .replace(/\[(img|cite):[^\]]+\]/g, " ");
 
 /** Les jeux de la ludothèque cités dans un texte, dans l'ordre où on les lit, chacun une fois. */
 export function jeuxCites(texte: string, jeux: Jeu[]): Jeu[] {

@@ -3,6 +3,7 @@ import { NavLink, Route, Routes, Navigate, useNavigate, useLocation } from "reac
 import logo from "./assets/logo.png";
 import Dashboard from "./pages/Dashboard";
 import SequenceDetail from "./pages/SequenceDetail";
+import SeancePage from "./pages/SeancePage";
 import Ateliers from "./pages/Ateliers";
 import Planning from "./pages/Planning";
 import Organisation from "./pages/Organisation";
@@ -132,6 +133,7 @@ function KeepAliveHost({ pathname }: { pathname: string }) {
             <Routes>
               <Route path="/planning" element={<Planning />} />
               <Route path="/sequences/:id" element={<SequenceDetail />} />
+              <Route path="/seances/:id" element={<SeancePage />} />
               <Route path="/amis" element={<VersLesAmis />} />
               <Route path="/commun" element={<BureauxCommuns />} />
               {/* Les anciens chemins restent valides : la palette ⌘K, le

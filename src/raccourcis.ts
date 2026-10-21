@@ -67,6 +67,16 @@ export function raccourcisClavier(mac = isMac): GroupeDeRaccourcis[] {
       ],
     },
     {
+      ou: "Le déroulement d'une séance",
+      raccourcis: [
+        // EditeurDeroulement.tsx
+        { touches: ["@"], quoi: "Citer un support de la séance ou du plan de travail" },
+        { touches: [cmd("B"), cmd("I")], quoi: "Gras, italique" },
+        { touches: [entree], quoi: "Au bout du titre d'une phase : écrire son texte dessous" },
+        { touches: [mac ? "⌫" : "Retour arrière"], quoi: "Au début du titre d'une phase : en refaire un paragraphe ; sur une image choisie d'un clic : l'enlever" },
+      ],
+    },
+    {
       ou: "CAA › Tableaux de langage",
       // Tla.tsx
       raccourcis: [{ touches: [cmd("Z")], quoi: "Annuler la dernière modification" }],

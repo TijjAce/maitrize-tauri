@@ -83,6 +83,7 @@ export function recents(h: Historique, max = RECENTS_MAX): Lieu[] {
 /** Le nom d'un lieu qui ne s'est pas annoncé : d'après le menu. */
 export function libelleDuChemin(chemin: string, menu: { to: string; label: string }[]): string {
   if (chemin.startsWith("/sequences/")) return "Séquence";
+  if (chemin.startsWith("/seances/")) return "Séance";
   const exact = menu.find((m) => m.to === chemin);
   if (exact) return exact.label;
   const parent = menu.filter((m) => m.to !== "/" && chemin.startsWith(m.to)).sort((a, b) => b.to.length - a.to.length)[0];

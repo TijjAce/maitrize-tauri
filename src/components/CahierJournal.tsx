@@ -18,7 +18,7 @@ import {
 import { reformuler } from "../reformulation";
 import { JeuForm } from "./JeuForm";
 import { ReglesDesJeux, useJeuxCites, useLudotheque } from "./ReglesDesJeux";
-import { jeuxCites, nomSousLeCurseur, regleEcrite } from "../jeuxCites";
+import { jeuxCites, nomSousLeCurseur, regleEcrite, sansMarqueurs } from "../jeuxCites";
 import { ChoixSequence, SequencesCitees } from "./SequencesCitees";
 import { ChoixRituel, RituelForm, RituelsCites, useRituels } from "./Rituels";
 import { IndicateurZoom, useZoomPince } from "./ZoomPince";
@@ -611,7 +611,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                       <>
                         <ImagesDuPrevu prevu={b.prevu} onRetirer={(nom) => modifier(c.id, "prevu", retirerImage(b.prevu, nom), true)} />
                         {/* Les jeux du prévu, et ceux du déroulement de la séance liée : ce sont eux qui s'impriment. */}
-                        <ReglesDesJeux jeux={citesDans(seance?.deroulement ? `${b.prevu}\n${seance.deroulement}` : b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })}
+                        <ReglesDesJeux jeux={citesDans(seance?.deroulement ? `${b.prevu}\n${sansMarqueurs(seance.deroulement)}` : b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })}
                           masques={masques[c.id]} onMasquer={(cle) => masquer(c.id, cle)} />
                         <SequencesCitees citations={sequencesCitees(b.prevu, sequences, seances)} seances={seances}
                           onOuvrir={(s) => navigate(`/sequences/${s.id}`)} onVoirSeance={setSeanceVue}
@@ -646,7 +646,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
       )}
       {seanceVue && (
         <SeanceReadView seance={seanceVue} onClose={() => setSeanceVue(null)}
-          onEdit={() => { const sid = seanceVue.sequenceId; setSeanceVue(null); if (sid) navigate(`/sequences/${sid}`); }} />
+          onEdit={() => { const id = seanceVue.id; setSeanceVue(null); navigate(`/seances/${id}`); }} />
       )}
       {jeuEdite && (
         <JeuForm j={jeuEdite.jeu} nouveau={jeuEdite.nouveau} onClose={() => setJeuEdite(null)}

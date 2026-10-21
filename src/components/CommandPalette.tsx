@@ -204,7 +204,7 @@ function allerVers(r: ResultatRecherche, nav: (to: string) => void) {
       setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_CHERCHER_BUREAU,
         { detail: { id: r.id, titre: r.titre } })), 140);
       return;
-    case "seance": return nav(r.parent ? `/sequences/${r.parent}` : "/plan");
+    case "seance": return nav(`/seances/${r.id}`);
     case "creneau":
       nav("/planning");
       if (r.parent) setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_JOUR, { detail: r.parent })), 120);

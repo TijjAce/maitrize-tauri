@@ -15,7 +15,7 @@ import { documentImprimable, escapeHtml } from "./print";
 import { normaliser, PREFIXE_COULEUR } from "./dossiers";
 import { versHtml } from "./texteRiche";
 import { lireVideos } from "./videos";
-import { htmlDeLaSequence } from "./sequenceHtml";
+import { htmlDeLaSequence, STYLE_DOCUMENT } from "./sequenceHtml";
 import { infosDuJeu, jeuxCites, regleEcrite, sansMarqueurs, STYLE_REGLES } from "./jeuxCites";
 
 /** Change quand la forme des fichiers écrits change : ils sont alors tous réécrits. */
@@ -226,7 +226,7 @@ export function planDeCopie(d: DonneesBureau, plateforme: Plateforme): PlanDeCop
       const chemin = noms.reserver(dossier, `${nomSur(titre)} (séquence)`, ".html");
       // Le dossier n'entre pas dans l'empreinte : une séquence rangée ailleurs est déplacée, pas réécrite.
       contenu(chemin, `sequence|${JSON.stringify([{ ...seq, dossier: "" }, seances, pieces, cites])}`, () =>
-        documentImprimable(titre, htmlDeLaSequence(seq, seances, pieces, d.jeux, (nom) => `maitrize-fichier:${nom}`), STYLE_REGLES));
+        documentImprimable(titre, htmlDeLaSequence(seq, seances, pieces, d.jeux, (nom) => `maitrize-fichier:${nom}`), STYLE_REGLES + STYLE_DOCUMENT));
       // Les documents joints aux séances (hors images, déjà dans la page).
       const documents = pieces.filter((p) => p.type !== "image" && p.nomFichier);
       if (documents.length) {
