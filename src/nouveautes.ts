@@ -18,6 +18,21 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.35",
+    titre: "Une page pour chaque séance : ses phases en cartes, ses images, et ses supports cités d'un « @ »",
+    points: [
+      { quoi: "La séance a sa page : « + Séance » et « Modifier » l'ouvrent en grand — son titre, sa durée, sa date, ses compétences et ses consignes en pastilles, son objectif. Tout s'enregistre seul, au fil de la frappe.", ou: "Plan de travail › une séquence › une séance" },
+      { quoi: "Les phases en cartes : chacune son titre, sa durée et son organisation (collectif, individuel, binômes, groupes, ateliers) ; dessous, le déroulement et la posture de l'enseignant, côte à côte. « ¶ Phase » en ajoute une ; ⋯ la monte, la descend ou la supprime.", ou: "Une séance › Déroulement" },
+      { quoi: "« Les champs des phases » ajoute à toutes les cartes la différenciation, le matériel, la trace écrite, ou un champ que vous nommez — comme les colonnes de l'ancien tableau.", ou: "Une séance › Les champs des phases" },
+      { quoi: "Dans chaque case, on écrit comme dans un traitement de texte : gras, italique, listes, images collées, glissées ou prises au téléphone. « @ » cite un support de la séance ou du plan de travail ; « 🧭 Démarche… » pose d'un coup les phases d'une démarche.", ou: "Une séance › Déroulement" },
+      { quoi: "Les supports de la séance : un outil pour l'élève, un affichage, un jeu, une évaluation ou du matériel du plan de travail, ou une feuille PDF. « ✨ Fabriquer une feuille » ouvre les générateurs pour la séance, et la feuille fabriquée y revient.", ou: "Une séance › Supports de la séance" },
+      { quoi: "Vos séances d'avant s'ouvrent en cartes, leur tableau rangé dans les phases. À l'impression, la séquence redevient une fiche de préparation : une ligne par phase, une colonne par champ. Les tablettes et le PDF du jour suivent.", ou: "Une séquence › 🖨 Imprimer / PDF" },
+      { quoi: "⌘K : « ? » ou la commande « Raccourcis clavier » montre les raccourcis de Maitrize, rangés par endroit, et les cherche.", ou: "⌘K" },
+      { quoi: "Plus sûr : une pièce jointe ne s'ouvre d'un clic que si c'est un document, une image, du son ou de la vidéo — un programme se montre dans le Finder, sans se lancer ; le coffre ne télécharge qu'en https ; les bibliothèques de Maitrize reçoivent leurs correctifs de sécurité.", ou: "Élèves · Plan de travail · Coffre" },
+      { quoi: "Corrigé : la vue Mois sautait un mois les 29, 30 et 31 ; l'accueil ouvert du vendredi au lundi montrait la semaine d'avant ; deux élèves de même prénom recevaient les mêmes notes du bilan ; une réponse de l'IA pouvait se ranger chez un autre élève ; ce qu'on écrivait en réunion pendant que l'IA rangeait s'effaçait ; la dernière frappe de la grille Observer pouvait se perdre ; l'impression du GEVA-Sco s'arrêtait sur une ligne vide.", ou: "Planning · Accueil · Élèves · Réunions" },
+    ],
+  },
+  {
     version: "1.6.34",
     titre: "L'agent de synthèse, quatre styles bien distincts, et des générateurs qui posent leurs questions",
     points: [
