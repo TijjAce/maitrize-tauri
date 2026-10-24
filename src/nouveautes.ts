@@ -18,6 +18,18 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.36",
+    titre: "⌘Z partout : ce qui vient d'être fait se défait, toutes les suppressions comprises",
+    points: [
+      { quoi: "⌘Z défait ce que vous venez de faire, là où vous êtes : une frappe, un changement de tableau, un geste dans une séance, un réglage d'un générateur ; ⌘⇧Z le refait. Une page restée ouverte en arrière-plan ne défait plus rien en silence.", ou: "Partout" },
+      { quoi: "Toutes les suppressions se défont pendant dix secondes, au bouton « Annuler » du bandeau ou par ⌘Z : une séance ou une séquence, reposées dans leurs créneaux ; un créneau, une évaluation et ses notes, un document du coffre, un manuel, ce qu'on retire de la poubelle du plan de travail… Un élève et son dossier, un vocal, une sauvegarde en ligne ne s'effacent qu'à la fin du bandeau.", ou: "Partout" },
+      { quoi: "Dans le déroulement d'une séance, ⌘Z défait aussi une phase ajoutée ou supprimée, une durée, une pastille, une image ; le curseur revient là où la séance a changé.", ou: "Une séance › Déroulement" },
+      { quoi: "« Citer un passage » choisit son document dans une bibliothèque, la couverture de chaque PDF du coffre ; la fenêtre ne passe plus sous la barre du haut.", ou: "Une séance › Déroulement › ❝" },
+      { quoi: "Une séquence toute faite de plus au CE1 : la soustraction posée avec retenue, par emprunt, d'après un manuel de préparation au CRPE — quatre séances, dont le problème des timbres en cinq phases, et leurs feuilles.", ou: "Fabriquer › Séquences toutes faites › CE1 › Le calcul" },
+      { quoi: "Plus sobre : les évaluations se choisissent par nature, Sommative ou Diagnostique, leurs vues dessous ; le GEVA-Sco rejoint les Dispositifs ; l'accueil ne montre plus la ligne de détail des séquences en classe ; les cases des phases n'ont plus d'exemples ; la zone « Matériel de la séquence » s'en va.", ou: "Élèves · Accueil · Une séance · Une séquence" },
+    ],
+  },
+  {
     version: "1.6.35",
     titre: "Une page pour chaque séance : ses phases en cartes, ses images, et ses supports cités d'un « @ »",
     points: [
