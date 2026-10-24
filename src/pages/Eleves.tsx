@@ -1,4 +1,5 @@
 import React from "react";
+import { supprimerLEvaluation } from "../suppressionsAnnulables";
 import { Page } from "../App";
 import {
   api, Eleve, CommentaireEleve, Evaluation, NoteEleve,
@@ -343,7 +344,7 @@ function Evaluations({ vue, setVue, grille }: { vue: VueEvaluation; setVue: (v: 
         )))}
       {edit && <EvalForm ev={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
       {notes && (notes.mode === "note" ? <NotesSheet ev={notes} onClose={() => setNotes(null)} /> : <LSUSheet ev={notes} onClose={() => setNotes(null)} />)}
-      {del && <Confirm message={`Supprimer « ${del.titre} » ?`} onYes={() => api.evaluationDelete(del.id).then(reload)} onClose={() => setDel(null)} />}
+      {del && <Confirm message={`Supprimer « ${del.titre} » ?`} onYes={() => supprimerLEvaluation(del, reload)} onClose={() => setDel(null)} />}
     </>
   );
 }

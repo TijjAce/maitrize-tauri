@@ -37,8 +37,9 @@ export function toast(
  *
  * Une boîte « Êtes-vous sûr ? » arrête le geste sans rien protéger : on répond
  * oui sans lire. Défaire après coup demande moins, et rattrape vraiment — à
- * condition que l'élément se recrée tel quel, ce qui exclut ce qui entraîne
- * autre chose avec lui (une séquence et ses séances, un élève et son dossier).
+ * condition que l'élément se recrée tel quel, avec ce qui part avec lui (une
+ * séquence et ses séances : voir suppressionsAnnulables.ts) ; un élève et son
+ * dossier restent hors de portée.
  */
 export function toastAnnulable(message: string, annuler: () => void | Promise<void>, icone = "🗑") {
   toast(message, { icone, duree: 10000, action: { label: "Annuler", faire: annuler } });

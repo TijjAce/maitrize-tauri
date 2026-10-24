@@ -1,4 +1,5 @@
 import React from "react";
+import { supprimerLeProjet } from "../suppressionsAnnulables";
 import { Page } from "../App";
 import { api, anneeScolaireActuelle, texteErreur } from "../api";
 import { Field, Input, Select, Textarea, TextareaAuto, useAsync, useOngletDemande } from "../components/ui";
@@ -78,7 +79,7 @@ export default function Projets() {
 
   const supprimer = async (p: ProjetClasse) => {
     if (!await confirmer(`Retirer « ${p.titre || "ce projet"} » de l'année ? Les séquences rattachées restent.`)) return;
-    try { await api.projetDelete(p.id); reload(); }
+    try { await supprimerLeProjet(p, reload); }
     catch (e) { toast("Suppression impossible : " + texteErreur(e), { icone: "⚠️" }); }
   };
 

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { isoJour, lundiDe, jourPlanningInitial, anneeDe, toMin, minToHHMM, plusJours, moisVoisin } from "../dates";
 import { api, Creneau, Seance, Sequence, Eleve, Jeu, MATIERES, couleurPourMatiere, teinteCreneau, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance, texteErreur, type MaterielItem, type ObservationEleve } from "../api";
+import { supprimerLeCreneau } from "../suppressionsAnnulables";
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { chargerVacances, vacanceDuJour, type Periode } from "../vacances";
@@ -581,7 +582,7 @@ export default function Planning() {
       {edit && <CreneauForm creneau={edit} seances={seances ?? []} sequences={sequences ?? []}
         onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }}
         onDelete={() => { setDel(edit); setEdit(null); }} onCreerSeance={creerSeanceDepuisCreneau} />}
-      {del && <Confirm message="Supprimer ce créneau ?" onYes={() => api.creneauDelete(del.id).then(reload)} onClose={() => setDel(null)} />}
+      {del && <Confirm message="Supprimer ce créneau ?" onYes={() => supprimerLeCreneau(del, reload)} onClose={() => setDel(null)} />}
       {/* Les fiches posées, on montre le jour et son cahier journal. */}
       {enRetard && <EnRetard jourInitial={enRetard} onClose={() => setEnRetard(null)}
         onFini={(jour) => { setEnRetard(null); setAncre(new Date(`${jour}T12:00:00`)); setVue("jour"); setVersionJournal((v) => v + 1); reload(); }} />}
@@ -701,7 +702,7 @@ function GrilleHoraire({ jours, creneaux, seances, eleves, feries, vacanceDe, de
                         { label: "Modifier le créneau", icon: "✏️", onClick: () => onEdit(c) },
                         ...(c.seanceId ? [{ label: "Détacher la séance", icon: "🔗", onClick: () => api.creneauSave({ ...c, seanceId: null }).then(onReload) }] : []),
                         { label: "Dupliquer", icon: "📑", sep: true, onClick: () => api.creneauSave({ ...c, id: newId() }).then(onReload) },
-                        { label: "Supprimer le créneau", icon: "🗑", danger: true, sep: true, onClick: () => api.creneauDelete(c.id).then(onReload) },
+                        { label: "Supprimer le créneau", icon: "🗑", danger: true, sep: true, onClick: () => { void supprimerLeCreneau(c, onReload); } },
                       ])}
                       style={{ position: "absolute", top, height: h - 2, left: dragged ? 3 : `calc(${(lane / lanes) * 100}% + 3px)`, width: dragged ? "calc(100% - 6px)" : `calc(${100 / lanes}% - 6px)`,
                         background: seance ? teinte : `color-mix(in srgb, ${teinte} 6%, var(--panel-2))`,
