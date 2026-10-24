@@ -34,6 +34,11 @@ import { lireJson, modifierLeDocument } from "../documentDeLEleve";
 const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "dispositifs", "gevasco"] as const;
 /** Ce qu'affiche l'onglet Évaluations : le sommatif (évaluations notées, synthèse GS) ou le diagnostique (grilles d'observation). */
 type VueEvaluation = "notees" | "gs" | "diagnostique";
+/** Les deux natures de l'évaluation, et leurs vues : on choisit la nature, ses vues apparaissent dessous. */
+const NATURES_EVALUATION: { id: "sommative" | "diagnostique"; nom: string; vues: [VueEvaluation, string][] }[] = [
+  { id: "sommative", nom: "Sommative", vues: [["notees", "🔢 Évaluations notées"], ["gs", "🎓 Synthèse GS"]] },
+  { id: "diagnostique", nom: "Diagnostique", vues: [["diagnostique", "🔍 Grilles d'observation"]] },
+];
 /** Le Dossier, ou sa Synthèse : la synthèse vit avec le dossier de l'élève (demande de l'enseignant, octobre 2026). */
 type VueDossier = "dossier" | "synthese";
 export default function Eleves() {
@@ -296,24 +301,27 @@ function Evaluations({ vue, setVue, grille }: { vue: VueEvaluation; setVue: (v: 
   const [edit, setEdit] = React.useState<Evaluation | null>(null);
   const [notes, setNotes] = React.useState<Evaluation | null>(null);
   const [del, setDel] = React.useState<Evaluation | null>(null);
-  // Une seule barre, rangée par nature : une seule vue choisie à la fois, chacune à un clic.
-  const vueBouton = (v: VueEvaluation, libelle: string) => (
-    <button type="button" aria-pressed={vue === v} className={vue === v ? "active" : ""} onClick={() => setVue(v)}>{libelle}</button>
-  );
+  // La nature d'abord, au-dessus ; ses vues dessous (demande de l'enseignant, octobre 2026). Revenir à une nature rouvre
+  // la vue qu'on y avait laissée.
+  const nature = NATURES_EVALUATION.find((n) => n.vues.some(([v]) => v === vue)) ?? NATURES_EVALUATION[0];
+  const laissee = React.useRef<Record<string, VueEvaluation>>({});
+  laissee.current[nature.id] = vue;
 
   return (
     <>
-      <div className="toolbar toolbar-natures">
-        <div className="seg seg-natures">
-          <div className="seg-nature" role="group" aria-label="Évaluation sommative">
-            <span className="seg-nature-titre" aria-hidden="true">Sommative</span>
-            {vueBouton("notees", "🔢 Évaluations notées")}
-            {vueBouton("gs", "🎓 Synthèse GS")}
-          </div>
-          <div className="seg-nature" role="group" aria-label="Évaluation diagnostique">
-            <span className="seg-nature-titre" aria-hidden="true">Diagnostique</span>
-            {vueBouton("diagnostique", "🔍 Grilles d'observation")}
-          </div>
+      <div className="toolbar toolbar-nature">
+        <div className="seg" role="tablist" aria-label="Nature de l'évaluation">
+          {NATURES_EVALUATION.map((n) => (
+            <button key={n.id} type="button" role="tab" aria-selected={n === nature} className={n === nature ? "active" : ""}
+              onClick={() => setVue(laissee.current[n.id] ?? n.vues[0][0])}>{n.nom}</button>
+          ))}
+        </div>
+      </div>
+      <div className="toolbar">
+        <div className="seg" role="tablist" aria-label={`Évaluation ${nature.nom.toLowerCase()}`}>
+          {nature.vues.map(([v, libelle]) => (
+            <button key={v} type="button" role="tab" aria-selected={vue === v} className={vue === v ? "active" : ""} onClick={() => setVue(v)}>{libelle}</button>
+          ))}
         </div>
         <div className="spacer" />
         {vue === "notees" && <button className="btn primary" onClick={() => setEdit(nouvelleEvaluation())}>+ Évaluation</button>}
