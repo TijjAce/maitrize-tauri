@@ -47,14 +47,6 @@ export interface EditeurDeroulementHandle {
 
 const DUREES_DE_PHASE = ["5 min", "10 min", "15 min", "20 min", "25 min", "30 min", "45 min", "1 h"];
 
-/** Ce que disent les cases vides. */
-const INVITES: Record<string, string> = {
-  [CHAMP_POSTURE]: "Ce que fait l'enseignant : questionne, observe, relance…",
-  "Différenciation": "Pour qui, et comment…",
-  "Matériel": "Ce qu'il faut pour cette phase…",
-  "Trace écrite": "Ce qui reste dans le cahier…",
-};
-
 const plat = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
 /** La largeur qu'il faut à la barre d'outils pour tout dire sur une ligne. */
@@ -200,8 +192,11 @@ function afficherImages(z: HTMLElement) {
   });
 }
 
-/** Une case où l'on écrit : le texte libre, le déroulement d'une phase, un de ses champs. */
-const Case = React.memo(function Case({ chemin, valeur, invite, libelle }: { chemin: string; valeur: string; invite: string; libelle: string }) {
+/**
+ * Une case où l'on écrit : le texte libre, le déroulement d'une phase, un de ses champs. Les cases des phases n'ont
+ * pas d'invite : leur nom est au-dessus, et les exemples chargeaient la carte (demande de l'enseignant, octobre 2026).
+ */
+const Case = React.memo(function Case({ chemin, valeur, invite, libelle }: { chemin: string; valeur: string; invite?: string; libelle: string }) {
   const el = React.useRef<HTMLDivElement>(null);
   React.useLayoutEffect(() => {
     const z = el.current;
@@ -751,19 +746,17 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
               <div className="ph-corps">
                 <div className="ph-col">
                   <span className="ph-label">Déroulement</span>
-                  <Case chemin={cheminDeroulement(p.cle)} valeur={p.deroulement} libelle={`Déroulement de la phase ${i + 1}`}
-                    invite="Ce qui se passe : consignes, activité des élèves… « @ » pour citer un support" />
+                  <Case chemin={cheminDeroulement(p.cle)} valeur={p.deroulement} libelle={`Déroulement de la phase ${i + 1}`} />
                 </div>
                 <div className="ph-col ph-posture">
                   <span className="ph-label">{CHAMP_POSTURE}</span>
-                  <Case chemin={cheminChamp(p.cle, CHAMP_POSTURE)} valeur={champDe(p, CHAMP_POSTURE)} libelle={`Posture de l'enseignant, phase ${i + 1}`}
-                    invite={INVITES[CHAMP_POSTURE]} />
+                  <Case chemin={cheminChamp(p.cle, CHAMP_POSTURE)} valeur={champDe(p, CHAMP_POSTURE)} libelle={`Posture de l'enseignant, phase ${i + 1}`} />
                 </div>
               </div>
               {dessous.map((nom) => (
                 <div key={nom} className="ph-champ">
                   <span className="ph-label">{nom}</span>
-                  <Case chemin={cheminChamp(p.cle, nom)} valeur={champDe(p, nom)} libelle={`${nom}, phase ${i + 1}`} invite={INVITES[nom] ?? "…"} />
+                  <Case chemin={cheminChamp(p.cle, nom)} valeur={champDe(p, nom)} libelle={`${nom}, phase ${i + 1}`} />
                 </div>
               ))}
             </section>
