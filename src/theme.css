@@ -415,21 +415,8 @@ input, textarea, select { font-family: inherit; font-size: 14px; }
 /* Quatre choix dans une colonne étroite : deux par ligne, plutôt que des libellés qui se replient. */
 .seg.seg-carre { display: grid; grid-template-columns: 1fr 1fr; }
 .seg.seg-carre button { white-space: nowrap; }
-/* Des vues rangées par nature dans une seule barre (Élèves › Évaluations) : le
-   nom de chaque groupe en petites capitales, un filet entre deux groupes. Dans
-   une fenêtre étroite, les groupes passent l'un sous l'autre, sans le filet. */
-.seg.seg-natures { align-items: center; gap: 0; }
-.seg-nature { display: inline-flex; align-items: center; gap: 2px; align-self: stretch; }
-.seg-nature + .seg-nature::before { content: ""; align-self: stretch; width: var(--bw); margin: 6px 4px 6px 6px; background: var(--border); }
-.seg-nature-titre { padding: 0 6px 0 7px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
-  color: var(--text-2); white-space: nowrap; user-select: none; -webkit-user-select: none; }
-.seg-natures button { white-space: nowrap; }
-.toolbar-natures { container-type: inline-size; }
-@container (max-width: 700px) {
-  .seg.seg-natures { display: inline-grid; grid-template-columns: repeat(3, max-content); gap: 2px; height: auto; }
-  .seg-nature { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; }
-  .seg-nature + .seg-nature::before { display: none; }
-}
+/* Élèves › Évaluations : la nature au-dessus, ses vues dessous, plus près d'elle que des outils. */
+.toolbar.toolbar-nature { margin-bottom: 8px; }
 
 /* Barre d'onglets d'une page : même place et même écart partout, sous le titre
    et au-dessus des outils de la page. Elle passe à la ligne quand la fenêtre
