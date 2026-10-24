@@ -358,7 +358,6 @@ input, textarea, select { font-family: inherit; font-size: 14px; }
 .suivi-etat.terminee { background: var(--accent-soft); color: var(--accent); }
 .suivi-barre { height: 6px; border-radius: 100px; background: var(--panel-2); overflow: hidden; }
 .suivi-barre > span { display: block; height: 100%; background: var(--accent); border-radius: 100px; }
-.suivi-alerte { color: #d97706; font-weight: 600; }
 .suivi-etat.petit { font-size: 9.5px; padding: 0 6px; vertical-align: 1px; }
 .suivi-fiche { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
 /* Les jours où la séquence a été posée dans le cahier journal : un clic ouvre le jour. */
