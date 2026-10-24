@@ -1,5 +1,5 @@
 // L'élève qu'on regarde dans Élèves : le Dossier, sa Synthèse et les onglets où s'ouvrent ses pièces
-// (Dispositifs et PPI, GEVA-Sco, grilles d'observation, synthèse de GS) le partagent. On passe de l'un
+// (Dispositifs — PPI et GEVA-Sco compris —, grilles d'observation, synthèse de GS) le partagent. On passe de l'un
 // à l'autre sans revenir au premier élève de la liste. Gardé le temps de la session.
 
 import React from "react";

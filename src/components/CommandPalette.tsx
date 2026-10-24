@@ -107,7 +107,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "🗒️", label: "Informations pour un remplaçant", to: "/organisation", page: "organisation", onglet: "infos", sous: "Organisation" },
   { ico: "📘", label: "Pages de garde, mot aux familles, fournitures", to: "/organisation", page: "organisation", onglet: "garde", sous: "Organisation · rentrée" },
   { ico: "🧾", label: "Dispositifs (PPS, PAP, PAI, PPRE)", to: "/eleves", page: "eleves", onglet: "dispositifs", sous: "Élèves · mode IME" },
-  { ico: "📋", label: "GEVA-Sco", to: "/eleves", page: "eleves", onglet: "gevasco", sous: "Élèves · mode IME" },
+  { ico: "📋", label: "GEVA-Sco", to: "/eleves", page: "eleves", onglet: "gevasco", sous: "Élèves · Dispositifs" },
   { ico: "▦", label: "Fiches : ateliers, espaces, jeux, outils, affichages, évaluations", to: "/ateliers", page: "ateliers", onglet: "", sous: "Plan de travail · avec les filtres" },
   { ico: "🤝", label: "Bureaux communs", to: "/commun", page: "commun", onglet: "", sous: "Plan de travail · partager avec des collègues" },
   { ico: "🎲", label: "Loto (pictogrammes)", to: "/jeux", page: "jeux", onglet: "jeux", sous: "Fabriquer" },

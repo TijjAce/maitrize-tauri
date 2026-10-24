@@ -5,20 +5,22 @@ import { toast } from "../components/Toaster";
 import { printHTML, escapeHtml } from "../print";
 import { DISPOSITIFS, Champ } from "../data/dispositifs";
 import { PpiTab } from "./Ppi";
+import { GevaScoTab } from "./GevaSco";
 import { useEleveDuDossier } from "../eleveDuDossier";
 
 // ── Dispositifs d'accompagnement ──────────────────────────────────────────
 // Un seul écran pilote tous les plans (PPS, PAP, PAI, PPRE) à partir des
 // schémas décrits dans data/dispositifs.ts : même saisie, même enregistrement,
-// même impression. Le PPI, plus riche (objectifs suivis, bilans, IA), garde
-// son écran dédié et s'ouvre depuis le même sélecteur.
+// même impression. Le PPI, plus riche (objectifs suivis, bilans, IA), et le
+// GEVA-Sco, le formulaire de la MDPH, gardent leur écran et s'ouvrent depuis
+// le même sélecteur.
 // Un document par élève et par dispositif, type « dispositif:{id} ».
 
 type Valeurs = Record<string, any>;
 
 const todayFr = () => new Date().toLocaleDateString("fr-FR");
 
-/** `dispositif` : celui qu'ouvre une pièce du dossier (« ppi »…), sinon le PPS. */
+/** `dispositif` : celui qu'ouvre une pièce du dossier (« ppi », « gevasco »…), sinon le PPS. */
 export function DispositifsTab({ dispositif }: { dispositif?: string } = {}) {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   // Dossiers déjà ouverts, tous élèves confondus.
@@ -158,6 +160,8 @@ export function DispositifsTab({ dispositif }: { dispositif?: string } = {}) {
           ))}
           <button className={dispoId === "ppi" ? "active" : ""} title="Projet personnalisé individualisé (IME)"
             onClick={() => setDispoId("ppi")}>PPI</button>
+          <button className={dispoId === "gevasco" ? "active" : ""} title="Guide d'évaluation des besoins de compensation en matière de scolarisation (MDPH)"
+            onClick={() => setDispoId("gevasco")}>GEVA-Sco</button>
         </div>
         <div className="spacer" />
         {dispo && <>
@@ -174,7 +178,7 @@ export function DispositifsTab({ dispositif }: { dispositif?: string } = {}) {
       <VueDEnsemble eleves={eleves ?? []} documents={documents ?? []} eleveId={eleveId} dispoId={dispoId}
         ouvrir={(eid, did) => { setEleveId(eid); setDispoId(did); }} />
 
-      {dispoId === "ppi" ? <PpiTab eleveId={eleveId} /> : dispo && (
+      {dispoId === "ppi" ? <PpiTab eleveId={eleveId} /> : dispoId === "gevasco" ? <GevaScoTab eleveId={eleveId} /> : dispo && (
         <>
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 15, fontWeight: 700 }}>{dispo.nomLong}</div>
@@ -284,12 +288,12 @@ function VueDEnsemble({ eleves, documents, eleveId, dispoId, ouvrir }: {
   eleves: Eleve[]; documents: DocumentEleve[]; eleveId: string; dispoId: string;
   ouvrir: (eleveId: string, dispoId: string) => void;
 }) {
-  // « dispositif:pap » → « pap » ; « ppi » reste tel quel.
+  // « dispositif:pap » → « pap » ; « ppi » et « gevasco » restent tels quels.
   const parEleve = React.useMemo(() => {
     const m = new Map<string, string[]>();
     for (const d of documents) {
       const id = d.typeDoc.startsWith("dispositif:") ? d.typeDoc.slice("dispositif:".length)
-        : d.typeDoc === "ppi" ? "ppi" : null;
+        : d.typeDoc === "ppi" || d.typeDoc === "gevasco" ? d.typeDoc : null;
       if (!id) continue;
       // Un dossier vide (ouvert puis abandonné) ne compte pas.
       let rempli = false;
@@ -301,7 +305,7 @@ function VueDEnsemble({ eleves, documents, eleveId, dispoId, ouvrir }: {
   }, [documents]);
 
   const avecDossier = eleves.filter((e) => (parEleve.get(e.id) ?? []).length > 0);
-  const nom = (id: string) => DISPOSITIFS.find((d) => d.id === id)?.nom ?? id.toUpperCase();
+  const nom = (id: string) => DISPOSITIFS.find((d) => d.id === id)?.nom ?? (id === "gevasco" ? "GEVA-Sco" : id.toUpperCase());
 
   if (avecDossier.length === 0) return null;
   return (
