@@ -37,6 +37,9 @@ export function raccourcisClavier(mac = isMac): GroupeDeRaccourcis[] {
         // useSegmentNav (components/ui.tsx)
         { touches: [cmd("←"), cmd("→")], quoi: "Onglet précédent ou suivant de la page" },
         { touches: ["Échap"], quoi: "Fermer une fenêtre, un menu ou la palette" },
+        // annulation.ts : le geste le plus récent de ce qu'on voit.
+        { touches: [cmd("Z")], quoi: "Annuler ce qui vient d'être fait : une frappe, une suppression, un tableau, une séance" },
+        { touches: mac ? ["⌘⇧Z"] : ["Ctrl+Maj+Z", "Ctrl+Y"], quoi: "Refaire ce qui vient d'être annulé" },
       ],
     },
     {
@@ -46,14 +49,6 @@ export function raccourcisClavier(mac = isMac): GroupeDeRaccourcis[] {
         { touches: [entree], quoi: "Lancer ce qui est choisi" },
         { touches: [mac ? "⇥" : "Tab", maj(mac ? "⇥" : "Tab")], quoi: "Rubrique suivante ou précédente : actions, pages, dossiers…" },
         { touches: ["?"], quoi: "Voir ces raccourcis" },
-      ],
-    },
-    {
-      ou: "Organisation › Progression et Programmation",
-      raccourcis: [
-        // useHistorique (components/ui.tsx), sur le tableau actif.
-        { touches: [cmd("Z")], quoi: "Annuler la dernière modification du tableau" },
-        { touches: [mac ? "⌘⇧Z" : "Ctrl+Maj+Z", cmd("Y")], quoi: "Rétablir" },
       ],
     },
     {
@@ -75,11 +70,6 @@ export function raccourcisClavier(mac = isMac): GroupeDeRaccourcis[] {
         { touches: [entree], quoi: "Au bout du titre d'une phase : écrire son texte dessous" },
         { touches: [mac ? "⌫" : "Retour arrière"], quoi: "Au début du titre d'une phase : en refaire un paragraphe ; sur une image choisie d'un clic : l'enlever" },
       ],
-    },
-    {
-      ou: "CAA › Tableaux de langage",
-      // Tla.tsx
-      raccourcis: [{ touches: [cmd("Z")], quoi: "Annuler la dernière modification" }],
     },
     {
       ou: "CAA › Minuteur visuel, en plein écran",

@@ -1,23 +1,39 @@
 import React from "react";
+import { inscrireAnnulable } from "../annulation";
 
 export interface ToastDetail {
-  message: string; duree?: number; icone?: string;
+  id?: number; message: string; duree?: number; icone?: string;
   /** Un geste offert dans la notification : « Annuler », le plus souvent. */
   action?: { label: string; faire: () => void | Promise<void> };
 }
+
+let prochainId = 0;
+const fermerLeToast = (id: number) => window.dispatchEvent(new CustomEvent("maitrize:toast-fermer", { detail: id }));
 
 /** Affiche une notification en haut de l'écran (10 s par défaut). */
 export function toast(
   message: string,
   opts: { duree?: number; icone?: string; action?: ToastDetail["action"] } = {},
 ) {
-  window.dispatchEvent(new CustomEvent("maitrize:toast", {
-    detail: { message, duree: opts.duree ?? 10000, icone: opts.icone ?? "📬", action: opts.action },
-  }));
+  const id = ++prochainId;
+  const duree = opts.duree ?? 10000;
+  let action = opts.action;
+  // Un bandeau qui offre « Annuler » : ⌘Z fait de même tant qu'il est là, une seule fois (voir annulation.ts).
+  if (action?.label === "Annuler") {
+    const geste = action;
+    const debut = Date.now();
+    let fait = false;
+    let retirer = () => {};
+    const faire = async () => { if (fait) return; fait = true; retirer(); await geste.faire(); };
+    retirer = inscrireAnnulable({ aDefaire: () => (fait ? 0 : debut), defaire: () => { void faire(); fermerLeToast(id); }, visible: () => true });
+    window.setTimeout(() => retirer(), duree);
+    action = { label: geste.label, faire };
+  }
+  window.dispatchEvent(new CustomEvent("maitrize:toast", { detail: { id, message, duree, icone: opts.icone ?? "📬", action } }));
 }
 
 /**
- * Supprime, puis laisse dix secondes pour revenir en arrière.
+ * Supprime, puis laisse dix secondes pour revenir en arrière — au bouton du bandeau, ou par ⌘Z.
  *
  * Une boîte « Êtes-vous sûr ? » arrête le geste sans rien protéger : on répond
  * oui sans lire. Défaire après coup demande moins, et rattrape vraiment — à
@@ -40,12 +56,15 @@ export function Toaster() {
   React.useEffect(() => {
     const onToast = (e: Event) => {
       const d = (e as CustomEvent<ToastDetail>).detail;
-      const id = ++compteur.current;
+      const id = d.id ?? -++compteur.current;
       setItems((xs) => [...xs, { id, message: d.message, duree: d.duree ?? 10000, icone: d.icone ?? "📬", action: d.action }]);
       window.setTimeout(() => fermer(id), d.duree ?? 10000);
     };
+    // ⌘Z a défait le geste du bandeau : il s'en va.
+    const onFermer = (e: Event) => fermer((e as CustomEvent<number>).detail);
     window.addEventListener("maitrize:toast", onToast);
-    return () => window.removeEventListener("maitrize:toast", onToast);
+    window.addEventListener("maitrize:toast-fermer", onFermer);
+    return () => { window.removeEventListener("maitrize:toast", onToast); window.removeEventListener("maitrize:toast-fermer", onFermer); };
   }, []);
 
   if (items.length === 0) return null;
