@@ -28,6 +28,7 @@ import { estUneDemarcheDeGeometrie, planDeLaGeometrie } from "./demarchesGeometr
 import { estUneDemarcheDeDonnees, planDesDonnees } from "./demarchesDonnees";
 import { estUneDemarcheDuReperage, planDuReperage } from "./demarchesReperage";
 import { DEMARCHE_DIX_A_VINGT, estUneDemarcheDixAVingt, planDixAVingt } from "./demarcheDixAVingt";
+import { estUneDemarcheSoustractionRetenue, planSoustractionRetenue } from "./demarcheSoustractionRetenue";
 import { estUneDemarcheDeFractions, planDesFractions } from "./fractionsDesLivrets";
 import { estUneDemarcheDeFrancais, planDuFrancais } from "./feuillesDuFrancais";
 import { estUneDemarcheDeLecture, planDeLaLecture } from "./demarchesLecture";
@@ -218,6 +219,8 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   if (estUneDemarcheHistoireGeoCM(demarcheId)) return planHistoireGeoCM(demarcheId);
   // Les nombres de 10 à 20, d'après le manuel du CRPE de l'enseignant : ses feuilles, et celle des cubes à la séance de la dizaine.
   if (estUneDemarcheDixAVingt(demarcheId)) return planDixAVingt([feuilleDeCubes(1, "ecrire", cubesPour(demarcheId, ctx))]);
+  // La soustraction avec retenue, d'après le même manuel : ses feuilles, et celle des cubes à la remédiation — un nombre de plusieurs façons.
+  if (estUneDemarcheSoustractionRetenue(demarcheId)) return planSoustractionRetenue([feuilleDeCubes(3, "facons", cubesPour(demarcheId, ctx))]);
   if (!CLASSE_DES_DEMARCHES[demarcheId]) return null;
   // Grouper par dix, la centaine, le millier : les huit feuilles des cubes, de la grande collection à l'évaluation.
   if (demarcheId === "numeration-dizaine-cp" || demarcheId.startsWith("groupements-")) {

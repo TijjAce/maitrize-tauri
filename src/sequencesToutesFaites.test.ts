@@ -233,9 +233,12 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
         expect(tout.plan.materiel[i]).toContain("ardoises");
         ouvertes++;
       });
-      // Les feuilles de la séquence restent toutes, dans leur ordre, après les fiches du calcul mental.
+      // Les feuilles de la séquence restent toutes, dans leur ordre, après les fiches du calcul mental : en tête quand Maitrize les
+      // ajoute, dans chaque séance quand la séquence les pose elle-même (la soustraction avec retenue du manuel du CRPE).
+      const sesFiches = s.demarche.seances.every((x) => x.phases[0]?.phase === PHASE_LA_MARTINIERE);
       const fiches = tout.demarche.seances.filter((x) => !estLaSeanceDesMots(x)).length;
-      expect(tout.plan.feuilles.slice(fiches).map((f) => `${f.seance} ${f.titre}`)).toEqual(base.plan.feuilles.map((f) => `${f.seance} ${f.titre}`));
+      const reste = sesFiches ? tout.plan.feuilles.filter((f) => f.atelier !== "martiniere") : tout.plan.feuilles.slice(fiches);
+      expect(reste.map((f) => `${f.seance} ${f.titre}`)).toEqual(base.plan.feuilles.map((f) => `${f.seance} ${f.titre}`));
     }
     expect(ouvertes).toBeGreaterThan(100);
     // Au CP, en période 1, les sommes jusqu'à dix et les compléments à dix : pas de nombres plus grands que ceux de la période.

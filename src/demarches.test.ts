@@ -379,10 +379,11 @@ describe("les déroulements d'une compétence, en cartes (demande de l'enseignan
     expect(ids("CE1", "Connaitre dans les deux sens les tables de multiplication").sort()).toEqual(["calcul-mental-martiniere", "table-de-7-ce1"]);
     // La conjugaison : les quatre temps.
     expect(ids("CE1", "Apprendre à conjuguer au présent").sort()).toEqual(["conjuguer-futur-c2", "conjuguer-imparfait-c2", "conjuguer-passe-compose-c2", "conjuguer-present-c2"]);
+    // Au CE1, les opérations posées : celle du programme, puis la soustraction avec retenue d'après le manuel du CRPE de l'enseignant.
+    expect(ids("CE1", "Poser et effectuer des additions et des soustractions en colonnes")).toEqual(["posees-ce1", "soustraction-retenue-ce1"]);
   });
 
   it("n'en propose qu'un quand la compétence n'en a qu'un", () => {
-    expect(ids("CE1", "Poser et effectuer des additions et des soustractions en colonnes")).toEqual(["posees-ce1"]);
     expect(ids("CE2", "Partager une unité de longueur en fractions")).toEqual(["fractions-longueurs-ce2"]);
   });
 });
