@@ -11,7 +11,9 @@ import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { escapeHtml } from "./print";
 import { jeuxCites, reglesImprimees, sansMarqueurs } from "./jeuxCites";
 import { lireConsignes } from "./tapuscrit";
-import { documentDeLaSeance, documentEnHtml } from "./documentSeance";
+import {
+  CHAMP_ORGANISATION, CHAMP_POSTURE, champDe, champsDesPhases, documentDeLaSeance, documentEnHtml, lireSeance, memeNom,
+} from "./documentSeance";
 
 const liste = <T>(json: string | null | undefined): T[] => {
   try { const v = JSON.parse(json || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
@@ -32,15 +34,41 @@ export function imagesDeLaSequence(seances: Seance[], pieces: PieceJointe[]): st
   return [...noms];
 }
 
-/** Le déroulement imprimé : ses phases numérotées, leur durée, les supports cités. */
+/**
+ * Le déroulement imprimé comme une fiche de préparation : le texte d'avant les
+ * phases, puis un tableau — une ligne par phase ; une colonne pour son
+ * organisation si l'une est notée, son déroulement, la posture de
+ * l'enseignant, puis chaque champ ajouté qu'une phase au moins remplit.
+ */
+export function seanceEnTableau(markup: string, image: (nom: string) => string | undefined): string {
+  const s = lireSeance(markup);
+  const html = (m: string) => documentEnHtml(m, { image });
+  const intro = s.intro.trim() ? html(s.intro) : "";
+  if (!s.phases.length) return intro;
+  const rempli = (nom: string) => s.phases.some((p) => champDe(p, nom).trim());
+  const avecOrganisation = rempli(CHAMP_ORGANISATION);
+  const autres = champsDesPhases(s.phases).slice(1).filter((n) => !memeNom(n, CHAMP_ORGANISATION) && rempli(n));
+  const entetes = ["Phase", "Durée", ...(avecOrganisation ? [CHAMP_ORGANISATION] : []), "Déroulement", CHAMP_POSTURE, ...autres];
+  // Chaque colonne à sa mesure : le déroulement porte le texte, la durée tient « 15 min » et son intitulé.
+  const part = (e: string) => (e === "Phase" ? 1.3 : e === "Durée" ? 1.1 : e === CHAMP_ORGANISATION ? 1.5 : e === "Déroulement" ? 4.6 : e === CHAMP_POSTURE ? 2.2 : 2);
+  const total = entetes.reduce((t, e) => t + part(e), 0);
+  const colonnes = `<colgroup>${entetes.map((e) => `<col style="width:${((part(e) / total) * 100).toFixed(1)}%">`).join("")}</colgroup>`;
+  const lignes = s.phases.map((p, i) => `<tr><td><b>${i + 1}. ${escapeHtml(p.titre.trim() || "Phase")}</b></td><td class="duree">${escapeHtml(p.duree)}</td>`
+    + (avecOrganisation ? `<td>${escapeHtml(champDe(p, CHAMP_ORGANISATION))}</td>` : "")
+    + `<td>${html(p.deroulement)}</td><td>${html(champDe(p, CHAMP_POSTURE))}</td>`
+    + autres.map((nom) => `<td>${html(champDe(p, nom))}</td>`).join("") + "</tr>");
+  return `${intro}<table class="colonnes doc-tableau">${colonnes}<tr>${entetes.map((e) => `<th>${escapeHtml(e)}</th>`).join("")}</tr>${lignes.join("")}</table>`;
+}
+
+/** Le déroulement imprimé : le tableau des phases, les supports cités en pastilles. */
 export const STYLE_DOCUMENT = `
+  .doc-lu table.doc-tableau { margin: 6px 0 2px; }
+  .doc-lu table.doc-tableau th { word-break: normal; overflow-wrap: normal; }
+  .doc-lu table.doc-tableau td.duree { white-space: nowrap; }
+  .doc-lu table.doc-tableau td p { margin: 0 0 3px; }
+  .doc-lu table.doc-tableau td ul { margin: 0 0 3px 14px; padding: 0; }
   .doc-lu p { margin: 3px 0; }
   .doc-lu ul { margin: 3px 0 3px 18px; padding: 0; }
-  .doc-lu .doc-phase { display: flex; align-items: baseline; gap: 8px; font-size: 13.5px; margin: 12px 0 4px;
-    padding-bottom: 3px; border-bottom: 1px solid #e3e6ef; break-after: avoid; page-break-after: avoid; }
-  .doc-lu .doc-numero { display: inline-block; min-width: 20px; height: 20px; line-height: 20px; text-align: center;
-    border-radius: 50%; background: #eef0fe; color: #4338ca; font-size: 11px; font-weight: 700; }
-  .doc-lu .doc-duree { margin-left: auto; font-size: 11px; font-weight: 600; color: #687087; }
   .doc-lu .cite { border-radius: 5px; padding: 0 5px; background: #f0f2f8; font-weight: 600; }
   .doc-lu .doc-citation { display: block; border-left: 3px solid #6366f1; background: #eef0fe; margin: 6px 0; padding: 4px 10px; font-style: italic; }
   .doc-lu .doc-source { font-style: normal; font-size: 11px; color: #687087; }
@@ -66,7 +94,7 @@ export function htmlDeLaSequence(
       ${s.objectifs ? `<div class="label">Objectifs</div><div class="pre">${escapeHtml(s.objectifs)}</div>` : ""}
       ${lireConsignes(s.consignes).length ? `<div class="label">Consignes pour les élèves</div><ol class="consignes">${lireConsignes(s.consignes).map((c) => `<li>${escapeHtml(c)}</li>`).join("")}</ol>` : ""}
       ${comps.length ? `<div class="label">Compétences</div>${comps.map((c) => `<span class="chip">${escapeHtml(labelCourt(c))}</span>`).join("")}` : ""}
-      ${doc ? `<div class="label">Déroulement</div><div class="doc-lu">${documentEnHtml(doc, { image })}</div>${reglesImprimees(jeuxCites(sansMarqueurs(doc), jeux))}` : ""}
+      ${doc ? `<div class="label">Déroulement</div><div class="doc-lu">${seanceEnTableau(doc, image)}</div>${reglesImprimees(jeuxCites(sansMarqueurs(doc), jeux))}` : ""}
       ${s.materiel ? `<div class="label">Matériel</div><div class="pre">${escapeHtml(s.materiel)}</div>` : ""}
       ${pj.map(img).join("")}
       ${s.bilan ? `<div class="label">Bilan</div><div class="pre">${escapeHtml(s.bilan)}</div>` : ""}
