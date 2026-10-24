@@ -10,7 +10,6 @@ import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "../component
 import { openCtx } from "../components/ctxmenu";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { DispositifsTab } from "./Dispositifs";
-import { GevaScoTab } from "./GevaSco";
 import { GrilleObservation } from "../components/GrilleObservation";
 import { age, libelleAge } from "../dossier";
 
@@ -31,7 +30,7 @@ import { isoJour } from "../dates";
 import { useEleveDuDossier } from "../eleveDuDossier";
 import { lireJson, modifierLeDocument } from "../documentDeLEleve";
 
-const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "dispositifs", "gevasco"] as const;
+const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "dispositifs"] as const;
 /** Ce qu'affiche l'onglet Évaluations : le sommatif (évaluations notées, synthèse GS) ou le diagnostique (grilles d'observation). */
 type VueEvaluation = "notees" | "gs" | "diagnostique";
 /** Les deux natures de l'évaluation, et leurs vues : on choisit la nature, ses vues apparaissent dessous. */
@@ -57,7 +56,8 @@ export default function Eleves() {
     // du dossier de l'élève et de ⌘K y mènent toujours.
     if (demande === "synthese") { setOnglet("evaluations"); setVueEvaluation("gs"); return; }
     if (demande === "syntheseEleve") { setOnglet("dossier"); setVueDossier("synthese"); return; }
-    if (demande === "ppi") { setPiece({ dispositif: "ppi" }); setOnglet("dispositifs"); return; }
+    // Le PPI et le GEVA-Sco vivent parmi les dispositifs.
+    if (demande === "ppi" || demande === "gevasco") { setPiece({ dispositif: demande }); setOnglet("dispositifs"); return; }
     if (demande.startsWith("evaldiag:")) {
       setPiece({ grille: demande.slice("evaldiag:".length) });
       setOnglet("evaluations"); setVueEvaluation("diagnostique");
@@ -66,7 +66,7 @@ export default function Eleves() {
   return (
     <Page titre="Élèves" sous="Classe, observations et évaluations">
       <div className="onglets">
-        {[["liste", "Classe"], ["dossier", "Dossier"], ["observations", "Observations"], ["evaluations", "Évaluations"], ["papiers", "Papiers"], ["dispositifs", "Dispositifs"], ["gevasco", "GEVA-Sco"]]
+        {[["liste", "Classe"], ["dossier", "Dossier"], ["observations", "Observations"], ["evaluations", "Évaluations"], ["papiers", "Papiers"], ["dispositifs", "Dispositifs"]]
           .map(([k, l]) => <button key={k} className={onglet === k ? "active" : ""} onClick={() => setOnglet(k as any)}>{l}</button>)}
       </div>
       {onglet === "liste" && <ListeEleves />}
@@ -85,7 +85,6 @@ export default function Eleves() {
       {onglet === "evaluations" && <Evaluations vue={vueEvaluation} setVue={setVueEvaluation} grille={piece.grille} />}
       {onglet === "papiers" && <Papiers />}
       {onglet === "dispositifs" && <DispositifsTab dispositif={piece.dispositif} />}
-      {onglet === "gevasco" && <GevaScoTab />}
     </Page>
   );
 }

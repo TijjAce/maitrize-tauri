@@ -1,9 +1,8 @@
 import React from "react";
 import { api, newId, anneeScolaireActuelle } from "../api";
-import { Select, Empty, useAsync } from "../components/ui";
+import { Empty, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { isoJour } from "../dates";
-import { useEleveDuDossier } from "../eleveDuDossier";
 import { sansTrous } from "../gevasco";
 
 // ── GEVA-Sco — aide à la préparation ──────────────────────────────────────
@@ -271,9 +270,9 @@ const STYLE_FEUILLE = `
 .gs td textarea[readonly] { color: #444; cursor: default; }
 `;
 
-export function GevaScoTab() {
+/** Le GEVA-Sco d'un élève : il s'ouvre parmi les dispositifs, qui choisissent l'élève (demande de l'enseignant, octobre 2026). */
+export function GevaScoTab({ eleveId }: { eleveId: string }) {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
-  const [eleveId, setEleveId] = useEleveDuDossier(eleves);
   const [d, setD] = React.useState<GevaData>(VIDE);
   const [ecole, setEcole] = React.useState("");
   const [enseignantNom, setEnseignantNom] = React.useState("");
@@ -556,9 +555,6 @@ export function GevaScoTab() {
     <>
       <style>{STYLE_FEUILLE}</style>
       <div ref={barreRef} className="toolbar" style={{ flexWrap: "wrap", position: "sticky", top: hautEntete, zIndex: 4, background: "var(--bg)", paddingTop: 6, paddingBottom: 8 }}>
-        <Select value={eleveId} onChange={(e) => setEleveId(e.target.value)} style={{ maxWidth: 200 }}>
-          {eleves?.map((e) => <option key={e.id} value={e.id}>{e.nom}</option>)}
-        </Select>
         <div className="seg">
           <button className={d.type === "premiere" ? "active" : ""} onClick={() => up({ type: "premiere" })}>1re demande</button>
           <button className={d.type === "reexamen" ? "active" : ""} onClick={() => up({ type: "reexamen" })}>Réexamen</button>
