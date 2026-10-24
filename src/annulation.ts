@@ -9,7 +9,7 @@
 //
 // Un seul écouteur, désormais : chaque source s'inscrit avec le moment de son dernier geste,
 // et ⌘Z défait le plus récent de ceux qu'on voit, la frappe comprise. ⌘⇧Z (Ctrl+Y) refait
-// le dernier geste défait. Une fenêtre ouverte garde ⌘Z pour ses champs.
+// le dernier geste défait. Une fenêtre ouverte garde ⌘Z pour ses champs et pour les bandeaux.
 
 export interface SourceAnnulable {
   /** Le moment de son dernier geste qu'elle sait défaire ; 0 s'il n'y en a pas. */
@@ -20,6 +20,8 @@ export interface SourceAnnulable {
   refaire?: () => void;
   /** À l'écran : une page cachée, un onglet replié ne défont rien. */
   visible: () => boolean;
+  /** Vaut aussi quand une fenêtre est ouverte : un bandeau « Annuler » est au-dessus de tout. */
+  partout?: boolean;
 }
 
 const sources = new Set<SourceAnnulable>();
@@ -59,11 +61,11 @@ export type Choix = { source: SourceAnnulable } | "frappe" | null;
  * frappe — dans le champ où l'on est, sinon la dernière, tant que son champ est là.
  * `natif` : WebKit a-t-il de quoi défaire (refaire) ?
  */
-export function choisir(refaire: boolean, o: { dansUnChamp: HTMLElement | null; propre: boolean; natif: boolean }): Choix {
+export function choisir(refaire: boolean, o: { dansUnChamp: HTMLElement | null; propre: boolean; natif: boolean; fenetre?: boolean }): Choix {
   let choisie: SourceAnnulable | null = null;
   let t = 0;
   for (const s of sources) {
-    if (!s.visible()) continue;
+    if (!s.visible() || (o.fenetre && !s.partout)) continue;
     const q = refaire ? s.aRefaire?.() ?? 0 : s.aDefaire();
     if (q > t) { t = q; choisie = s; }
   }
@@ -101,8 +103,8 @@ function surTouche(e: KeyboardEvent) {
   if (!refaire && !(k === "z" && !e.shiftKey)) return;
   const cible = e.target instanceof Element ? e.target : null;
   const propre = !!cible?.closest(`[${ANNULATION_PROPRE}]`);
-  if (!propre && fenetreOuverte()) return;
-  const choix = choisir(refaire, { dansUnChamp: champDe(cible), propre, natif: natifPeut(refaire ? "redo" : "undo") });
+  const fenetre = !propre && fenetreOuverte();
+  const choix = choisir(refaire, { dansUnChamp: champDe(cible), propre, natif: natifPeut(refaire ? "redo" : "undo"), fenetre });
   if (choix === "frappe") return;
   // Dans un éditeur qui défait lui-même, WebKit ne défait jamais rien : ses cases ne suivraient plus.
   if (choix === null) { if (propre) e.preventDefault(); return; }

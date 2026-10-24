@@ -1,7 +1,7 @@
 import React from "react";
 import { api } from "../api";
 import { Field, Input, Modal, Textarea } from "./ui";
-import { toast } from "./Toaster";
+import { toast, toastAnnulable } from "./Toaster";
 import { confirmer } from "./confirmer";
 import { CLE_RITUELS, EVT_RITUELS, ecrireRituels, lireRituels, nouveauRituel, trierRituels, type Rituel } from "../rituels";
 import { masqueRituel } from "../journalMasques";
@@ -80,6 +80,7 @@ export function ChoixRituel({ onChoisir, onClose }: { onChoisir: (r: Rituel) => 
   const retirer = async (r: Rituel) => {
     if (!(await confirmer(`Supprimer le rituel « ${r.titre} » ? Les journaux qui le citent garderont sa ligne, sans son déroulement.`, { oui: "Supprimer", danger: true }))) return;
     supprimer(r.id);
+    toastAnnulable(`Rituel « ${r.titre} » supprimé.`, () => enregistrer(r), "🔁");
   };
   return (
     <>

@@ -1,7 +1,7 @@
 import React from "react";
 import { MODELE_TACHES, api, newId, nowIso, texteErreur, type ManuelPdf, type PoidsDuManuel, type PoidsPdf } from "../api";
 import { Field, Input, Modal, PageVisibleContext, Select, Textarea, useAsync } from "../components/ui";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { PhotoTelephone } from "../components/PhotoTelephone";
 import { BoutonBureau } from "../components/BoutonBureau";
@@ -118,13 +118,23 @@ export function ManuelsPanel() {
 
   const supprimer = async (r: ResumeManuel) => {
     if (!(await confirmer(`Supprimer le manuel « ${r.titre} » et ses ${r.pages} page${r.pages > 1 ? "s" : ""} ? Ses exercices encadrés partent avec.`, { oui: "Supprimer", danger: true }))) return;
-    const m = lireManuel(await api.settingGet(cleManuel(r.id)));
-    for (const p of m?.pages ?? []) if (p.fichier) api.fichierDelete(p.fichier).catch(() => {});
-    if (m?.fichierPdf) api.fichierDelete(m.fichierPdf).catch(() => {});
+    const brut = await api.settingGet(cleManuel(r.id));
+    const indexAvant = await api.settingGet(CLE_INDEX);
+    const m = lireManuel(brut);
+    const fichiers = [...(m?.pages ?? []).map((p) => p.fichier), m?.fichierPdf ?? ""].filter(Boolean);
+    for (const f of fichiers) await api.fichierDelete(f).catch(() => {});
     await api.settingSet(cleManuel(r.id), "");
-    await api.settingSet(CLE_INDEX, JSON.stringify(indexSans(lireIndex(await api.settingGet(CLE_INDEX)), r.id)));
+    await api.settingSet(CLE_INDEX, JSON.stringify(indexSans(lireIndex(indexAvant), r.id)));
     if (manuel?.id === r.id) { setManuel(null); setPageId(""); }
     relireIndex();
+    // « Annuler » (ou ⌘Z) : les pages reviennent de la corbeille, le manuel et sa place dans la liste aussi.
+    toastAnnulable(`Manuel « ${r.titre} » supprimé.`, async () => {
+      await api.fichiersRamener(fichiers);
+      await api.settingSet(cleManuel(r.id), brut ?? "");
+      const index = lireIndex(await api.settingGet(CLE_INDEX));
+      if (!index.some((x) => x.id === r.id)) await api.settingSet(CLE_INDEX, indexAvant ?? "");
+      relireIndex();
+    });
   };
 
   // ── Entrées : le téléphone, page après page ; ou un PDF ──
@@ -322,8 +332,10 @@ export function ManuelsPanel() {
   const retirerExercice = async () => {
     if (!manuel || !page || !exercice) return;
     if (!(await confirmer(`Retirer l'exercice « ${nomExercice(exercice)} » et son modèle simplifié ?`, { oui: "Retirer", danger: true }))) return;
+    const avant = manuel, pid = page.id, eid = exercice.id;
     void enregistrer(majPage(manuel, page.id, (p) => ({ ...p, exercices: p.exercices.filter((e) => e.id !== exercice.id) })));
     setExerciceId("");
+    toastAnnulable(`Exercice « ${nomExercice(exercice)} » retiré.`, async () => { await enregistrer(avant); setPageId(pid); setExerciceId(eid); });
   };
   /** Refaire le modèle : d'après le texte lu — corrigé, peut-être —, ou en relisant l'encadré s'il n'a pas été lu. */
   const refaireLeModele = async () => {
@@ -496,9 +508,14 @@ export function ManuelsPanel() {
               {manuel.source === "telephone" && (
                 <button type="button" className="btn ghost sm" aria-label="Retirer cette page" onClick={async () => {
                   if (!(await confirmer(`Retirer la page ${page.numero}${page.exercices.length ? ` et ses ${page.exercices.length} exercice${page.exercices.length > 1 ? "s" : ""} encadré${page.exercices.length > 1 ? "s" : ""}` : ""} ?`, { oui: "Retirer", danger: true }))) return;
-                  if (page.fichier) api.fichierDelete(page.fichier).catch(() => {});
+                  const avant = manuel, retiree = page;
+                  if (page.fichier) await api.fichierDelete(page.fichier).catch(() => {});
                   const suite = retirerPage(manuel, page.id);
                   await enregistrer(suite); setPageId(suite.pages[0]?.id ?? "");
+                  toastAnnulable(`Page ${retiree.numero} retirée.`, async () => {
+                    if (retiree.fichier) await api.fichiersRamener([retiree.fichier]);
+                    await enregistrer(avant); setPageId(retiree.id);
+                  });
                 }}>🗑</button>
               )}
             </div>
@@ -548,7 +565,11 @@ export function ManuelsPanel() {
                   {exercice.competences.map((c) => (
                     <span key={c.id} className="chip">🎯 {labelCourt(c)}
                       <button type="button" aria-label={`Retirer ${c.competenceTitre}`}
-                        onClick={() => majExercice({ competences: exercice.competences.filter((x) => !memeCompetence(x, c)) })}>×</button>
+                        onClick={() => {
+                          const avant = manuel, pid = page.id, eid = exercice.id;
+                          majExercice({ competences: exercice.competences.filter((x) => !memeCompetence(x, c)) });
+                          if (avant) toastAnnulable("Compétence retirée de l'exercice.", async () => { await enregistrer(avant); setPageId(pid); setExerciceId(eid); }, "🎯");
+                        }}>×</button>
                     </span>
                   ))}
                   <button type="button" className={exercice.competences.length ? "btn ghost sm" : "btn sm"} onClick={() => { setChoixCompetence(true); setRecherche(""); }}>

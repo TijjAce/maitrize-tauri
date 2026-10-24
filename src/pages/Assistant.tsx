@@ -11,7 +11,7 @@ import { Markdown } from "../components/Markdown";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useDictee, mmss } from "../dictee";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { ClasserDansLesFiches } from "../components/ClasserDansLesFiches";
 import { STYLE_DOCUMENT_IA, SUGGESTIONS_DOCUMENT, consigneDocument, feuilleDeLaReponse } from "../documentIa";
 import { enregistrerEnPdf, enregistrerEnWord } from "../exportsDocument";
@@ -73,6 +73,7 @@ export default function Assistant() {
     await api.conversationDelete(c.id);
     if (c.id === convId) nouvelleConversation();
     reloadConvs();
+    toastAnnulable(`« ${c.titre || "La conversation"} » supprimée.`, async () => { await api.conversationSave(c); reloadConvs(); });
   };
   // `window.prompt` n'existe pas dans la fenêtre de l'application : renommer
   // une conversation ne faisait rien du tout, sans le dire.

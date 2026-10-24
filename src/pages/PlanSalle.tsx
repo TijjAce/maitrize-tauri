@@ -1,7 +1,7 @@
 import React from "react";
 import { api, Creneau, Eleve, teinteCreneau, newId } from "../api";
 import { Field, Input, Select, Modal, Empty, Confirm, useAsync } from "../components/ui";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
 import { printHTML, escapeHtml } from "../print";
 import { isoJour, hhmm } from "../dates";
@@ -400,6 +400,12 @@ export function PlanSalleTab() {
 
   // Supprime un élément et libère la place correspondante dans tous les plans.
   const supprimerElement = (id: string) => {
+    const avant = { elements, plans: plansRef.current, mat: matRef.current };
+    toastAnnulable("Élément retiré du plan.", () => {
+      persistElements(avant.elements);
+      plansRef.current = avant.plans; setPlans(avant.plans); api.settingSet("salle:plans", JSON.stringify(avant.plans));
+      matRef.current = avant.mat; setPlansMatiere(avant.mat); api.settingSet("salle:plansMatiere", JSON.stringify(avant.mat));
+    }, "🪑");
     persistElements(elements.filter((e) => e.id !== id));
     const nettoie = (src: Record<string, Plan>) => {
       let touche = false;
@@ -478,6 +484,7 @@ export function PlanSalleTab() {
   };
 
   const supprimerProfil = (cible: Profil) => {
+    const avant = { profils: profilsRef.current, creneau: profilCreneau, matiere: profilMatiere };
     const reste = profilsRef.current.filter((p) => p.id !== cible.id);
     persistProfils(reste);
     // Les créneaux qui pointaient dessus retombent sur le premier agencement.
@@ -487,7 +494,12 @@ export function PlanSalleTab() {
     setProfilCreneau(pc); setProfilMatiere(pm);
     api.settingSet("salle:profilCreneau", JSON.stringify(pc));
     api.settingSet("salle:profilMatiere", JSON.stringify(pm));
-    toast("Agencement supprimé.", { icone: "🗑" });
+    toastAnnulable(`Agencement « ${cible.nom} » supprimé.`, () => {
+      persistProfils(avant.profils);
+      setProfilCreneau(avant.creneau); setProfilMatiere(avant.matiere);
+      api.settingSet("salle:profilCreneau", JSON.stringify(avant.creneau));
+      api.settingSet("salle:profilMatiere", JSON.stringify(avant.matiere));
+    });
   };
 
   // ── Déplacement / redimensionnement (mode aménagement) ────────────────

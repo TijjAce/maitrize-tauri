@@ -1,7 +1,7 @@
 import React from "react";
 import { api, MaterielItem } from "../api";
 import { useFileDropZone, estImage, estDocument, typeDocument, EXTENSIONS_DOCUMENTS, fichierEnBase64 } from "../dragdrop";
-import { toast } from "./Toaster";
+import { toast, toastAnnulable } from "./Toaster";
 import { ouvrirLaPieceJointe } from "./LecteurMarkdown";
 import { Input, Modal, useAsync } from "./ui";
 import { VignettePdf } from "./VignettePdf";
@@ -96,7 +96,17 @@ export function FileListEditor({ type, fichiers, onChange }: {
     const nom = await api.fichierSave(file.name, b64);
     onChange([...fichiers, nom]);
   };
-  const supprimer = async (nom: string) => { await api.fichierDelete(nom); onChange(fichiers.filter((f) => f !== nom)); };
+  const supprimer = async (nom: string) => {
+    const place = fichiers.indexOf(nom);
+    await api.fichierDelete(nom);
+    onChange(fichiers.filter((f) => f !== nom));
+    toastAnnulable("Fichier retiré.", async () => {
+      await api.fichiersRamener([nom]);
+      const suite = fichiersRef.current.filter((f) => f !== nom);
+      suite.splice(place < 0 ? suite.length : Math.min(place, suite.length), 0, nom);
+      onChange(suite);
+    });
+  };
 
   // Import séquentiel : évite que deux fichiers déposés en même temps ne
   // s'écrasent l'un l'autre via des `onChange([...fichiers, …])` concurrents.

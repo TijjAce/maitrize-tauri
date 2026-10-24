@@ -8,6 +8,7 @@ import {
 import { Confirm, Demander, Modal, ColorPicker, useAsync } from "../components/ui";
 import { VignettePdf } from "../components/VignettePdf";
 import { toast, toastAnnulable } from "../components/Toaster";
+import { retourDeLAtelier, retourDeLEspace, retourDeLaSequence } from "../suppressionsAnnulables";
 import { openCtx } from "../components/ctxmenu";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { FormMateriel } from "../components/FormMateriel";
@@ -338,9 +339,17 @@ export default function PlanDeTravail() {
     return () => window.removeEventListener(EVT_CHERCHER_BUREAU, chercher);
   }, [designer]);
 
+  // Pendant une suppression définitive : la valeur d'avant de chaque réglage récrit (couleur, place, rangement
+  // d'un dossier), pour que « Annuler » (ou ⌘Z) les remette.
+  const reglagesAvant = React.useRef<Map<string, string> | null>(null);
+  const noterAvant = async (cle: string) => {
+    const m = reglagesAvant.current;
+    if (m && !m.has(cle)) m.set(cle, (await api.settingGet(cle).catch(() => null)) ?? "");
+  };
+
   /** Applique des réécritures de dispositions, en base puis à l'écran. */
   const ecrireDispositions = async (ecritures: Record<string, string>) => {
-    for (const [cle, valeur] of Object.entries(ecritures)) await api.settingSet(cle, valeur);
+    for (const [cle, valeur] of Object.entries(ecritures)) { await noterAvant(cle); await api.settingSet(cle, valeur); }
     setDispositions((avant) => {
       const apres = { ...avant };
       for (const [cle, valeur] of Object.entries(ecritures)) {
@@ -353,7 +362,7 @@ export default function PlanDeTravail() {
 
   /** Applique des réécritures de couleurs, en base puis à l'écran. */
   const ecrireCouleurs = async (ecritures: Record<string, string>) => {
-    for (const [cle, valeur] of Object.entries(ecritures)) await api.settingSet(cle, valeur);
+    for (const [cle, valeur] of Object.entries(ecritures)) { await noterAvant(cle); await api.settingSet(cle, valeur); }
     setCouleurs((avant) => {
       const apres = { ...avant };
       for (const [cle, valeur] of Object.entries(ecritures)) {
@@ -365,7 +374,7 @@ export default function PlanDeTravail() {
   };
   /** Applique des réécritures d'ordres de rangement, en base puis à l'écran. */
   const ecrireRangements = async (ecritures: Record<string, string>) => {
-    for (const [cle, valeur] of Object.entries(ecritures)) await api.settingSet(cle, valeur);
+    for (const [cle, valeur] of Object.entries(ecritures)) { await noterAvant(cle); await api.settingSet(cle, valeur); }
     setRangements((avant) => {
       const apres = { ...avant };
       for (const [cle, valeur] of Object.entries(ecritures)) {
@@ -765,9 +774,9 @@ export default function PlanDeTravail() {
    * dit donc exactement ce qui va disparaître.
    */
   /** Efface un dossier, son contenu, ses couleurs et ses dispositions, sans rien rafraîchir ; rend combien d'éléments sont partis. */
-  const supprimerDossierSeul = async (d: SousDossier): Promise<number> => {
+  const supprimerDossierSeul = async (d: SousDossier, dejaEffaces = false): Promise<number> => {
     const touches = elements.filter((e) => estDans(normaliser(e.dossier), d.chemin));
-    for (const e of touches) await effacer(e);
+    if (!dejaEffaces) for (const e of touches) await effacer(e);
     // Les couleurs et les dispositions du dossier et de ses sous-dossiers s'en vont avec lui.
     const dedans = (chemins: string[]) => chemins.filter((c) => c && estDans(c, d.chemin));
     await ecrireCouleurs(Object.fromEntries(dedans(Object.keys(couleurs)).map((c) => [PREFIXE_COULEUR + c, ""])));
@@ -781,9 +790,10 @@ export default function PlanDeTravail() {
     setDossierASupprimer(null);
     toast(`Suppression de « ${d.nom} »…`, { icone: "🗑", duree: 4000 });
     try {
-      const partis = await supprimerDossierSeul(d);
+      const touches = elements.filter((e) => estDans(normaliser(e.dossier), d.chemin));
+      await effacerAvecRetour(touches, () => supprimerDossierSeul(d, true),
+        `« ${d.nom} »${touches.length ? ` et ${touches.length} élément${touches.length > 1 ? "s" : ""}` : ""} supprimé${touches.length ? "s" : ""}.`);
       recharger();
-      toast(`« ${d.nom} » et ${partis} élément${partis > 1 ? "s" : ""} supprimés.`, { icone: "🗑" });
     } catch (e) {
       recharger();
       toast("Suppression interrompue : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
@@ -878,9 +888,44 @@ export default function PlanDeTravail() {
     else await api.materielDelete(e.id);
   };
 
+  /** Ce qu'il faut pour remettre un élément effacé pour de bon : lui, et ce que la base emporte avec. */
+  const retourDe = async (e: Element): Promise<() => Promise<unknown>> => {
+    if (e.genre === "sequence") return (await retourDeLaSequence(e.seq)).remettre;
+    if (e.genre === "atelier") return retourDeLAtelier(e.at);
+    if (e.genre === "espace") return retourDeLEspace(e.esp);
+    if (e.genre === "texte") return () => api.texteSave(e.txt);
+    if (e.genre === "jeu") return () => api.jeuSave(e.jeu);
+    if (e.genre === "outil") return () => api.outilClasseSave(e.outil);
+    return () => api.materielSave(e.mat);
+  };
+  /**
+   * Efface pour de bon, et laisse revenir en arrière : les éléments sont remis tels quels, avec ce que la
+   * base emporte avec eux, et les couleurs, places et rangements de leurs dossiers (« Annuler » ou ⌘Z).
+   */
+  const effacerAvecRetour = async (partants: Element[], autres: () => Promise<unknown>, message: string) => {
+    const retours: (() => Promise<unknown>)[] = [];
+    for (const e of partants) retours.push(await retourDe(e));
+    reglagesAvant.current = new Map();
+    try {
+      for (const e of partants) await effacer(e);
+      await autres();
+    } finally {
+      const avant = reglagesAvant.current;
+      reglagesAvant.current = null;
+      toastAnnulable(message, async () => {
+        for (const r of retours) await r();
+        const par = (prefixe: string) => Object.fromEntries([...avant].filter(([c]) => c.startsWith(prefixe)));
+        await ecrireCouleurs(par(PREFIXE_COULEUR));
+        await ecrireDispositions(par(PREFIXE_BUREAU));
+        await ecrireRangements(par(PREFIXE_RANGEMENT));
+        recharger();
+      });
+    }
+  };
+
   const supprimer = async (e: Element) => {
-    await effacer(e);
     setASupprimer(null);
+    await effacerAvecRetour([e], async () => {}, `« ${e.titre || "Sans titre"} » supprimé.`);
     recharger();
   };
 
@@ -949,17 +994,17 @@ export default function PlanDeTravail() {
     const partants = elements.filter((e) => estALaPoubelle(e.dossier));
     const n = partants.length;
     if (!n || !(await confirmer(`Vider la poubelle ? ${n === 1 ? "L'élément qu'elle contient sera supprimé" : `Les ${n} éléments qu'elle contient seront supprimés`} définitivement`
-      + `${partants.some((e) => e.genre === "sequence") ? " — les séances et les pièces jointes des séquences avec eux" : ""}. Rien ne pourra être récupéré.`,
+      + `${partants.some((e) => e.genre === "sequence") ? " — les séances et les pièces jointes des séquences avec eux" : ""}.`,
       { oui: "Vider la poubelle", danger: true }))) return;
     try {
-      for (const e of partants) await effacer(e);
       // Les couleurs, les places et les rangements de ses dossiers partent avec eux.
       const dedans = (chemins: string[]) => chemins.filter((c) => estALaPoubelle(c));
-      await ecrireCouleurs(Object.fromEntries(dedans(Object.keys(couleurs)).map((c) => [PREFIXE_COULEUR + c, ""])));
-      await ecrireDispositions(Object.fromEntries(dedans(Object.keys(dispositions)).map((c) => [PREFIXE_BUREAU + c, ""])));
-      await ecrireRangements(Object.fromEntries(dedans(Object.keys(rangements)).map((c) => [PREFIXE_RANGEMENT + c, ""])));
+      await effacerAvecRetour(partants, async () => {
+        await ecrireCouleurs(Object.fromEntries(dedans(Object.keys(couleurs)).map((c) => [PREFIXE_COULEUR + c, ""])));
+        await ecrireDispositions(Object.fromEntries(dedans(Object.keys(dispositions)).map((c) => [PREFIXE_BUREAU + c, ""])));
+        await ecrireRangements(Object.fromEntries(dedans(Object.keys(rangements)).map((c) => [PREFIXE_RANGEMENT + c, ""])));
+      }, `La poubelle est vide : ${n} élément${n > 1 ? "s" : ""} supprimé${n > 1 ? "s" : ""}.`);
       if (dansLaPoubelle) setDossier(POUBELLE);
-      toast(`La poubelle est vide : ${n} élément${n > 1 ? "s" : ""} supprimé${n > 1 ? "s" : ""}.`, { icone: "🗑" });
     } catch (e) {
       toast("La poubelle n'a pas pu être vidée : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
     } finally {
@@ -1021,10 +1066,11 @@ export default function PlanDeTravail() {
     const total = c.elements.length + c.dossiers.length;
     toast(`Suppression de ${total} éléments…`, { icone: "🗑", duree: 4000 });
     try {
-      let dedans = 0;
-      for (const e of c.elements) await effacer(e);
-      for (const d of c.dossiers) dedans += await supprimerDossierSeul(d);
-      toast(`${total} éléments supprimés${dedans ? `, et les ${dedans} que contenaient les dossiers` : ""}.`, { icone: "🗑" });
+      const dansLesDossiers = c.dossiers.flatMap((d) => elements.filter((e) => estDans(normaliser(e.dossier), d.chemin)));
+      const partants = [...new Set([...c.elements, ...dansLesDossiers])];
+      const dedans = partants.length - c.elements.length;
+      await effacerAvecRetour(partants, async () => { for (const d of c.dossiers) await supprimerDossierSeul(d, true); },
+        `${total} éléments supprimés${dedans ? `, et les ${dedans} que contenaient les dossiers` : ""}.`);
     } catch (e) {
       toast("Suppression interrompue : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
     } finally {
@@ -1427,7 +1473,7 @@ export default function PlanDeTravail() {
           onSaved={() => { setMaterielOuvert(null); recharger(); }} />
       )}
       {aSupprimer && (
-        <Confirm message={`Supprimer définitivement « ${aSupprimer.titre} » ? Rien ne pourra être récupéré.`}
+        <Confirm message={`Supprimer définitivement « ${aSupprimer.titre} » ?`}
           onYes={() => supprimer(aSupprimer)} onClose={() => setASupprimer(null)} />
       )}
       {selectionASupprimer && (
@@ -1441,7 +1487,7 @@ export default function PlanDeTravail() {
       {dossierASupprimer && (
         <Confirm
           message={dossierASupprimer.total
-            ? `Supprimer définitivement « ${dossierASupprimer.nom} » et les ${dossierASupprimer.total} élément${dossierASupprimer.total > 1 ? "s" : ""} qu'il contient, sous-dossiers compris ? Les séances et les pièces jointes des séquences partent avec elles. Rien ne pourra être récupéré.`
+            ? `Supprimer définitivement « ${dossierASupprimer.nom} » et les ${dossierASupprimer.total} élément${dossierASupprimer.total > 1 ? "s" : ""} qu'il contient, sous-dossiers compris ? Les séances et les pièces jointes des séquences partent avec elles.`
             : `Supprimer le dossier vide « ${dossierASupprimer.nom} » ?`}
           onYes={() => supprimerDossier(dossierASupprimer)}
           onClose={() => setDossierASupprimer(null)} />
@@ -1458,7 +1504,7 @@ function questionDeSuppression(c: { elements: Element[]; dossiers: SousDossier[]
   const contenu = dedans === 1 ? ` avec l'élément ${contiennent}` : dedans > 1 ? ` avec les ${dedans} éléments ${contiennent}, sous-dossiers compris` : "";
   const parties = [n ? `${n} élément${n > 1 ? "s" : ""}` : "", nd ? `${nd} dossier${nd > 1 ? "s" : ""}${contenu}` : ""].filter(Boolean).join(" et ");
   const sequences = dedans > 0 || c.elements.some((e) => e.genre === "sequence");
-  return `Supprimer définitivement ${parties} ?${sequences ? " Les séances et les pièces jointes des séquences partent avec elles." : ""} Rien ne pourra être récupéré.`;
+  return `Supprimer définitivement ${parties} ?${sequences ? " Les séances et les pièces jointes des séquences partent avec elles." : ""}`;
 }
 
 /** Ce qu'une tuile du bureau sait de la sélection. */

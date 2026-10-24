@@ -9,7 +9,8 @@
 // chaque lien défait se refait, s'il n'a pas été refait autrement entre-temps.
 
 import { api, type Atelier, type Creneau, type Espace, type Evaluation, type ProjetClasse, type Seance, type Sequence } from "./api";
-import { toastAnnulable } from "./components/Toaster";
+import { DUREE_ANNULABLE, toast, toastAnnulable } from "./components/Toaster";
+import { texteErreur } from "./api";
 
 type Lien = "seanceId" | "atelierId" | "espaceId";
 
@@ -44,16 +45,28 @@ export async function supprimerLaSeance(s: Seance, relire: () => void) {
   });
 }
 
-/** Supprime une séquence et ses séances ; « Annuler » (ou ⌘Z) remet le tout, et le repose dans ses créneaux. */
-export async function supprimerLaSequence(seq: Sequence, apres: { supprimee: () => void; revenue: () => void }) {
+/** Ce qu'il faut pour remettre une séquence après l'avoir effacée : elle, ses séances, et les créneaux qui les posaient. */
+export async function retourDeLaSequence(seq: Sequence): Promise<{ seances: number; remettre: () => Promise<void> }> {
   const seances = await api.seancesList(seq.id);
   const liens = await creneauxQuiPosent("seanceId", new Set(seances.map((s) => s.id)));
+  return {
+    seances: seances.length,
+    remettre: async () => {
+      await api.sequenceSave(seq);
+      for (const s of seances) await api.seanceSave(s);
+      await reposer("seanceId", liens);
+    },
+  };
+}
+
+/** Supprime une séquence et ses séances ; « Annuler » (ou ⌘Z) remet le tout, et le repose dans ses créneaux. */
+export async function supprimerLaSequence(seq: Sequence, apres: { supprimee: () => void; revenue: () => void }) {
+  const retour = await retourDeLaSequence(seq);
   await api.sequenceDelete(seq.id);
   apres.supprimee();
-  toastAnnulable(`Séquence « ${seq.titre.trim() || "sans titre"} » supprimée${seances.length ? `, avec ses ${seances.length} séance${seances.length > 1 ? "s" : ""}` : ""}.`, async () => {
-    await api.sequenceSave(seq);
-    for (const s of seances) await api.seanceSave(s);
-    await reposer("seanceId", liens);
+  const n = retour.seances;
+  toastAnnulable(`Séquence « ${seq.titre.trim() || "sans titre"} » supprimée${n ? `, avec ses ${n} séance${n > 1 ? "s" : ""}` : ""}.`, async () => {
+    await retour.remettre();
     apres.revenue();
   });
 }
@@ -87,34 +100,44 @@ async function remettreDansLesEspaces(atelierId: string, espaces: string[]) {
   }
 }
 
-/** Supprime un atelier ; « Annuler » (ou ⌘Z) le remet dans ses espaces et ses créneaux. */
-export async function supprimerLAtelier(a: Atelier, relire: () => void) {
+/** Ce qu'il faut pour remettre un atelier : lui, sa place dans ses espaces et ses créneaux. */
+export async function retourDeLAtelier(a: Atelier): Promise<() => Promise<void>> {
   const espaces = await espacesDe(a.id);
   const poses = await creneauxQuiPosent("atelierId", new Set([a.id]));
-  await api.atelierDelete(a.id);
-  relire();
-  toastAnnulable(`Atelier « ${a.titre} » supprimé.`, async () => {
+  return async () => {
     await api.atelierSave(a);
     await remettreDansLesEspaces(a.id, espaces);
     await reposer("atelierId", poses);
-    relire();
-  });
+  };
 }
 
-/** Supprime un espace ; « Annuler » (ou ⌘Z) le remet, avec ses ateliers, ses progressions et ses créneaux. */
-export async function supprimerLEspace(esp: Espace, relire: () => void) {
+/** Supprime un atelier ; « Annuler » (ou ⌘Z) le remet dans ses espaces et ses créneaux. */
+export async function supprimerLAtelier(a: Atelier, relire: () => void) {
+  const remettre = await retourDeLAtelier(a);
+  await api.atelierDelete(a.id);
+  relire();
+  toastAnnulable(`Atelier « ${a.titre} » supprimé.`, async () => { await remettre(); relire(); });
+}
+
+/** Ce qu'il faut pour remettre un espace : lui, ses ateliers, ses progressions et ses créneaux. */
+export async function retourDeLEspace(esp: Espace): Promise<() => Promise<void>> {
   const ateliers = (await api.atelierEspaceList()).filter(([, e]) => e === esp.id).map(([a]) => a);
   const progressions = await api.progressionsEleveList(esp.id);
   const poses = await creneauxQuiPosent("espaceId", new Set([esp.id]));
-  await api.espaceDelete(esp.id);
-  relire();
-  toastAnnulable(`Espace « ${esp.titre} » supprimé.`, async () => {
+  return async () => {
     await api.espaceSave(esp);
     if (ateliers.length) await api.atelierEspaceSet(esp.id, ateliers);
     for (const p of progressions) await api.progressionEleveSave(p);
     await reposer("espaceId", poses);
-    relire();
-  });
+  };
+}
+
+/** Supprime un espace ; « Annuler » (ou ⌘Z) le remet, avec ses ateliers, ses progressions et ses créneaux. */
+export async function supprimerLEspace(esp: Espace, relire: () => void) {
+  const remettre = await retourDeLEspace(esp);
+  await api.espaceDelete(esp.id);
+  relire();
+  toastAnnulable(`Espace « ${esp.titre} » supprimé.`, async () => { await remettre(); relire(); });
 }
 
 /** Retire un projet de l'année ; « Annuler » (ou ⌘Z) le remet, et ses séquences s'y rattachent de nouveau. */
@@ -127,4 +150,19 @@ export async function supprimerLeProjet(p: ProjetClasse, relire: () => void) {
     for (const s of await api.sequencesList(true)) if (rattachees.has(s.id) && !s.projetId) await api.sequenceSave({ ...s, projetId: p.id });
     relire();
   });
+}
+
+/**
+ * Ce qui ne se reconstruit pas — un élève et tout son dossier, une sauvegarde du stockage, un élément d'un
+ * bureau commun — ne s'efface qu'à la fin du bandeau : on le cache aussitôt, « Annuler » (ou ⌘Z) le remontre,
+ * et rien n'est parti. Si l'application se ferme avant, rien n'est effacé.
+ */
+export function effacerALaFin(o: { message: string; icone?: string; cacher: () => void; remontrer: () => void; effacer: () => Promise<unknown> }) {
+  o.cacher();
+  let annule = false;
+  toastAnnulable(o.message, () => { annule = true; o.remontrer(); }, o.icone);
+  window.setTimeout(() => {
+    if (annule) return;
+    o.effacer().catch((e) => { o.remontrer(); toast("Suppression impossible : " + texteErreur(e), { icone: "⚠️" }); });
+  }, DUREE_ANNULABLE + 300);
 }

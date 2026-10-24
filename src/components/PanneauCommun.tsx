@@ -1,4 +1,5 @@
 import React from "react";
+import { effacerALaFin } from "../suppressionsAnnulables";
 import { useNavigate } from "react-router-dom";
 import { api, texteErreur, type BureauCommun, type EntreeCommune } from "../api";
 import { Demander, Field, Input, Modal, ouvrirOnglet } from "./ui";
@@ -157,8 +158,14 @@ export function PanneauCommun({ compact = false, onFermer }: {
     if (!(await confirmer(
       `Supprimer « ${e.dossier ? e.nom : titreDuPaquet(e.nom)} » du bureau commun ? Il disparaîtra pour tout le monde. `
       + "Le service de stockage le garde en général dans sa corbeille (40 jours pour Nuage).", { oui: "Supprimer", danger: true }))) return;
-    await api.communSupprimer(actif.id, e.chemin);
-    await relire();
+    // Il disparaît pour tout le monde : on attend la fin du bandeau (« Annuler » ou ⌘Z le garde).
+    const bureau = actif;
+    effacerALaFin({
+      message: `« ${e.dossier ? e.nom : titreDuPaquet(e.nom)} » retiré du bureau commun.`,
+      cacher: () => setEntrees((l) => (l ?? []).filter((x) => x.chemin !== e.chemin)),
+      remontrer: () => { void relire(); },
+      effacer: async () => { await api.communSupprimer(bureau.id, e.chemin); await relire(); },
+    });
   });
 
   // ── Poser sur le bureau commun ──

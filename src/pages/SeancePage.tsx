@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Page } from "../App";
 import { api, DUREES, formatDuree, nowIso, texteErreur, type MaterielItem, type Seance, type Sequence } from "../api";
 import { Empty, Input, Modal, TextareaAuto } from "../components/ui";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { CompetenceTree, labelCourt, type CompetenceSelectionnee } from "../components/CompetenceTree";
 import { ajouterManuelle, consigneSousCompetences, estManuelle, lireSousCompetences } from "../sousCompetences";
 import { pseudonymiserTout, restaurer } from "../confidentialite";
@@ -286,6 +286,7 @@ function CompetencesDeLaSeance({ s, up, sequence, cycle, onClose }: {
   const basculer = (c: CompetenceSelectionnee) => {
     const deja = comps.find((x) => x.id === c.id || (!!c.competenceRefId && x.competenceRefId === c.competenceRefId));
     setComps(deja ? comps.filter((x) => x !== deja) : [...comps, c]);
+    if (deja) { const avant = comps; toastAnnulable("Compétence retirée de la séance.", () => setComps(avant), "🎯"); }
   };
   let competenceVisee: CompetenceSelectionnee | null = null;
   try { competenceVisee = sequence?.competenceVisee ? JSON.parse(sequence.competenceVisee) : null; } catch { /* ignore */ }
@@ -380,7 +381,9 @@ function ChampsDesPhases({ deroulement, onChange }: { deroulement: string; onCha
     if (!estActif(nom)) { onChange(ajouterChamp(deroulement, nom)); return; }
     const remplis = phasesOuLeChampEstRempli(deroulement, nom);
     if (remplis && !(await confirmer(`Retirer « ${nom} » des phases ? Ce qui y est écrit, dans ${remplis} phase${remplis > 1 ? "s" : ""}, sera effacé.`, { oui: "Retirer", danger: true }))) return;
+    const avant = deroulement;
     onChange(retirerChamp(deroulement, nom));
+    if (remplis) toastAnnulable(`« ${nom} » retiré des phases.`, () => onChange(avant));
   };
   const ajouterLeSien = () => {
     const nom = abandon.current ? "" : (saisie ?? "").replace(/\s+/g, " ").trim();

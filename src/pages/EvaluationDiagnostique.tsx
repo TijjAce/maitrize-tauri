@@ -3,7 +3,7 @@ import { confirmer } from "../components/confirmer";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api } from "../api";
 import { Field, Input, Select, Textarea, useAsync } from "../components/ui";
-import { toast } from "../components/Toaster";
+import { toastAnnulable } from "../components/Toaster";
 import { printHTML, escapeHtml } from "../print";
 import { GRILLES, Grille, Bloc, Mise, compterRenseignes, compterTotal } from "../data/evaluationsDiagnostiques";
 import { useEleveDuDossier } from "../eleveDuDossier";
@@ -145,8 +145,9 @@ export function EvaluationDiagnostiqueTab({ grille: voulue }: { grille?: string 
 
   const vider = async () => {
     if (!(await confirmer(`Effacer la grille « ${grille.nom} » de ${eleve?.nom ?? "cet élève"} ?`, { oui: "Effacer", danger: true }))) return;
+    const avant = vRef.current;
     persister({});
-    toast("Grille vidée.", { icone: "🗑" });
+    toastAnnulable("Grille vidée.", () => persister(avant));
   };
 
   const imprimer = () => {

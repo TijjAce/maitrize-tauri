@@ -600,9 +600,13 @@ export default function Reunions() {
 
   const effacerTexte = async (r: Reunion) => {
     if (!await confirmer("Effacer le texte mot à mot ? Le compte rendu est conservé.")) return;
-    if (courante?.id === r.id) poserTexte("", true);
+    const ici = courante?.id === r.id, avant = ici ? texte : r.texte;
+    if (ici) poserTexte("", true);
     else await enregistrer({ ...r, texte: "", dateMaj: nowIso() });
-    toast("Mot à mot effacé.", { icone: "🧹" });
+    toastAnnulable("Mot à mot effacé.", async () => {
+      if (courante?.id === r.id) poserTexte(avant, true);
+      else await enregistrer({ ...r, texte: avant, dateMaj: nowIso() });
+    }, "🧹");
   };
 
   /** Tout ce qu'on peut faire d'une réunion, là où on la voit : dans la liste. */

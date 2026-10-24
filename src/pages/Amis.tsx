@@ -1,4 +1,5 @@
 import React from "react";
+import { effacerALaFin } from "../suppressionsAnnulables";
 import { api, Identite, Ami, SyncMessage, BoiteItem } from "../api";
 import { Field, Input, Modal, Empty, Confirm, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
@@ -11,7 +12,7 @@ import { releverBoiteAuxLettres, messageRecu } from "../inbox";
 // sauvegardes : il se règle dans « Données & synchro », et ici on le nomme.
 export function AmisTab({ versLeStockage }: { versLeStockage?: () => void }) {
   const { data: identite, reload: reloadId } = useAsync(() => api.identiteGet(), []);
-  const { data: amis, reload: reloadAmis } = useAsync(() => api.amisList(), []);
+  const { data: amis, reload: reloadAmis, setData: setAmis } = useAsync(() => api.amisList(), []);
   const [inviter, setInviter] = React.useState(false);
   const [ajouter, setAjouter] = React.useState(false);
   const [vu, setVu] = React.useState<Ami | null>(null);
@@ -59,7 +60,16 @@ export function AmisTab({ versLeStockage }: { versLeStockage?: () => void }) {
         onAjoute={(a) => { reloadAmis(); setAjouter(false); setVu(a); }} />}
       {vu && <SecuriteModal ami={vu} onClose={() => setVu(null)} onChange={reloadAmis} />}
       {supp && <Confirm message={`Supprimer ${supp.nom || "cet ami"} ?`}
-        onYes={() => api.amiSupprimer(supp.id).then(reloadAmis)} onClose={() => setSupp(null)} />}
+        onYes={() => {
+          // Ses clés ne se recréent pas : il ne s'efface qu'à la fin du bandeau (« Annuler » ou ⌘Z le garde).
+          const a = supp;
+          effacerALaFin({
+            message: `${a.nom || "L'ami"} supprimé.`, icone: "👋",
+            cacher: () => setAmis((l) => (l ?? []).filter((x) => x.id !== a.id)),
+            remontrer: reloadAmis,
+            effacer: async () => { await api.amiSupprimer(a.id); reloadAmis(); },
+          });
+        }} onClose={() => setSupp(null)} />}
     </>
   );
 }
@@ -139,7 +149,7 @@ const BOITE_ICO: Record<BoiteItem["type"], string> = { sequence: "📘", projet:
 const BOITE_LIB: Record<BoiteItem["type"], string> = { sequence: "Séquence", projet: "Projet", programmation: "Programmation" };
 
 function BoiteAuxLettresCard() {
-  const { data: items, reload } = useAsync(() => api.boiteListe(), []);
+  const { data: items, reload, setData: setItems } = useAsync(() => api.boiteListe(), []);
   const [msg, setMsg] = React.useState("");
   const [busy, setBusy] = React.useState(false);
 
@@ -165,7 +175,16 @@ function BoiteAuxLettresCard() {
     try { await api.boiteRecuperer(it.id); reload(); toast(`${BOITE_LIB[it.type]} « ${it.titre || "Sans titre"} » récupéré ✅`, { icone: "✅" }); }
     catch (e) { setMsg(String(e)); }
   };
-  const jeter = async (it: BoiteItem) => { setMsg(""); try { await api.boiteSupprimer(it.id); reload(); } catch (e) { setMsg(String(e)); } };
+  // Un envoi reçu ne se recrée pas : il ne s'efface qu'à la fin du bandeau (« Annuler » ou ⌘Z le garde).
+  const jeter = (it: BoiteItem) => {
+    setMsg("");
+    effacerALaFin({
+      message: `« ${it.titre || "L'envoi"} » jeté.`,
+      cacher: () => setItems((l) => (l ?? []).filter((x) => x.id !== it.id)),
+      remontrer: reload,
+      effacer: async () => { await api.boiteSupprimer(it.id); reload(); },
+    });
+  };
 
   return (
     <div className="card" style={{ marginTop: 14 }}>

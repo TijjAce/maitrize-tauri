@@ -1,4 +1,5 @@
 import React from "react";
+import { effacerALaFin } from "../suppressionsAnnulables";
 import { api, texteErreur, type BilanExportEleves, type Eleve } from "../api";
 import { EVT_DONNEES_DISTANTES, Modal } from "./ui";
 import { confirmer } from "./confirmer";
@@ -85,7 +86,7 @@ function FenetreFinDAnnee({ fin, eleves, onClose }: { fin: Fin; eleves: Eleve[];
     if (partent.length) {
       const noms = partent.map((e) => e.nom).join(", ");
       const ok = await confirmer(
-        `Supprimer ${pluriel(partent.length, "élève")} — ${noms} — et tout leur dossier : observations, documents, photos ? C'est définitif.`
+        `Supprimer ${pluriel(partent.length, "élève")} — ${noms} — et tout leur dossier : observations, documents, photos ?`
           + (bilan ? "" : "\n\nVous n'avez pas exporté leurs données."),
         { oui: `Supprimer ${pluriel(partent.length, "élève")}`, danger: true });
       if (!ok) return;
@@ -93,12 +94,19 @@ function FenetreFinDAnnee({ fin, eleves, onClose }: { fin: Fin; eleves: Eleve[];
     setOccupe("fin");
     try {
       for (const e of gardes) await api.eleveSave({ ...e, anneeScolaire: fin.suivante });
-      for (const e of partent) await api.eleveDelete(e.id);
       window.dispatchEvent(new CustomEvent(EVT_DONNEES_DISTANTES));
-      toast([
+      const message = [
         partent.length ? `${pluriel(partent.length, "élève")} supprimé${partent.length > 1 ? "s" : ""}` : "",
         gardes.length ? `${pluriel(gardes.length, "élève")} gardé${gardes.length > 1 ? "s" : ""} pour ${fin.suivante}` : "",
-      ].filter(Boolean).join(" ; ") + ". Bonne rentrée !", { icone: "🎒" });
+      ].filter(Boolean).join(" ; ") + ". Bonne rentrée !";
+      // Les dossiers de ceux qui partent ne s'effacent qu'à la fin du bandeau : « Annuler » (ou ⌘Z) les garde.
+      if (partent.length) {
+        const ids = partent.map((e) => e.id);
+        effacerALaFin({
+          message, icone: "🎒", cacher: () => {}, remontrer: () => {},
+          effacer: async () => { for (const id of ids) await api.eleveDelete(id); window.dispatchEvent(new CustomEvent(EVT_DONNEES_DISTANTES)); },
+        });
+      } else toast(message, { icone: "🎒" });
       onClose();
     } catch (e) {
       setErreur(texteErreur(e));

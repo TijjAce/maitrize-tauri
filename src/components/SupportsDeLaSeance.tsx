@@ -264,9 +264,12 @@ export function useSupportsDeLaSeance(seanceId: string, sequenceId: string | nul
     return m;
   };
   const supprimerFeuille = async (m: MaterielItem) => {
-    for (const f of lirePdfs(m.pdfsJson)) await api.fichierDelete(f).catch(() => {});
+    const fichiers = lirePdfs(m.pdfsJson);
+    for (const f of fichiers) await api.fichierDelete(f).catch(() => {});
     await api.materielDelete(m.id);
     await reload();
+    // « Annuler » (ou ⌘Z) : la feuille revient, ses PDF sortent de la corbeille.
+    toastAnnulable(`« ${m.titre || "La feuille"} » supprimée.`, async () => { await api.fichiersRamener(fichiers); await api.materielSave(m); await reload(); });
   };
   return { items, bureau, supports, feuilles, reload, poser, retirer, prendrePdf, ajouterPdf, supprimerFeuille };
 }

@@ -174,7 +174,7 @@ pub fn run() {
             // Réglages
             settings_all, settings_prefixe, setting_get, setting_set,
             // Fichiers
-            fichier_save, fichier_read, fichier_delete, fichier_importer_depuis_chemin, enregistrer_texte, enregistrer_archive,
+            fichier_save, fichier_read, fichier_delete, fichiers_ramener, fichier_importer_depuis_chemin, enregistrer_texte, enregistrer_archive,
             imprimer_pdf, imprimer_planning, ouvrir_html, exporter_synthese_gs, exporter_bilan_ppi, exporter_gevasco,
             feuille_pdf::feuille_en_pdf,
             // Recherche

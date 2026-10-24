@@ -1,6 +1,6 @@
 import React from "react";
 import { api } from "../api";
-import { toast } from "./Toaster";
+import { toast, toastAnnulable } from "./Toaster";
 import { chargerImages, usePictoImages } from "./ChoixPicto";
 import { ChoixPictoConsigne } from "./ChoixPictoConsigne";
 import { useLexique } from "./ConsigneEnPictos";
@@ -164,9 +164,12 @@ export function ConsignesSeance({ valeur, onChange }: { valeur: string; onChange
     setAFocaliser(i + 1);
   };
   const retirer = (i: number) => {
+    const avant = lignes;
     const suite = lignes.filter((_, j) => j !== i);
     maj(suite.length ? suite : [""]);
     setAFocaliser(Math.max(0, i - 1));
+    // Une consigne écrite se remet (« Annuler » ou ⌘Z) ; une ligne vide, non.
+    if (avant[i]?.trim()) toastAnnulable("Consigne retirée.", () => { maj(avant); setAFocaliser(i); });
   };
   const ecrites = lignes.map((l) => l.trim()).filter(Boolean);
   return (

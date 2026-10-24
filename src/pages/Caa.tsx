@@ -5,7 +5,7 @@ import { Page } from "../App";
 import { api, EtatBanque } from "../api";
 import { Field, Input, Select, useOngletDemande } from "../components/ui";
 import { useMemoire, useReglages } from "../components/useMemoire";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import { ChoixPictoConsigne, texteTelechargement, useBanquesAppoint } from "../components/ChoixPictoConsigne";
 import { CompetencesAtelier } from "../components/CompetencesAtelier";
@@ -199,7 +199,10 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
           {VERBES_CONSIGNE.map((v) => (
             <VerbeCarte key={v.verbe} verbe={v.verbe} refPicto={lexique[v.verbe] ?? null}
               onChoisir={() => setChoix(v.verbe)}
-              onRetirer={() => { const suite = { ...lexique }; delete suite[v.verbe]; enregistrer(suite); }} />
+              onRetirer={() => {
+                const avant = lexique, suite = { ...lexique }; delete suite[v.verbe]; enregistrer(suite);
+                toastAnnulable(`Picto de « ${v.verbe} » retiré.`, () => enregistrer(avant), "🧩");
+              }} />
           ))}
         </div>
       </div>
@@ -220,7 +223,10 @@ function ConsignesEnPictos({ banque }: { banque: boolean }) {
           {MATIERES_EN_PICTOS.map((m) => (
             <VerbeCarte key={m} verbe={etiquetteDeMatiere(m)} refPicto={matieres[m] ?? null}
               onChoisir={() => setChoixMatiere(m)}
-              onRetirer={() => { const suite = { ...matieres }; delete suite[m]; enregistrerMatieres(suite); }} />
+              onRetirer={() => {
+                const avant = matieres, suite = { ...matieres }; delete suite[m]; enregistrerMatieres(suite);
+                toastAnnulable(`Picto de « ${m} » retiré.`, () => enregistrerMatieres(avant), "🧩");
+              }} />
           ))}
         </div>
       </div>
