@@ -3,7 +3,7 @@ import { supprimerLeProjet } from "../suppressionsAnnulables";
 import { Page } from "../App";
 import { api, anneeScolaireActuelle, texteErreur } from "../api";
 import { Field, Input, Select, Textarea, TextareaAuto, useAsync, useOngletDemande } from "../components/ui";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { useReglages } from "../components/useMemoire";
 import { decrireLeProjet, servicesCorpus } from "../components/ProjetDuMoment";
 import { DEMANDE_CORPUS } from "../corpusIa";
@@ -288,7 +288,7 @@ function FicheProjet({ projet, annee, onChange, onFermer, onSupprimer }: {
           <Input value={e.texte} style={{ flex: 1, minWidth: 0, textDecoration: e.faite ? "line-through" : undefined }}
             onChange={(ev) => majEtapes(etapes.map((x, j) => (j === i ? { ...x, texte: ev.target.value } : x)))} />
           <button className="btn ghost sm" aria-label="Retirer cette étape"
-            onClick={() => majEtapes(etapes.filter((_, j) => j !== i))}>✕</button>
+            onClick={() => { const avant = etapes; majEtapes(etapes.filter((_, j) => j !== i)); toastAnnulable("Étape retirée.", () => majEtapes(avant)); }}>✕</button>
         </div>
       ))}
       <button className="btn ghost sm" style={{ marginTop: 4 }}
@@ -447,7 +447,7 @@ function CorpusDuProjet({ projet, onChange }: { projet: ProjetClasse; onChange: 
             <span key={t} className="bm-chip">
               <span className="bm-mot">{libelleCategorie(t)}</span>
               <button type="button" className="bm-x" aria-label={`Retirer le thème ${libelleCategorie(t)}`}
-                onClick={() => changerThemes(choisis.filter((x) => x !== t))}>×</button>
+                onClick={() => { const avant = choisis; changerThemes(choisis.filter((x) => x !== t)); toastAnnulable(`Thème « ${libelleCategorie(t)} » retiré.`, () => changerThemes(avant)); }}>×</button>
             </span>
           ))}
           {!choisis.length && <span className="meta">aucun pour l'instant</span>}

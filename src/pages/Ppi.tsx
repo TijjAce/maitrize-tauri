@@ -2,7 +2,7 @@ import React from "react";
 import { api, newId, type CommentaireEleve } from "../api";
 import { Field, Input, Empty, useAsync } from "../components/ui";
 import { lireJson, modifierLeDocument } from "../documentDeLEleve";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import { nomsAMasquer } from "../nomsAMasquer";
 import { infosReussite, resumeSuivi, REUSSITES, sansNouvelles, suivreObjectif } from "../objectifsPpi";
@@ -121,6 +121,14 @@ export function PpiTab({ eleveId }: { eleveId: string }) {
 
   const persister = (d: PpiData) => { setData(d); if (eleveId) api.documentEleveSet(eleveId, "ppi", JSON.stringify(d)); };
   const up = (p: Partial<PpiData>) => persister({ ...data, ...p });
+  // Retirer une ligne (prise en charge, objectif, bilan) se défait : « Annuler » ou ⌘Z la remet, sur le PPI tel qu'il est alors.
+  const derniere = React.useRef(data);
+  derniere.current = data;
+  const retirerLigne = <K extends "prisesEnCharge" | "objectifs" | "bilans">(champ: K, id: string, message: string) => {
+    const avant = data[champ];
+    up({ [champ]: (avant as { id: string }[]).filter((x) => x.id !== id) } as Partial<PpiData>);
+    toastAnnulable(message, () => persister({ ...derniere.current, [champ]: avant }));
+  };
   const upObjectif = (id: string, p: Partial<PpiObjectif>) =>
     up({ objectifs: data.objectifs.map((o) => o.id === id ? { ...o, ...p } : o) });
   const upPec = (id: string, p: Partial<PpiPec>) =>
@@ -224,7 +232,7 @@ export function PpiTab({ eleveId }: { eleveId: string }) {
           <div key={p.id} className="row" style={{ marginTop: 10, alignItems: "center" }}>
             <Input value={p.intitule} onChange={(e) => upPec(p.id, { intitule: e.target.value })} placeholder="Orthophonie" />
             <Input value={p.creneau} onChange={(e) => upPec(p.id, { creneau: e.target.value })} placeholder="Mardi 10h30 (Mme …)" />
-            <button className="btn ghost sm" aria-label="Supprimer" onClick={() => up({ prisesEnCharge: data.prisesEnCharge.filter((x) => x.id !== p.id) })}>🗑</button>
+            <button className="btn ghost sm" aria-label="Supprimer" onClick={() => retirerLigne("prisesEnCharge", p.id, "Prise en charge retirée.")}>🗑</button>
           </div>
         ))}
       </div>
@@ -258,7 +266,7 @@ export function PpiTab({ eleveId }: { eleveId: string }) {
                 </div>
               </div>
               <button className="btn ghost sm" aria-label="Supprimer" style={{ alignSelf: "center" }}
-                onClick={() => up({ objectifs: data.objectifs.filter((x) => x.id !== o.id) })}>🗑</button>
+                onClick={() => retirerLigne("objectifs", o.id, "Objectif retiré.")}>🗑</button>
             </div>
             <Field label="Objectif">
               <Input value={o.intitule} onChange={(e) => upObjectif(o.id, { intitule: e.target.value })}
@@ -293,7 +301,7 @@ export function PpiTab({ eleveId }: { eleveId: string }) {
               <button className="btn sm" disabled={reformuleId === b.id || !b.texte.trim()} title="Reformuler avec l'assistant IA"
                 onClick={() => reformuler(b)}>{reformuleId === b.id ? "Reformulation…" : "✨ Reformuler"}</button>
               <button className="btn sm" disabled={exportEnCours} onClick={() => exporter(b)}>📄 Exporter</button>
-              <button className="btn ghost sm" aria-label="Supprimer" onClick={() => up({ bilans: data.bilans.filter((x) => x.id !== b.id) })}>🗑</button>
+              <button className="btn ghost sm" aria-label="Supprimer" onClick={() => retirerLigne("bilans", b.id, "Bilan retiré.")}>🗑</button>
             </div>
             <textarea className="textarea" style={{ minHeight: 90 }} value={b.texte}
               onChange={(e) => upBilan(b.id, { texte: e.target.value })}

@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { api, texteErreur, type Creneau } from "../api";
 import { Select, TextareaAuto } from "./ui";
 import { toast } from "./Toaster";
+import { effacerALaFin } from "../suppressionsAnnulables";
 import { confirmer } from "./confirmer";
 import { AideEnLigne } from "./Aide";
 import { VERS_LES_NOTES, creneauRetenu, pourLesNotes, repereDuVocal, type Vocal } from "../vocaux";
@@ -95,8 +96,13 @@ export function VocauxRecus() {
 
   const jeter = async (v: Vocal) => {
     if (!await confirmer("Supprimer ce vocal ? L'enregistrement est effacé de l'ordinateur.")) return;
-    try { await api.vocalDelete(v.id); await charger(); }
-    catch (e) { toast("Suppression impossible : " + texteErreur(e), { icone: "⚠️" }); }
+    // Caché le temps du bandeau ; l'enregistrement ne s'efface qu'à la fin (« Annuler » ou ⌘Z le remontre).
+    effacerALaFin({
+      message: "Vocal supprimé.", icone: "🎙",
+      cacher: () => setVocaux((l) => l.filter((x) => x.id !== v.id)),
+      remontrer: () => { void charger(); },
+      effacer: async () => { await api.vocalDelete(v.id); await charger(); },
+    });
   };
 
   const jours = [...new Set(vocaux.map((v) => v.debut.slice(0, 10)))].sort().reverse();

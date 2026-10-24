@@ -2920,6 +2920,15 @@ pub fn fichier_delete(db: State<Db>, nom: String) -> R<()> {
     Ok(())
 }
 
+/// Ramène de la corbeille des fichiers qu'on venait d'effacer : « Annuler » (ou ⌘Z) après une
+/// suppression. Leur marque d'effacement tombe, comme après une restauration. Rend combien sont revenus.
+#[tauri::command]
+pub fn fichiers_ramener(db: State<Db>, noms: Vec<String>) -> R<usize> {
+    let c = db.lock();
+    let (corbeille, fichiers) = (crate::db::corbeille_dir(), crate::db::fichiers_dir());
+    Ok(noms.iter().filter(|nom| nom_de_fichier_simple(nom) && crate::db::ramener_dans(&c, nom, &corbeille, &fichiers)).count())
+}
+
 /// Un fichier du dossier de l'application, d'après son nom : un nom seul, jamais un chemin. Une page
 /// détournée ne peut ainsi ni lire ni effacer ailleurs sur l'ordinateur (« ../../ », chemin absolu).
 pub(crate) fn fichier_de_l_application(nom: &str) -> R<std::path::PathBuf> {

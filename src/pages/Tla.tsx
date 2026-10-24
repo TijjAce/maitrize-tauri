@@ -3,7 +3,7 @@ import { Aide } from "../components/Aide";
 import { api, Gabarit, CaseTla, NatureMot, PaletteTla, PictoArasaac, PlaceDuMot, caseVide, telechargerTexte } from "../api";
 import { Modal, Field, Input, Select, Empty, Confirm, PageVisibleContext, useAsync } from "../components/ui";
 import { inscrireAnnulable } from "../annulation";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import {
   NATURES, CORPS_DU_MOT, PLACES_DU_MOT, apparence, couleurSure, dupliquer, nouveauGabarit, pourImpression, redimensionner,
   casesPerdues, poser, echanger, remplies, verifier, lireGabarit, tableauSurTheme, accueilDu, pagesDuClasseur, classeurPourImpression,
@@ -154,7 +154,12 @@ export function TlaTab() {
 
       {aSupprimer && (
         <Confirm message={`Supprimer le tableau « ${aSupprimer.nom} » ?`}
-          onYes={() => { supprimer(aSupprimer); setASupprimer(null); }}
+          onYes={() => {
+            // « Annuler » (ou ⌘Z) remet le tableau, et les cases qui l'ouvraient.
+            const avant = ref.current, g = aSupprimer;
+            supprimer(g); setASupprimer(null);
+            toastAnnulable(`Tableau « ${g.nom} » supprimé.`, () => enregistrer(avant));
+          }}
           onClose={() => setASupprimer(null)} />
       )}
 

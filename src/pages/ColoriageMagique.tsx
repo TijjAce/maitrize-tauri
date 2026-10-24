@@ -3,7 +3,7 @@ import { Aide } from "../components/Aide";
 import { api } from "../api";
 import { Field, Input, Modal, Select, useAsync } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { PhotoTelephone } from "../components/PhotoTelephone";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
@@ -363,9 +363,15 @@ export function ColoriageMagiqueTab() {
   };
   const supprimerPerso = async (m: Motif) => {
     if (!(await confirmer(`Supprimer le dessin « ${m.nom} » ?`, { oui: "Supprimer", danger: true }))) return;
+    const avant = motifsPerso, choisi = r.motif === m.id;
     await api.settingSet(CLE_MOTIFS_PERSO, ecrireMotifsPerso(motifsPerso.filter((x) => x.id !== m.id)));
-    if (r.motif === m.id) maj({ motif: MOTIFS[0].id });
+    if (choisi) maj({ motif: MOTIFS[0].id });
     relirePerso();
+    toastAnnulable(`Dessin « ${m.nom} » supprimé.`, async () => {
+      await api.settingSet(CLE_MOTIFS_PERSO, ecrireMotifsPerso(avant));
+      relirePerso();
+      if (choisi) maj({ motif: m.id });
+    }, "🎨");
   };
 
   // La feuille — corps et style — d'où sortent l'impression et le PDF du bureau.

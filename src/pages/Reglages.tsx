@@ -1,4 +1,5 @@
 import React from "react";
+import { effacerALaFin } from "../suppressionsAnnulables";
 import { Page } from "../App";
 import { api, isMac, texteErreur, type InfoCopie, type SauvegardeDistante, type DossierDonnees, NIVEAUX_SCOLAIRES, MATIERES, COULEURS, couleurHex, couleurPourMatiere, choisirCouleurMatiere, getMatiereOverrides, matiereDuDomaine, telechargerTexte, MODELES_MISTRAL, normaliserModele, type EtatModele, type JetonsIa, type PortableInfo, type VerifSauvegarde, type EtatWhisper } from "../api";
 import { Field, Input, Select, Confirm, useOngletDemande } from "../components/ui";
@@ -715,11 +716,15 @@ function SauvegardeS3Card() {
                   <button className="btn ghost sm" disabled={!!busy} aria-label="Supprimer cette sauvegarde"
                     onClick={async () => {
                       const quand = v.date ? formatDateSauvegarde(v.date) : "(sans date)";
-                      if (!(await confirmer(`Supprimer définitivement la sauvegarde du ${quand} de votre stockage ?`, { oui: "Supprimer", danger: true }))) return;
-                      setBusy("suppr");
-                      try { setMsg(await api.sauvegardeSupprimer(v.cle)); setVersions((vs) => (vs ?? []).filter((x) => x.cle !== v.cle)); }
-                      catch (e: any) { setMsg("❌ " + String(e)); }
-                      finally { setBusy(""); }
+                      if (!(await confirmer(`Supprimer la sauvegarde du ${quand} de votre stockage ?`, { oui: "Supprimer", danger: true }))) return;
+                      // Elle ne se recrée pas : elle ne part qu'à la fin du bandeau (« Annuler » ou ⌘Z la garde).
+                      const avant = versions;
+                      effacerALaFin({
+                        message: `Sauvegarde du ${quand} supprimée.`,
+                        cacher: () => setVersions((vs) => (vs ?? []).filter((x) => x.cle !== v.cle)),
+                        remontrer: () => setVersions(avant),
+                        effacer: async () => { setMsg(await api.sauvegardeSupprimer(v.cle)); },
+                      });
                     }}>🗑</button>
                 </div>
               ))}

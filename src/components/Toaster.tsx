@@ -25,7 +25,7 @@ export function toast(
     let fait = false;
     let retirer = () => {};
     const faire = async () => { if (fait) return; fait = true; retirer(); await geste.faire(); };
-    retirer = inscrireAnnulable({ aDefaire: () => (fait ? 0 : debut), defaire: () => { void faire(); fermerLeToast(id); }, visible: () => true });
+    retirer = inscrireAnnulable({ aDefaire: () => (fait ? 0 : debut), defaire: () => { void faire(); fermerLeToast(id); }, visible: () => true, partout: true });
     window.setTimeout(() => retirer(), duree);
     action = { label: geste.label, faire };
   }
@@ -42,8 +42,11 @@ export function toast(
  * dossier restent hors de portée.
  */
 export function toastAnnulable(message: string, annuler: () => void | Promise<void>, icone = "🗑") {
-  toast(message, { icone, duree: 10000, action: { label: "Annuler", faire: annuler } });
+  toast(message, { icone, duree: DUREE_ANNULABLE, action: { label: "Annuler", faire: annuler } });
 }
+
+/** Le temps qu'un bandeau « Annuler » reste là, et qu'une suppression peut se défaire. */
+export const DUREE_ANNULABLE = 10000;
 
 interface ToastItem { id: number; message: string; duree: number; icone: string; action?: ToastDetail["action"] }
 

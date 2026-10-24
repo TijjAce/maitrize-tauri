@@ -1,5 +1,5 @@
 import React from "react";
-import { supprimerLEvaluation } from "../suppressionsAnnulables";
+import { effacerALaFin, supprimerLEvaluation } from "../suppressionsAnnulables";
 import { Page } from "../App";
 import {
   api, Eleve, CommentaireEleve, Evaluation, NoteEleve,
@@ -111,11 +111,20 @@ function ListeEleves() {
   const { data: eleves, reload } = useAsync(() => api.elevesList(), []);
   const [edit, setEdit] = React.useState<Eleve | null>(null);
   const [del, setDel] = React.useState<Eleve | null>(null);
+  // Un élève supprimé est caché le temps du bandeau ; son dossier ne s'efface qu'à la fin (voir effacerALaFin).
+  const [caches, setCaches] = React.useState<string[]>([]);
+  const visibles = (eleves ?? []).filter((e) => !caches.includes(e.id));
+  const supprimer = (e: Eleve) => effacerALaFin({
+    message: `${e.nom} et son dossier supprimés.`,
+    cacher: () => setCaches((c) => [...c, e.id]),
+    remontrer: () => setCaches((c) => c.filter((x) => x !== e.id)),
+    effacer: async () => { await api.eleveDelete(e.id); setCaches((c) => c.filter((x) => x !== e.id)); reload(); },
+  });
   return (
     <>
       <div className="toolbar"><div className="spacer" /><button className="btn primary" onClick={() => setEdit(nouvelEleve())}>+ Élève</button></div>
-      {(eleves?.length ?? 0) === 0 ? <Empty icone="👧" titre="Aucun élève" sous="Ajoutez les élèves de votre classe." /> :
-        eleves!.map((e) => (
+      {visibles.length === 0 ? <Empty icone="👧" titre="Aucun élève" sous="Ajoutez les élèves de votre classe." /> :
+        visibles.map((e) => (
           <div key={e.id} className="list-row"
             onContextMenu={(ev) => openCtx(ev, [
               { label: "Modifier la fiche", icon: "✏️", onClick: () => setEdit(e) },
@@ -133,15 +142,15 @@ function ListeEleves() {
           </div>
         ))}
       {edit && <EleveForm e={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
-      {del && <Confirm message={`Supprimer ${del.nom} ? Tout son dossier part avec : appels, commentaires, notes, papiers, photo, synthèse GS, PPI, GEVA-Sco, dispositifs, progressions, et sa place dans les créneaux et plans de salle. C'est définitif.`}
-        onYes={() => api.eleveDelete(del.id).then(reload)} onClose={() => setDel(null)} />}
+      {del && <Confirm message={`Supprimer ${del.nom} ? Tout son dossier part avec : appels, commentaires, notes, papiers, photo, synthèse GS, PPI, GEVA-Sco, dispositifs, progressions, et sa place dans les créneaux et plans de salle.`}
+        onYes={() => supprimer(del)} onClose={() => setDel(null)} />}
     </>
   );
 }
 
 function EleveForm({ e, onClose, onSaved }: { e: Eleve; onClose: () => void; onSaved: () => void }) {
   const [v, setV] = React.useState<Eleve>(e);
-  const up = (p: Partial<Eleve>) => setV({ ...v, ...p });
+  const up = (p: Partial<Eleve>) => setV((cur) => ({ ...cur, ...p }));
   const photoInput = React.useRef<HTMLInputElement>(null);
 
   const choisirPhoto = async (file: File) => {
@@ -164,7 +173,12 @@ function EleveForm({ e, onClose, onSaved }: { e: Eleve; onClose: () => void; onS
             onChange={(ev) => { const f = ev.target.files?.[0]; if (f) choisirPhoto(f); ev.target.value = ""; }} />
           <button className="btn sm" onClick={() => photoInput.current?.click()}>📷 {v.photoFichier ? "Changer" : "Ajouter"} la photo</button>
           {v.photoFichier && <button className="btn ghost sm" style={{ marginLeft: 6 }}
-            onClick={async () => { await api.fichierDelete(v.photoFichier!); up({ photoFichier: null }); }}>Retirer</button>}
+            onClick={async () => {
+              const photo = v.photoFichier!;
+              await api.fichierDelete(photo);
+              up({ photoFichier: null });
+              toastAnnulable("Photo retirée.", async () => { await api.fichiersRamener([photo]); up({ photoFichier: photo }); }, "📷");
+            }}>Retirer</button>}
         </div>
       </div>
       <Field label="Nom complet"><Input autoFocus value={v.nom} onChange={(ev) => up({ nom: ev.target.value })} /></Field>

@@ -2,7 +2,7 @@ import React from "react";
 import { Aide } from "../components/Aide";
 import { api, raccourci } from "../api";
 import { Field, Input, Modal, Select } from "../components/ui";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
@@ -387,7 +387,10 @@ function ReglagesPresentation({ p, set }: { p: Presentation; set: (p: Presentati
           <button className="btn sm" onClick={() => setNom(courante?.nom ?? "")} title="Enregistrer cette présentation">💾</button>
           {courante && (
             <button className="btn sm" title={`Supprimer « ${courante.nom} »`} onClick={async () => {
-              if (await confirmer(`Supprimer la présentation « ${courante.nom} » ?`, { oui: "Supprimer", danger: true })) supprimer(courante.nom);
+              if (!(await confirmer(`Supprimer la présentation « ${courante.nom} » ?`, { oui: "Supprimer", danger: true }))) return;
+              const partie = courante;
+              supprimer(partie.nom);
+              toastAnnulable(`Présentation « ${partie.nom} » supprimée.`, () => enregistrer(partie.nom, partie.presentation));
             }}>🗑</button>
           )}
         </div>

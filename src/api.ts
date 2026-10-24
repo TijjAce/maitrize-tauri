@@ -715,6 +715,8 @@ export const api = {
   fichierRead: (nom: string) => invoke<string>("fichier_read", { nom }),
   fichierOuvrir: (nom: string) => invoke<void>("fichier_ouvrir", { nom }),
   fichierDelete: (nom: string) => invoke<void>("fichier_delete", { nom }),
+  /** Ramène de la corbeille des fichiers qu'on venait d'effacer (« Annuler », ⌘Z). */
+  fichiersRamener: (noms: string[]) => invoke<number>("fichiers_ramener", { noms }),
   fichierImporterDepuisChemin: (chemin: string) => invoke<string>("fichier_importer_depuis_chemin", { chemin }),
   /** Recopie un fichier de l'application là où l'on a choisi de l'enregistrer. */
   fichierExporter: (nom: string, chemin: string) => invoke<void>("fichier_exporter", { nom, chemin }),

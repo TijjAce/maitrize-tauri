@@ -5,6 +5,7 @@ import { Page } from "../App";
 import { Input, Select, Empty, Confirm, useAsync, useOngletDemande, useSegmentNav } from "../components/ui";
 import { api, DocumentCoffre, newId, nowIso, couleurHex } from "../api";
 import { PdfViewer } from "../components/PdfViewer";
+import { toastAnnulable } from "../components/Toaster";
 import { ProgrammesPourLeCoffre } from "../components/CiterCompetences";
 import { EVT_PDF_COFFRE } from "../components/CommandPalette";
 import { LivresDeReference } from "../components/LivresDeReference";
@@ -140,7 +141,16 @@ function CoffreFort({ demande = "", demandeTraitee }: { demande?: string; demand
         ))}
       {ouvert && <PdfViewer nomFichier={ouvert.nomFichier} titre={ouvert.nom} onClose={() => setOuvert(null)} />}
       {del && <Confirm message={`Supprimer « ${del.nom} » du coffre ?`}
-        onYes={() => api.coffreDelete(del.id, del.nomFichier).then(reload)} onClose={() => setDel(null)} />}
+        onYes={async () => {
+          const d = del;
+          await api.coffreDelete(d.id, d.nomFichier);
+          reload();
+          toastAnnulable(`« ${d.nom} » retiré du coffre.`, async () => {
+            if (d.nomFichier) await api.fichiersRamener([d.nomFichier]);
+            await api.coffreSave(d);
+            reload();
+          });
+        }} onClose={() => setDel(null)} />}
     </>
   );
 }

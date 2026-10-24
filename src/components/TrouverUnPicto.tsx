@@ -1,7 +1,7 @@
 import React from "react";
 import { api, texteErreur, type PictoAppoint, type PictoArasaac } from "../api";
 import { Field, Input, Modal } from "./ui";
-import { toast } from "./Toaster";
+import { toast, toastAnnulable } from "./Toaster";
 import { confirmer } from "./confirmer";
 import { pseudonymiserTout } from "../confidentialite";
 import { nomsAMasquer } from "../nomsAMasquer";
@@ -10,7 +10,7 @@ import { texteTelechargement, useBanquesAppoint } from "./ChoixPictoConsigne";
 import { infoBanque } from "../pictosAppoint";
 import { BoutonImportMakaton } from "./ImportMakaton";
 import {
-  ETIQUETTES, chercherDans, cleDuMot, garderMonPicto, lireMesPictos, oublierMonPicto, renommerMonPicto, type MonPicto,
+  ETIQUETTES, PREFIXE_MES_PICTOS, chercherDans, cleDuMot, garderMonPicto, lireMesPictos, oublierMonPicto, remettreMonPicto, renommerMonPicto, type MonPicto,
 } from "../mesPictos";
 
 // ── Trouver un pictogramme, ou le faire dessiner ──────────────────────────
@@ -259,9 +259,11 @@ export function TrouverUnPicto({ onClose }: { onClose: () => void }) {
           }}
           onOublier={async (p) => {
             if (!(await confirmer(`Retirer « ${p.mot} » de Mes pictos ? Les listes où vous l'avez mis le perdront.`, { oui: "Retirer", danger: true }))) return;
+            const fiche = (await api.settingGet(PREFIXE_MES_PICTOS + p.id).catch(() => null)) ?? "";
             await oublierMonPicto(p);
             await relireMiens();
             setChoix(null);
+            if (fiche) toastAnnulable(`« ${p.mot} » retiré de Mes pictos.`, async () => { await remettreMonPicto(p.id, fiche); await relireMiens(); }, "🧩");
           }} />
       </div>
     </Modal>

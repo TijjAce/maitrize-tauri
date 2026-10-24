@@ -1,6 +1,6 @@
 import React from "react";
 import { api, raccourci, texteErreur } from "../api";
-import { toast } from "./Toaster";
+import { toast, toastAnnulable } from "./Toaster";
 import { chargerImage } from "./imagesTexte";
 import { chargerPicto, memoriserImage } from "./ChoixPicto";
 import { imageReduite, type ImagePerso } from "./MesImages";
@@ -189,7 +189,12 @@ export function useBanqueDeGestes(): BanqueGestes {
     const suite = { ...courant.current };
     delete suite[id];
     await enregistrer(suite);
-    if (ancien) api.fichierDelete(ancien).catch(() => {});
+    if (ancien) await api.fichierDelete(ancien).catch(() => {});
+    // « Annuler » (ou ⌘Z) : l'image sort de la corbeille et retrouve son geste, s'il n'en a pas reçu d'autre.
+    if (ancien) toastAnnulable("Image retirée.", async () => {
+      await api.fichiersRamener([ancien]);
+      if (!courant.current[id]) await enregistrer({ ...courant.current, [id]: ancien });
+    }, "🖼");
   }, [enregistrer]);
 
   const importer = React.useCallback(async (liste: File[]) => {

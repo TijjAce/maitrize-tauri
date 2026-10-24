@@ -250,6 +250,13 @@ export async function oublierMonPicto(p: MonPicto): Promise<void> {
   annoncer();
 }
 
+/** Le remet tel qu'il était (« Annuler » ou ⌘Z après l'avoir retiré) : sa fiche, lue avant. */
+export async function remettreMonPicto(id: number, fiche: string): Promise<void> {
+  const { api } = await import("./api");
+  await api.settingSet(PREFIXE_MES_PICTOS + id, fiche);
+  annoncer();
+}
+
 /** L'image d'un picto gardé, en data URL. */
 export async function imageDeMonPicto(id: number): Promise<string> {
   const { api } = await import("./api");

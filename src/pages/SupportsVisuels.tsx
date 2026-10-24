@@ -3,7 +3,7 @@ import { AideEnLigne } from "../components/Aide";
 import { createPortal } from "react-dom";
 import { api } from "../api";
 import { EVT_DONNEES_DISTANTES, Field, Input, Select, Textarea, useAsync, useOngletDemande } from "../components/ui";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
@@ -139,7 +139,9 @@ function Modeles<T>({ type, valeur, set, normaliser, exemple }: {
         {courant && (
           <button className="btn sm" title={`Supprimer « ${courant.nom} »`} onClick={async () => {
             if (await confirmer(`Supprimer « ${courant.nom} » ?`, { oui: "Supprimer", danger: true })) {
+              const avant = liste;
               ecrire(liste.filter((x) => x.nom !== courant.nom));
+              toastAnnulable(`« ${courant.nom} » supprimé.`, () => ecrire(avant));
             }
           }}>🗑</button>
         )}

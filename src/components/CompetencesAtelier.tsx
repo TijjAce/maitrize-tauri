@@ -1,7 +1,7 @@
 import React from "react";
 import { api, texteErreur } from "../api";
 import { EVT_DONNEES_DISTANTES, Input, Modal, Select } from "./ui";
-import { toast } from "./Toaster";
+import { toast, toastAnnulable } from "./Toaster";
 import { CompetenceTree, type CompetenceSelectionnee } from "./CompetenceTree";
 import {
   EVT_COMPETENCES_ATELIER, basculerCompetence, cleDesCompetences, competencesParObjectif, ecrireCompetencesAtelier,
@@ -124,7 +124,11 @@ export function CompetencesAtelier({ atelier, nom, objectifs = [] }: { atelier: 
               <span>{c.competenceTitre}</span>
               <span className="meta">{[c.referentielNom, c.domaineTitre].filter(Boolean).join(" › ")}</span>
               <button className="btn ghost sm" aria-label="Retirer"
-                onClick={() => enregistrer(liste.filter((x) => !memeCompetence(x, c)))}>🗑</button>
+                onClick={() => {
+                  const avant = liste;
+                  enregistrer(liste.filter((x) => !memeCompetence(x, c)));
+                  toastAnnulable("Compétence retirée de l'atelier.", () => enregistrer(avant), "🎯");
+                }}>🗑</button>
             </li>
           ))}
         </ul>

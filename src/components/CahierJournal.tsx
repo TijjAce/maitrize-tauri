@@ -609,7 +609,11 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                     )}
                     {champ === "prevu" && (
                       <>
-                        <ImagesDuPrevu prevu={b.prevu} onRetirer={(nom) => modifier(c.id, "prevu", retirerImage(b.prevu, nom), true)} />
+                        <ImagesDuPrevu prevu={b.prevu} onRetirer={(nom) => {
+                          const avant = b.prevu;
+                          modifier(c.id, "prevu", retirerImage(b.prevu, nom), true);
+                          toastAnnulable("Image retirée du prévu.", () => modifier(c.id, "prevu", avant, true), "🖼");
+                        }} />
                         {/* Les jeux du prévu, et ceux du déroulement de la séance liée : ce sont eux qui s'impriment. */}
                         <ReglesDesJeux jeux={citesDans(seance?.deroulement ? `${b.prevu}\n${sansMarqueurs(seance.deroulement)}` : b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })}
                           masques={masques[c.id]} onMasquer={(cle) => masquer(c.id, cle)} />
