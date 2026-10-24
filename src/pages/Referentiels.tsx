@@ -4,7 +4,7 @@ import { api, Referentiel, newId, nowIso } from "../api";
 import { Empty, Confirm, Input, useAsync } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
 import { Documentaliste } from "../components/Documentaliste";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 
 interface RefComp { id: string; texte: string; niveau?: string; _ajoute?: boolean; _modifie?: boolean }
 interface RefCG { id: string; titre: string; competences?: RefComp[] }
@@ -164,7 +164,12 @@ export default function Referentiels() {
           </div>
         </div>
       )}
-      {del && <Confirm message={`Supprimer le référentiel « ${del.nom} » ?`} onYes={() => api.referentielDelete(del.id).then(reload)} onClose={() => setDel(null)} />}
+      {del && <Confirm message={`Supprimer le référentiel « ${del.nom} » ?`} onYes={async () => {
+        const r = del;
+        await api.referentielDelete(r.id);
+        reload();
+        toastAnnulable(`Référentiel « ${r.nom} » supprimé.`, async () => { await api.referentielSave(r); reload(); });
+      }} onClose={() => setDel(null)} />}
     </Page>
   );
 }

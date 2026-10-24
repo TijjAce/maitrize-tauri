@@ -2,7 +2,7 @@ import React from "react";
 import { Page } from "../App";
 import { api, journal, newId, nowIso, texteErreur, type Reunion } from "../api";
 import { Field, Input, Modal, Select } from "../components/ui";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { openCtx } from "../components/ctxmenu";
 import { printHTML, escapeHtml } from "../print";
@@ -620,8 +620,14 @@ export default function Reunions() {
   const supprimer = async (r: Reunion) => {
     if (!await confirmer(`Supprimer « ${nomDeLaReunion(r)} » et son compte rendu ?`)) return;
     await api.reunionDelete(r.id);
-    setListe((l) => (l ?? []).filter((x) => x.id !== r.id));
+    let place = -1;
+    setListe((l) => { place = (l ?? []).findIndex((x) => x.id === r.id); return (l ?? []).filter((x) => x.id !== r.id); });
     if (courante?.id === r.id) { setCourante(null); setTexte(""); setResumes([]); setCompteRendu(""); }
+    toastAnnulable(`« ${nomDeLaReunion(r)} » supprimée.`, async () => {
+      await api.reunionSave(r);
+      // À sa place dans la liste.
+      setListe((l) => { const suite = (l ?? []).filter((x) => x.id !== r.id); suite.splice(place < 0 ? suite.length : Math.min(place, suite.length), 0, r); return suite; });
+    });
   };
 
   const enCours = ecoute.etat !== "repos";

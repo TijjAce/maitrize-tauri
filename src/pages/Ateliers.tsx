@@ -1,4 +1,5 @@
 import React from "react";
+import { supprimerLAtelier, supprimerLEspace } from "../suppressionsAnnulables";
 import { Page } from "../App";
 import {
   api, Atelier, Espace, Jeu, Eleve, OutilClasse, ProgressionEleve, nouvelAtelier, nouvelEspace, nouveauJeu, nouvelOutil,
@@ -290,8 +291,8 @@ export default function Ateliers() {
       {editE && <EspaceForm e={editE} ateliers={ateliers ?? []} liens={liens ?? []}
         onClose={() => setEditE(null)} onSaved={() => { setEditE(null); rE(); rL(); }} />}
       {suivi && <SuiviEspace espace={suivi} onClose={() => setSuivi(null)} />}
-      {delA && <Confirm message={`Supprimer l'atelier « ${delA.titre} » ?`} onYes={() => api.atelierDelete(delA.id).then(rA)} onClose={() => setDelA(null)} />}
-      {delE && <Confirm message={`Supprimer l'espace « ${delE.titre} » ?`} onYes={() => api.espaceDelete(delE.id).then(rE)} onClose={() => setDelE(null)} />}
+      {delA && <Confirm message={`Supprimer l'atelier « ${delA.titre} » ?`} onYes={() => supprimerLAtelier(delA, () => { rA(); rL(); })} onClose={() => setDelA(null)} />}
+      {delE && <Confirm message={`Supprimer l'espace « ${delE.titre} » ?`} onYes={() => supprimerLEspace(delE, () => { rE(); rL(); })} onClose={() => setDelE(null)} />}
       {editJ && <JeuForm j={editJ} onClose={() => setEditJ(null)} onSaved={() => { setEditJ(null); rJ(); }} />}
 
       {editO && <OutilForm o={editO} onClose={() => setEditO(null)} onSaved={() => { setEditO(null); rO(); }} />}

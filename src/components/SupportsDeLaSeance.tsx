@@ -1,4 +1,5 @@
 import React from "react";
+import { toastAnnulable } from "./Toaster";
 import { api, newId, nouveauJeu, nouvelOutil, nowIso, type Jeu, type MaterielItem, type OutilClasse } from "../api";
 import { Input, Modal } from "./ui";
 import { FichierImg } from "./Deroulement";
@@ -237,7 +238,11 @@ export function useSupportsDeLaSeance(seanceId: string, sequenceId: string | nul
     await reload();
     return lien;
   };
-  const retirer = async (lien: MaterielItem) => { await api.materielDelete(lien.id); await reload(); };
+  const retirer = async (lien: MaterielItem) => {
+    await api.materielDelete(lien.id);
+    await reload();
+    toastAnnulable(`« ${lien.titre || "Le support"} » retiré de la séance.`, async () => { await api.materielSave(lien); await reload(); }, "📎");
+  };
   /** Une feuille du bureau, copiée dans la séance, fichiers compris : le bureau garde la sienne. */
   const prendrePdf = async (m: MaterielItem) => {
     const copies: string[] = [];

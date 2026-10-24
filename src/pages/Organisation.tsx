@@ -1735,7 +1735,12 @@ function TravailDeCycle({ annee, setAnnee }: AnneeProps) {
                           <div style={{ fontWeight: 700, fontSize: 13 }}>{col.enseignant}</div>
                           <div className="meta" style={{ fontSize: 11 }}>{col.niveau}</div>
                         </div>
-                        {!col.mienne && <button className="btn ghost sm" onClick={() => api.programmationFinaleDelete(col.prog.id).then(reload)} aria-label="Supprimer">🗑</button>}
+                        {!col.mienne && <button className="btn ghost sm" aria-label="Supprimer" onClick={async () => {
+                          const prog = col.prog;
+                          await api.programmationFinaleDelete(prog.id);
+                          reload();
+                          toastAnnulable(`La programmation de ${col.enseignant} est retirée.`, async () => { await api.programmationFinaleSave(prog); reload(); });
+                        }}>🗑</button>}
                       </div>
                     </th>
                   );

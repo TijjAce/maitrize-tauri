@@ -1,7 +1,7 @@
 import React from "react";
 import { api, Texte, newId, nowIso, TYPE_AXE } from "../api";
 import { Empty, useAsync } from "../components/ui";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { openCtx } from "../components/ctxmenu";
 import { EditeurRiche, EditeurRicheHandle } from "../components/EditeurRiche";
@@ -93,6 +93,7 @@ export function InformationsTab({ annee }: { annee: string }) {
     await api.texteDelete(f.id);
     setChoisie("");
     reload();
+    toastAnnulable(`Feuille « ${f.titre} » supprimée.`, async () => { await api.texteSave(f); reload(); setChoisie(f.id); });
   };
 
   // Les feuilles en onglets au-dessus : toute la largeur va à la feuille (demande de l'enseignant, octobre 2026).

@@ -1,7 +1,7 @@
 import React from "react";
 import { api, Eleve, Texte, newId, nowIso, texteErreur } from "../api";
 import { Empty, Field, Input, Modal, Select, Textarea, useAsync } from "../components/ui";
-import { toast } from "../components/Toaster";
+import { toast, toastAnnulable } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { openCtx } from "../components/ctxmenu";
 import { EditeurRiche } from "../components/EditeurRiche";
@@ -109,10 +109,16 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
 
   const supprimer = async (p: Texte) => {
     if (!(await confirmer(`Supprimer « ${p.titre} » ?`, { oui: "Supprimer", danger: true }))) return;
+    const meta = await api.settingGet(CLE_META(p.id)).catch(() => null);
     await api.texteDelete(p.id);
     await api.settingSet(CLE_META(p.id), "").catch(() => {});
     setChoisie("");
     reload();
+    toastAnnulable(`« ${p.titre} » supprimée.`, async () => {
+      await api.texteSave(p);
+      if (meta) await api.settingSet(CLE_META(p.id), meta).catch(() => {});
+      reload(); setChoisie(p.id);
+    });
   };
 
   return (

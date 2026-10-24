@@ -21,6 +21,7 @@ import { fichierToBlobUrl } from "../components/PdfViewer";
 import { printHTML, dataUrlImage } from "../print";
 import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
+import { supprimerLaSeance, supprimerLaSequence } from "../suppressionsAnnulables";
 import { confirmer } from "../components/confirmer";
 import { FormSequence } from "../components/FormSequence";
 import { ReglesCitees, useLudotheque } from "../components/ReglesDesJeux";
@@ -145,9 +146,8 @@ export default function SequenceDetail() {
   const supprimerSequence = async () => {
     const n = (seances ?? []).length;
     if (!(await confirmer(`Supprimer la séquence « ${seq.titre} »${n ? ` et ses ${n} séance${n > 1 ? "s" : ""}` : ""} ?`, { oui: "Supprimer", danger: true }))) return;
-    await api.sequenceDelete(seq.id);
-    toast("Séquence supprimée", { icone: "🗑" });
-    nav("/plan");
+    // « Annuler » (ou ⌘Z) la remet avec ses séances, et l'on y revient.
+    await supprimerLaSequence(seq, { supprimee: () => nav("/plan"), revenue: () => nav(`/sequences/${seq.id}`) });
   };
 
   return (
@@ -332,7 +332,7 @@ export default function SequenceDetail() {
       {modifier && <FormSequence sequence={seq} onClose={() => setModifier(false)}
         onSaved={() => { setModifier(false); reloadSeq(); }} />}
       {del && <Confirm message={`Supprimer la séance « ${del.titre || del.numero} » ?`}
-        onYes={() => api.seanceDelete(del.id).then(reload)} onClose={() => setDel(null)} />}
+        onYes={() => supprimerLaSeance(del, reload)} onClose={() => setDel(null)} />}
     </Page>
   );
 }

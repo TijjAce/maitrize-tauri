@@ -1,7 +1,7 @@
 import React from "react";
 import { api, texteErreur, type Eleve, type ObservationEleve } from "../api";
 import { Empty } from "./ui";
-import { toast } from "./Toaster";
+import { toast, toastAnnulable } from "./Toaster";
 import { confirmer } from "./confirmer";
 import { printHTML, escapeHtml } from "../print";
 import { COLONNES, observationVide, repartir, type Colonne } from "../observationEleve";
@@ -44,6 +44,8 @@ export function GrilleObservation({ eleve }: { eleve: Eleve | null }) {
   // enregistre d'abord ce qui attendait : la dernière frappe partait avec le
   // minuteur, sans être écrite.
   const eleveId = eleve?.id ?? "";
+  const eleveAffiche = React.useRef(eleveId);
+  eleveAffiche.current = eleveId;
   React.useEffect(() => {
     if (!eleveId) { setFiches([]); return; }
     setFiches(null);
@@ -103,6 +105,10 @@ export function GrilleObservation({ eleve }: { eleve: Eleve | null }) {
     if (!await confirmer("Supprimer ce temps d'observation ?")) return;
     await api.observationDelete(o.id);
     setFiches((l) => (l ?? []).filter((x) => x.id !== o.id));
+    toastAnnulable("Temps d'observation supprimé.", async () => {
+      await api.observationSave(o);
+      if (eleveAffiche.current === o.eleveId) setFiches(await api.observationsList(o.eleveId));
+    });
   };
 
   const imprimer = () => {
