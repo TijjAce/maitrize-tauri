@@ -5,6 +5,7 @@ import App from "./App";
 import "./theme.css";
 import { journal } from "./api";
 import { estUnBug, proposerLeRapport } from "./rapportErreur";
+import { installerAnnulation } from "./annulation";
 
 // Filet global : une erreur de rendu ou une promesse rejetée laisse une trace
 // sur le disque, faute de console dans la fenêtre de l'application ; un vrai
@@ -18,6 +19,9 @@ window.addEventListener("unhandledrejection", (e) => {
   journal(`PROMESSE REJETÉE ${String((e.reason as Error)?.message ?? e.reason)}`);
   if (estUnBug(e.reason)) proposerLeRapport((e.reason as Error).message);
 });
+
+// ⌘Z, un seul écouteur pour toute l'application (voir annulation.ts).
+installerAnnulation();
 
 // La vérification des mises à jour est gérée par <UpdateBanner /> (dans App) :
 // téléchargement silencieux puis pastille « Relancer pour mettre à jour ».

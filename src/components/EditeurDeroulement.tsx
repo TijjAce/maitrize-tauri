@@ -14,6 +14,7 @@ import {
 } from "../documentSeance";
 import { demarcheDe, demarchesParFamille, tableauDesPhases } from "../demarches";
 import { CitationButton } from "./Deroulement";
+import { inscrireAnnulable } from "../annulation";
 
 // Le déroulement d'une séance (demande de l'enseignant, octobre 2026) : un
 // texte libre, puis des phases en cartes — chacune son titre, sa durée, son
@@ -219,6 +220,22 @@ const versModele = (s: SeanceEnPhases): Modele => ({ intro: s.intro, phases: s.p
 
 const cheminDeroulement = (cle: number) => `${cle}|d`;
 const cheminChamp = (cle: number, nom: string) => `${cle}|c|${nom}`;
+const cheminTitre = (cle: number) => `${cle}|t`;
+
+/** La case qu'un retour en arrière a changée : on y revient. Rien quand seule une phase est partie. */
+function zoneChangee(a: Modele, b: Modele): string | null {
+  if (a.intro !== b.intro) return "intro";
+  for (const p of b.phases) {
+    const q = a.phases.find((x) => x.cle === p.cle);
+    if (!q || q.titre !== p.titre) return cheminTitre(p.cle);
+    if (q.deroulement !== p.deroulement) return cheminDeroulement(p.cle);
+    const champ = p.champs.find((c) => q.champs.find((d) => memeNom(d.nom, c.nom))?.texte !== c.texte);
+    if (champ) return cheminChamp(p.cle, champ.nom);
+  }
+  return null;
+}
+/** Une frappe — lettres, effacement, retour à la ligne — et non une mise en forme ou une image. */
+const estUneFrappe = (type: string) => /^(insert(Text|CompositionText|ReplacementText|Paragraph|LineBreak)|delete)/.test(type);
 const caseDe = (n: Node | null): HTMLElement | null =>
   (n ? (n instanceof Element ? n : n.parentElement)?.closest<HTMLElement>("[data-zone]") ?? null : null);
 
@@ -235,15 +252,25 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
   const [modele, setModele] = React.useState<Modele>(() => versModele(lireSeance(valeur)));
   const courant = React.useRef(modele);
   const publie = React.useRef(valeur);
-  // La séance n'est relue que si son texte change d'ailleurs (à l'ouverture, un champ ajouté, une autre machine).
+  // ⌘Z défait le dernier geste de l'éditeur — une frappe, une phase, une durée, une pastille, une image —, et ⌘⇧Z
+  // le refait, par l'écouteur unique de l'application (voir annulation.ts). WebKit n'y défait rien : les cases se
+  // redessinent d'après la séance, et son annulation ne les suivrait pas. Les frappes d'une même case, sans autre
+  // geste entre elles, ne font qu'un geste.
+  const passe = React.useRef<{ m: Modele; quand: number }[]>([]);
+  const futur = React.useRef<{ m: Modele; quand: number }[]>([]);
+  const frappeEnCours = React.useRef("");
+  const aRetrouver = React.useRef<string | null>(null);
+  // La séance n'est relue que si son texte change d'ailleurs (à l'ouverture, un champ ajouté, une autre machine) :
+  // ce qu'on défaisait ne s'y applique plus.
   React.useEffect(() => {
     if (valeur === publie.current) return;
     publie.current = valeur;
     const m = versModele(lireSeance(valeur));
     courant.current = m;
     setModele(m);
+    passe.current = []; futur.current = []; frappeEnCours.current = "";
   }, [valeur]);
-  const changer = (m: Modele) => {
+  const publier = (m: Modele) => {
     courant.current = m;
     setModele(m);
     const texte = ecrireSeance(m);
@@ -251,16 +278,45 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
     publie.current = texte;
     onChange(texte);
   };
-  const majPhase = (cle: number, modif: (p: Phase) => Phase) => {
-    const m = courant.current;
-    changer({ ...m, phases: m.phases.map((p) => (p.cle === cle ? modif(p) : p)) });
+  /** Un geste : la séance change, et l'état d'avant s'empile — sauf pour une frappe qui poursuit la précédente. */
+  const changer = (m: Modele, frappe = "") => {
+    if (ecrireSeance(m) !== publie.current) {
+      const haut = passe.current[passe.current.length - 1];
+      // Une pause d'une seconde et demie ferme le geste : ⌘Z ne reprend pas tout un paragraphe d'un coup.
+      if (frappe && frappe === frappeEnCours.current && haut && Date.now() - haut.quand < 1500) haut.quand = Date.now();
+      else passe.current = [...passe.current.slice(-99), { m: courant.current, quand: Date.now() }];
+      futur.current = [];
+      frappeEnCours.current = frappe;
+    }
+    publier(m);
   };
-  const poserChamp = (cle: number, nom: string, texte: string) => majPhase(cle, (p) => ({
+  const retourner = (de: React.MutableRefObject<{ m: Modele; quand: number }[]>, vers: React.MutableRefObject<{ m: Modele; quand: number }[]>) => {
+    const etat = de.current.pop();
+    if (!etat) return;
+    vers.current.push({ m: courant.current, quand: Date.now() });
+    frappeEnCours.current = "";
+    aRetrouver.current = zoneChangee(courant.current, etat.m);
+    publier(etat.m);
+  };
+  const gestes = React.useRef({ defaire: () => {}, refaire: () => {} });
+  gestes.current = { defaire: () => retourner(passe, futur), refaire: () => retourner(futur, passe) };
+  React.useEffect(() => inscrireAnnulable({
+    aDefaire: () => passe.current[passe.current.length - 1]?.quand ?? 0,
+    defaire: () => gestes.current.defaire(),
+    aRefaire: () => futur.current[futur.current.length - 1]?.quand ?? 0,
+    refaire: () => gestes.current.refaire(),
+    visible: () => !!racine.current?.isConnected && racine.current.getClientRects().length > 0,
+  }), []);
+  const majPhase = (cle: number, modif: (p: Phase) => Phase, frappe = "") => {
+    const m = courant.current;
+    changer({ ...m, phases: m.phases.map((p) => (p.cle === cle ? modif(p) : p)) }, frappe);
+  };
+  const poserChamp = (cle: number, nom: string, texte: string, frappe = "") => majPhase(cle, (p) => ({
     ...p,
     champs: p.champs.some((c) => memeNom(c.nom, nom))
       ? p.champs.map((c) => (memeNom(c.nom, nom) ? { ...c, texte } : c))
       : [...p.champs, { nom, texte }],
-  }));
+  }), frappe);
 
   const derniere = React.useRef<Range | null>(null);
   const active = React.useRef<HTMLElement | null>(null);
@@ -287,6 +343,14 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
     if (aFocaliser.current === null) return;
     racine.current?.querySelector<HTMLInputElement>(`[data-phase-titre="${aFocaliser.current}"]`)?.focus();
     aFocaliser.current = null;
+  });
+  // Après ⌘Z ou ⌘⇧Z, le curseur revient là où la séance a changé.
+  React.useEffect(() => {
+    const chemin = aRetrouver.current;
+    if (chemin === null) return;
+    aRetrouver.current = null;
+    if (chemin.endsWith("|t")) racine.current?.querySelector<HTMLInputElement>(`[data-phase-titre="${chemin.split("|")[0]}"]`)?.focus();
+    else allerA(chemin);
   });
 
   const dansLEditeur = (n: Node | null) => !!n && !!racine.current?.contains(n) && !!caseDe(n);
@@ -330,18 +394,19 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
     });
   };
 
-  /** Une case vient de changer : la séance se réécrit. */
-  const publierCase = (z: HTMLElement) => {
+  /** Une case vient de changer : la séance se réécrit. `frappe` : on y tape, et la frappe poursuit la précédente. */
+  const publierCase = (z: HTMLElement, frappe = false) => {
     reparer(z);
     const texte = versDocument(z);
     publies.set(z, texte);
     z.toggleAttribute("data-vide", !texte.trim());
     const chemin = z.dataset.zone ?? "";
+    const geste = frappe ? chemin : "";
     const m = courant.current;
-    if (chemin === "intro") { if (m.intro !== texte) changer({ ...m, intro: texte }); return; }
+    if (chemin === "intro") { if (m.intro !== texte) changer({ ...m, intro: texte }, geste); return; }
     const [cle, sorte, ...nom] = chemin.split("|");
-    if (sorte === "d") majPhase(Number(cle), (p) => (p.deroulement === texte ? p : { ...p, deroulement: texte }));
-    else poserChamp(Number(cle), nom.join("|"), texte);
+    if (sorte === "d") majPhase(Number(cle), (p) => (p.deroulement === texte ? p : { ...p, deroulement: texte }), geste);
+    else poserChamp(Number(cle), nom.join("|"), texte, geste);
   };
 
   /** Rend la sélection d'avant le clic sur un outil, dans la case voulue, puis agit, puis publie. */
@@ -578,7 +643,7 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
   if (!modele.phases.length || modele.intro.trim()) introVue.current = true;
 
   return (
-    <div className="doc">
+    <div className="doc" data-annulation-propre>
       <div ref={barre} className={`doc-barre${compacte ? " compacte" : ""}`} role="toolbar" aria-label="Déroulement" onMouseDown={(e) => {
           // Les événements de la fenêtre « Citer un passage », posée sur le corps de la page, remontent quand même jusqu'ici.
           if (barre.current?.contains(e.target as Node) && (e.target as HTMLElement).closest("button")) e.preventDefault();
@@ -635,7 +700,10 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
 
       <div ref={racine} className="doc-cartes"
         onFocus={(e) => { const z = caseDe(e.target as Node); if (z) active.current = z; }}
-        onInput={(e) => { const z = caseDe(e.target as Node); if (z) { publierCase(z); suivreMention(); } }}
+        onInput={(e) => {
+          const z = caseDe(e.target as Node);
+          if (z) { publierCase(z, estUneFrappe((e.nativeEvent as InputEvent).inputType ?? "")); suivreMention(); }
+        }}
         onKeyDown={(e) => {
           const z = caseDe(e.target as Node);
           if (!z) return;
@@ -715,7 +783,7 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
                 <span className="ph-n">{i + 1}</span>
                 <label className="ph-titre" data-valeur={p.titre || "Titre de la phase"}>
                   <input data-phase-titre={p.cle} value={p.titre} placeholder="Titre de la phase" size={1} aria-label={`Titre de la phase ${i + 1}`}
-                    onChange={(e) => majPhase(p.cle, (x) => ({ ...x, titre: e.target.value }))}
+                    onChange={(e) => majPhase(p.cle, (x) => ({ ...x, titre: e.target.value }), cheminTitre(p.cle))}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); allerA(cheminDeroulement(p.cle)); } }} />
                 </label>
                 <button type="button" className={`ph-chip${p.duree ? "" : " vide"}`} aria-label={`Durée de la phase ${i + 1}`}

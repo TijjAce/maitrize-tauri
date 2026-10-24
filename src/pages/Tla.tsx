@@ -1,7 +1,8 @@
 import React from "react";
 import { Aide } from "../components/Aide";
 import { api, Gabarit, CaseTla, NatureMot, PaletteTla, PictoArasaac, PlaceDuMot, caseVide, telechargerTexte } from "../api";
-import { Modal, Field, Input, Select, Empty, Confirm, useAsync } from "../components/ui";
+import { Modal, Field, Input, Select, Empty, Confirm, PageVisibleContext, useAsync } from "../components/ui";
+import { inscrireAnnulable } from "../annulation";
 import { toast } from "../components/Toaster";
 import {
   NATURES, CORPS_DU_MOT, PLACES_DU_MOT, apparence, couleurSure, dupliquer, nouveauGabarit, pourImpression, redimensionner,
@@ -184,15 +185,16 @@ function Editeur({ gabarit, tous, onChange, onFermer, onCreerPage, onOuvrir }: {
   const paletteParDefaut = usePaletteParDefaut();
   const palette = gabarit.couleurs ?? paletteParDefaut;
 
-  // Annuler : les états d'avant, cinquante au plus. Le nom se corrige dans son champ, qui a son propre retour.
-  const passe = React.useRef<Gabarit[]>([]);
+  // Annuler : les états d'avant, cinquante au plus, avec le moment de leur geste. Le nom se corrige dans son champ,
+  // qui a son propre retour.
+  const passe = React.useRef<{ g: Gabarit; quand: number }[]>([]);
   const [, setNbPasse] = React.useState(0);
   const actuel = React.useRef(gabarit);
   actuel.current = gabarit;
   const prevenir = React.useRef(onChange);
   prevenir.current = onChange;
   const changer = (suite: Gabarit) => {
-    passe.current = [...passe.current.slice(-49), actuel.current];
+    passe.current = [...passe.current.slice(-49), { g: actuel.current, quand: Date.now() }];
     setNbPasse(passe.current.length);
     onChange(suite);
   };
@@ -200,20 +202,17 @@ function Editeur({ gabarit, tous, onChange, onFermer, onCreerPage, onOuvrir }: {
     const avant = passe.current.pop();
     if (!avant) return;
     setNbPasse(passe.current.length);
-    prevenir.current(avant);
+    prevenir.current(avant.g);
   }, []);
-  // ⌘Z ou Ctrl+Z, hors des champs — qui ont le leur — et hors d'une fenêtre ouverte.
-  React.useEffect(() => {
-    const touche = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "z") return;
-      const cible = e.target as HTMLElement | null;
-      if (cible?.closest("input, textarea, select, [contenteditable='true']") || document.querySelector(".modal")) return;
-      e.preventDefault();
-      annuler();
-    };
-    window.addEventListener("keydown", touche);
-    return () => window.removeEventListener("keydown", touche);
-  }, [annuler]);
+  // ⌘Z ou Ctrl+Z, par l'écouteur unique (voir annulation.ts) : seulement quand la page est à l'écran.
+  const pageVisible = React.useContext(PageVisibleContext);
+  const aLEcran = React.useRef(pageVisible);
+  aLEcran.current = pageVisible;
+  React.useEffect(() => inscrireAnnulable({
+    aDefaire: () => passe.current[passe.current.length - 1]?.quand ?? 0,
+    defaire: annuler,
+    visible: () => aLEcran.current,
+  }), [annuler]);
 
   // Glisser une case sur une autre les échange. La case saisie vit dans une
   // référence : pendant le survol, le navigateur ne laisse pas lire les

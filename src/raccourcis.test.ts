@@ -19,8 +19,10 @@ describe("les raccourcis clavier", () => {
 
   it("se cherchent par ce qu'ils font, l'endroit ou les touches, sans accents", () => {
     const groupes = raccourcisClavier(true);
-    const annuler = chercherRaccourcis(groupes, "annuler");
-    expect(annuler.map((g) => g.ou)).toEqual(["Organisation › Progression et Programmation", "CAA › Tableaux de langage"]);
+    // ⌘Z vaut partout, une seule fois dans la liste (voir annulation.ts).
+    const annuler = chercherRaccourcis(groupes, "annule");
+    expect(annuler.map((g) => g.ou)).toEqual(["Partout"]);
+    expect(annuler[0].raccourcis.map((r) => r.touches[0])).toEqual(["⌘Z", "⌘⇧Z"]);
     expect(chercherRaccourcis(groupes, "selection").flatMap((g) => g.raccourcis).length).toBeGreaterThan(1);
     expect(chercherRaccourcis(groupes, "⌘F")[0].raccourcis[0].quoi).toBe("Chercher dans le document");
     expect(chercherRaccourcis(groupes, "")).toBe(groupes);

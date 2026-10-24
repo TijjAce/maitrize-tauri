@@ -2,6 +2,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { COULEURS, couleurHex } from "../api";
 import { EVT_ONGLET } from "../ongletDemande";
+import { inscrireAnnulable } from "../annulation";
 
 export function Modal({ titre, onClose, children, footer, large }: {
   titre: string; onClose: () => void; children: React.ReactNode;
@@ -315,53 +316,53 @@ export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList = [
  * - `commit(next)` : applique + sauvegarde + empile l'historique (à utiliser à
  *   la place de l'ancien `persister`).
  * - `reset(v)` : (re)charge une valeur sans créer d'entrée d'historique.
- * - Raccourcis : ⌘Z / Ctrl+Z (annuler), ⌘⇧Z / Ctrl+Y (rétablir), ignorés quand
- *   le focus est dans un champ de saisie (l'annulation native du champ prime).
+ * - ⌘Z / Ctrl+Z (annuler), ⌘⇧Z / Ctrl+Y (rétablir) : l'historique s'inscrit
+ *   auprès de l'écouteur unique (voir annulation.ts), qui défait le geste le
+ *   plus récent de ce qu'on voit — seulement si `clavier` et si la page est à
+ *   l'écran : une page gardée en vie mais cachée ne défait plus rien.
  */
 export function useHistorique<T>(initial: T, persist: (v: T) => void, clavier = true) {
   const persistRef = React.useRef(persist);
   persistRef.current = persist;
   const [present, setPresent] = React.useState<T>(initial);
   const presentRef = React.useRef<T>(initial);
-  const passe = React.useRef<T[]>([]);
-  const futur = React.useRef<T[]>([]);
+  // Chaque état d'avant, avec le moment du geste qui l'a remplacé (ou défait, pour `futur`).
+  const passe = React.useRef<{ v: T; quand: number }[]>([]);
+  const futur = React.useRef<{ v: T; quand: number }[]>([]);
   const ecrire = (v: T) => { presentRef.current = v; setPresent(v); };
 
   const reset = React.useCallback((v: T) => { passe.current = []; futur.current = []; ecrire(v); }, []);
   const commit = React.useCallback((next: T) => {
-    passe.current.push(presentRef.current);
+    passe.current.push({ v: presentRef.current, quand: Date.now() });
     futur.current = [];
     ecrire(next);
     persistRef.current(next);
   }, []);
   const undo = React.useCallback(() => {
-    if (passe.current.length === 0) return;
-    futur.current.push(presentRef.current);
-    const prev = passe.current.pop()!;
-    ecrire(prev);
-    persistRef.current(prev);
+    const prev = passe.current.pop();
+    if (!prev) return;
+    futur.current.push({ v: presentRef.current, quand: Date.now() });
+    ecrire(prev.v);
+    persistRef.current(prev.v);
   }, []);
   const redo = React.useCallback(() => {
-    if (futur.current.length === 0) return;
-    passe.current.push(presentRef.current);
-    const nxt = futur.current.pop()!;
-    ecrire(nxt);
-    persistRef.current(nxt);
+    const nxt = futur.current.pop();
+    if (!nxt) return;
+    passe.current.push({ v: presentRef.current, quand: Date.now() });
+    ecrire(nxt.v);
+    persistRef.current(nxt.v);
   }, []);
 
-  React.useEffect(() => {
-    if (!clavier) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey)) return;
-      const t = e.target as HTMLElement | null;
-      if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
-      const k = e.key.toLowerCase();
-      if ((k === "z" && e.shiftKey) || k === "y") { e.preventDefault(); redo(); }
-      else if (k === "z") { e.preventDefault(); undo(); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, clavier]);
+  const pageVisible = React.useContext(PageVisibleContext);
+  const aLEcran = React.useRef(false);
+  aLEcran.current = clavier && pageVisible;
+  React.useEffect(() => inscrireAnnulable({
+    aDefaire: () => passe.current[passe.current.length - 1]?.quand ?? 0,
+    defaire: undo,
+    aRefaire: () => futur.current[futur.current.length - 1]?.quand ?? 0,
+    refaire: redo,
+    visible: () => aLEcran.current,
+  }), [undo, redo]);
 
   return { present, reset, commit, undo, redo };
 }
