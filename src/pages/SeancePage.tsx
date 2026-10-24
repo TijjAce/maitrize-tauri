@@ -25,27 +25,25 @@ import { lirePdfs } from "../materielSeance";
 import { fabriquerPourLaSeance } from "../feuillePourLaSeance";
 import { elementDuRenvoi, genreDeSupport, lireRenvoi, type RenvoiDeSupport } from "../supportsDeSeance";
 import {
-  citationsDuDocument, documentDeLaSeance, ICONE_CITE, imagesDuDocument, phasesDuDocument, tableauDuDocument,
-  type GenreCite,
+  CHAMP_POSTURE, CHAMPS_PROPOSES, ajouterChamp, champsDesPhases, citationsDuDocument, documentDeLaSeance, ICONE_CITE, imagesDuDocument,
+  lireSeance, memeNom, phasesOuLeChampEstRempli, retirerChamp, tableauDuDocument, type GenreCite,
 } from "../documentSeance";
+import { confirmer } from "../components/confirmer";
 
 // ── La page d'une séance ───────────────────────────────────────────────────
 //
 // La séance s'écrit comme une page (demande de l'enseignant, octobre 2026) :
 // son titre en grand, sa durée, sa date, ses compétences et ses consignes en
-// pastilles, son objectif, puis le déroulement — un document, avec ses
-// phases, ses images et les supports cités d'un « @ » (voir
-// EditeurDeroulement). À côté : les supports de la séance, ses compétences,
-// ce que les tablettes en montreront, le matériel à préparer et le bilan.
-// Tout s'enregistre seul, peu après la frappe, et en quittant la page.
+// pastilles, son objectif, puis le déroulement — ses phases en cartes, avec
+// leurs images et les supports cités d'un « @ » (voir EditeurDeroulement).
+// À côté : les supports de la séance, les champs des phases, ses
+// compétences, le matériel à préparer et le bilan. Tout s'enregistre seul,
+// peu après la frappe, et en quittant la page.
 
 const ATTENTE_ENREGISTREMENT = 800;
 
 /** Une séance vient de s'écrire : la séquence qu'on retrouve en quittant la page se relit. */
 export const EVT_SEANCE_ENREGISTREE = "maitrize:seance-enregistree";
-
-/** Les phases d'un document, pour les tablettes : leur titre. */
-const phasesPourLesTablettes = (doc: string) => phasesDuDocument(doc).phases.map((p) => p.titre);
 
 export default function SeancePage() {
   const { id = "" } = useParams();
@@ -168,7 +166,6 @@ export default function SeancePage() {
 
   const comps: CompetenceSelectionnee[] = (() => { try { return s.competences ? JSON.parse(s.competences) : []; } catch { return []; } })();
   const citations = citationsDuDocument(s.deroulement);
-  const phases = phasesPourLesTablettes(s.deroulement);
   const consignes = lireConsignes(s.consignes);
 
   return (
@@ -202,17 +199,12 @@ export default function SeancePage() {
           <ColonneDesSupports etat={supportsEtat} citations={citations} assurer={assurer}
             onAjouter={() => setChoixOuvert(true)} onFabriquer={() => { void fabriquer(); }}
             onCiter={(c) => editeur.current?.citer(c)} onOuvrir={ouvrirCitation} onVoirFeuille={setFeuilleVue} />
+          <ChampsDesPhases deroulement={s.deroulement} onChange={(deroulement) => up({ deroulement })} />
           <section className="seance-carte">
             <h4>Compétences</h4>
             {comps.length
               ? comps.map((c, i) => <span key={i} className="seance-chip" title={estManuelle(c) ? "Sous-compétence écrite à la main" : c.referentielNom}>{estManuelle(c) ? "✍️ " : ""}{labelCourt(c)}</span>)
               : <div className="seance-vide">Aucune compétence.</div>}
-          </section>
-          <section className="seance-carte">
-            <h4>Sur les tablettes</h4>
-            {phases.length
-              ? <ol className="seance-phases">{phases.map((p, i) => <li key={i}>{p || "Phase"}</li>)}</ol>
-              : <div className="seance-vide">Les phases du déroulement (« ¶ Phase ») s'y montreront une à une.</div>}
           </section>
           <section className="seance-carte">
             <h4>Matériel à préparer</h4>
@@ -365,6 +357,58 @@ function CompetencesDeLaSeance({ s, up, sequence, cycle, onClose }: {
       )}
       <CompetenceTree mode="multi" selection={comps} onToggle={(c) => basculer(c)} />
     </Modal>
+  );
+}
+
+// ── Les champs des phases, pour toute la séance ───────────────────────────
+
+/**
+ * Les champs qu'on veut à chaque phase — comme les colonnes de l'ancien
+ * tableau : le déroulement et la posture de l'enseignant toujours, puis
+ * l'organisation, la différenciation, le matériel, la trace écrite, ou un
+ * champ qu'on nomme soi-même. Retirer un champ rempli se confirme.
+ */
+function ChampsDesPhases({ deroulement, onChange }: { deroulement: string; onChange: (d: string) => void }) {
+  const [saisie, setSaisie] = React.useState<string | null>(null);
+  const abandon = React.useRef(false);
+  const phases = lireSeance(deroulement).phases;
+  if (!phases.length) return null;
+  const actifs = champsDesPhases(phases);
+  const estActif = (nom: string) => actifs.some((n) => memeNom(n, nom));
+  const siens = actifs.slice(1).filter((n) => !CHAMPS_PROPOSES.some((c) => memeNom(c, n)));
+  const basculer = async (nom: string) => {
+    if (!estActif(nom)) { onChange(ajouterChamp(deroulement, nom)); return; }
+    const remplis = phasesOuLeChampEstRempli(deroulement, nom);
+    if (remplis && !(await confirmer(`Retirer « ${nom} » des phases ? Ce qui y est écrit, dans ${remplis} phase${remplis > 1 ? "s" : ""}, sera effacé.`, { oui: "Retirer", danger: true }))) return;
+    onChange(retirerChamp(deroulement, nom));
+  };
+  const ajouterLeSien = () => {
+    const nom = abandon.current ? "" : (saisie ?? "").replace(/\s+/g, " ").trim();
+    abandon.current = false;
+    setSaisie(null);
+    if (nom && !memeNom(nom, "Déroulement") && !memeNom(nom, CHAMP_POSTURE)) onChange(ajouterChamp(deroulement, nom));
+  };
+  const puce = (nom: string) => (
+    <button key={nom} type="button" className={`seance-champ${estActif(nom) ? " on" : ""}`} aria-pressed={estActif(nom)}
+      title={estActif(nom) ? "Retirer de toutes les phases" : "Ajouter à toutes les phases"} onClick={() => { void basculer(nom); }}>
+      {estActif(nom) ? nom : `＋ ${nom}`}
+    </button>
+  );
+  return (
+    <section className="seance-carte">
+      <h4>Les champs des phases</h4>
+      <div className="seance-champs">
+        <span className="seance-champ on fixe">Déroulement</span>
+        <span className="seance-champ on fixe">{CHAMP_POSTURE}</span>
+        {CHAMPS_PROPOSES.map(puce)}
+        {siens.map(puce)}
+        {saisie === null
+          ? <button type="button" className="seance-champ" onClick={() => setSaisie("")}>＋ Autre…</button>
+          : <input className="seance-champ seance-champ-saisie" autoFocus value={saisie} placeholder="Nom du champ" aria-label="Nom du champ à ajouter"
+              onChange={(e) => setSaisie(e.target.value)} onBlur={ajouterLeSien}
+              onKeyDown={(e) => { if (e.key === "Escape") abandon.current = true; if (e.key === "Enter" || e.key === "Escape") e.currentTarget.blur(); }} />}
+      </div>
+    </section>
   );
 }
 

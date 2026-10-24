@@ -1150,22 +1150,34 @@ function journalDuCreneau(c) {
 }
 
 /** Le déroulement d'une séance en texte simple, comme l'imprime l'ordinateur (voir documentSeance.ts) :
-    les phases numérotées et leur durée, les supports cités par leur titre, sans images ni mise en forme. */
+    les phases numérotées, leur durée et leur organisation ; leurs champs nommés ; les supports cités par
+    leur titre, sans images ni mise en forme. */
 function deroulementLisible(t) {
-  let n = 0;
-  return String(t || '').split('\n').filter(l => !/^\s*\[img:[^\]]+\]\s*$/.test(l)).map(l => {
-    const p = /^##\s+(.*)$/.exec(l);
+  const sortie = [];
+  let n = 0, titre = -1, champ = '', aNommer = false;
+  const propre = l => l.replace(/^(\s*)\\(?=#)/, '$1').replace(/^\s*(?:[-•]|\*(?=\s))\s+/, '• ')
+    .replace(/\[@[a-z]+:[^|\]]+\|([^\]]*)\]/g, '$1')
+    .replace(/\[(img|cite):[^\]]+\]/g, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\w)/g, '$1$2');
+  for (const l of String(t || '').split('\n')) {
+    if (/^\s*\[img:[^\]]+\]\s*$/.test(l)) continue;
+    const c = /^###\s*(.+?)\s*$/.exec(l);
+    if (c) { champ = c[1]; aNommer = true; continue; }
+    const p = /^##(?!#)\s*(.*)$/.exec(l);
     if (p) {
-      n++;
+      n++; champ = ''; aNommer = false;
       const d = /\s*\(\s*(\d+(?:\s*[-–]\s*\d+)?\s*(?:min(?:utes?)?|h(?:\s*\d+)?|'))\s*\)\s*$/i.exec(p[1]);
-      return n + '. ' + (d ? p[1].slice(0, d.index).trim() + ' — ' + d[1] : p[1].trim());
+      sortie.push(n + '. ' + ((d ? p[1].slice(0, d.index) : p[1]).trim() || 'Phase') + (d ? ' — ' + d[1].replace(/\s+/g, ' ') : ''));
+      titre = sortie.length - 1;
+      continue;
     }
-    return l.replace(/^\s*(?:[-•]|\*(?=\s))\s+/, '• ')
-      .replace(/\[@[a-z]+:[^|\]]+\|([^\]]*)\]/g, '$1')
-      .replace(/\[(img|cite):[^\]]+\]/g, '')
-      .replace(/\*\*([^*]+)\*\*/g, '$1')
-      .replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\w)/g, '$1$2');
-  }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    const x = propre(l);
+    if (/^organisation$/i.test(champ)) { if (x.trim() && titre >= 0) sortie[titre] += ' · ' + x.trim(); continue; }
+    if (aNommer) { if (x.trim()) { sortie.push(champ + ' : ' + x); aNommer = false; } continue; }
+    sortie.push(x);
+  }
+  return sortie.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function seanceBody(s) {
