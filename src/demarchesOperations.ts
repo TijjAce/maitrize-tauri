@@ -22,6 +22,7 @@ import { problemesMultiplicatifs } from "./problemesProlonges";
 import { REGLAGES_TRI, STYLE_TRI, htmlTri } from "./triEtiquettes";
 import { STYLE_JEUX_MATHS, cartesCalcul, htmlCartesCalcul } from "./jeuxMaths";
 import { hasard } from "./hasard";
+import { SOUSTRACTION_AVEC_RETENUE } from "./demarcheSoustractionRetenue";
 
 const T1 = "Temps 1 – Définition des objectifs et mise en réussite";
 const T2 = "Temps 2 – Mise en activité des élèves";
@@ -290,8 +291,9 @@ const DIVISION_CE2: Demarche = {
   ],
 };
 
+// La soustraction avec retenue d'après le manuel du CRPE de l'enseignant (voir demarcheSoustractionRetenue.ts), après celle du programme.
 export const DEMARCHES_OPERATIONS: Demarche[] = [
-  ADDITION_POSEE_CP, POSEES_CE1, POSEES_CE2, MULTIPLICATION_POSEE_CE2, SENS_ADDITION_CP, SENS_MULTIPLICATION_CP, MULTIPLICATION_CE1, PARITE_CE1, MOTS_CE2, DIVISION_CE2,
+  ADDITION_POSEE_CP, POSEES_CE1, SOUSTRACTION_AVEC_RETENUE, POSEES_CE2, MULTIPLICATION_POSEE_CE2, SENS_ADDITION_CP, SENS_MULTIPLICATION_CP, MULTIPLICATION_CE1, PARITE_CE1, MOTS_CE2, DIVISION_CE2,
 ];
 
 /** La séquence d'une compétence des quatre opérations, à sa classe ; rien sinon. En minuscules sans accents. */
