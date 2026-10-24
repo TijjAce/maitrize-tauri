@@ -584,7 +584,10 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
 
   return (
     <div className="doc">
-      <div ref={barre} className={`doc-barre${compacte ? " compacte" : ""}`} role="toolbar" aria-label="Déroulement" onMouseDown={(e) => { if ((e.target as HTMLElement).closest("button")) e.preventDefault(); }}>
+      <div ref={barre} className={`doc-barre${compacte ? " compacte" : ""}`} role="toolbar" aria-label="Déroulement" onMouseDown={(e) => {
+          // Les événements de la fenêtre « Citer un passage », posée sur le corps de la page, remontent quand même jusqu'ici.
+          if (barre.current?.contains(e.target as Node) && (e.target as HTMLElement).closest("button")) e.preventDefault();
+        }}>
         <button type="button" className="doc-outil" onClick={nouvellePhase} title="Ajouter une phase : son titre, sa durée, son déroulement, la posture de l'enseignant">¶ Phase</button>
         {!modele.phases.length && (
           // Les phases de la première séance d'une démarche (quatre temps, leçon de code, investigation…), à la suite du texte.

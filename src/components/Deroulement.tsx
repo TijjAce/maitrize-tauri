@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { api, DocumentCoffre } from "../api";
 import { fichierToBlobUrl } from "./PdfViewer";
 
@@ -32,14 +33,20 @@ export function CitationButton({ onInsert, label = "❝ Citer un passage", class
   }, [docId, docs]);
 
   const reset = () => { setC({ texte: "", source: "", page: "" }); setDocId(""); setPdfUrl(""); };
+  const titreId = React.useId();
+  const choisi = docs.find((x) => x.id === docId);
 
   return (
     <>
       <button type="button" className={className} title="Citer un passage d'un document du coffre-fort" onClick={() => setOpen(true)}>{label}</button>
-      {open && (
+      {/* Posée sur le corps de la page, comme les fenêtres de ui.tsx : dans la barre d'outils du déroulement, qui reste collée
+          en haut (sticky, z-index 3), la barre du haut et la colonne de gauche passaient par-dessus et la coupaient. */}
+      {open && createPortal(
         <div className="overlay" style={{ zIndex: 150 }} onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
-          <div className="modal" style={{ maxWidth: pdfUrl ? "92vw" : 520, width: pdfUrl ? 1000 : undefined, height: pdfUrl ? "90vh" : undefined, display: "flex", flexDirection: "column" }}>
-            <div className="modal-head"><h2>Citer un passage</h2><div className="spacer" /><button className="btn ghost sm" onClick={() => setOpen(false)} aria-label="Fermer">✕</button></div>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby={titreId}
+            onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setOpen(false); } }}
+            style={{ maxWidth: pdfUrl ? "92vw" : 520, width: pdfUrl ? 1000 : undefined, height: pdfUrl ? "90vh" : undefined, display: "flex", flexDirection: "column" }}>
+            <div className="modal-head"><h2 id={titreId}>Citer un passage</h2><div className="spacer" /><button className="btn ghost sm" onClick={() => setOpen(false)} aria-label="Fermer">✕</button></div>
             <div className="modal-body" style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
               <div className="field" style={{ margin: 0 }}>
                 <label>Document du coffre-fort (optionnel)</label>
@@ -49,8 +56,10 @@ export function CitationButton({ onInsert, label = "❝ Citer un passage", class
                 </select>
               </div>
               {pdfUrl && (
-                <div style={{ flex: 1, minHeight: 320, background: "#525659", borderRadius: 8, overflow: "hidden" }}>
-                  <iframe src={pdfUrl} title="PDF" style={{ width: "100%", height: "100%", border: "none" }} />
+                // L'aperçu prend la place qui reste : les champs restent en vue sans faire défiler la fenêtre. Pas de « title » :
+                // WebKit l'affiche en bulle au milieu du document.
+                <div style={{ flex: 1, minHeight: 200, background: "#525659", borderRadius: 8, overflow: "hidden" }}>
+                  <iframe src={pdfUrl} aria-label={`Aperçu de ${choisi?.nom ?? "ce document"}`} style={{ width: "100%", height: "100%", border: "none", display: "block" }} />
                 </div>
               )}
               <div className="field" style={{ margin: 0 }}><label>Passage cité</label>
@@ -66,7 +75,8 @@ export function CitationButton({ onInsert, label = "❝ Citer un passage", class
               <button className="btn primary" disabled={!c.texte.trim()} onClick={() => { onInsert(marqueurCite(c)); setOpen(false); reset(); }}>Insérer</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
