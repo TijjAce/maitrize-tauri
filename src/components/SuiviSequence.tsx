@@ -1,9 +1,8 @@
 import { teinteSequence } from "../api";
 import { avancement, descriptionEtat, libelleDuSuivi, type SuiviSequence } from "../suiviSequences";
-import { niveauDeProgrammation } from "../programmation";
 
-// Ce qu'on montre du suivi d'une séquence : la pastille de son état, et la
-// ligne complète — état, avancement, prochaine séance — dans une liste.
+// Ce qu'on montre du suivi d'une séquence : la pastille de son état, et sa
+// ligne dans une liste — titre, pastille, avancement ; le détail au survol.
 
 /** La pastille : « 🟢 En classe », « ✏️ En préparation », « ⏸ En pause », « ✅ Terminée ». */
 export function BadgeSuivi({ suivi, aujourdHui, petit = false }: { suivi: SuiviSequence; aujourdHui?: string; petit?: boolean }) {
@@ -15,7 +14,11 @@ export function BadgeSuivi({ suivi, aujourdHui, petit = false }: { suivi: SuiviS
   );
 }
 
-/** Une séquence dans une liste de suivi : sa couleur, son titre, où elle en est, et de quoi y aller. */
+/**
+ * Une séquence dans une liste de suivi : sa couleur, son titre, son avancement, et de quoi y aller. La ligne de
+ * sa matière, de son niveau, de sa période et de son état chargeait l'accueil (demande de l'enseignant, octobre
+ * 2026) : l'état se lit au survol de la pastille.
+ */
 export function LigneSuivi({ suivi, aujourdHui, onOuvrir, onJournal }: {
   suivi: SuiviSequence; aujourdHui: string;
   onOuvrir: () => void;
@@ -24,24 +27,13 @@ export function LigneSuivi({ suivi, aujourdHui, onOuvrir, onJournal }: {
 }) {
   const s = suivi.sequence;
   const enClasse = suivi.etat === "classe" || suivi.etat === "pause";
-  const sansSuite = enClasse && !suivi.prochain;
   return (
     <div className="list-row" style={{ cursor: "pointer", marginBottom: 6, alignItems: "center" }} onClick={onOuvrir}>
       <span className="dot" style={{ width: 10, height: 10, borderRadius: 3, flex: "none", background: teinteSequence(s) }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="title" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span>{s.titre || "Sans titre"}</span>
-          <BadgeSuivi suivi={suivi} />
-        </div>
-        <div className="meta">
-          {[s.matiere, niveauDeProgrammation(s.niveau), s.periode ? `P${s.periode}` : ""].filter(Boolean).join(" · ")}
-          {" · "}
-          {sansSuite ? (
-            <>
-              {libelleDuSuivi(suivi, aujourdHui).replace(" · aucune séance posée", "")}
-              {" · "}<span className="suivi-alerte">aucune séance posée</span>
-            </>
-          ) : libelleDuSuivi(suivi, aujourdHui)}
+          <BadgeSuivi suivi={suivi} aujourdHui={aujourdHui} />
         </div>
         {enClasse && suivi.prevues > 0 && (
           <div className="suivi-barre" style={{ marginTop: 6, maxWidth: 260 }} aria-label={`${suivi.faites.length} séances faites sur ${suivi.prevues}`}>
