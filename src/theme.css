@@ -2079,7 +2079,7 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 @media (max-width: 1000px) { .seance-page { grid-template-columns: 1fr; } }
 .seance-doc { min-width: 0; background: var(--panel); border: var(--bw) solid color-mix(in srgb, var(--border) 60%, transparent);
   border-radius: var(--r-grand); box-shadow: var(--shadow); padding: 26px 36px 34px; }
-.seance-titre { width: 100%; border: none; outline: none; background: transparent; color: var(--text); font: inherit; font-size: 26px;
+.seance-titre { width: 100%; border: none; outline: none; background: transparent; color: var(--text); font: inherit; font-size: 22px;
   font-weight: 800; letter-spacing: -.01em; padding: 0; margin: 0 0 10px; }
 .seance-titre::placeholder { color: var(--text-2); opacity: .6; }
 .seance-pastilles { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 16px; }
@@ -2096,7 +2096,7 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .seance-objectif > span { display: block; margin-bottom: 2px; color: var(--accent); font-size: 11px; font-weight: 750; letter-spacing: .07em;
   text-transform: uppercase; }
 .seance-objectif-texte { display: block; width: 100%; border: none; outline: none; background: transparent; padding: 0; color: var(--text);
-  font: inherit; font-size: 15px; line-height: 1.5; }
+  font: inherit; font-size: 14px; line-height: 1.5; }
 .seance-cote { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .seance-carte { background: var(--panel); border: var(--bw) solid color-mix(in srgb, var(--border) 60%, transparent); border-radius: var(--r-carte);
   box-shadow: var(--shadow); padding: 14px 16px; }
@@ -2146,7 +2146,7 @@ select.doc-outil { -webkit-appearance: none; appearance: none; max-width: 150px;
 /* Les phases en cartes : l'en-tête (numéro, titre, durée, organisation), le déroulement et la posture
    de l'enseignant côte à côte, les champs ajoutés dessous. Chaque case est un texte à elle. */
 .doc-cartes { display: flex; flex-direction: column; gap: 14px; }
-.doc-case { position: relative; min-height: 1.6em; outline: none; font-size: 15px; line-height: 1.6; color: var(--text); overflow-wrap: anywhere; }
+.doc-case { position: relative; min-height: 1.55em; outline: none; font-size: 14px; line-height: 1.55; color: var(--text); overflow-wrap: anywhere; }
 .doc-cartes > .doc-case { min-height: 3.2em; }
 .doc-case[data-vide]::before { content: attr(data-invite); position: absolute; inset: 0 0 auto 0; color: var(--text-2); opacity: .75;
   font-style: italic; pointer-events: none; }
@@ -2156,14 +2156,14 @@ select.doc-outil { -webkit-appearance: none; appearance: none; max-width: 150px;
 .doc-cartes .ph:focus-within { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
 .ph-tete { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px 10px 16px;
   background: color-mix(in srgb, var(--accent) 5%, var(--panel)); border-bottom: 1px solid color-mix(in srgb, var(--border) 85%, transparent); }
-.ph-n { width: 26px; height: 26px; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
-  background: var(--accent); color: #fff; font-size: 13px; font-weight: 800; }
+.ph-n { width: 24px; height: 24px; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
+  background: var(--accent); color: #fff; font-size: 12px; font-weight: 800; }
 /* Le titre prend la largeur de ce qu'on y écrit : la durée le suit. */
-.ph-titre { display: inline-grid; min-width: 0; max-width: 100%; font-size: 17px; font-weight: 750; color: var(--text); }
+.ph-titre { display: inline-grid; min-width: 0; max-width: 100%; font-size: 15px; font-weight: 750; color: var(--text); }
 .ph-titre::after { content: attr(data-valeur) " "; grid-area: 1 / 1; visibility: hidden; white-space: pre; overflow: hidden; }
 .ph-titre input { grid-area: 1 / 1; width: 100%; min-width: 4ch; padding: 0; border: none; outline: none; background: transparent; color: inherit; font: inherit; }
 .ph-titre input::placeholder { color: var(--text-2); opacity: .65; }
-.ph-titre-lu { margin: 0; font-size: 17px; font-weight: 750; color: var(--text); }
+.ph-titre-lu { margin: 0; font-size: 15px; font-weight: 750; color: var(--text); }
 .ph-chip { flex: none; padding: 3px 9px; border: none; border-radius: var(--r-pastille); background: var(--panel-2); color: var(--text-2);
   font: inherit; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
 .ph-orga { margin-left: auto; flex: none; padding: 3px 10px; border: 1px solid var(--border); border-radius: var(--r-pastille); background: var(--panel);
@@ -2180,14 +2180,14 @@ button.ph-chip:hover, button.ph-orga:hover { color: var(--accent); }
 .ph-col { min-width: 0; padding: 10px 16px 12px; }
 .ph-posture { border-left: 1px solid color-mix(in srgb, var(--border) 85%, transparent); background: color-mix(in srgb, #8b5cf6 4%, transparent); }
 .ph-champ { padding: 9px 16px 11px; border-top: 1px solid color-mix(in srgb, var(--border) 85%, transparent); }
-.ph-posture .doc-case, .ph-champ .doc-case, .doc-lu .ph-posture, .doc-lu .ph-champ { font-size: 14px; }
+.ph-posture .doc-case, .ph-champ .doc-case, .doc-lu .ph-posture, .doc-lu .ph-champ { font-size: 13.5px; }
 .ph-label { display: block; margin-bottom: 3px; font-size: 10.5px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; color: var(--text-2); }
 @media (max-width: 700px) {
   .ph-corps { grid-template-columns: 1fr; }
   .ph-posture { border-left: none; border-top: 1px solid color-mix(in srgb, var(--border) 85%, transparent); }
 }
 /* La lecture (fenêtre « Voir ») : les mêmes cartes. */
-.doc-lu { display: flex; flex-direction: column; gap: 12px; font-size: 14.5px; line-height: 1.6; color: var(--text); overflow-wrap: anywhere; }
+.doc-lu { display: flex; flex-direction: column; gap: 12px; font-size: 14px; line-height: 1.55; color: var(--text); overflow-wrap: anywhere; }
 .doc-image { margin: 10px 0; }
 .doc-image img { display: block; max-width: min(100%, 440px); max-height: 340px; object-fit: contain; border-radius: 12px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, .08); }
