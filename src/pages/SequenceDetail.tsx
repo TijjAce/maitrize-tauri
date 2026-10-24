@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Page } from "../App";
 import { demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre, type Demarche } from "../demarches";
 import { MATERIEL_DES_MOTS, avecLaSeanceDesMots, estLaSeanceDesMots } from "../motsDesProblemes";
-import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, nowIso, newId, formatDuree, telechargerTexte, teinteSequence } from "../api";
+import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, nowIso, formatDuree, telechargerTexte, teinteSequence } from "../api";
 import { decalee, deplacee, ordonnees, renumerotees } from "../ordreSeances";
 import { useSuiviSequences } from "../components/useSuiviSequences";
 import { BadgeSuivi } from "../components/SuiviSequence";
@@ -12,7 +12,6 @@ import { EVT_JOUR } from "../components/CommandPalette";
 import { Modal, Stars, Empty, Confirm, useAsync } from "../components/ui";
 import { CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
 import { estManuelle } from "../sousCompetences";
-import { fileToBase64 } from "../components/SeanceParts";
 import { genreDeSupport, lireRenvoi } from "../supportsDeSeance";
 import { FichierImg } from "../components/Deroulement";
 import { DeroulementLu } from "../components/EditeurDeroulement";
@@ -21,8 +20,6 @@ import { EVT_SEANCE_ENREGISTREE } from "./SeancePage";
 import { fichierToBlobUrl } from "../components/PdfViewer";
 import { printHTML, dataUrlImage } from "../print";
 import { openCtx } from "../components/ctxmenu";
-import { PhotoTelephone } from "../components/PhotoTelephone";
-import { useFileDropZone, estDocument, estImage, fichierEnBase64 } from "../dragdrop";
 import { toast } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { FormSequence } from "../components/FormSequence";
@@ -65,15 +62,6 @@ export default function SequenceDetail() {
   // Le glisser-déposer des séances : celle qu'on tient, celle qu'on survole.
   const [saisie, setSaisie] = React.useState("");
   const [survol, setSurvol] = React.useState("");
-
-  // Glisser-déposer natif (Finder/Aperçu). Le hook doit être appelé à chaque
-  // rendu (avant tout return conditionnel) — la logique d'import réelle, qui
-  // dépend de la séquence chargée, passe par une ref mise à jour plus bas.
-  const importerRef = React.useRef<(fichiers: File[]) => void>(() => {});
-  const { ref: dropZoneRef, actif: dropActif } = useFileDropZone({
-    accept: (c) => estDocument(c) || estImage(c),
-    onFiles: (fichiers) => importerRef.current(fichiers),
-  });
 
   const seq = sequences?.find((s) => s.id === id);
   if (!seq) return <Page titre="Séquence"><Empty icone="🔍" titre="Séquence introuvable" /></Page>;
@@ -132,7 +120,9 @@ export default function SequenceDetail() {
     reload();
   };
 
-  // ── Matériel de la séquence (drag-drop) ──────────────────────────
+  // ── Matériel de la séquence ──────────────────────────────────────
+  // La zone où l'on déposait des fichiers pour la séquence est partie (demande de l'enseignant, octobre 2026) :
+  // les supports s'ajoutent à la page de la séance. Ceux qu'on y avait déposés restent, à glisser sur une séance.
   const matsSeq = (mats ?? []).filter((m) => !m.seanceId);
   const matsDeSeance = (sid: string) => (mats ?? []).filter((m) => m.seanceId === sid);
 
@@ -140,49 +130,6 @@ export default function SequenceDetail() {
   const assignerMat = async (mid: string, seanceId: string | null) => {
     const m = (mats ?? []).find((x) => x.id === mid);
     if (m) { await api.materielSave({ ...m, seanceId }); reloadMat(); }
-  };
-
-  // Dépôt de fichiers (PDF/images) sur la séquence → crée le matériel.
-  const creerMaterielDepuisFichier = async (nomOriginal: string, nom: string) => {
-    // Tout ce qui n'est pas une image est un document : PDF, Word, LibreOffice…
-    const pdf = !estImage(nomOriginal);
-    await api.materielSave({
-      id: newId(), titre: nomOriginal.replace(/\.[^.]+$/, ""), descriptionMateriel: "",
-      competenceId: comp?.competenceRefId ?? "", competenceTitre: comp?.competenceTitre ?? "",
-      domaineTitre: comp?.domaineTitre ?? seq.matiere ?? "", sousDomaineTitre: comp?.sousDomaineTitre ?? "",
-      cycle: seq.cycle, imagesJson: pdf ? "[]" : JSON.stringify([nom]), pdfsJson: pdf ? JSON.stringify([nom]) : "[]",
-      dateCreation: nowIso(), seanceId: null, sequenceId: seq.id,
-      dossier: "", videosJson: "[]", coffreJson: "[]",
-    });
-  };
-  const deposerFichiers = async (files: FileList) => {
-    for (const file of Array.from(files)) {
-      const b64 = await fileToBase64(file);
-      const nom = await api.fichierSave(file.name, b64);
-      await creerMaterielDepuisFichier(file.name, nom);
-    }
-    reloadMat();
-  };
-  // Branche l'import réel sur la ref (séquence désormais disponible).
-  importerRef.current = async (fichiers: File[]) => {
-    for (const f of fichiers) {
-      const nom = await api.fichierSave(f.name, await fichierEnBase64(f));
-      await creerMaterielDepuisFichier(f.name, nom);
-    }
-    reloadMat();
-  };
-
-  // Photo prise depuis le téléphone → matériel image de la séquence.
-  const photoVersMateriel = async (nom: string) => {
-    await api.materielSave({
-      id: newId(), titre: "Photo " + new Date().toLocaleDateString("fr-FR"), descriptionMateriel: "",
-      competenceId: comp?.competenceRefId ?? "", competenceTitre: comp?.competenceTitre ?? "",
-      domaineTitre: comp?.domaineTitre ?? seq.matiere ?? "", sousDomaineTitre: comp?.sousDomaineTitre ?? "",
-      cycle: seq.cycle, imagesJson: JSON.stringify([nom]), pdfsJson: "[]",
-      dateCreation: nowIso(), seanceId: null, sequenceId: seq.id,
-      dossier: "", videosJson: "[]", coffreJson: "[]",
-    });
-    reloadMat();
   };
 
   const matChip = (m: MaterielItem) => {
@@ -262,22 +209,14 @@ export default function SequenceDetail() {
         </div>
       </div>
 
-      <div ref={dropZoneRef} className="card"
-        style={{ marginBottom: 18, borderStyle: "dashed", ...(dropActif ? { outline: "2px dashed var(--accent)", background: "var(--accent-soft)" } : {}) }}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => {
-          e.preventDefault();
-          const mid = e.dataTransfer.getData("text/materiel");
-          if (mid) { assignerMat(mid, null); return; }
-          if (e.dataTransfer.files?.length) deposerFichiers(e.dataTransfer.files);
-        }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: matsSeq.length ? 8 : 0 }}>
-          <h3 style={{ margin: 0, fontSize: 15 }}>📎 Matériel de la séquence</h3>
-          <span className="meta" style={{ flex: 1 }}>Glissez ici vos PDF, documents Word ou LibreOffice, images — puis sur une séance.</span>
-          <PhotoTelephone onPhoto={photoVersMateriel} />
+      {matsSeq.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 18 }}
+          onDragOver={(e) => { if (e.dataTransfer.types.includes("text/materiel")) e.preventDefault(); }}
+          onDrop={(e) => { const mid = e.dataTransfer.getData("text/materiel"); if (mid) { e.preventDefault(); void assignerMat(mid, null); } }}>
+          <span className="meta">📎 Matériel de la séquence</span>
+          {matsSeq.map(matChip)}
         </div>
-        {matsSeq.length > 0 && <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{matsSeq.map(matChip)}</div>}
-      </div>
+      )}
 
       {/* Les photos du dictaphone rattachées à la séquence dans les réglages : ses supports de travail. */}
       <SupportsDeLaSequence sequenceId={seq.id} />
