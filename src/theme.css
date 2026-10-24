@@ -349,6 +349,20 @@ input, textarea, select { font-family: inherit; font-size: 14px; }
 .choix-support-texte { flex: 1; min-width: 0; }
 .choix-support-texte .title, .choix-support-texte .meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .choix-support-vide { padding: 14px 2px; color: var(--text-2); font-size: 13px; font-style: italic; }
+/* « Citer un passage » : la bibliothèque du coffre-fort, une couverture par PDF ; puis le document choisi, en tête de la citation. */
+.biblio-recherche { width: 100%; margin-bottom: 16px; }
+.biblio { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 18px 14px; }
+.biblio-livre { display: flex; flex-direction: column; gap: 8px; padding: 0; border: none; background: none; color: var(--text); font: inherit;
+  text-align: left; cursor: pointer; }
+.biblio-couverture { aspect-ratio: 3 / 4; display: flex; align-items: center; justify-content: center; border-radius: var(--r-bouton);
+  background: var(--panel-2); font-size: 34px; transition: transform .12s ease, box-shadow .12s ease; }
+.biblio-livre:hover .biblio-couverture, .biblio-livre:focus-visible .biblio-couverture { transform: translateY(-2px); box-shadow: var(--shadow); }
+.biblio-livre:focus-visible { outline: none; }
+.biblio-livre:focus-visible .biblio-couverture, .biblio-livre.choisi .biblio-couverture { outline: 2px solid var(--accent); outline-offset: 2px; }
+.biblio-titre { font-size: 12.5px; font-weight: 650; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden; overflow-wrap: anywhere; }
+.biblio-choisi { display: flex; align-items: center; gap: 12px; }
+.biblio-choisi-titre { flex: 1; min-width: 0; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lien.titre-seance:hover { color: var(--accent); text-decoration: underline; }
 /* Le suivi d'une séquence : son état d'après le cahier journal, et sa barre d'avancement. */
 .suivi-etat { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; padding: 1px 8px;
