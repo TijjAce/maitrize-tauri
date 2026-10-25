@@ -154,7 +154,7 @@ export function dureeEnClair(secondes: number): string {
 }
 
 const VERBES = [
-  "affiche", "afficher", "affiches", "affichez", "montre", "montrer", "montres", "montrez", "ouvre", "ouvrir", "ouvres",
+  "affiche", "afficher", "affiches", "affichez", "affichent", "la fiche", "l affiche", "montre", "montrer", "montres", "montrez", "ouvre", "ouvrir", "ouvres",
   "ouvrez", "lance", "lancer", "mets", "met", "mettre", "mettez", "remets", "remet", "va a", "va au", "va aux",
   "va sur", "va dans", "va voir", "aller a", "aller au", "aller sur", "passe a", "passe au", "passe aux", "passe sur",
   "passer a", "passer au", "passons a", "passons au", "retourne a", "retourne au", "retourne aux", "reviens a",
@@ -177,6 +177,9 @@ function sansVerbe(p: string): { reste: string; verbe: boolean } {
     if (p === v) return { reste: "", verbe: true };
     if (p.startsWith(v + " ")) return { reste: p.slice(v.length + 1), verbe: true };
   }
+  // Un verbe à une lettre près : Whisper écrit « Alfiche », « Affriche ».
+  const [premier, ...suite] = p.split(" ");
+  if (suite.length && VERBES.some((v) => !v.includes(" ") && memeMot(premier, v))) return { reste: suite.join(" "), verbe: true };
   return { reste: p, verbe: false };
 }
 
@@ -296,6 +299,8 @@ export function comprendre(phrase: string, ctx: ContexteTelecommande): Compris {
   const destination = destinationDite(reste, ctx.destinations.filter(pourLaClasse));
   if (destination) return { genre: "aller", destination };
   if (!verbe && FERMER.test(p) && p.split(" ").length <= 5) return { genre: "fermer" };
+  // Un seul mot, à une lettre de « ferme » ou d'« arrête » : « Femme ».
+  if (!p.includes(" ") && ["ferme", "fermer", "arrete", "quitte", "termine", "enleve"].some((f) => memeMot(p, f))) return { genre: "fermer" };
   if (minuteur) return { genre: "rien", pourquoi: "Combien de minutes ? Dites par exemple « minuteur cinq minutes »." };
   const cherche = aChercher(reste);
   if (!cherche.quoi) return { genre: "rien", pourquoi: "Que faut-il afficher ?" };
