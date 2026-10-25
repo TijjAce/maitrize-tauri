@@ -7,9 +7,9 @@
 // minutes ». Et ce qui est compris se montre sur le téléphone (`ceQuIlComprend`) : sans cela, on ne sait pas quoi
 // dire.
 //
-// Une règle : la voix ne montre que ce qu'on peut montrer à la classe. Ni les élèves, ni le cahier journal et ses
-// bilans, ni les réglages : ces pages ne s'ouvrent pas par la télécommande, et une note sur un élève s'écrit après
-// un « oui » sur le téléphone, sans jamais s'afficher au tableau.
+// La voix va dans tous les menus de ⌘K. Mais le Mac est projeté : les pages qui montrent les élèves — leur
+// dossier, le cahier journal, le planning, les réglages — ne s'affichent qu'après un « oui » sur le téléphone, et une
+// note sur un élève s'écrit après un « oui », sans jamais s'afficher au tableau.
 
 /** Une page de ⌘K que la voix peut ouvrir ; `rayon` : où « Que dire ? » la range (« CAA », « Fabriquer »). */
 export interface Destination { label: string; to: string; page?: string; onglet?: string; rayon?: string }
@@ -56,13 +56,15 @@ export function destinationsDe(
   ];
 }
 
-/** Les pages qu'on peut montrer à la classe ; les autres ne s'ouvrent pas à la voix. */
-const PAGES_DE_LA_CLASSE = new Set(["/jeux", "/caa", "/ressources", "/projets", "/ateliers", "/plan", "/referentiels"]);
+/** Les pages qui montrent les élèves — leurs noms, leurs notes, le cahier journal, le planning, les réglages. */
+const PAGES_A_CONFIRMER = new Set(["/", "/eleves", "/planning", "/organisation", "/assistant", "/reglages"]);
 
-/** Ce que la recherche trouve et qu'on peut montrer : ni un élève, ni une observation, ni un cahier journal. */
-export const TROUVAILLES_DE_LA_CLASSE = new Set(["sequence", "seance", "atelier", "espace", "jeu", "outil", "texte", "materiel"]);
+/** Ce que la recherche trouve des élèves : un élève, une observation, un créneau du cahier journal. */
+const TROUVAILLES_A_CONFIRMER = new Set(["eleve", "observation", "creneau"]);
 
-export const pourLaClasse = (d: Destination) => PAGES_DE_LA_CLASSE.has(d.to);
+/** Au tableau, après un « oui » sur le téléphone : le Mac est projeté devant la classe. */
+export const pageAConfirmer = (d: Destination) => PAGES_A_CONFIRMER.has(d.to);
+export const trouvailleAConfirmer = (kind: string) => TROUVAILLES_A_CONFIRMER.has(kind);
 
 /** Le nom d'une page, tel qu'on le dit : sans ce qu'ajoutent la parenthèse ou les deux-points. */
 export const nomDeLaPage = (label: string) => label.split(" (")[0].split(" : ")[0];
@@ -305,8 +307,9 @@ export function comprendre(phrase: string, ctx: ContexteTelecommande): Compris {
   const p = epurer(brut);
   if (!p) return { genre: "rien", pourquoi: "Que faut-il afficher ?" };
   if (QUE_DIRE.test(p)) return { genre: "aide" };
-  // Une note d'abord : son texte peut dire une durée (« a travaillé dix minutes seul »).
-  if (MOTS_DE_NOTE.has(p.split(" ")[0])) return noteDite(phrase, ctx.eleves);
+  // Une note d'abord : son texte peut dire une durée (« a travaillé dix minutes seul »). « Observations » seul est
+  // une page.
+  if (MOTS_DE_NOTE.has(p.split(" ")[0]) && p.includes(" ")) return noteDite(phrase, ctx.eleves);
   // Le minuteur en cours, ce qui est affiché, la page d'avant : des commandes brèves, comprises ici, sans attendre.
   if (PAUSE.test(p)) return { genre: "minuteurPause" };
   if (REPRENDRE.test(p)) return { genre: "minuteurReprendre" };
@@ -332,7 +335,7 @@ export function comprendre(phrase: string, ctx: ContexteTelecommande): Compris {
   if (/\bplein ecran\b/.test(p)) return { genre: "pleinEcran", actif: !/\b(quitte|quitter|sors|sortir|ferme|fermer|enleve|enlever|arrete|arreter|sans|plus)\b/.test(p) };
   const { reste, verbe } = sansVerbe(p);
   if (!reste) return { genre: "rien", pourquoi: "Que faut-il afficher ?" };
-  const destination = destinationDite(reste, ctx.destinations.filter(pourLaClasse));
+  const destination = destinationDite(reste, ctx.destinations);
   if (destination) return { genre: "aller", destination };
   if (!verbe && FERMER.test(p) && p.split(" ").length <= 5) return { genre: "fermer" };
   // Un seul mot, à une lettre de « ferme » ou d'« arrête » : « Femme ».
@@ -355,7 +358,7 @@ export const CLE_SECOURS = "telecommande:mistral";
 /** Ce que la voix peut ouvrir par son titre ; `ref` : son nom court (« s12 »), que Mistral rend au lieu du titre. */
 export interface ElementDeLaClasse {
   ref: string;
-  sorte: "sequence" | "seance" | "jeu" | "outil" | "texte";
+  sorte: "sequence" | "seance" | "jeu" | "outil" | "texte" | "dossier";
   id: string;
   titre: string;
   /** Ce que Mistral en lit : sa sorte, son titre — prénoms masqués —, sa séquence, « aujourd'hui ». */
@@ -368,6 +371,8 @@ export interface ListesDeLaClasse {
   jeux: { id: string; titre: string }[];
   outils: { id: string; titre: string }[];
   textes: { id: string; titre: string }[];
+  /** Les dossiers du bureau, par leur chemin (« Maths/Nombres »). */
+  dossiers: string[];
 }
 
 /** Les prénoms de la classe, masqués : un titre qui en porte un ne le donne pas à Mistral. */
@@ -378,8 +383,7 @@ export function masquerLesPrenoms(texte: string, eleves: { nom: string }[]): str
 
 /**
  * Ce que la voix peut ouvrir, pour Mistral : les séquences, leurs séances (« aujourd'hui » pour celles du jour), les
- * jeux, les outils et les textes de la classe, chacun avec un nom court. Ni élève, ni cahier journal : rien de ce
- * qu'on ne montre pas au tableau.
+ * jeux, les outils, les textes et les dossiers du bureau, chacun avec un nom court. Ni élève, ni cahier journal.
  */
 export function catalogue(listes: ListesDeLaClasse, eleves: { nom: string }[], aujourdhui: string): ElementDeLaClasse[] {
   const m = (t: string) => masquerLesPrenoms(t.trim() || "sans titre", eleves);
@@ -394,6 +398,10 @@ export function catalogue(listes: ListesDeLaClasse, eleves: { nom: string }[], a
   listes.jeux.forEach((j, i) => elements.push({ ref: `j${i + 1}`, sorte: "jeu", id: j.id, titre: j.titre, libelle: `jeu « ${m(j.titre)} »` }));
   listes.outils.forEach((o, i) => elements.push({ ref: `o${i + 1}`, sorte: "outil", id: o.id, titre: o.titre, libelle: `outil « ${m(o.titre)} »` }));
   listes.textes.forEach((t, i) => elements.push({ ref: `t${i + 1}`, sorte: "texte", id: t.id, titre: t.titre, libelle: `texte « ${m(t.titre)} »` }));
+  // Les dossiers des deux premiers niveaux : ceux qu'on nomme ; les plus profonds alourdiraient la consigne (essai
+  // du 25 octobre : 300 chemins, 12 000 jetons, une demi-seconde de plus).
+  listes.dossiers.filter((d) => d.split("/").length <= 2)
+    .forEach((d, i) => elements.push({ ref: `d${i + 1}`, sorte: "dossier", id: d, titre: d, libelle: `dossier « ${m(d.split("/").join(" › "))} »` }));
   return elements;
 }
 
@@ -409,12 +417,12 @@ export function estComplexe(phrase: string, destinations: Destination[]): boolea
 }
 
 /**
- * Ce qu'on dit à Mistral : toutes les actions possibles, chacune avec sa forme exacte ; les pages de la classe ; ce
- * que la voix peut ouvrir (`catalogue`) ; et ce qui est en cours. Rien d'autre de la classe. Sa réponse ne vaut
+ * Ce qu'on dit à Mistral : toutes les actions possibles, chacune avec sa forme exacte ; les pages de ⌘K ; ce que la
+ * voix peut ouvrir (`catalogue`) ; et ce qui est en cours. Rien d'autre de la classe. Sa réponse ne vaut
  * qu'une fois relue par `lireLesActions`.
  */
 export function consigneDeMistral(destinations: Destination[], elements: ElementDeLaClasse[], etat: string): string {
-  const pages = [...new Set(destinations.filter(pourLaClasse).map((d) => nomDeLaPage(d.label)))];
+  const pages = [...new Set(destinations.map((d) => nomDeLaPage(d.label)))];
   return `Tu es la télécommande vocale d'une classe : l'enseignant parle à son téléphone, et le Mac, projeté au tableau, affiche. Tu reçois la transcription de ce qu'il a dit ; elle peut contenir des fautes d'écoute. Réponds uniquement par un objet JSON {"actions":[…]} : les actions demandées, dans l'ordre où les faire — une seule, le plus souvent.
 
 Actions possibles, et aucune autre :
@@ -444,6 +452,7 @@ Règles :
 - Fais les actions dans l'ordre de la phrase.
 - « Minuteur N minutes », « lance N minutes », « un sablier de N minutes » : un nouveau minuteur, qui remplace celui en cours (pas de minuteur_arreter avant). minuteur_ajouter seulement si l'enseignant dit d'ajouter ou d'enlever du temps : « ajoute », « rajoute », « encore », « de plus », « enlève », « de moins ».
 - « Zoome », « agrandis », « plus grand », « en grand » : zoom plus ; « plus petit », « réduis » : zoom moins ; « taille normale » : zoom normal.
+- « Descends », « plus bas » : defiler bas ; « remonte », « monte », « plus haut » : defiler haut — jamais un zoom.
 - Un mot peut être mal entendu : « Calfiche » pour « Affiche », « la prise » pour « la frise ». Choisis ce qui ressemble à l'oreille à un nom des listes.
 - N'ouvre un élément que si son titre correspond vraiment à ce qui est dit ; sinon, « chercher » avec les mots dits. N'invente jamais une page ni une référence absente des listes.
 - « La séance d'aujourd'hui » : celle marquée « aujourd'hui ». ${elements.some((e) => e.libelle.endsWith("aujourd'hui")) ? "" : "Aujourd'hui, aucune séance n'est prévue : n'en choisis aucune pour elle."}
@@ -451,6 +460,7 @@ Règles :
 Exemples :
 - « Lance dix minutes et affiche la carte mentale » → {"actions":[{"action":"minuteur","secondes":600},{"action":"page","page":"Carte mentale"}]}
 - « Reviens en arrière et zoome » → {"actions":[{"action":"retour"},{"action":"zoom","sens":"plus"}]}
+- « Va sur le tableau de bord et remonte » → {"actions":[{"action":"page","page":"Tableau de bord"},{"action":"defiler","sens":"haut"}]}
 - « Encore deux minutes » → {"actions":[{"action":"minuteur_ajouter","secondes":120}]}
 - « Ouvre la séquence sur les volcans », absente des ÉLÉMENTS → {"actions":[{"action":"chercher","quoi":"volcans"}]}`;
 }
@@ -476,7 +486,7 @@ function lireUneAction(j: Record<string, unknown>, ctx: ContexteTelecommande, el
     case "minuteur_ajouter":
       return secondes !== 0 && Math.abs(secondes) <= 3 * 3600 ? { genre: "minuteurAjouter", secondes } : null;
     case "page": {
-      const d = ctx.destinations.filter(pourLaClasse).find((x) => nomDeLaPage(x.label) === j.page);
+      const d = ctx.destinations.find((x) => nomDeLaPage(x.label) === j.page);
       return d ? { genre: "aller", destination: d } : null;
     }
     case "ouvrir": {
@@ -494,9 +504,9 @@ function lireUneAction(j: Record<string, unknown>, ctx: ContexteTelecommande, el
     case "retour":
       return { genre: "retour" };
     case "chercher": {
-      // Des mots qui nomment une page de la classe — « frise » — l'ouvrent, comme dits à la télécommande.
+      // Des mots qui nomment une page — « frise » — l'ouvrent, comme dits à la télécommande.
       const quoi = plat(String(j.quoi ?? ""));
-      const d = quoi ? destinationDite(quoi, ctx.destinations.filter(pourLaClasse)) : null;
+      const d = quoi ? destinationDite(quoi, ctx.destinations) : null;
       if (d) return { genre: "aller", destination: d };
       const c = aChercher(quoi);
       return c.quoi ? { genre: "chercher", ...c } : null;
@@ -516,6 +526,7 @@ function lireUneAction(j: Record<string, unknown>, ctx: ContexteTelecommande, el
 /** Les mots qui ne nomment rien : la sorte, les verbes, les rangs. Un élément ne s'ouvre pas sur eux seuls. */
 const MOTS_QUI_NE_NOMMENT_RIEN = new Set([
   "sequence", "seance", "seances", "sequences", "jeu", "jeux", "outil", "outils", "texte", "textes", "fiche", "page",
+  "dossier", "dossiers",
   "ouvre", "ouvrir", "affiche", "afficher", "montre", "montrer", "lance", "mets", "premiere", "premier", "deuxieme",
   "second", "seconde", "troisieme", "quatrieme", "cinquieme", "derniere", "dernier", "suivante", "classe", "ecran", "plein",
 ]);
@@ -527,16 +538,18 @@ const MOTS_QUI_NE_NOMMENT_RIEN = new Set([
 function phraseNomme(phrase: string, e: ElementDeLaClasse): boolean {
   const dits = plat(phrase).split(" ").filter((m) => m.length >= 4 && !MOTS_QUI_NE_NOMMENT_RIEN.has(m)).map((m) => m.replace(/[sx]$/, ""));
   const libelle = plat(e.libelle).split(" ").map((m) => m.replace(/[sx]$/, ""));
-  return dits.some((d) => libelle.some((l) => d === l || memeMot(d, l)));
+  // Le même mot, à une lettre près, ou son début : « maths » nomme « Mathématiques ».
+  const debut = (a: string, b: string) => a.length >= 4 && b.startsWith(a);
+  return dits.some((d) => libelle.some((l) => d === l || memeMot(d, l) || debut(d, l) || debut(l, d)));
 }
 
 /** Au plus quatre actions d'une phrase : au-delà, ce n'est plus une commande. */
 const ACTIONS_MAX = 4;
 
 /**
- * La réponse de Mistral, relue : des actions connues, des pages de la classe — jamais une autre —, des éléments du
+ * La réponse de Mistral, relue : des actions connues, des pages de ⌘K — jamais une autre —, des éléments du
  * catalogue, un élève de la classe, des durées possibles. Ce qui sort de là tombe ; rien de valable, rien du tout.
- * La règle du tableau se tient ici, et non dans la consigne.
+ * Les règles se tiennent ici, et non dans la consigne ; celle du tableau — un « oui » avant les élèves — à l'affichage.
  */
 export function lireLesActions(reponse: string, ctx: ContexteTelecommande, elements: ElementDeLaClasse[], phrase: string): Compris[] | null {
   let j: unknown;
@@ -586,7 +599,7 @@ const rang = (rayon: string) => (rayon === PAGES ? 99 : RAYONS_D_ABORD.includes(
  */
 export function ceQuIlComprend(destinations: Destination[]): Groupe[] {
   const rayons = new Map<string, string[]>();
-  for (const d of destinations.filter(pourLaClasse)) {
+  for (const d of destinations) {
     const rayon = d.rayon ?? PAGES;
     const noms = rayons.get(rayon) ?? [];
     const nom = nomDeLaPage(d.label);
