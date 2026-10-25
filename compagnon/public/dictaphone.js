@@ -1816,11 +1816,125 @@ const TC_VIDE = { reliee: false, enCours: false, ecoute: false, entendu: "", fai
 let tc = { ...TC_VIDE };
 let tcMicro = null, tcCtx = null, tcNoeud = null, tcMorceaux = [], tcDepart = 0;
 
+/*
+ * L'écoute en direct, si le Mac la veut : pendant qu'on parle, la voix part à Voxtral Realtime (Mistral) avec un
+ * jeton d'une phrase que donne le Mac — jamais sa clé —, et ce qui est entendu s'affiche sous le bouton. Au lâcher,
+ * le texte part au Mac avec le son : compris, c'est fait tout de suite ; sinon le Mac transcrit le son lui-même.
+ * Sans réseau, sans jeton ou sans réponse à temps, le son part seul, comme avant : la phrase n'est jamais perdue.
+ */
+const DIRECT = "wss://api.mistral.ai/v1/audio/transcriptions/realtime";
+/** Ce qu'on attend du direct après le lâcher, au plus ; au-delà, le Mac transcrit. */
+const DIRECT_DELAI = 3000;
+let tcJeton = null;  // { jeton, modele, recu } — en mémoire seulement, prêt pour la phrase suivante
+let tcFlux = null;   // la phrase en cours, en direct
+
+/** Demande au Mac un jeton pour la phrase suivante ; rien s'il ne veut pas de l'écoute en direct. */
+async function preparerUnJeton() {
+  try {
+    const r = await invoke("telecommande_voix");
+    tcJeton = r.ok && r.voix && r.voix.jeton ? { ...r.voix, recu: Date.now() } : null;
+  } catch (e) {
+    tcJeton = null;  // le Mac transcrira
+  }
+  return tcJeton;
+}
+
+/**
+ * Le jeton de cette phrase : celui qui attend, s'il est frais, sinon un nouveau. Un jeton ne sert qu'une fois — à
+ * l'essai, Voxtral refusait de rouvrir avec le même —, et le suivant se prépare aussitôt, pour ne pas attendre.
+ */
+async function jetonDirect() {
+  let j = tcJeton && Date.now() - tcJeton.recu < 45000 ? tcJeton : null;
+  tcJeton = null;
+  if (!j) j = await preparerUnJeton();
+  tcJeton = null;
+  if (j) void preparerUnJeton();
+  return j;
+}
+
+/** De la voix en 16 bits, comme Voxtral la veut. */
+function versPcm16(bloc) {
+  const pcm = new Int16Array(bloc.length);
+  for (let i = 0; i < bloc.length; i++) { const v = Math.max(-1, Math.min(1, bloc[i])); pcm[i] = v < 0 ? v * 0x8000 : v * 0x7fff; }
+  return pcm;
+}
+
+/** Ouvre le direct pour la phrase qui commence ; ce qui est dit avant qu'il soit prêt l'attend. */
+async function ouvrirLeFlux() {
+  const flux = { ws: null, pret: false, rate: false, enAttente: [], texte: "" };
+  flux.fini = new Promise((resoudre) => { flux.resoudre = resoudre; });
+  tcFlux = flux;
+  const j = await jetonDirect();
+  if (!j || flux.rate) { flux.rate = true; flux.resoudre(null); return; }  // pas de direct, ou phrase abandonnée
+  let ws;
+  try { ws = new WebSocket(`${DIRECT}?model=${encodeURIComponent(j.modele)}`, ["realtime", j.jeton]); }
+  catch (e) { flux.rate = true; flux.resoudre(null); return; }
+  flux.ws = ws;
+  ws.onmessage = (m) => {
+    let ev;
+    try { ev = JSON.parse(m.data); } catch (e) { return; }
+    if (ev.type === "session.created") {
+      // Les réglages avant le premier son : en français. Sans mots favorisés : à l'essai, ils rendaient parfois un
+      // texte vide, sans rien gagner.
+      ws.send(JSON.stringify({ type: "session.update", session: {
+        audio_format: { encoding: "pcm_s16le", sample_rate: TAUX }, target_streaming_delay_ms: 480, language: "fr",
+      } }));
+      flux.pret = true;
+      envoyerAuDirect(flux, false);
+    } else if (ev.type === "transcription.text.delta") {
+      flux.texte += ev.text || "";
+      const l = document.getElementById("tc-legende");
+      if (l && tc.ecoute && flux.texte.trim()) l.textContent = `« ${flux.texte.trim()} »`;
+    } else if (ev.type === "transcription.done") {
+      flux.resoudre(typeof ev.text === "string" ? ev.text : flux.texte);
+    } else if (ev.type === "error") {
+      flux.rate = true; flux.resoudre(null);
+    }
+  };
+  ws.onerror = () => { flux.rate = true; flux.resoudre(null); };
+  ws.onclose = () => { flux.resoudre(flux.rate ? null : flux.texte || null); };
+}
+
+/** La voix en attente part au direct, par dixièmes de seconde — ou tout de suite, à la fin. */
+function envoyerAuDirect(flux, toutDeSuite) {
+  if (!flux.pret || flux.rate || !flux.enAttente.length) return;
+  const n = flux.enAttente.reduce((t, b) => t + b.length, 0);
+  if (!toutDeSuite && n < TAUX / 10) return;
+  const pcm = new Int16Array(n);
+  let o = 0;
+  for (const b of flux.enAttente) { pcm.set(b, o); o += b.length; }
+  flux.enAttente = [];
+  try { flux.ws.send(JSON.stringify({ type: "input_audio.append", audio: enBase64(new Uint8Array(pcm.buffer)) })); }
+  catch (e) { flux.rate = true; flux.resoudre(null); }
+}
+
+/** La fin de la phrase en direct : le reste de la voix, « fin », puis le texte ; rien si le direct a manqué ou tarde. */
+async function finDuDirect(flux) {
+  const limite = Date.now() + DIRECT_DELAI;
+  while (!flux.pret && !flux.rate && Date.now() < limite) await new Promise((r) => setTimeout(r, 40));
+  let texte = null;
+  if (flux.pret && !flux.rate) {
+    envoyerAuDirect(flux, true);
+    try { flux.ws.send(JSON.stringify({ type: "input_audio.end" })); } catch (e) { flux.rate = true; }
+    if (!flux.rate) texte = await Promise.race([flux.fini, new Promise((r) => setTimeout(() => r(null), Math.max(0, limite - Date.now())))]);
+  }
+  fermerLeDirect(flux);
+  return texte && texte.trim() ? texte.trim() : null;
+}
+
+function fermerLeDirect(flux) {
+  if (!flux) return;
+  flux.rate = true;
+  try { if (flux.ws) flux.ws.close(); } catch (e) { /* déjà fermé */ }
+}
+
 async function relierTelecommande() {
   tc.enCours = true; tc.souci = ""; rendre();
   try {
     const r = await invoke("telecommande_relier");
     tc = { ...TC_VIDE, reliee: true, fait: r.fait || "Relié au Mac.", ok: true };
+    tcJeton = null;
+    void preparerUnJeton();  // prêt pour la première phrase
   } catch (e) {
     tc.souci = String(e);
   } finally {
@@ -1830,6 +1944,7 @@ async function relierTelecommande() {
 
 function delierTelecommande() {
   arreterLEcoute();
+  fermerLeDirect(tcFlux); tcFlux = null; tcJeton = null;
   void invoke("telecommande_delier");
   tc = { ...TC_VIDE };
   rendre();
@@ -1872,9 +1987,11 @@ async function ecouterLaCommande() {
   tc.ecoute = true; tc.souci = "";
   const bouton = document.getElementById("tc-micro");
   if (bouton) { bouton.classList.add("rouge"); const l = document.getElementById("tc-legende"); if (l) l.textContent = "Je vous écoute…"; }
+  void ouvrirLeFlux();  // en même temps que le micro
   try {
     tcMicro = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (e) {
+    fermerLeDirect(tcFlux); tcFlux = null;
     tc.ecoute = false; tc.souci = "Le micro n'est pas accessible."; rendre(); return;
   }
   if (!tc.ecoute) { arreterLEcoute(); return; }  // déjà relâché pendant que le micro s'ouvrait
@@ -1883,7 +2000,11 @@ async function ecouterLaCommande() {
   tcNoeud = tcCtx.createScriptProcessor(4096, 1, 1);
   tcMorceaux = [];
   tcDepart = Date.now();
-  tcNoeud.onaudioprocess = (e) => { tcMorceaux.push(reechantillonner(new Float32Array(e.inputBuffer.getChannelData(0)), tcCtx.sampleRate)); };
+  tcNoeud.onaudioprocess = (e) => {
+    const bloc = reechantillonner(new Float32Array(e.inputBuffer.getChannelData(0)), tcCtx.sampleRate);
+    tcMorceaux.push(bloc);
+    if (tcFlux && !tcFlux.rate) { tcFlux.enAttente.push(versPcm16(bloc)); envoyerAuDirect(tcFlux, false); }
+  };
   const muet = tcCtx.createGain();
   muet.gain.value = 0;
   source.connect(tcNoeud); tcNoeud.connect(muet); muet.connect(tcCtx.destination);
@@ -1899,15 +2020,26 @@ function arreterLEcoute() {
   return morceaux;
 }
 
-/** Le bouton relâché : la phrase part vers le Mac. */
+/** Le bouton relâché : la phrase part au Mac — le son, et le texte du direct s'il est là. */
 async function envoyerLaCommande() {
   if (!tc.ecoute) return;
   tc.ecoute = false;
   const duree = Date.now() - tcDepart;
   const morceaux = arreterLEcoute();
-  if (!tcDepart || duree < 500 || !morceaux.length) { tc.souci = "Gardez le bouton appuyé pendant que vous parlez."; rendre(); return; }
+  const flux = tcFlux;
+  tcFlux = null;
+  if (!tcDepart || duree < 500 || !morceaux.length) {
+    fermerLeDirect(flux);
+    tc.souci = "Gardez le bouton appuyé pendant que vous parlez."; rendre(); return;
+  }
   tcDepart = 0;
-  await auTableau("telecommande_parler", { audioB64: enBase64(versWav(morceaux)) });
+  let texte = null;
+  if (flux) {
+    const l = document.getElementById("tc-legende");
+    if (l) l.textContent = "Un instant…";
+    texte = await finDuDirect(flux);
+  }
+  await auTableau("telecommande_parler", { audioB64: enBase64(versWav(morceaux)), texte });
 }
 
 function enBase64(octets) {

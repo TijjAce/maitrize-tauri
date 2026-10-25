@@ -82,11 +82,13 @@ pub async fn telecommande_relier(app: tauri::AppHandle) -> R<Reponse> {
     Err(INJOIGNABLE.into())
 }
 
-/// Une phrase dite : WAV 16 kHz mono, en base64. L'ordinateur la transcrit, la comprend et agit.
+/// Une phrase dite : WAV 16 kHz mono, en base64, et ce qu'en a entendu l'écoute en direct, s'il y en a eu une.
+/// L'ordinateur essaie ce texte d'abord ; sinon il transcrit le son, le comprend et agit.
 #[tauri::command]
-pub async fn telecommande_parler(audio_b64: String) -> R<Reponse> {
+pub async fn telecommande_parler(audio_b64: String, texte: Option<String>) -> R<Reponse> {
     // Transcrire puis agir prend quelques secondes ; la première phrase charge le modèle de l'ordinateur.
-    envoyer(&lien()?, Demande { genre: Genre::Parole, audio: audio_b64, ..Default::default() }, Duration::from_secs(45)).await
+    let d = Demande { genre: Genre::Parole, audio: audio_b64, texte: texte.unwrap_or_default(), ..Default::default() };
+    envoyer(&lien()?, d, Duration::from_secs(45)).await
 }
 
 /// Une phrase écrite, quand on ne peut pas parler.
@@ -106,6 +108,13 @@ pub async fn telecommande_decider(id: String, oui: bool) -> R<Reponse> {
 #[tauri::command]
 pub async fn telecommande_aide() -> R<Reponse> {
     envoyer(&lien()?, Demande { genre: Genre::Aide, ..Default::default() }, Duration::from_secs(10)).await
+}
+
+/// Un jeton pour écouter en direct chez Mistral (Voxtral Realtime), si l'ordinateur le veut : de courte durée, pour
+/// ce seul modèle. La clé reste sur l'ordinateur ; le téléphone ne garde le jeton qu'en mémoire.
+#[tauri::command]
+pub async fn telecommande_voix() -> R<Reponse> {
+    envoyer(&lien()?, Demande { genre: Genre::Voix, ..Default::default() }, Duration::from_secs(10)).await
 }
 
 /// Oublie la séance : il faudra la relier de nouveau.

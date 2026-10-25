@@ -36,7 +36,8 @@ pub enum Genre {
     /// L'ordinateur est-il là ?
     #[default]
     Bonjour,
-    /// Une phrase dite : `audio` en porte le son.
+    /// Une phrase dite : `audio` en porte le son, et `texte` ce qu'en a entendu l'écoute en direct, s'il y en a eu
+    /// une — l'ordinateur l'essaie d'abord, et ne transcrit le son que s'il ne la comprend pas.
     Parole,
     /// Une phrase écrite : `texte`.
     Texte,
@@ -46,6 +47,8 @@ pub enum Genre {
     Annuler,
     /// Ce que l'ordinateur comprend : de quoi le montrer sur le téléphone (« Que dire ? »).
     Aide,
+    /// De quoi écouter en direct chez Mistral (Voxtral Realtime) : un jeton de courte durée — la clé reste ici.
+    Voix,
 }
 
 /// Une demande du téléphone, scellée pour l'ordinateur.
@@ -76,6 +79,18 @@ pub struct Groupe {
     pub a_toucher: bool,
 }
 
+/// De quoi écouter en direct : le téléphone envoie la voix à Voxtral Realtime pendant qu'on parle, avec un jeton
+/// de courte durée valable pour ce seul modèle, puis le texte à l'ordinateur. La clé ne quitte jamais l'ordinateur.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct VoixEnDirect {
+    pub jeton: String,
+    pub modele: String,
+    /// Quand le jeton expire (ISO 8601).
+    #[serde(default)]
+    pub expire: String,
+}
+
 /// Ce que l'ordinateur répond.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
@@ -96,6 +111,9 @@ pub struct Reponse {
     /// Ce que l'ordinateur comprend, en réponse à `Genre::Aide`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub comprend: Vec<Groupe>,
+    /// De quoi écouter en direct, en réponse à `Genre::Voix`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voix: Option<VoixEnDirect>,
 }
 
 /// Une adresse du réseau local, et rien d'autre : la télécommande ne parle jamais qu'à un ordinateur de la classe
@@ -163,6 +181,14 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(dechiffrer::<Reponse>(&cle_retour, &chiffrer(&cle_retour, &aide).unwrap()).unwrap(), aide);
+        let voix = Reponse {
+            ok: true,
+            voix: Some(VoixEnDirect { jeton: "rt_x".into(), modele: "m".into(), expire: "2026-10-25T19:30:00Z".into() }),
+            ..Default::default()
+        };
+        let blob = chiffrer(&cle_retour, &voix).unwrap();
+        assert!(!String::from_utf8_lossy(&blob).contains("rt_x"), "le jeton ne passe pas en clair");
+        assert_eq!(dechiffrer::<Reponse>(&cle_retour, &blob).unwrap(), voix);
     }
 
     #[test]
