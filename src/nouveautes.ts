@@ -18,6 +18,16 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.37",
+    titre: "De la couleur et des tableaux dans les séances, et une bibliothèque pour choisir une séquence ou une méthodologie",
+    points: [
+      { quoi: "Le déroulement d'une séance prend de la couleur : « 🎨 » colore le texte — rouge, orange, vert, bleu, violet — ou le surligne, et retire l'un ou l'autre. Les couleurs se voient aussi à la lecture et à l'impression.", ou: "Une séance › Déroulement › 🎨" },
+      { quoi: "Et des tableaux : « ▦ Tableau » en pose un, avec sa ligne d'en-tête. ⇥ passe à la case suivante, ↩ à celle du dessous, et une ligne s'ajoute au bout ; le clic droit dans une case ajoute ou retire des lignes et des colonnes, met ou ôte l'en-tête. Les tablettes, le PDF du jour et le téléphone lisent le tableau ligne à ligne.", ou: "Une séance › Déroulement › ▦ Tableau" },
+      { quoi: "Choisir une autre séquence ou une méthodologie se fait dans une bibliothèque, comme celle de « Citer un passage » : des rayons, une couverture par démarche aux couleurs de sa matière, un filtre par classe et une recherche. Un clic ouvre sa fiche — ce qu'elle fait, sa source, ses séances —, puis « Poser cette démarche ».", ou: "Une séquence sans séance · Nouvelle séquence › Un autre déroulement… · Une séance › 🧭 Démarche…" },
+      { quoi: "Séquences toutes faites et méthodologies ne se mélangent plus : les séquences d'histoire-géographie rejoignent les séquences toutes faites, rangées par classe et par domaine comme les maths et le français ; les méthodologies — quatre temps, enseignement explicite, La Martinière, démarche d'investigation… — ont leurs rayons à elles. Les cartes du formulaire disent ce qu'est chaque déroulement.", ou: "Plan de travail › Nouvelle séquence" },
+    ],
+  },
+  {
     version: "1.6.36",
     titre: "⌘Z partout : ce qui vient d'être fait se défait, toutes les suppressions comprises",
     points: [
