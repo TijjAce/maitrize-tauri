@@ -1,21 +1,23 @@
 //! Version portable : l'app desktop sert un instantané de données sur le
 //! réseau local (WiFi). Le téléphone l'ouvre dans son navigateur via un QR
-//! code. Protégé par un jeton, démarré/arrêté à la demande. Rien ne transite
-//! par internet : tout reste sur le réseau local.
+//! code. Rien ne transite par internet : tout reste sur le réseau local.
 //!
-//! Tout est en lecture, à une exception : les temps d'observation. Une
-//! observation se remplit en classe, debout, à côté de l'élève — c'est le
-//! téléphone qu'on a en main à ce moment-là, pas l'ordinateur. Le téléphone
-//! ne peut que **remplir les colonnes d'une fiche déjà posée** : il ne crée
-//! rien, ne change ni l'élève ni l'axe, et ne touche à rien d'autre.
+//! Le WiFi de l'école est partagé, et la page y passe en clair. D'où trois
+//! précautions, choisies par l'enseignant (octobre 2026) : un code neuf à
+//! chaque ouverture, qui ne vaut que jusqu'à la fermeture ; un arrêt tout
+//! seul, deux heures après la dernière visite du téléphone et au plus tard
+//! dix heures après l'ouverture ; et, de l'élève, rien que son nom et son
+//! niveau — les temps d'observation n'y passent plus.
+//!
+//! Tout est en lecture, à une exception : une dictée enregistrée dans la page
+//! se dépose sur l'ordinateur, qui la range.
 
 use crate::db::Db;
-use crate::models::{Creneau, Eleve, ObservationEleve, ProgrammationFinale, Seance, Sequence};
+use crate::models::{Creneau, Eleve, ProgrammationFinale, Seance, Sequence};
 use std::net::UdpSocket;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
-use std::time::Duration;
-use serde::Deserialize;
+use std::time::{Duration, SystemTime};
 use tauri::{Emitter, Manager, State};
 use uuid::Uuid;
 
@@ -70,8 +72,6 @@ struct Bundle {
     seances: Vec<Seance>,
     eleves: Vec<EleveVuDuTelephone>,
     programmations: Vec<ProgrammationFinale>,
-    /// Les temps d'observation posés : le téléphone, lui, peut les remplir.
-    observations: Vec<ObservationEleve>,
 }
 
 /**
@@ -174,13 +174,6 @@ fn snapshot(db: &State<Db>) -> R<String> {
         rows.collect::<rusqlite::Result<Vec<_>>>().map_err(e)?
     };
 
-    let observations = {
-        let mut st = c
-            .prepare("SELECT * FROM observations_eleve ORDER BY date DESC, date_creation DESC LIMIT 60")
-            .map_err(e)?;
-        let rows = st.query_map([], ObservationEleve::from_row).map_err(e)?;
-        rows.collect::<rusqlite::Result<Vec<_>>>().map_err(e)?
-    };
 
     let bundle = Bundle {
         planning,
@@ -188,13 +181,12 @@ fn snapshot(db: &State<Db>) -> R<String> {
         seances,
         eleves: eleves.into_iter().map(EleveVuDuTelephone::from).collect(),
         programmations,
-        observations,
     };
     serde_json::to_string(&bundle).map_err(e)
 }
 
-// L'instantané parcourt planning, séquences, élèves et observations : cela
-// n'a pas sa place sur le fil qui dessine la fenêtre.
+// L'instantané parcourt planning, séquences et élèves : cela n'a pas sa place
+// sur le fil qui dessine la fenêtre.
 #[tauri::command(async)]
 pub fn portable_demarrer(app: tauri::AppHandle, db: State<Db>, portable: State<Portable>) -> R<PortableInfo> {
     // Arrêter une instance précédente éventuelle.
@@ -205,13 +197,12 @@ pub fn portable_demarrer(app: tauri::AppHandle, db: State<Db>, portable: State<P
     // Instantané des données, figé au moment du clic (lecture seule).
     let data_json = snapshot(&db)?;
 
-    // Le même jeton et le même port d'une fois sur l'autre.
-    //
-    // Tant qu'on ouvrait la page par un QR code, un jeton tiré au hasard à
-    // chaque démarrage n'était pas gênant : on rescannait. Mais le dictaphone
-    // du téléphone, lui, garde l'adresse et revient tout seul — il faut donc
-    // qu'elle vaille encore demain.
-    let token = jeton_durable(&db);
+    // Un code neuf à chaque ouverture : celui d'hier ne vaut plus rien. Le
+    // dictaphone, qui gardait l'adresse et revenait tout seul, passe par Nuage
+    // depuis octobre 2026 ; la page du navigateur, elle, se rouvre en
+    // rescannant le QR code.
+    let token = Uuid::new_v4().to_string();
+    oublier_le_jeton_durable(&db);
     let server = serveur_stable()?;
     let port = server
         .server_addr()
@@ -224,22 +215,36 @@ pub fn portable_demarrer(app: tauri::AppHandle, db: State<Db>, portable: State<P
     // serveur l'emporte juste après.
     let hote = nom_local();
     let url_nom = if hote.is_empty() { String::new() } else { format!("http://{hote}:{port}/?t={token}") };
-    // C'est le nom qu'on encode dans le QR code : un téléphone qui le scanne
-    // retient alors une adresse qui vaudra encore demain.
+    // C'est le nom qu'on encode dans le QR code : il survit à un changement
+    // d'adresse IP tant que le partage reste ouvert.
     let a_scanner = if url_nom.is_empty() { url.clone() } else { url_nom.clone() };
     let qr = qr_svg(&a_scanner);
 
     let stop = Arc::new(AtomicBool::new(false));
     let stop_thread = stop.clone();
     let page = PAGE_HTML.to_string();
-    std::thread::spawn(move || loop {
-        if stop_thread.load(Ordering::Relaxed) {
-            break;
-        }
-        match server.recv_timeout(Duration::from_millis(300)) {
-            Ok(Some(req)) => repondre(req, &token, &page, &data_json, &app),
-            Ok(None) => continue,
-            Err(_) => break,
+    std::thread::spawn(move || {
+        // L'heure de l'horloge, pas celle du processeur : celle-ci s'arrête pendant la veille, et un partage ouvert
+        // la veille, couvercle fermé, serait resté ouvert le lendemain.
+        let ouvert = SystemTime::now();
+        let mut derniere_visite = ouvert;
+        loop {
+            if stop_thread.load(Ordering::Relaxed) {
+                break;
+            }
+            if doit_se_fermer(ouvert, derniere_visite, SystemTime::now()) {
+                fermer_tout_seul(&app, &stop_thread);
+                break;
+            }
+            match server.recv_timeout(Duration::from_millis(300)) {
+                Ok(Some(req)) => {
+                    if repondre(req, &token, &page, &data_json, &app) {
+                        derniere_visite = SystemTime::now();
+                    }
+                }
+                Ok(None) => continue,
+                Err(_) => break,
+            }
         }
     });
 
@@ -248,9 +253,38 @@ pub fn portable_demarrer(app: tauri::AppHandle, db: State<Db>, portable: State<P
     Ok(info)
 }
 
-/// Le port qu'on demande d'abord : le même chaque jour, pour que le
-/// téléphone retrouve l'ordinateur sans qu'on lui redise où il est.
+/// Le port qu'on demande d'abord : le même chaque jour, l'adresse ne change
+/// que par son code.
 pub const PORT_PORTABLE: u16 = 8787;
+
+/// Sans visite du téléphone pendant ce temps, le partage se ferme tout seul.
+const INACTIVITE_MAX: Duration = Duration::from_secs(2 * 3600);
+/// Et au plus tard ce temps après son ouverture : la journée de classe, pas davantage.
+const OUVERTURE_MAX: Duration = Duration::from_secs(10 * 3600);
+
+/// Le partage ouvert à `ouvert`, visité pour la dernière fois à `visite`, doit-il se fermer à `maintenant` ? Une
+/// horloge qu'on recule ne le garde pas ouvert plus longtemps.
+fn doit_se_fermer(ouvert: SystemTime, visite: SystemTime, maintenant: SystemTime) -> bool {
+    let depuis = |t: SystemTime| maintenant.duration_since(t).unwrap_or_default();
+    depuis(visite) >= INACTIVITE_MAX || depuis(ouvert) >= OUVERTURE_MAX || maintenant < ouvert
+}
+
+/// Ferme le partage qui s'arrête de lui-même — s'il est encore celui qui est ouvert — et le dit à la fenêtre.
+fn fermer_tout_seul(app: &tauri::AppHandle, stop: &Arc<AtomicBool>) {
+    let portable = app.state::<Portable>();
+    let mut garde = portable.0.lock().unwrap_or_else(PoisonError::into_inner);
+    if garde.as_ref().is_some_and(|(s, _)| Arc::ptr_eq(s, stop)) {
+        *garde = None;
+        drop(garde);
+        let _ = app.emit("portable:ferme", ());
+        crate::commands::diag_ecrire("PARTAGE WIFI fermé tout seul".to_string());
+    }
+}
+
+/// Le code du téléphone, s'il est le bon : le paramètre `t` de l'adresse, en entier.
+fn autorise(url: &str, token: &str) -> bool {
+    !token.is_empty() && parametre(url, "t") == token
+}
 
 /**
  * Le serveur, sur le port habituel si possible.
@@ -266,21 +300,9 @@ fn serveur_stable() -> R<tiny_http::Server> {
     }
 }
 
-/**
- * Le jeton de ce poste, fabriqué une fois et gardé.
- *
- * Il ne se synchronise pas : c'est l'adresse de cette machine-ci, pas une
- * donnée de classe. Un nouveau poste s'en fabrique un autre.
- */
-fn jeton_durable(db: &State<Db>) -> String {
-    let c = db.lock();
-    let garde = crate::sync::get_setting(&c, "portableJeton");
-    if !garde.trim().is_empty() {
-        return garde;
-    }
-    let neuf = Uuid::new_v4().to_string();
-    let _ = crate::sync::set_setting(&c, "portableJeton", &neuf);
-    neuf
+/// Le code permanent des versions d'avant (réglage « portableJeton ») : il ne sert plus, il s'en va.
+fn oublier_le_jeton_durable(db: &State<Db>) {
+    db.lock().execute("DELETE FROM settings WHERE cle = 'portableJeton'", []).ok();
 }
 
 #[tauri::command]
@@ -303,48 +325,6 @@ pub fn portable_etat(portable: State<Portable>) -> R<Option<PortableInfo>> {
         .unwrap_or_else(PoisonError::into_inner)
         .as_ref()
         .map(|(_, info)| info.clone()))
-}
-
-/// Ce que le téléphone a le droit d'écrire : les colonnes d'une fiche déjà
-/// posée, rien d'autre. Il ne crée pas de fiche, ne change pas d'élève, ne
-/// touche pas à l'axe — le cadre de l'observation se décide sur l'ordinateur.
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ObservationRemplie {
-    id: String,
-    #[serde(default)]
-    note: String,
-    #[serde(default)]
-    reussites: String,
-    #[serde(default)]
-    difficultes: String,
-    #[serde(default)]
-    hypotheses: String,
-    #[serde(default)]
-    amenagements: String,
-    #[serde(default)]
-    reajustement: String,
-}
-
-/// Écrit ce que le téléphone envoie, et dit si c'est passé.
-fn ecrire_observation(app: &tauri::AppHandle, corps: &str) -> Result<(), String> {
-    let o: ObservationRemplie = serde_json::from_str(corps).map_err(e)?;
-    let db = app.state::<Db>();
-    let c = db.lock();
-    let touchees = c
-        .execute(
-            "UPDATE observations_eleve SET note=?2, reussites=?3, difficultes=?4, hypotheses=?5,
-             amenagements=?6, reajustement=?7, date_maj=?8 WHERE id=?1",
-            rusqlite::params![
-                o.id, o.note, o.reussites, o.difficultes, o.hypotheses, o.amenagements,
-                o.reajustement, crate::models::now_iso()
-            ],
-        )
-        .map_err(e)?;
-    if touchees == 0 {
-        return Err("Cette observation n'existe plus sur l'ordinateur.".into());
-    }
-    Ok(())
 }
 
 /// Un paramètre de l'URL, tel qu'il est écrit.
@@ -442,60 +422,10 @@ fn retenir(c: &rusqlite::Connection, id: &str) {
     .ok();
 }
 
-/**
- * Les créneaux d'un jour, pour le compagnon — et rien d'autre.
- *
- * Le téléphone a besoin de savoir sous quoi il enregistre : « 10h12 » ne dit
- * rien, « Numération » si. On ne lui envoie donc que l'heure et l'intitulé de
- * chaque créneau du jour — ni le prévu, ni le bilan, qui parlent des élèves.
- * Un téléphone perdu n'y trouverait qu'un emploi du temps sans personne
- * dedans.
- */
-fn creneaux_du_jour(app: &tauri::AppHandle, jour: &str) -> Result<String, String> {
-    let db = app.state::<Db>();
-    let c = db.lock();
-    let mut st = c
-        .prepare(
-            "SELECT id, heure_debut, heure_fin, matiere FROM creneaux
-              WHERE substr(date,1,10) = ?1 ORDER BY heure_debut",
-        )
-        .map_err(|er| er.to_string())?;
-    let lignes = st
-        .query_map([jour], |r| {
-            Ok(serde_json::json!({
-                "id": r.get::<_, String>(0)?,
-                "debut": r.get::<_, String>(1)?,
-                "fin": r.get::<_, String>(2)?,
-                "matiere": r.get::<_, String>(3).unwrap_or_default(),
-            }))
-        })
-        .map_err(|er| er.to_string())?
-        .collect::<rusqlite::Result<Vec<_>>>()
-        .map_err(|er| er.to_string())?;
-    serde_json::to_string(&serde_json::json!({ "jour": jour, "creneaux": lignes }))
-        .map_err(|er| er.to_string())
-}
-
 /// Au-delà, ce n'est plus une note prise en classe.
 const NOTE_MAX: usize = 4000;
 
-/**
- * Reçoit une note écrite du téléphone : du texte, et l'heure.
- *
- * Tout ne se dicte pas. En réunion, dans un couloir, dans une salle bruyante,
- * on écrit deux lignes au lieu de parler — et elles se rangent exactement
- * comme un vocal, au créneau de l'heure. Rien à transcrire : le texte est
- * déjà là, la note arrive donc à l'état « transcrit ».
- */
-fn ecrire_note(app: &tauri::AppHandle, url: &str, texte: &str) -> Result<String, String> {
-    let id = crate::models::new_id();
-    let db = app.state::<Db>();
-    ranger_note(&db.lock(), &id, &parametre(url, "debut"), &parametre(url, "creneau"), "", texte)?;
-    let _ = app.emit("vocal:recu", id.clone());
-    Ok(id)
-}
-
-/// Range une note reçue, par le WiFi comme par le relais ; faux si elle était déjà là.
+/// Range une note reçue par le relais ; faux si elle était déjà là.
 pub(crate) fn ranger_note(
     c: &rusqlite::Connection, id: &str, debut: &str, creneau: &str, destination: &str, texte: &str,
 ) -> Result<bool, String> {
@@ -519,11 +449,10 @@ pub(crate) fn ranger_note(
     Ok(true)
 }
 
-/// Ce que le téléphone envoie, plafonné : un vocal d'une heure, une page photographiée, une note. Au-delà — ou si
-/// l'envoi annonce lui-même plus —, rien n'est lu.
+/// Ce que le téléphone envoie, plafonné : un vocal d'une heure, une page photographiée. Au-delà — ou si l'envoi
+/// annonce lui-même plus —, rien n'est lu.
 const MAX_VOCAL: u64 = 300_000_000;
 const MAX_PHOTO: u64 = 60_000_000;
-const MAX_TEXTE: u64 = 1_000_000;
 
 /// Le corps d'une requête, s'il ne dépasse pas `max` octets.
 fn lire_corps(req: &mut tiny_http::Request, max: u64) -> Option<Vec<u8>> {
@@ -535,14 +464,10 @@ fn lire_corps(req: &mut tiny_http::Request, max: u64) -> Option<Vec<u8>> {
     (octets.len() as u64 <= max).then_some(octets)
 }
 
-/// Le texte d'une requête, s'il ne dépasse pas `max` octets.
-fn lire_texte(req: &mut tiny_http::Request, max: u64) -> Option<String> {
-    String::from_utf8(lire_corps(req, max)?).ok()
-}
-
-fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &str, app: &tauri::AppHandle) {
+/// Répond au téléphone ; rend vrai si c'était bien lui (le bon code) : une visite.
+fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &str, app: &tauri::AppHandle) -> bool {
     let url = req.url().to_string();
-    let autorise = url.contains(&format!("t={token}"));
+    let autorise = autorise(&url, token);
     // Le dépôt d'un vocal se lit avant toute réponse : le corps ne se relit pas.
     if autorise && url.starts_with("/api/vocal") {
         let (code, body) = match lire_corps(&mut req, MAX_VOCAL).map(|octets| ecrire_vocal(app, &url, octets)) {
@@ -553,74 +478,7 @@ fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &st
         let header = tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json; charset=utf-8"[..])
             .expect("en-tete valide");
         let _ = req.respond(tiny_http::Response::from_string(body).with_status_code(code).with_header(header));
-        return;
-    }
-    // Une note écrite : le corps est le texte, rien d'autre.
-    if autorise && url.starts_with("/api/note") {
-        let (code, body) = match lire_texte(&mut req, MAX_TEXTE).map(|texte| ecrire_note(app, &url, &texte)) {
-            Some(Ok(id)) => (200, format!("{{\"ok\":true,\"id\":{}}}", serde_json::to_string(&id).unwrap_or_default())),
-            Some(Err(message)) => (400, format!("{{\"ok\":false,\"erreur\":{}}}", serde_json::to_string(&message).unwrap_or_default())),
-            None => (400, "{\"ok\":false}".to_string()),
-        };
-        let header = tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json; charset=utf-8"[..])
-            .expect("en-tete valide");
-        let _ = req.respond(tiny_http::Response::from_string(body).with_status_code(code).with_header(header));
-        return;
-    }
-    // Le compagnon demande les créneaux du jour, pour dire sous quoi il
-    // enregistre. Rien de nominatif n'y figure.
-    if autorise && url.starts_with("/api/creneaux") {
-        let jour = parametre(&url, "jour");
-        let (code, body) = match creneaux_du_jour(app, &jour) {
-            Ok(json) => (200, json),
-            Err(message) => (400, format!("{{\"erreur\":{}}}", serde_json::to_string(&message).unwrap_or_default())),
-        };
-        let header = tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json; charset=utf-8"[..])
-            .expect("en-tete valide");
-        let _ = req.respond(tiny_http::Response::from_string(body).with_status_code(code).with_header(header));
-        return;
-    }
-    // Le compagnon demande seulement si l'ordinateur est là.
-    if url.starts_with("/api/bonjour") {
-        let header = tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json; charset=utf-8"[..])
-            .expect("en-tete valide");
-        let body = if autorise { "{\"ok\":true}" } else { "{\"ok\":false}" };
-        let _ = req.respond(tiny_http::Response::from_string(body).with_status_code(if autorise { 200 } else { 403 }).with_header(header));
-        return;
-    }
-    // Une page scannée par le compagnon : l'image, rangée dans Fichiers/, et
-    // l'événement `photo:recue` que la fenêtre « Manuels » attend.
-    if autorise && url.starts_with("/api/photo") {
-        let ext = match parametre(&url, "ext").as_str() { "png" => "png", "pdf" => "pdf", _ => "jpg" };
-        let octets = lire_corps(&mut req, MAX_PHOTO).unwrap_or_default();
-        let (code, body) = if !octets.is_empty() {
-            let fichier = format!("{}.{}", Uuid::new_v4(), ext);
-            match crate::db::ecrire_fichier_joint(&crate::db::fichiers_dir().join(&fichier), &octets) {
-                Ok(()) => {
-                    let _ = app.emit("photo:recue", fichier.clone());
-                    (200, format!("{{\"ok\":true,\"fichier\":{}}}", serde_json::to_string(&fichier).unwrap_or_default()))
-                }
-                Err(e) => (500, format!("{{\"ok\":false,\"erreur\":{}}}", serde_json::to_string(&e.to_string()).unwrap_or_default())),
-            }
-        } else {
-            (400, "{\"ok\":false}".to_string())
-        };
-        let header = tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json; charset=utf-8"[..])
-            .expect("en-tete valide");
-        let _ = req.respond(tiny_http::Response::from_string(body).with_status_code(code).with_header(header));
-        return;
-    }
-    // L'écriture se lit avant toute réponse : le corps ne se relit pas.
-    if autorise && url.starts_with("/api/observation") {
-        let (code, body) = match lire_texte(&mut req, MAX_TEXTE).map(|corps| ecrire_observation(app, &corps)) {
-            Some(Ok(())) => (200, "{\"ok\":true}".to_string()),
-            Some(Err(message)) => (400, format!("{{\"ok\":false,\"erreur\":{}}}", serde_json::to_string(&message).unwrap_or_default())),
-            None => (400, "{\"ok\":false}".to_string()),
-        };
-        let header = tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"application/json; charset=utf-8"[..])
-            .expect("en-tete valide");
-        let _ = req.respond(tiny_http::Response::from_string(body).with_status_code(code).with_header(header));
-        return;
+        return true;
     }
     let (code, ctype, body): (u16, &str, String) = if !autorise {
         (
@@ -639,6 +497,7 @@ fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &st
         .with_status_code(code)
         .with_header(header);
     let _ = req.respond(resp);
+    autorise
 }
 
 // ── Capture photo depuis le téléphone ────────────────────────────────
@@ -874,13 +733,6 @@ const PAGE_HTML: &str = r##"<!DOCTYPE html>
  .sd-l { font-size:13px; margin-bottom:9px; line-height:1.5; }
  .sd-l:last-child { margin-bottom:2px; }
  .sd-l b { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--txt2); margin-bottom:2px; font-weight:700; }
- .obs .obs-h { font-size:14.5px; margin-bottom:2px; }
- .obs .obs-h small { color:var(--txt2); font-weight:500; }
- .obs .obs-axe { font-size:12.5px; color:var(--txt2); margin-bottom:8px; line-height:1.4; }
- .obs-l { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--txt2); font-weight:700; margin-bottom:8px; }
- .obs-l textarea { display:block; width:100%; margin-top:3px; box-sizing:border-box; background:var(--bg); color:var(--txt); border:1px solid var(--bd); border-radius:9px; padding:9px 10px; font:inherit; font-size:15px; text-transform:none; letter-spacing:0; font-weight:400; line-height:1.45; }
- .obs-save { width:100%; padding:11px; border:none; border-radius:10px; background:var(--acc); color:#fff; font:inherit; font-size:15px; font-weight:700; cursor:pointer; }
- .obs-save:disabled { opacity:.7; }
  .el { display:flex; align-items:center; gap:10px; }
  .el .dot { width:9px; height:9px; border-radius:50%; flex:none; background:#cbd2e0; }
  .el .dot.p { background:#22c55e; }
@@ -916,7 +768,6 @@ let DATA = null;
 const TABS = [
   ['dictaphone','🎙 Dicter', renderDictaphone],
   ['planning','🗓 Planning', renderPlanning],
-  ['observations','👁 Observer', renderObservations],
   ['sequences','📚 Séquences', renderSequences],
   ['eleves','👧 Élèves', renderEleves],
   ['programmations','🗂 Programmations', renderProgrammations],
@@ -1083,16 +934,6 @@ function renderDictaphone() {
         '<button class="btn" onclick="envoyerLesVocaux()">↑ Envoyer maintenant</button>'
       : '<p class="vide">Rien en attente : tout est parti sur l\'ordinateur.</p>');
 }
-
-/** Les colonnes de la grille « Observer », dans l'ordre du document. */
-const COLS = [
-  ['note','Ce qui s\'est passé'],
-  ['reussites','Réussites, points d\'appui'],
-  ['difficultes','Difficultés, obstacles'],
-  ['hypotheses','Besoin identifié — hypothèses'],
-  ['amenagements','Propositions — aménagements'],
-  ['reajustement','Évaluation — réajustement'],
-];
 
 function show(id) {
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.id === id));
@@ -1266,59 +1107,6 @@ function renderProgrammations(progs) {
   }).join('');
 }
 
-/**
- * Les temps d'observation, remplissables ici.
- *
- * C'est le seul endroit du téléphone où l'on écrit : une observation se note
- * debout, à côté de l'élève, et c'est le téléphone qu'on a en main à ce
- * moment-là. La fiche, elle, a été posée sur l'ordinateur — le téléphone ne
- * fait que la remplir.
- */
-function renderObservations(obs) {
-  if (!obs.length) return '<p class="vide">Aucun temps d\'observation.<br>Posez-en un depuis le cahier journal, sur l\'ordinateur : bouton « 👁 Observer » d\'un créneau.</p>';
-  const nomDe = id => {
-    const e = (DATA.eleves || []).find(x => x.id === id);
-    return e ? (e.nom || '').split(' ')[0] : 'Élève';
-  };
-  const parJour = {};
-  obs.forEach(o => { (parJour[o.date || ''] = parJour[o.date || ''] || []).push(o); });
-  return Object.keys(parJour).sort().reverse().map(j => {
-    const cartes = parJour[j].map(o => {
-      const champs = COLS.map(c => '<label class="obs-l">' + esc(c[1])
-        + '<textarea data-k="' + c[0] + '" rows="2">' + esc(o[c[0]] || '') + '</textarea></label>').join('');
-      return '<div class="card obs" id="obs-' + esc(o.id) + '">'
-        + '<div class="obs-h"><b>' + esc(nomDe(o.eleveId || o.eleve_id)) + '</b>'
-        + (o.contexte ? '<small> · ' + esc(o.contexte) + '</small>' : '') + '</div>'
-        + (o.axe ? '<div class="obs-axe">👁 ' + esc(o.axe) + '</div>' : '')
-        + champs
-        + '<button class="obs-save" data-id="' + esc(o.id) + '">Enregistrer</button>'
-        + '</div>';
-    }).join('');
-    return '<div class="jour' + (j === auj ? ' auj' : '') + '">' + esc(fmtJour(j)) + (j === auj ? ' · aujourd\'hui' : '') + '</div>' + cartes;
-  }).join('');
-}
-
-async function enregistrerObs(id, btn) {
-  const carte = document.getElementById('obs-' + id);
-  if (!carte) return;
-  const lire = k => { const z = carte.querySelector('[data-k="' + k + '"]'); return z ? z.value : ''; };
-  const corps = { id: id };
-  COLS.forEach(c => { corps[c[0]] = lire(c[0]); });
-  const libelle = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Enregistrement…';
-  try {
-    const r = await fetch('/api/observation?t=' + encodeURIComponent(T), {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps),
-    });
-    let j = {};
-    try { j = await r.json(); } catch (e) { j = {}; }
-    btn.textContent = (r.ok && j.ok) ? '✓ Enregistré sur l\'ordinateur' : ('⚠️ ' + (j.erreur || 'Non enregistré'));
-  } catch (e) {
-    btn.textContent = '⚠️ Hors réseau — réessayez';
-  }
-  setTimeout(() => { btn.disabled = false; btn.textContent = libelle; }, 2600);
-}
-
 fetch('/api/data?t=' + encodeURIComponent(T))
  .then(r => r.ok ? r.json() : Promise.reject(r.status))
  .then(d => {
@@ -1328,8 +1116,6 @@ fetch('/api/data?t=' + encodeURIComponent(T))
    tabsEl.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => show(b.dataset.id)));
    initPlanning();
    main.addEventListener('click', ev => {
-     const save = ev.target.closest('.obs-save');
-     if (save) { enregistrerObs(save.dataset.id, save); return; }
      if (ev.target.closest('.sea-body')) return;
      const it = ev.target.closest('.sea-item'); if (it) it.classList.toggle('open');
    });
@@ -1343,20 +1129,48 @@ fetch('/api/data?t=' + encodeURIComponent(T))
 
 #[cfg(test)]
 mod tests {
-    use super::{lire_corps, lire_texte, parametre, PORT_PORTABLE, serie_demandee};
+    use super::{autorise, doit_se_fermer, lire_corps, parametre, PORT_PORTABLE, serie_demandee, INACTIVITE_MAX, OUVERTURE_MAX};
+    use std::time::{Duration, SystemTime};
 
     #[test]
     fn un_envoi_trop_gros_n_est_pas_lu() {
-        let mut req: tiny_http::Request = tiny_http::TestRequest::new().with_body("une note").into();
-        assert_eq!(lire_texte(&mut req, 100).as_deref(), Some("une note"));
-        let mut req: tiny_http::Request = tiny_http::TestRequest::new().with_body("une note bien trop longue").into();
+        let mut req: tiny_http::Request = tiny_http::TestRequest::new().with_body("un vocal").into();
+        assert_eq!(lire_corps(&mut req, 100).as_deref(), Some(&b"un vocal"[..]));
+        let mut req: tiny_http::Request = tiny_http::TestRequest::new().with_body("un vocal bien trop long").into();
         assert_eq!(lire_corps(&mut req, 8), None);
     }
 
     #[test]
     fn le_port_habituel_ne_bouge_pas() {
-        // Le dictaphone garde l'adresse : la changer, c'est le perdre.
         assert_eq!(PORT_PORTABLE, 8787);
+    }
+
+    /// Le code entier, et seulement lui : « t=abc » ne vaut pas pour « abcd », ni l'inverse.
+    #[test]
+    fn seul_le_bon_code_ouvre_le_partage() {
+        assert!(autorise("/api/data?t=abc-123", "abc-123"));
+        assert!(autorise("/?s=1&t=abc-123", "abc-123"));
+        assert!(!autorise("/api/data?t=abc-1234", "abc-123"));
+        assert!(!autorise("/api/data?t=abc", "abc-123"));
+        assert!(!autorise("/api/data?x=t=abc-123", "abc-123"));
+        assert!(!autorise("/api/data", ""));
+    }
+
+    /// Le partage se ferme tout seul : deux heures sans visite, ou dix heures après son ouverture.
+    #[test]
+    fn le_partage_se_ferme_tout_seul() {
+        let ouvert = SystemTime::now();
+        let minute = Duration::from_secs(60);
+        assert!(!doit_se_fermer(ouvert, ouvert, ouvert + 30 * minute));
+        assert!(doit_se_fermer(ouvert, ouvert, ouvert + INACTIVITE_MAX));
+        // Une visite repousse la fermeture…
+        let visite = ouvert + 100 * minute;
+        assert!(!doit_se_fermer(ouvert, visite, visite + 60 * minute));
+        // … mais pas au-delà de la journée.
+        let tard = ouvert + OUVERTURE_MAX;
+        assert!(doit_se_fermer(ouvert, tard - minute, tard));
+        // Une horloge reculée avant l'ouverture ferme aussi.
+        assert!(doit_se_fermer(ouvert, ouvert, ouvert - minute));
     }
 
     #[test]

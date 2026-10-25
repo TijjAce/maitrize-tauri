@@ -6,7 +6,7 @@ import { Field, Input, Select, Confirm, useOngletDemande } from "../components/u
 import { PartagerMesDossiers } from "../components/PartagerMesDossiers";
 import { confirmer } from "../components/confirmer";
 import { toast, toastAnnulable } from "../components/Toaster";
-import { EVT_PARTAGE, fermerPartage, lirePartage, ouvrirPartage } from "../partageWifi";
+import { fermerPartage, lirePartage, ouvrirPartage, suivrePartage } from "../partageWifi";
 import { InterrupteurPartage } from "../components/InterrupteurPartage";
 import { applyTheme, MODES, ACCENTS, STYLES, TAILLES } from "../theme";
 import { lireAcceptationCgu, CguAcceptation } from "../components/CGU";
@@ -161,18 +161,12 @@ export default function Reglages() {
 
   // ── Version portable (serveur local WiFi + QR) ──────────────────
   //
-  // Le partage ne s'arrête plus quand on quitte cet écran : il se commande
-  // depuis l'interrupteur de la barre du haut, et on l'ouvre justement pour
-  // aller travailler ailleurs dans l'application. C'est le voyant, visible
-  // de partout, qui remplace l'arrêt automatique.
+  // Le partage ne s'arrête pas quand on quitte cet écran : on l'ouvre justement pour aller travailler ailleurs
+  // dans l'application. Il se ferme tout seul deux heures après la dernière visite du téléphone (voir portable.rs).
   const [portable, setPortable] = React.useState<PortableInfo | null>(null);
   const [portMsg, setPortMsg] = React.useState("");
   React.useEffect(() => { lirePartage().then(setPortable); }, []);
-  React.useEffect(() => {
-    const ecouter = (e: Event) => setPortable((e as CustomEvent<PortableInfo | null>).detail);
-    window.addEventListener(EVT_PARTAGE, ecouter);
-    return () => window.removeEventListener(EVT_PARTAGE, ecouter);
-  }, []);
+  React.useEffect(() => suivrePartage(setPortable), []);
   const activerPortable = async () => {
     setPortMsg("");
     try { setPortable(await ouvrirPartage()); }
@@ -481,31 +475,33 @@ export default function Reglages() {
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <h3 style={{ margin: 0 }}>📱 Version portable (WiFi)</h3>
+          <Aide titre="Version portable (WiFi)" vers="droite">
+            <p>Planning, prévu et bilan, séquences, élèves : en lecture dans le navigateur de votre téléphone, par le
+              WiFi. Rien ne passe par internet.</p>
+            <p>Chaque ouverture donne un nouveau QR code : celui de la veille ne marche plus. Le partage se ferme tout
+              seul deux heures après la dernière visite du téléphone, et au plus tard dix heures après son ouverture.
+              Les temps d'observation n'y passent plus : le WiFi de l'école est partagé, et cette page y circule en
+              clair.</p>
+            <p>Le Dictaphone n'en a pas besoin : ses dictées passent par Nuage.</p>
+          </Aide>
           <div className="spacer" style={{ flex: 1 }} />
           {/* L'interrupteur du partage : c'est ici qu'on le cherche, puisque c'est ici que le partage s'explique. */}
           <InterrupteurPartage />
         </div>
-        <p style={{ color: "var(--text-2)", marginTop: 10, fontSize: 13, lineHeight: 1.6 }}>
-          Planning, prévu et bilan, séquences, élèves — en lecture dans le navigateur de votre
-          téléphone, par le WiFi. L'onglet <b>👁 Observer</b> se remplit depuis le téléphone.
-          Rien ne passe par internet. Le partage reste ouvert tant que vous ne le fermez pas —
-          le voyant de la barre du haut le rappelle depuis n'importe quelle page. Le
-          <b> Dictaphone</b>, lui, n'en a pas besoin : ses dictées passent par Nuage.
-        </p>
         {!portable ? (
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 12 }}>
             <button className="btn primary" onClick={activerPortable}>📤 Ouvrir le partage</button>
             {portMsg && <span style={{ fontSize: 13 }}>{portMsg}</span>}
           </div>
         ) : (
-          <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap", marginTop: 12 }}>
             <div className="qr-portable" aria-label="QR code de connexion"
               dangerouslySetInnerHTML={{ __html: portable.qrSvg }} />
             <div style={{ minWidth: 220, flex: 1 }}>
               <p style={{ margin: "0 0 6px", fontWeight: 600 }}>Scannez ce QR code avec l'appareil photo de votre téléphone.</p>
               <p style={{ margin: "0 0 10px", fontSize: 12, color: "var(--text-2)" }}>
-                Ou ouvrez cette adresse dans le navigateur : <br />
-                <code style={{ fontSize: 12 }}>{portable.url.replace(/\?t=.*/, "")}</code>
+                Ou ouvrez cette adresse dans le navigateur, code compris : <br />
+                <code style={{ fontSize: 12, wordBreak: "break-all" }}>{portable.url}</code>
               </p>
               <button className="btn danger" onClick={arreterPortable}>⏹ Arrêter le partage</button>
             </div>

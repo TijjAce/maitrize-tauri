@@ -1,9 +1,7 @@
 import React from "react";
 import { type PortableInfo, texteErreur } from "../api";
 import { toast } from "./Toaster";
-import {
-  EVT_PARTAGE, fermerPartage, lirePartage, ouvrirPartage, titreDuPartage,
-} from "../partageWifi";
+import { fermerPartage, lirePartage, ouvrirPartage, suivrePartage, titreDuPartage } from "../partageWifi";
 
 // L'interrupteur du partage WiFi, dans Réglages › Téléphone.
 //
@@ -18,12 +16,8 @@ export function InterrupteurPartage() {
 
   React.useEffect(() => { lirePartage().then(setInfo); }, []);
 
-  // Les Réglages commandent le même partage : les deux écrans se suivent.
-  React.useEffect(() => {
-    const ecouter = (e: Event) => setInfo((e as CustomEvent<PortableInfo | null>).detail);
-    window.addEventListener(EVT_PARTAGE, ecouter);
-    return () => window.removeEventListener(EVT_PARTAGE, ecouter);
-  }, []);
+  // Les Réglages commandent le même partage, et il se ferme aussi tout seul : l'interrupteur suit.
+  React.useEffect(() => suivrePartage(setInfo), []);
 
   const basculer = async () => {
     setOccupe(true);
