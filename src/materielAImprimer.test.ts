@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { MaterielItem, Seance, Sequence } from "./api";
 import {
-  annexesDesCreneaux, annexesHtml, cleEchelle, echellesDesReglages, liensDuCreneau, ligneDuPdf, lireEchelle, materielDuCreneau, moletteDuJournalHtml,
+  annexesDesCreneaux, annexesHtml, cleEchelle, SCRIPTS_DU_JOURNAL, echellesDesReglages, liensDuCreneau, ligneDuPdf, lireEchelle, materielDuCreneau, moletteDuJournalHtml,
   echellePourUneFeuille, limiteMm, octetsDeBase64, pdfsCites, STYLE_ANNEXES, titresDuMateriel,
 } from "./materielAImprimer";
 import { eleveDeLaFiche, titreSansLEleve } from "./materielSeance";
@@ -137,6 +137,13 @@ describe("le matériel des séances du journal", () => {
     expect(html).toContain('journal.style.zoom');
     expect(html).toContain("maitrize:echelle-journal");
     expect(STYLE_ANNEXES).toContain(".journal-outils");
+  });
+
+  it("déclare ses scripts tels qu'ils sont écrits : la page ouverte ne permet qu'eux, à leur empreinte", () => {
+    const annexe = { seanceId: "s1", quand: "09:00", titre: "Fiche", fichier: "a.pdf", echelle: 1 };
+    const scripts = [...`${moletteDuJournalHtml()}${annexesHtml([{ annexe, pages: [{ numero: 1, image: "IMG", largeur: 10, hauteur: 14 }] }])}`
+      .matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+    expect(scripts).toEqual(SCRIPTS_DU_JOURNAL);
   });
 
   it("relit les octets d'un fichier en base64", () => {

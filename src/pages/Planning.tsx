@@ -19,7 +19,7 @@ import { jeuxCites, reglesImprimees, sansMarqueurs, STYLE_REGLES } from "../jeux
 import { sequencesCitees, sequencesImprimees, STYLE_SEQUENCES } from "../sequencesCitees";
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
 import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
-import { annexesDesCreneaux, annexesHtml, echellesDesReglages, moletteDuJournalHtml, octetsDeBase64, STYLE_ANNEXES, titresDuMateriel, type AnnexeRendue } from "../materielAImprimer";
+import { annexesDesCreneaux, annexesHtml, echellesDesReglages, moletteDuJournalHtml, octetsDeBase64, SCRIPTS_DU_JOURNAL, STYLE_ANNEXES, titresDuMateriel, type AnnexeRendue } from "../materielAImprimer";
 import { rendrePagesAImprimer } from "../pdfRendu";
 import { CLE_RITUELS, avecRituels, lireRituels, rituelsCites, rituelsImprimes } from "../rituels";
 import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
@@ -444,7 +444,7 @@ export default function Planning() {
       ${annexesHtml(rendues)}
       ${piedMaitrize(logo)}
       </body></html>`;
-    await api.ouvrirHtml(html);
+    await api.ouvrirHtml(html, SCRIPTS_DU_JOURNAL);
   };
 
   // Impression du planning : jour = HTML riche ; semaine = PDF natif (Aperçu).

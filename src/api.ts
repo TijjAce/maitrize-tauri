@@ -731,7 +731,8 @@ export const api = {
   imprimerPdf: (nom: string) => invoke<void>("imprimer_pdf", { nom }),
   /** Une feuille HTML en PDF, rangée dans les fichiers de l'application ; renvoie son nom. */
   feuilleEnPdf: (html: string) => invoke<string>("feuille_en_pdf", { html }),
-  ouvrirHtml: (html: string) => invoke<void>("ouvrir_html", { html }),
+  /** Ouvre une page dans le navigateur ; `scripts` : le texte des seuls scripts qu'elle peut exécuter. */
+  ouvrirHtml: (html: string, scripts: string[] = []) => invoke<void>("ouvrir_html", { html, scripts }),
   /** Le planning, puis le matériel des séances à sa suite ; renvoie ce qui n'a pas pu être joint. */
   imprimerPlanning: (
     titre: string,

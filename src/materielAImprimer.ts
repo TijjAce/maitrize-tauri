@@ -253,7 +253,7 @@ export function moletteDuJournalHtml(): string {
     + SCRIPT_JOURNAL;
 }
 
-const SCRIPT_JOURNAL = `<script>
+const CORPS_JOURNAL = `
 (function () {
   // La molette est écrite avant le journal : on attend que la page soit entière.
   var demarrer = function () {
@@ -277,10 +277,11 @@ const SCRIPT_JOURNAL = `<script>
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", demarrer); else demarrer();
 })();
-</script>`;
+`;
+const SCRIPT_JOURNAL = `<script>${CORPS_JOURNAL}</script>`;
 
 /** La molette des feuilles jointes, à l'écran : elle règle les images de sa feuille. */
-const SCRIPT_ANNEXES = `<script>
+const CORPS_ANNEXES = `
 (function () {
   document.querySelectorAll(".annexe-outils[data-annexe]").forEach(function (outils) {
     var k = outils.getAttribute("data-annexe");
@@ -301,7 +302,14 @@ const SCRIPT_ANNEXES = `<script>
     if (ajuster) ajuster.addEventListener("click", function () { appliquer(ajuster.getAttribute("data-echelle")); });
   });
 })();
-</script>`;
+`;
+const SCRIPT_ANNEXES = `<script>${CORPS_ANNEXES}</script>`;
+
+/**
+ * Les seuls scripts que la page du cahier journal, ouverte dans le navigateur, a le droit d'exécuter : la page
+ * les reconnaît à leur empreinte (voir `avec_politique`, commands.rs). Un script venu d'un texte n'y tourne pas.
+ */
+export const SCRIPTS_DU_JOURNAL = [CORPS_JOURNAL, CORPS_ANNEXES];
 
 /**
  * Chaque document joint commence une feuille ; ses pages se suivent, et
