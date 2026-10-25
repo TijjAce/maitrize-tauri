@@ -79,6 +79,11 @@ objc2-web-kit = { version = "0.3", features = ["WKWebView", "objc2-app-kit"] }
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security_Cryptography"] }
 
+# Le message d'avant toute fenêtre, quand le dossier des données manque (voir db::attendre_le_dossier_choisi) ;
+# la même bibliothèque que les fenêtres de choix de fichiers de tauri-plugin-dialog, avec les mêmes options.
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+rfd = { version = "0.16", default-features = false, features = ["common-controls-v6"] }
+
 [dev-dependencies]
 # Un dossier jetable par essai : les essais n'écrivent jamais dans les fichiers de l'application.
 tempfile = "3"

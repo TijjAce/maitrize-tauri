@@ -118,7 +118,7 @@ pub const REGLAGES_DU_POSTE: &[&str] = &[
     "identifiantMachine", "nomMachine", "derniereSync", "derniereSauvegardeAuto", crate::db::CLE_VERSION_BASE,
     // Où en était le journal au dernier instantané de cet ordinateur.
     crate::instantanes::CLE_MARQUE,
-    "syncSeqEnvoyee", "syncDeltasVus", CLE_DOSSIERS_ANNONCES,
+    "syncSeqEnvoyee", "syncDeltasVus", CLE_DOSSIERS_ANNONCES, crate::sync::CLE_RELIRE_LES_MIENS,
     // La copie du bureau vit dans un dossier de cet ordinateur-ci.
     crate::copie_bureau::CLE_ACTIVE, crate::copie_bureau::CLE_EMPLACEMENT,
     // Les bureaux communs : des dossiers de cet ordinateur-ci, dont le chemin
@@ -483,6 +483,8 @@ fn poser_declencheurs_reglages(conn: &Connection, machine: &str) {
         .collect::<Vec<_>>()
         .join(" OR ");
     let condition = format!("NEW.cle IN ({noms}) OR {prefixes}");
+    // Un réglage effacé — par un retour en arrière — part aussi : l'autre ordinateur l'efface à son tour.
+    let condition_suppr = condition.replace("NEW.", "OLD.");
     // La valeur d'avant voyage avec la nouvelle : elle seule dit ce que l'autre
     // ordinateur a ajouté ou retiré. Sans elle, un réglage qui contient une
     // liste — tous les tableaux de langage, tous les plans de salle — ne peut
@@ -497,8 +499,14 @@ fn poser_declencheurs_reglages(conn: &Connection, machine: &str) {
     let sql = format!(
         "DROP TRIGGER IF EXISTS jrn_settings_i;
          DROP TRIGGER IF EXISTS jrn_settings_u;
+         DROP TRIGGER IF EXISTS jrn_settings_d;
          CREATE TRIGGER jrn_settings_i AFTER INSERT ON settings WHEN {condition} BEGIN {} END;
-         CREATE TRIGGER jrn_settings_u AFTER UPDATE ON settings WHEN {condition} BEGIN {} END;",
+         CREATE TRIGGER jrn_settings_u AFTER UPDATE ON settings WHEN {condition} BEGIN {} END;
+         CREATE TRIGGER jrn_settings_d AFTER DELETE ON settings WHEN {condition_suppr} BEGIN
+             INSERT INTO changements (table_nom, ligne_id, operation, donnees, avant, horodatage, origine)
+             VALUES ('settings', OLD.cle, 'suppr', '', OLD.valeur,
+                     strftime('%Y-%m-%dT%H:%M:%fZ','now'), '{machine}');
+         END;",
         insertion("''"),
         insertion("OLD.valeur"),
     );
@@ -610,27 +618,98 @@ fn poser_crdt(c: &Connection, table: &str, ligne: &str, champ: &str, etat: &[u8]
 /// entières sans savoir ce qu'ils ont changé.
 pub fn enrichir_textes(c: &Connection, ch: &mut Changement) {
     use base64::Engine;
-    let Ok(apres) = serde_json::from_str::<serde_json::Value>(&ch.donnees) else { return };
+    let Ok(mut apres) = serde_json::from_str::<serde_json::Value>(&ch.donnees) else { return };
     let avant: serde_json::Value = serde_json::from_str(&ch.avant).unwrap_or(serde_json::Value::Null);
-    for (champ, valeur) in apres.as_object().into_iter().flatten() {
-        if !crate::texte_crdt::est_texte_libre(&ch.table_nom, champ) {
-            continue;
+    let champs: Vec<String> = apres.as_object().into_iter().flatten()
+        .filter(|(champ, _)| crate::texte_crdt::est_texte_libre(&ch.table_nom, champ))
+        .map(|(champ, _)| champ.clone())
+        .collect();
+    let mut retouche = false;
+    for champ in champs {
+        // Le texte tel qu'il est maintenant : une réception a pu y fusionner, depuis cette écriture, ce que l'autre
+        // ordinateur avait ajouté — le texte d'ici y est déjà (`consigner_le_texte_d_ici`). Repartir de la valeur
+        // écrite alors effaçait cet ajout, ici comme là-bas.
+        let ecrit = apres.get(&champ).and_then(|v| v.as_str()).unwrap_or_default().to_string();
+        let neuf = texte_actuel(c, &ch.table_nom, &ch.ligne_id, &champ).unwrap_or_else(|| ecrit.clone());
+        if neuf != ecrit {
+            apres[&champ] = serde_json::Value::String(neuf.clone());
+            retouche = true;
         }
-        let neuf = valeur.as_str().unwrap_or_default();
-        let vieux = avant.get(champ).and_then(|v| v.as_str()).unwrap_or_default();
+        let vieux = avant.get(&champ).and_then(|v| v.as_str()).unwrap_or_default();
         if neuf == vieux {
             continue;
         }
-        let etat = etat_crdt(c, &ch.table_nom, &ch.ligne_id, champ);
-        let Some(nouvel) = sans_panique(|| crate::texte_crdt::enregistrer_edition(&etat, vieux, neuf)) else {
+        let etat = etat_crdt(c, &ch.table_nom, &ch.ligne_id, &champ);
+        let Some(nouvel) = sans_panique(|| crate::texte_crdt::enregistrer_edition(&etat, vieux, &neuf)) else {
             continue; // le champ voyage sans son état, en fusion champ par champ
         };
-        poser_crdt(c, &ch.table_nom, &ch.ligne_id, champ, &nouvel);
-        ch.textes.insert(
-            champ.clone(),
-            base64::engine::general_purpose::STANDARD.encode(&nouvel),
-        );
+        poser_crdt(c, &ch.table_nom, &ch.ligne_id, &champ, &nouvel);
+        ch.textes.insert(champ, base64::engine::general_purpose::STANDARD.encode(&nouvel));
     }
+    if retouche {
+        ch.donnees = apres.to_string();
+    }
+}
+
+/// La valeur d'un champ de prose dans la base, maintenant ; rien si la ligne n'y est plus.
+fn texte_actuel(c: &Connection, table: &str, ligne_id: &str, champ: &str) -> Option<String> {
+    // Table et champ sont ceux d'un champ de prose (`est_texte_libre`) : aucun nom venu d'ailleurs.
+    c.query_row(&format!("SELECT \"{champ}\" FROM \"{table}\" WHERE id = ?1"), params![ligne_id], |r| r.get::<_, Option<String>>(0))
+        .ok()
+        .flatten()
+}
+
+/// Fait entrer dans l'état CRDT d'un texte ce qu'on y a écrit ici sans l'avoir encore envoyé, avant d'y fusionner
+/// celui de l'autre ordinateur.
+///
+/// Une écriture n'y entrait qu'à l'envoi. Un texte tapé pendant un passage de synchronisation — après l'envoi,
+/// avant la réception — était remplacé par la fusion de l'état d'avant avec celui de l'autre ordinateur, et
+/// perdu ; renvoyé ensuite tel quel, il effaçait à son tour ce que l'autre avait ajouté, et les deux textes
+/// restaient différents.
+fn consigner_le_texte_d_ici(tx: &Connection, ch: &Changement, locale: &serde_json::Value) {
+    for champ in ch.textes.keys() {
+        let Some(ici) = locale.get(champ).and_then(|v| v.as_str()) else { continue };
+        let etat = etat_crdt(tx, &ch.table_nom, &ch.ligne_id, champ);
+        let suivi = if etat.is_empty() {
+            // Jamais suivi : le texte d'avant les écritures d'ici qui attendent de partir, comme l'envoi le prendra.
+            match avant_des_ecritures_en_attente(tx, &ch.table_nom, &ch.ligne_id, champ) {
+                Some(t) => t,
+                None => continue,
+            }
+        } else {
+            match sans_panique(|| crate::texte_crdt::texte(&etat)) {
+                Some(t) => t,
+                None => continue,
+            }
+        };
+        if suivi == ici {
+            continue;
+        }
+        if let Some(nouvel) = sans_panique(|| crate::texte_crdt::enregistrer_edition(&etat, &suivi, ici)) {
+            poser_crdt(tx, &ch.table_nom, &ch.ligne_id, champ, &nouvel);
+        }
+    }
+}
+
+/// Le texte d'un champ avant les écritures d'ici qui ne sont pas encore parties — l'« avant » que l'envoi
+/// retiendra (`changements_locaux`) ; rien s'il n'y en a pas.
+fn avant_des_ecritures_en_attente(tx: &Connection, table: &str, ligne_id: &str, champ: &str) -> Option<String> {
+    let envoye: i64 = tx
+        .query_row("SELECT valeur FROM settings WHERE cle = 'syncSeqEnvoyee'", [], |r| r.get::<_, String>(0))
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    let avant: String = tx
+        .query_row(
+            "SELECT avant FROM changements
+              WHERE table_nom = ?1 AND ligne_id = ?2 AND distant = 0 AND seq > ?3
+              ORDER BY seq LIMIT 1",
+            params![table, ligne_id, envoye],
+            |r| r.get(0),
+        )
+        .ok()?;
+    let avant: serde_json::Value = serde_json::from_str(&avant).unwrap_or(serde_json::Value::Null);
+    Some(avant.get(champ).and_then(|v| v.as_str()).unwrap_or_default().to_string())
 }
 
 /// Fusionne les états CRDT reçus et renvoie les textes qui en résultent.
@@ -1062,8 +1141,20 @@ enum Effet {
     Ignoree,
     /// Écrite : les traces qu'elle vient de laisser doivent être rendues à leur auteur.
     Ecrite,
-    /// Écrite aussi, mais ses traces sont couvertes par le filet de fin d'application.
-    EcriteSansTrace(usize),
+}
+
+/// La trace d'une suppression reçue pour une ligne absente ici — pas encore arrivée, ou déjà effacée.
+///
+/// Sans elle, rien ne disait plus qu'elle avait été supprimée : un changement plus ancien de la même ligne,
+/// arrivé après — une séance reçue avant sa séquence et retentée au second passage —, la recréait, et elle ne
+/// revenait plus jamais chez l'autre. `ecrire_une` rend la trace à l'auteur de la suppression.
+fn noter_suppression(tx: &Connection, table: &str, ligne_id: &str) -> rusqlite::Result<()> {
+    tx.execute(
+        "INSERT INTO changements (table_nom, ligne_id, operation, donnees, avant, horodatage, origine)
+         VALUES (?1, ?2, 'suppr', '', '', strftime('%Y-%m-%dT%H:%M:%fZ','now'), '')",
+        params![table, ligne_id],
+    )?;
+    Ok(())
 }
 
 /// Applique **une** ligne reçue.
@@ -1079,12 +1170,32 @@ fn appliquer_un(tx: &Connection, c: &Changement) -> rusqlite::Result<Effet> {
         if !reglage_partage(&c.ligne_id) {
             return Ok(Effet::Ignoree);
         }
+        // Même arbitrage que pour les lignes : un réglage reçu écrasait le nôtre même en étant plus ancien. Un
+        // ordinateur resté éteint trois jours remplaçait alors, en revenant, le travail fait depuis sur l'autre.
+        let entrant_gagne = match dernier_changement(tx, "settings", &c.ligne_id) {
+            Some((h, o, _, _)) => !gagne((&h, &o), (&c.horodatage, &c.origine)),
+            None => true,
+        };
+        let efface_ici = derniere_operation(tx, "settings", &c.ligne_id).as_deref() == Some("suppr");
+        if c.operation == "suppr" {
+            // Effacé là-bas (un retour en arrière) : effacé ici, sauf si on l'a réécrit depuis.
+            if !entrant_gagne {
+                return Ok(Effet::Ignoree);
+            }
+            if tx.execute("DELETE FROM settings WHERE cle = ?1", params![c.ligne_id])? == 0 {
+                noter_suppression(tx, "settings", &c.ligne_id)?;
+            }
+            return Ok(Effet::Ecrite);
+        }
         let valeur: Option<String> = serde_json::from_str::<serde_json::Value>(&c.donnees)
             .ok()
             .and_then(|v| v.get("valeur").and_then(|x| x.as_str()).map(str::to_string));
         let Some(recue) = valeur else { return Ok(Effet::Ignoree) };
         if c.operation == "annonce" {
-            // Une annonce ne crée que ce qui manque ici (voir `annoncer_dossiers`).
+            // Une annonce ne crée que ce qui manque ici (voir `annoncer_dossiers`), jamais ce qu'on y a effacé.
+            if efface_ici {
+                return Ok(Effet::Ignoree);
+            }
             let ecrits = tx.execute(
                 "INSERT OR IGNORE INTO settings (cle, valeur) VALUES (?1, ?2)",
                 params![c.ligne_id, recue],
@@ -1095,20 +1206,12 @@ fn appliquer_un(tx: &Connection, c: &Changement) -> rusqlite::Result<Effet> {
             .query_row("SELECT valeur FROM settings WHERE cle = ?1", params![c.ligne_id], |r| r.get(0))
             .ok();
         let a_ecrire = match &ici {
+            // Effacé ici après ce changement : il ne revient pas.
+            None if efface_ici && !entrant_gagne => return Ok(Effet::Ignoree),
             // Jamais vu ici : rien à arbitrer.
             None => recue,
-            Some(actuelle) => {
-                // Même arbitrage que pour les lignes : un réglage reçu écrasait
-                // le nôtre même en étant plus ancien. Un ordinateur resté
-                // éteint trois jours remplaçait alors, en revenant, le travail
-                // fait depuis sur l'autre.
-                let entrant_gagne = match dernier_changement(tx, "settings", &c.ligne_id) {
-                    Some((h, o, _, _)) => !gagne((&h, &o), (&c.horodatage, &c.origine)),
-                    None => true,
-                };
-                fusionner_reglage(actuelle, &c.avant, &recue, entrant_gagne)
-                    .unwrap_or(if entrant_gagne { recue } else { actuelle.clone() })
-            }
+            Some(actuelle) => fusionner_reglage(actuelle, &c.avant, &recue, entrant_gagne)
+                .unwrap_or(if entrant_gagne { recue } else { actuelle.clone() }),
         };
         if ici.as_deref() == Some(a_ecrire.as_str()) {
             return Ok(Effet::Ignoree);
@@ -1154,23 +1257,26 @@ fn appliquer_un(tx: &Connection, c: &Changement) -> rusqlite::Result<Effet> {
         // Une suppression est totale : elle ne se fusionne pas. Elle ne
         // s'applique donc que si elle l'emporte, sinon une suppression
         // ancienne effacerait un travail plus récent.
-        if entrant_gagne {
-            if let Some((_, a, b)) = LIAISONS.iter().find(|(t, _, _)| *t == c.table_nom) {
-                let Some((ga, gb)) = c.ligne_id.split_once('|') else { return Ok(Effet::Ignoree) };
-                tx.execute(
-                    &format!("DELETE FROM {} WHERE \"{a}\" = ?1 AND \"{b}\" = ?2", c.table_nom),
-                    params![ga, gb],
-                )?;
-                return Ok(Effet::EcriteSansTrace(1));
-            }
-            tx.execute(
-                &format!("DELETE FROM {} WHERE id = ?1", c.table_nom),
-                params![c.ligne_id],
-            )?;
-        } else {
+        if !entrant_gagne {
             return Ok(Effet::Ignoree);
         }
+        let effacees = if let Some((_, a, b)) = LIAISONS.iter().find(|(t, _, _)| *t == c.table_nom) {
+            let Some((ga, gb)) = c.ligne_id.split_once('|') else { return Ok(Effet::Ignoree) };
+            tx.execute(
+                &format!("DELETE FROM {} WHERE \"{a}\" = ?1 AND \"{b}\" = ?2", c.table_nom),
+                params![ga, gb],
+            )?
+        } else {
+            tx.execute(&format!("DELETE FROM {} WHERE id = ?1", c.table_nom), params![c.ligne_id])?
+        };
+        if effacees == 0 {
+            noter_suppression(tx, &c.table_nom, &c.ligne_id)?;
+        }
     } else if LIAISONS.iter().any(|(t, _, _)| *t == c.table_nom) {
+        // Défaite ici après ce changement : elle ne revient pas, comme une ligne (plus bas).
+        if !entrant_gagne && derniere_operation(tx, &c.table_nom, &c.ligne_id).as_deref() == Some("suppr") {
+            return Ok(Effet::Ignoree);
+        }
         // Une liaison n'a pas de champ à fusionner : elle existe ou non.
         let cols = colonnes(tx, &c.table_nom);
         let noms = cols.iter().map(|x| format!("\"{x}\"")).collect::<Vec<_>>().join(", ");
@@ -1212,7 +1318,11 @@ fn appliquer_un(tx: &Connection, c: &Changement) -> rusqlite::Result<Effet> {
 
         // Les champs de prose passent par le CRDT : leur valeur fusionnée
         // remplace celle que transporte la ligne, laquelle ne représente
-        // que la vue de l'expéditeur.
+        // que la vue de l'expéditeur. Ce qu'on a tapé ici depuis le dernier
+        // envoi y entre d'abord.
+        if let (true, Some(locale)) = (ch_a_des_textes, &ici) {
+            consigner_le_texte_d_ici(tx, c, locale);
+        }
         let textes = if ch_a_des_textes { fusionner_textes(tx, c) } else { Default::default() };
 
         let a_ecrire = match ici {
@@ -1284,7 +1394,6 @@ fn ecrire_une(tx: &mut Transaction, c: &Changement) -> rusqlite::Result<usize> {
         .unwrap_or(0);
     let n = match appliquer_un(&sp, c)? {
         Effet::Ignoree => 0,
-        Effet::EcriteSansTrace(k) => k,
         Effet::Ecrite => {
             // Réattribuer la trace qu'on vient de produire à son véritable auteur.
             sp.execute(
@@ -2660,5 +2769,188 @@ mod tests {
             .query_row("SELECT count(*) FROM changements WHERE table_nom = 'eleves'", [], |r| r.get(0))
             .unwrap();
         assert_eq!(n, 1, "le changement doit être journalisé");
+    }
+
+    fn pause() {
+        std::thread::sleep(std::time::Duration::from_millis(3));
+    }
+
+    fn compte(c: &Connection, table: &str) -> i64 {
+        c.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |r| r.get(0)).unwrap()
+    }
+
+    /// Le défaut trouvé à la relecture : un commentaire créé puis supprimé sur A revenait sur B, quand B lisait
+    /// les deux dépôts d'un coup. Le commentaire arrivait avant son élève (refusé, retenté au second passage), sa
+    /// suppression n'effaçait rien et ne laissait aucune trace, et le second passage le recréait.
+    #[test]
+    fn une_ligne_supprimee_ne_revient_pas_par_le_second_passage() {
+        let a = machine_liee("A");
+        let mut b = machine_liee("B");
+        ajouter(&a, "e1", "Élève Un");
+        pause();
+        a.execute("INSERT INTO commentaires_eleve (id, texte, eleve_id) VALUES ('k1', 'Bien', 'e1')", []).unwrap();
+        pause();
+        a.execute("UPDATE eleves SET niveau = 'CM1' WHERE id = 'e1'", []).unwrap();
+        pause();
+        let (depot1, repere) = changements_locaux(&a, 0).unwrap();
+        assert_eq!(depot1[0].ligne_id, "k1", "le commentaire passe avant son élève");
+        a.execute("DELETE FROM commentaires_eleve WHERE id = 'k1'", []).unwrap();
+        pause();
+        let (depot2, _) = changements_locaux(&a, repere).unwrap();
+        let mut tout = depot1.clone();
+        tout.extend(depot2);
+        appliquer(&mut b, &tout).unwrap();
+        assert_eq!(compte(&b, "eleves"), 1);
+        assert_eq!(compte(&b, "commentaires_eleve"), 0, "le commentaire supprimé sur A ne revient pas sur B");
+        assert_eq!(en_attente(&b), 0);
+    }
+
+    /// Même chose pour une liaison : un atelier rangé dans un espace, puis retiré, ne s'y retrouve pas chez l'autre.
+    #[test]
+    fn une_liaison_defaite_ne_revient_pas_par_le_second_passage() {
+        let neuve = |nom: &str| {
+            let c = Connection::open_in_memory().unwrap();
+            c.execute_batch(
+                "CREATE TABLE ateliers (id TEXT PRIMARY KEY, nom TEXT);
+                 CREATE TABLE espaces (id TEXT PRIMARY KEY, nom TEXT);
+                 CREATE TABLE atelier_espace (atelier_id TEXT NOT NULL REFERENCES ateliers(id),
+                                              espace_id TEXT NOT NULL REFERENCES espaces(id),
+                                              PRIMARY KEY (atelier_id, espace_id));",
+            ).unwrap();
+            c.pragma_update(None, "foreign_keys", "ON").unwrap();
+            creer_table(&c);
+            poser_declencheurs(&c, nom);
+            c
+        };
+        let a = neuve("A");
+        let mut b = neuve("B");
+        a.execute("INSERT INTO espaces (id, nom) VALUES ('es1', 'Coin lecture')", []).unwrap();
+        a.execute("INSERT INTO ateliers (id, nom) VALUES ('at1', 'Puzzles')", []).unwrap();
+        pause();
+        a.execute("INSERT INTO atelier_espace VALUES ('at1', 'es1')", []).unwrap();
+        pause();
+        a.execute("UPDATE ateliers SET nom = 'Grands puzzles' WHERE id = 'at1'", []).unwrap();
+        pause();
+        let (depot1, repere) = changements_locaux(&a, 0).unwrap();
+        a.execute("DELETE FROM atelier_espace", []).unwrap();
+        pause();
+        let (depot2, _) = changements_locaux(&a, repere).unwrap();
+        let mut tout = depot1.clone();
+        tout.extend(depot2);
+        appliquer(&mut b, &tout).unwrap();
+        assert_eq!(compte(&b, "ateliers"), 1);
+        assert_eq!(compte(&b, "atelier_espace"), 0, "la liaison défaite sur A ne revient pas sur B");
+
+        // Ranger de nouveau l'atelier, plus tard, passe toujours.
+        let (_, repere) = changements_locaux(&a, 0).unwrap();
+        a.execute("INSERT INTO atelier_espace VALUES ('at1', 'es1')", []).unwrap();
+        let (depot3, _) = changements_locaux(&a, repere).unwrap();
+        appliquer(&mut b, &depot3).unwrap();
+        assert_eq!(compte(&b, "atelier_espace"), 1);
+    }
+
+    /// Un réglage partagé effacé ici — un retour en arrière le fait — l'est aussi chez l'autre ; une écriture plus
+    /// ancienne, arrivée en retard, ne le fait pas revenir. Les réglages n'avaient pas de déclencheur de suppression.
+    #[test]
+    fn un_reglage_efface_l_est_aussi_chez_l_autre() {
+        let a = machine_reglages("A");
+        let mut b = machine_reglages("B");
+        reglage(&a, "ecole", "École du port");
+        let (creation, repere) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &creation).unwrap();
+        assert_eq!(lire_reglage(&b, "ecole"), "École du port");
+        pause();
+        a.execute("DELETE FROM settings WHERE cle = 'ecole'", []).unwrap();
+        let (suppression, _) = changements_locaux(&a, repere).unwrap();
+        assert_eq!(suppression.len(), 1);
+        assert_eq!(suppression[0].operation, "suppr");
+        appliquer(&mut b, &suppression).unwrap();
+        let reste: i64 = b.query_row("SELECT COUNT(*) FROM settings WHERE cle = 'ecole'", [], |r| r.get(0)).unwrap();
+        assert_eq!(reste, 0, "effacé chez l'autre aussi");
+        // La création, relue en retard, ne le fait pas revenir.
+        appliquer(&mut b, &creation).unwrap();
+        let reste: i64 = b.query_row("SELECT COUNT(*) FROM settings WHERE cle = 'ecole'", [], |r| r.get(0)).unwrap();
+        assert_eq!(reste, 0, "une écriture plus ancienne ne le ressuscite pas");
+        // Un secret effacé ne laisse aucune trace.
+        reglage(&a, "mistralApiKey", "cle");
+        a.execute("DELETE FROM settings WHERE cle = 'mistralApiKey'", []).unwrap();
+        let traces: i64 = a.query_row("SELECT COUNT(*) FROM changements WHERE ligne_id = 'mistralApiKey'", [], |r| r.get(0)).unwrap();
+        assert_eq!(traces, 0);
+    }
+
+    /// Le défaut trouvé à la relecture : un texte tapé sur A pendant un passage de synchronisation — après l'envoi,
+    /// avant la réception — disparaissait sous ce que B avait ajouté ; renvoyé ensuite, il effaçait l'ajout de B,
+    /// et les deux textes restaient différents.
+    #[test]
+    fn un_texte_tape_pendant_la_synchronisation_n_est_pas_perdu() {
+        let neuve = |nom: &str| {
+            let c = Connection::open_in_memory().unwrap();
+            c.execute_batch("CREATE TABLE seances (id TEXT PRIMARY KEY, titre TEXT, deroulement TEXT);").unwrap();
+            creer_table(&c);
+            poser_declencheurs(&c, nom);
+            c
+        };
+        let lire = |c: &Connection| -> String {
+            c.query_row("SELECT deroulement FROM seances WHERE id = 'x'", [], |r| r.get(0)).unwrap()
+        };
+        let mut a = neuve("A");
+        let mut b = neuve("B");
+        a.execute("INSERT INTO seances (id, titre, deroulement) VALUES ('x', 'X', 'Phase 1. Phase 2.')", []).unwrap();
+        pause();
+        let (depart, repere_a) = changements_locaux(&a, 0).unwrap();
+        appliquer(&mut b, &depart).unwrap();
+        let (_, repere_b) = changements_locaux(&b, 0).unwrap();
+        pause();
+        // B ajoute au début et dépose.
+        b.execute("UPDATE seances SET deroulement = 'Rituel. Phase 1. Phase 2.' WHERE id = 'x'", []).unwrap();
+        pause();
+        let (de_b, _) = changements_locaux(&b, repere_b).unwrap();
+        // Passage de A : rien à envoyer ; pendant qu'il lit le stockage, l'enseignant tape à la fin.
+        let (rien, repere_a) = changements_locaux(&a, repere_a).unwrap();
+        assert!(rien.is_empty());
+        a.execute("UPDATE seances SET deroulement = 'Phase 1. Phase 2. Bilan.' WHERE id = 'x'", []).unwrap();
+        pause();
+        appliquer(&mut a, &de_b).unwrap();
+        assert_eq!(lire(&a), "Rituel. Phase 1. Phase 2. Bilan.", "le texte tapé reste, l'ajout de B arrive");
+        // Passage suivant de A ; B le reçoit.
+        let (de_a, _) = changements_locaux(&a, repere_a).unwrap();
+        appliquer(&mut b, &de_a).unwrap();
+        assert_eq!(lire(&b), "Rituel. Phase 1. Phase 2. Bilan.");
+        assert_eq!(lire(&a), lire(&b), "les deux ordinateurs ont le même texte");
+    }
+
+    /// Un texte rédigé avant que le CRDT ne le suive, retouché des deux côtés pendant un passage : même chose.
+    #[test]
+    fn un_texte_jamais_suivi_tape_pendant_la_synchronisation_n_est_pas_perdu() {
+        let neuve = |nom: &str| {
+            let c = Connection::open_in_memory().unwrap();
+            c.execute_batch("CREATE TABLE seances (id TEXT PRIMARY KEY, titre TEXT, deroulement TEXT);").unwrap();
+            creer_table(&c);
+            poser_declencheurs(&c, nom);
+            c
+        };
+        let lire = |c: &Connection| -> String {
+            c.query_row("SELECT deroulement FROM seances WHERE id = 'x'", [], |r| r.get(0)).unwrap()
+        };
+        let mut a = neuve("A");
+        let mut b = neuve("B");
+        // Le même texte des deux côtés, sans état CRDT : écrit avant que la synchronisation ne le suive.
+        for c in [&a, &b] {
+            c.execute("INSERT INTO seances (id, titre, deroulement) VALUES ('x', 'X', 'Phase 1. Phase 2.')", []).unwrap();
+            c.execute("UPDATE changements SET distant = 1", []).unwrap();
+        }
+        let repere_a = dernier_seq(&a);
+        let repere_b = dernier_seq(&b);
+        pause();
+        b.execute("UPDATE seances SET deroulement = 'Rituel. Phase 1. Phase 2.' WHERE id = 'x'", []).unwrap();
+        pause();
+        let (de_b, _) = changements_locaux(&b, repere_b).unwrap();
+        a.execute("UPDATE seances SET deroulement = 'Phase 1. Phase 2. Bilan.' WHERE id = 'x'", []).unwrap();
+        pause();
+        appliquer(&mut a, &de_b).unwrap();
+        assert_eq!(lire(&a), "Rituel. Phase 1. Phase 2. Bilan.");
+        let (de_a, _) = changements_locaux(&a, repere_a).unwrap();
+        appliquer(&mut b, &de_a).unwrap();
+        assert_eq!(lire(&a), lire(&b));
     }
 }
