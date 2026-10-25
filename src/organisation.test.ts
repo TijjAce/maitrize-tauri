@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { organisationPour, tempsDeLaSemaineType, natureDuSlot } from "./organisation";
+import { organisationPour, tempsDeLaSemaineType, natureDuSlot, creneauxDuFichier } from "./organisation";
 
 const edt = (annee: string, n = 1) => ({ id: annee, annee, slotsJson: JSON.stringify(Array.from({ length: n }, (_, i) => ({ id: `s${i}` }))) });
 const lundi14 = new Date(2026, 8, 14);
@@ -39,5 +39,17 @@ describe("tempsDeLaSemaineType", () => {
   it("devine la nature d'après l'intitulé si elle n'est pas choisie", () => {
     expect(natureDuSlot(slots[2])).toBe("reunion");
     expect(natureDuSlot({ ...slots[2], nature: "classe" })).toBe("classe");
+  });
+});
+
+describe("importer un emploi du temps", () => {
+  it("ne prend qu'un fichier de créneaux, jamais une progression ou une programmation", () => {
+    const creneau = { id: "a", jour: "Lundi", heureDebut: "08:30", heureFin: "09:15", titre: "Lecture", couleur: "blue" };
+    expect(creneauxDuFichier({ annee: "2026-2027", slots: [creneau] })).toEqual([creneau]);
+    expect(creneauxDuFichier([creneau])).toEqual([creneau]);
+    expect(creneauxDuFichier({ version: 1, type: "programmation", lignes: [{ id: "l1", label: "Nombres" }] })).toBeNull();
+    expect(creneauxDuFichier({ colonnesJson: "[]", cellulesJson: "{}" })).toBeNull();
+    expect(creneauxDuFichier({ slots: [] })).toBeNull();
+    expect(creneauxDuFichier([{ jour: "Lundi", titre: "x" }])).toBeNull();
   });
 });

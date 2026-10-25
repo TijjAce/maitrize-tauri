@@ -509,7 +509,15 @@ fn lire_programmation(c: &Connection, annee: &str, niveau: &str) -> R<Programmat
 #[tauri::command]
 pub async fn programmation_partager(db: State<'_, Db>, ami_id: String, annee: String, niveau: Option<String>) -> R<()> {
     let ctx = contexte(&db, &ami_id)?;
-    let prog = { let c = db.lock(); lire_programmation(&c, &annee, niveau.as_deref().unwrap_or("").trim())? };
+    let prog = {
+        let c = db.lock();
+        let mut prog = lire_programmation(&c, &annee, niveau.as_deref().unwrap_or("").trim())?;
+        // La programmation de la classe part avec le niveau de la classe : chez l'ami, elle se range à sa place.
+        if prog.niveau.trim().is_empty() {
+            prog.niveau = get_setting(&c, "niveauClasse").trim().to_string();
+        }
+        prog
+    };
     let key = cle_paire(ctx.priv_, ctx.ami_pub, &ctx.mid);
     let env = EnvProg {
         de: STANDARD.encode(ctx.pub_), nom: ctx.nom.clone(),
@@ -529,6 +537,11 @@ fn importer_programmation(c: &Connection, env: EnvProg) -> R<String> {
     let annee = p.annee.clone();
     p.id = uuid::Uuid::new_v4().to_string();
     p.est_importee = true;
+    // Une programmation de classe ne porte pas de nom : c'est celui de l'ami qui l'envoie. Sans lui, toutes les
+    // colonnes reçues s'appelaient « Collègue ».
+    if p.enseignant.trim().is_empty() {
+        p.enseignant = env.nom.trim().to_string();
+    }
     c.execute(
         "INSERT INTO programmations_finale (id,annee,lignes_json,niveau,enseignant,est_importee)
          VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(id) DO UPDATE SET annee = excluded.annee, lignes_json = excluded.lignes_json, niveau = excluded.niveau, enseignant = excluded.enseignant, est_importee = excluded.est_importee",

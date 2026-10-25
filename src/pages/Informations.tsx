@@ -129,7 +129,7 @@ export function InformationsTab({ annee }: { annee: string }) {
 function EditeurFeuille({ feuille, annee, onEnregistre, onDupliquer, onSupprimer }: {
   feuille: Texte; annee: string; onEnregistre: () => void; onDupliquer: () => void; onSupprimer: () => void;
 }) {
-  const { titre, setTitre, contenu, setContenu, etat, sauver } = useTexteAutosave(feuille, onEnregistre);
+  const { titre, setTitre, contenu, setContenu, etat, sauver, version } = useTexteAutosave(feuille, onEnregistre);
   const editeur = React.useRef<EditeurRicheHandle>(null);
   // L'emploi du temps de la feuille suit celui d'Organisation : refait à l'ouverture, avant que l'éditeur ne la montre.
   const [depart, setDepart] = React.useState<string | null>(null);
@@ -181,7 +181,7 @@ function EditeurFeuille({ feuille, annee, onEnregistre, onDupliquer, onSupprimer
         <button className="btn ghost" onClick={onSupprimer} title="Supprimer" aria-label="Supprimer la feuille">🗑</button>
       </div>
       {depart === null ? <div style={{ minHeight: "58vh" }} /> : (
-        <EditeurRiche ref={editeur} valeur={depart} onChange={setContenu} minHauteur="58vh"
+        <EditeurRiche key={version} ref={editeur} valeur={version ? contenu : depart} onChange={setContenu} minHauteur="58vh"
           placeholder="Écrivez, ou « Insérer » pour reprendre l'emploi du temps, les élèves…"
           outils={<button type="button" className="btn sm" onMouseDown={(e) => e.preventDefault()} onClick={inserer}>📥 Insérer ▾</button>} />
       )}

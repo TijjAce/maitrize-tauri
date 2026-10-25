@@ -1,6 +1,6 @@
 import React from "react";
-import { api, Creneau, Eleve, teinteCreneau, newId } from "../api";
-import { Field, Input, Select, Modal, Empty, Confirm, useAsync } from "../components/ui";
+import { api, Creneau, Eleve, teinteCreneau, newId, texteErreur } from "../api";
+import { Field, Input, Select, Modal, Empty, Confirm, useAsync, EVT_DONNEES_DISTANTES, PageVisibleContext } from "../components/ui";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
 import { printHTML, escapeHtml } from "../print";
@@ -119,6 +119,7 @@ const AGENCEMENTS: { id: string; nom: string; ico: string; sous: string; build: 
   },
 ];
 const iso = isoJour;
+const aujourdhui = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
 const fmtJour = (d: Date) => d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
 const teinte = (c: Creneau) => teinteCreneau(c);
 /**
@@ -234,8 +235,25 @@ export function PlanSalleTab() {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const photos = usePhotos(eleves ?? []);
 
-  const [jour, setJour] = React.useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; });
+  const [jour, setJour] = React.useState(aujourdhui);
   const jourIso = iso(jour);
+  // La page reste ouverte d'un jour à l'autre : celle qu'on regardait sur « aujourd'hui » passe au nouveau jour ;
+  // un autre jour choisi reste.
+  const vuLe = React.useRef(iso(aujourdhui()));
+  const pageVisible = React.useContext(PageVisibleContext);
+  React.useEffect(() => {
+    const suivre = () => {
+      const ajd = iso(aujourdhui());
+      if (ajd === vuLe.current) return;
+      const hier = vuLe.current;
+      vuLe.current = ajd;
+      setJour((j) => (iso(j) === hier ? aujourdhui() : j));
+    };
+    if (pageVisible) suivre();
+    window.addEventListener("focus", suivre);
+    const minute = window.setInterval(suivre, 60_000);
+    return () => { window.removeEventListener("focus", suivre); window.clearInterval(minute); };
+  }, [pageVisible]);
   const { data: creneauxBruts } = useAsync(() => api.creneauxList(jourIso, jourIso), [jourIso]);
   const creneaux = React.useMemo(
     () => [...(creneauxBruts ?? [])].sort((a, b) => a.heureDebut.localeCompare(b.heureDebut)),
@@ -268,7 +286,16 @@ export function PlanSalleTab() {
   const [supprProfil, setSupprProfil] = React.useState<Profil | null>(null);
   const canvasRef = React.useRef<HTMLDivElement>(null);
 
+  // Les réglages du plan, relus à l'ouverture, quand l'autre ordinateur en envoie, et quand la page revient.
+  const [relu, setRelu] = React.useState(0);
   React.useEffect(() => {
+    const relire = () => setRelu((n) => n + 1);
+    window.addEventListener(EVT_DONNEES_DISTANTES, relire);
+    return () => window.removeEventListener(EVT_DONNEES_DISTANTES, relire);
+  }, []);
+  React.useEffect(() => { if (pageVisible) setRelu((n) => n + 1); }, [pageVisible]);
+  React.useEffect(() => {
+    if (!relu) return;
     (async () => {
       const [pr, el, pl, pm, pc, pmat] = await Promise.all([
         api.settingGet("salle:profils"), api.settingGet("salle:elements"),
@@ -293,7 +320,7 @@ export function PlanSalleTab() {
       try { setProfilMatiere(pmat ? JSON.parse(pmat) : {}); } catch { /* vide */ }
       setCharge(true);
     })();
-  }, []);
+  }, [relu]);
 
   // Références toujours à jour : le glisser-déposer met l'état à jour à chaque
   // frame mais n'enregistre qu'au relâchement, et deux placements rapprochés
@@ -303,9 +330,41 @@ export function PlanSalleTab() {
   const plansRef = React.useRef<Record<string, Plan>>({});
   const matRef = React.useRef<Record<string, Plan>>({});
 
+  /**
+   * Écrit un réglage du plan par écart (voir `setting_ecart`) : ce que l'écran change l'emporte, ce que l'autre
+   * ordinateur a placé entre-temps reste. La valeur en base revient à l'écran, si rien d'autre n'est parti depuis.
+   */
+  const ecritures = React.useRef<Record<string, number>>({});
+  const ecrireParEcart = <T,>(cle: string, avant: T, apres: T, poser: (v: T) => void) => {
+    const n = (ecritures.current[cle] ?? 0) + 1;
+    ecritures.current[cle] = n;
+    api.settingEcart(cle, JSON.stringify(avant), JSON.stringify(apres))
+      .then((brut) => { if (ecritures.current[cle] === n) { try { poser(JSON.parse(brut) as T); } catch { /* l'écran garde la sienne */ } } })
+      .catch((e) => toast("Plan de salle non enregistré : " + texteErreur(e), { icone: "⚠️" }));
+  };
+
+  const poserProfils = (v: Profil[]) => { profilsRef.current = v; setProfils(v); };
   const persistProfils = (liste: Profil[]) => {
-    profilsRef.current = liste; setProfils(liste);
-    api.settingSet("salle:profils", JSON.stringify(liste));
+    const avant = profilsRef.current;
+    poserProfils(liste);
+    ecrireParEcart("salle:profils", avant, liste, poserProfils);
+  };
+  // Chaque réglage du plan : à l'écran tout de suite, en base par écart.
+  const pcRef = React.useRef<Record<string, string>>({});
+  pcRef.current = profilCreneau;
+  const pmatRef = React.useRef<Record<string, string>>({});
+  pmatRef.current = profilMatiere;
+  const poserPlans = (v: Record<string, Plan>) => { plansRef.current = v; setPlans(v); };
+  const poserMatieres = (v: Record<string, Plan>) => { matRef.current = v; setPlansMatiere(v); };
+  const poserProfilCreneau = (v: Record<string, string>) => { pcRef.current = v; setProfilCreneau(v); };
+  const poserProfilMatiere = (v: Record<string, string>) => { pmatRef.current = v; setProfilMatiere(v); };
+  const ecrirePlans = (v: Record<string, Plan>) => { const avant = plansRef.current; poserPlans(v); ecrireParEcart("salle:plans", avant, v, poserPlans); };
+  const ecrireMatieres = (v: Record<string, Plan>) => { const avant = matRef.current; poserMatieres(v); ecrireParEcart("salle:plansMatiere", avant, v, poserMatieres); };
+  const ecrireProfilCreneau = (v: Record<string, string>) => {
+    const avant = pcRef.current; poserProfilCreneau(v); ecrireParEcart("salle:profilCreneau", avant, v, poserProfilCreneau);
+  };
+  const ecrireProfilMatiere = (v: Record<string, string>) => {
+    const avant = pmatRef.current; poserProfilMatiere(v); ecrireParEcart("salle:profilMatiere", avant, v, poserProfilMatiere);
   };
 
   // ── Agencement courant ────────────────────────────────────────────────
@@ -328,11 +387,8 @@ export function PlanSalleTab() {
     // Sans créneau on ne fait que regarder ou aménager : il n'y a rien à
     // rattacher, mais changer d'agencement doit rester possible.
     if (!creneau) return;
-    const pc = { ...profilCreneau, [creneau.id]: id };
-    const pm = { ...profilMatiere, [creneau.matiere]: id };
-    setProfilCreneau(pc); setProfilMatiere(pm);
-    api.settingSet("salle:profilCreneau", JSON.stringify(pc));
-    api.settingSet("salle:profilMatiere", JSON.stringify(pm));
+    ecrireProfilCreneau({ ...pcRef.current, [creneau.id]: id });
+    ecrireProfilMatiere({ ...pmatRef.current, [creneau.matiere]: id });
   };
 
   const heritage = creneau ? plansMatiere[creneau.matiere] : undefined;
@@ -342,12 +398,8 @@ export function PlanSalleTab() {
   /** Enregistre le plan du créneau courant, et le retient pour sa matière. */
   const persistPlan = (p: Plan) => {
     if (!creneau) return;
-    const np = { ...plansRef.current, [creneau.id]: p };
-    const nm = { ...matRef.current, [creneau.matiere]: p };
-    plansRef.current = np; matRef.current = nm;
-    setPlans(np); setPlansMatiere(nm);
-    api.settingSet("salle:plans", JSON.stringify(np));
-    api.settingSet("salle:plansMatiere", JSON.stringify(nm));
+    ecrirePlans({ ...plansRef.current, [creneau.id]: p });
+    ecrireMatieres({ ...matRef.current, [creneau.matiere]: p });
   };
 
   const places = elements.filter((e) => e.type === "place");
@@ -403,8 +455,8 @@ export function PlanSalleTab() {
     const avant = { elements, plans: plansRef.current, mat: matRef.current };
     toastAnnulable("Élément retiré du plan.", () => {
       persistElements(avant.elements);
-      plansRef.current = avant.plans; setPlans(avant.plans); api.settingSet("salle:plans", JSON.stringify(avant.plans));
-      matRef.current = avant.mat; setPlansMatiere(avant.mat); api.settingSet("salle:plansMatiere", JSON.stringify(avant.mat));
+      ecrirePlans(avant.plans);
+      ecrireMatieres(avant.mat);
     }, "🪑");
     persistElements(elements.filter((e) => e.id !== id));
     const nettoie = (src: Record<string, Plan>) => {
@@ -420,8 +472,8 @@ export function PlanSalleTab() {
     };
     const np = nettoie(plansRef.current);
     const nm = nettoie(matRef.current);
-    if (np) { plansRef.current = np; setPlans(np); api.settingSet("salle:plans", JSON.stringify(np)); }
-    if (nm) { matRef.current = nm; setPlansMatiere(nm); api.settingSet("salle:plansMatiere", JSON.stringify(nm)); }
+    if (np) ecrirePlans(np);
+    if (nm) ecrireMatieres(nm);
     if (selId === id) setSelId(null);
   };
 
@@ -484,21 +536,18 @@ export function PlanSalleTab() {
   };
 
   const supprimerProfil = (cible: Profil) => {
-    const avant = { profils: profilsRef.current, creneau: profilCreneau, matiere: profilMatiere };
+    const avant = { profils: profilsRef.current, creneau: pcRef.current, matiere: pmatRef.current };
     const reste = profilsRef.current.filter((p) => p.id !== cible.id);
     persistProfils(reste);
     // Les créneaux qui pointaient dessus retombent sur le premier agencement.
     const nettoie = (m: Record<string, string>) =>
       Object.fromEntries(Object.entries(m).filter(([, v]) => v !== cible.id));
-    const pc = nettoie(profilCreneau); const pm = nettoie(profilMatiere);
-    setProfilCreneau(pc); setProfilMatiere(pm);
-    api.settingSet("salle:profilCreneau", JSON.stringify(pc));
-    api.settingSet("salle:profilMatiere", JSON.stringify(pm));
+    ecrireProfilCreneau(nettoie(pcRef.current));
+    ecrireProfilMatiere(nettoie(pmatRef.current));
     toastAnnulable(`Agencement « ${cible.nom} » supprimé.`, () => {
       persistProfils(avant.profils);
-      setProfilCreneau(avant.creneau); setProfilMatiere(avant.matiere);
-      api.settingSet("salle:profilCreneau", JSON.stringify(avant.creneau));
-      api.settingSet("salle:profilMatiere", JSON.stringify(avant.matiere));
+      ecrireProfilCreneau(avant.creneau);
+      ecrireProfilMatiere(avant.matiere);
     });
   };
 
@@ -510,6 +559,7 @@ export function PlanSalleTab() {
     setSelId(el.id);
     const box = canvasRef.current!.getBoundingClientRect();
     dragRef.current = { id: el.id, dx: e.clientX - box.left - el.x, dy: e.clientY - box.top - el.y, resize, w0: el.w, h0: el.h, x0: e.clientX, y0: e.clientY };
+    const avantGlisser = profilsRef.current;
     const onMove = (ev: MouseEvent) => {
       const d = dragRef.current; if (!d) return;
       // Mise à jour à chaque frame, enregistrement au relâchement seulement.
@@ -528,7 +578,7 @@ export function PlanSalleTab() {
     const onUp = () => {
       window.removeEventListener("mousemove", onMove);
       dragRef.current = null;
-      api.settingSet("salle:profils", JSON.stringify(profilsRef.current));
+      ecrireParEcart("salle:profils", avantGlisser, profilsRef.current, poserProfils);
     };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp, { once: true });

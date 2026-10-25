@@ -342,7 +342,7 @@ function ChoixDesEleves({ eleves, choisis, onChange, aide }: {
 function EditeurPage({ page, onEnregistre, onDupliquer, onSupprimer }: {
   page: Texte; onEnregistre: () => void; onDupliquer: () => void; onSupprimer: () => void;
 }) {
-  const { titre, setTitre, contenu, setContenu, etat, sauver } = useTexteAutosave(page, onEnregistre);
+  const { titre, setTitre, contenu, setContenu, etat, sauver, version } = useTexteAutosave(page, onEnregistre);
   const { data: eleves } = useAsync(elevesDeLaClasse, []);
   const [meta, setMeta] = React.useState<MetaGarde | null>(null);
   const [ouvert, setOuvert] = React.useState(false);
@@ -386,7 +386,7 @@ function EditeurPage({ page, onEnregistre, onDupliquer, onSupprimer }: {
         <ChoixDesEleves eleves={eleves} choisis={choisis} onChange={choisir}
           aide={meta?.sorte === "cahier" ? "Chaque élève coché a sa page de garde, son nom sur la ligne à compléter." : "Chaque élève coché a son exemplaire, à son nom."} />
       )}
-      <EditeurRiche valeur={page.contenu} onChange={setContenu} minHauteur="58vh"
+      <EditeurRiche key={version} valeur={version ? contenu : page.contenu} onChange={setContenu} minHauteur="58vh"
         placeholder="Écrivez le document…" />
       <div style={{ fontSize: 12, color: "var(--text-2)" }}>
         {meta?.sorte === "journal" ? "Votre page de garde : imprimez-la et collez-la en tête de votre cahier journal." : "Relisez avant d'imprimer : ce document part aux familles."}

@@ -172,7 +172,7 @@ pub fn run() {
             // Coffre-fort
             coffre_list, coffre_save, coffre_delete, coffre_download,
             // Réglages
-            settings_all, settings_prefixe, setting_get, setting_set,
+            settings_all, settings_prefixe, setting_get, setting_set, setting_ecart,
             // Fichiers
             fichier_save, fichier_read, fichier_delete, fichiers_ramener, fichier_importer_depuis_chemin, enregistrer_texte, enregistrer_archive,
             imprimer_pdf, imprimer_planning, ouvrir_html, exporter_synthese_gs, exporter_bilan_ppi, exporter_gevasco,

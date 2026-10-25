@@ -709,6 +709,8 @@ export const api = {
   settingsPrefixe: (prefixe: string) => invoke<Record<string, string>>("settings_prefixe", { prefixe }),
   settingGet: (cle: string) => invoke<string | null>("setting_get", { cle }),
   settingSet: (cle: string, valeur: string) => invoke<void>("setting_set", { cle, valeur }),
+  /** Écrit un réglage-collection par écart (voir `setting_ecart`) : rend la valeur désormais en base. */
+  settingEcart: (cle: string, avant: string, apres: string) => invoke<string>("setting_ecart", { cle, avant, apres }),
 
   // Fichiers
   fichierSave: (nom: string, base64: string) => invoke<string>("fichier_save", { nom, base64 }),
