@@ -9,8 +9,8 @@ import { ouvrirOnglet } from "./ui";
 import { demanderMinuteur, EVT_FERMER_AFFICHAGE } from "../demandeMinuteur";
 import { preparerSon } from "../pages/SupportsVisuels";
 import {
-  CLE_SECOURS, MODELE_DE_SECOURS, ceQuIlComprend, comprendre, consigneDuSecours, destinationsDe, dureeEnClair, inviteDeLaVoix,
-  lireLeSecours, nomDeLaPage, TROUVAILLES_DE_LA_CLASSE, type Compris, type ContexteTelecommande, type Destination,
+  CLE_SECOURS, CLE_TEMPS_REEL, MODELE_DE_SECOURS, ceQuIlComprend, comprendre, consigneDuSecours, destinationsDe, dureeEnClair,
+  inviteDeLaVoix, lireLeSecours, nomDeLaPage, TROUVAILLES_DE_LA_CLASSE, type Compris, type ContexteTelecommande, type Destination,
 } from "../telecommande";
 
 // La télécommande du téléphone, côté fenêtre : ce que dit l'enseignant devient un geste à l'écran — donc au
@@ -56,14 +56,17 @@ async function secours(texte: string, ctx: ContexteTelecommande): Promise<Compri
   }
 }
 
-/** Fait ce que la phrase demande, et dit au téléphone ce qui a été fait. */
-async function executer(texte: string, nav: (to: string) => void): Promise<ReponseTelecommande> {
+/**
+ * Fait ce que la phrase demande, et dit au téléphone ce qui a été fait. `avecSecours` : Mistral peut lire une phrase
+ * incomprise — pas au premier essai d'une phrase entendue en direct, que la transcription de ce Mac rattrape d'abord.
+ */
+async function executer(texte: string, nav: (to: string) => void, avecSecours = true): Promise<ReponseTelecommande> {
   const eleves = (await api.elevesList().catch(() => [])).map((e) => ({ id: e.id, nom: e.nom }));
   const ctx = { destinations: destinations(), eleves };
   const c = comprendre(texte, ctx);
   const fait = await agir(c, nav);
   // Pas compris, ou rien trouvé : Mistral lit la phrase, si l'enseignant l'a voulu.
-  if ((c.genre === "rien" || !fait.ok) && texte.trim()) {
+  if (avecSecours && (c.genre === "rien" || !fait.ok) && texte.trim()) {
     const lu = await secours(texte, ctx);
     const refait = lu ? await agir(lu, nav) : null;
     if (refait?.ok) return refait.fait ? { ...refait, fait: `${refait.fait} (Mistral)` } : refait;
@@ -134,8 +137,8 @@ export function useTelecommande() {
       try { reponse = await faire(); } catch (e) { reponse = { ok: false, fait: texteErreur(e) }; }
       await api.telecommandeRepondre(attente, reponse).catch(() => {});
     };
-    const phrase = listen<{ attente: string; texte: string }>("telecommande:phrase", (e) => {
-      void repondre(e.payload.attente, () => executer(e.payload.texte, (to) => nav.current(to)));
+    const phrase = listen<{ attente: string; texte: string; secours?: boolean }>("telecommande:phrase", (e) => {
+      void repondre(e.payload.attente, () => executer(e.payload.texte, (to) => nav.current(to), e.payload.secours !== false));
     });
     const decision = listen<{ attente: string; id: string; oui: boolean }>("telecommande:decision", (e) => {
       void repondre(e.payload.attente, () => decider(e.payload.id, e.payload.oui));
@@ -191,6 +194,25 @@ export function CarteTelecommande() {
     setSecoursVoulu(oui);
     api.settingSet(CLE_SECOURS, oui ? "oui" : "").catch((e) => { setSecoursVoulu(!oui); toast(texteErreur(e), { icone: "⚠️" }); });
   };
+  const [direct, setDirect] = React.useState(false);
+  const [verifie, setVerifie] = React.useState(false);
+  React.useEffect(() => { api.settingGet(CLE_TEMPS_REEL).then((v) => setDirect(v === "oui")).catch(() => {}); }, []);
+  // Cochée : on vérifie tout de suite que la clé Mistral ouvre Voxtral Realtime, plutôt qu'en classe.
+  const basculerLeDirect = async (oui: boolean) => {
+    setDirect(oui);
+    try {
+      if (oui) {
+        setVerifie(true);
+        await api.mistralJetonTempsReel();
+      }
+      await api.settingSet(CLE_TEMPS_REEL, oui ? "oui" : "");
+    } catch (e) {
+      setDirect(false);
+      toast("Écoute en direct impossible : " + texteErreur(e), { icone: "⚠️", duree: 8000 });
+    } finally {
+      setVerifie(false);
+    }
+  };
   return (
     <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -201,9 +223,13 @@ export function CarteTelecommande() {
             s'écrit dans ses observations après un « oui » sur le téléphone, sans s'afficher au tableau.</p>
           <p>Sur l'iPhone, « Que dire ? » montre tout ce que la télécommande comprend, et chaque page par son nom :
             toucher une phrase l'envoie, comme si on l'avait dite.</p>
+          <p>Écoute en direct : pendant qu'on parle, l'iPhone envoie la voix à Voxtral Realtime (Mistral, en ligne) et
+            montre le texte sous le bouton ; la phrase est prête dès qu'on lâche. Ce Mac donne à l'iPhone un jeton
+            d'une phrase, jamais la clé. Si ce texte n'est pas compris — ou sans réseau —, ce Mac transcrit le même son,
+            comme avant.</p>
           <p>Mistral en secours : quand la télécommande ne comprend pas une phrase, Mistral la lit (en ligne, le texte
-            seul : le son reste sur ce Mac) et choisit parmi les pages de la classe ; Maitrize vérifie sa réponse avant
-            d'agir. Le téléphone le signale par « (Mistral) ».</p>
+            seul) et choisit parmi les pages de la classe ; Maitrize vérifie sa réponse avant d'agir. Le téléphone le
+            signale par « (Mistral) ».</p>
           <p>La voix ne montre que ce qu'on peut montrer à la classe : ni les élèves, ni le cahier journal, ni les
             réglages. Elle est transcrite sur ce Mac, comme les dictées ; chaque phrase arrive scellée, même sur le WiFi
             de l'école.</p>
@@ -218,6 +244,10 @@ export function CarteTelecommande() {
         </button>
       </div>
       <label className="pb-coche" style={{ marginTop: 10 }}>
+        <input type="checkbox" checked={direct} disabled={verifie} onChange={(e) => void basculerLeDirect(e.target.checked)} />
+        <span>Écoute en direct par Voxtral Realtime (en ligne, plus rapide){verifie ? " — vérification…" : ""}</span>
+      </label>
+      <label className="pb-coche">
         <input type="checkbox" checked={secoursVoulu} onChange={(e) => basculerLeSecours(e.target.checked)} />
         <span>Mistral en secours, quand la télécommande ne comprend pas</span>
       </label>

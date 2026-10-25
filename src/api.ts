@@ -975,6 +975,8 @@ export const api = {
   boiteSupprimer: (id: string) => invoke<void>("boite_supprimer", { id }),
   // Version portable : serveur local sur le WiFi + QR code (lecture seule).
   telecommandeOuvrir: (invite: string) => invoke<InfoTelecommande>("telecommande_ouvrir", { invite }),
+  /** Un jeton de Voxtral Realtime : la clé l'ouvre-t-elle ? (la case de la télécommande le demande en se cochant) */
+  mistralJetonTempsReel: () => invoke<{ jeton: string; modele: string; expire: string }>("mistral_jeton_temps_reel"),
   telecommandeFermer: () => invoke<void>("telecommande_fermer"),
   telecommandeEtat: () => invoke<InfoTelecommande | null>("telecommande_etat"),
   telecommandeRepondre: (attente: string, reponse: ReponseTelecommande) => invoke<void>("telecommande_repondre", { attente, reponse }),

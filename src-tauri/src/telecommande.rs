@@ -12,7 +12,7 @@
 use crate::db::Db;
 use base64::Engine as _;
 use maitrize_relais as relais;
-use relais::telecommande::{Demande, Genre, Ouverture, Reponse};
+use relais::telecommande::{Demande, Genre, Ouverture, Reponse, VoixEnDirect};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -49,13 +49,15 @@ pub struct Attentes(pub Mutex<HashMap<String, mpsc::Sender<Reponse>>>);
 #[derive(Debug, PartialEq)]
 pub(crate) enum Suite {
     Repondre(Reponse),
-    /// Une phrase à comprendre : dite (le son) ou écrite.
-    Parole(Vec<u8>),
+    /// Une phrase à comprendre : dite — le son, et ce qu'en a entendu l'écoute en direct, peut-être — ou écrite.
+    Parole { son: Vec<u8>, direct: String },
     Phrase(String),
     /// Oui ou non à la question `id`.
     Decision { id: String, oui: bool },
     /// Ce que la fenêtre comprend, pour « Que dire ? » sur le téléphone.
     Aide,
+    /// Un jeton pour écouter en direct (Voxtral Realtime).
+    Voix,
 }
 
 /// Rouvre une demande et dit ce qu'il faut en faire ; refuse ce qui n'est pas de ce téléphone, de cette séance,
@@ -72,13 +74,14 @@ pub(crate) fn lire_demande(privee: &[u8; 32], jeton: &str, dernier_numero: &mut 
     Ok(match d.genre {
         Genre::Bonjour => Suite::Repondre(Reponse { ok: true, fait: format!("Relié à {}.", nom_du_mac()), ..Default::default() }),
         Genre::Parole => {
-            let octets = base64::engine::general_purpose::STANDARD.decode(d.audio.as_bytes()).map_err(|_| "Son illisible.".to_string())?;
-            Suite::Parole(octets)
+            let son = base64::engine::general_purpose::STANDARD.decode(d.audio.as_bytes()).map_err(|_| "Son illisible.".to_string())?;
+            Suite::Parole { son, direct: d.texte }
         }
         Genre::Texte => Suite::Phrase(d.texte),
         Genre::Confirmer => Suite::Decision { id: d.id, oui: true },
         Genre::Annuler => Suite::Decision { id: d.id, oui: false },
         Genre::Aide => Suite::Aide,
+        Genre::Voix => Suite::Voix,
     })
 }
 
@@ -105,6 +108,27 @@ fn transcrire(app: &AppHandle, octets: &[u8], invite: &str) -> R<String> {
     }
 }
 
+/// Le réglage : « oui », le téléphone écoute d'abord en direct chez Mistral (Voxtral Realtime).
+const CLE_TEMPS_REEL: &str = "telecommande:realtime";
+
+/// Un jeton d'écoute en direct pour le téléphone, s'il est voulu et si la clé Mistral l'ouvre. Sans lui, le
+/// téléphone envoie le son seul, que cet ordinateur transcrit.
+fn voix_en_direct(app: &AppHandle) -> Reponse {
+    let voulue = crate::sync::get_setting(&app.state::<Db>().lock(), CLE_TEMPS_REEL) == "oui";
+    if !voulue {
+        return Reponse { ok: false, fait: "L'écoute en direct n'est pas cochée sur l'ordinateur.".into(), ..Default::default() };
+    }
+    let db = app.state::<Db>();
+    match tauri::async_runtime::block_on(crate::ai::jeton_temps_reel(&db, crate::ai::MODELE_TEMPS_REEL)) {
+        Ok(j) => Reponse {
+            ok: true,
+            voix: Some(VoixEnDirect { jeton: j.jeton, modele: j.modele, expire: j.expire }),
+            ..Default::default()
+        },
+        Err(e) => Reponse { ok: false, fait: format!("Écoute en direct impossible : {e}"), ..Default::default() },
+    }
+}
+
 /// Confie une phrase (ou une décision) à la fenêtre et attend sa réponse.
 fn demander_a_la_fenetre(app: &AppHandle, evenement: &str, mut charge: serde_json::Value) -> Reponse {
     let attente = uuid::Uuid::new_v4().to_string();
@@ -127,25 +151,39 @@ pub(crate) struct Fil<'a> {
     pub transcrire: &'a dyn Fn(&[u8]) -> R<String>,
     pub fenetre: &'a dyn Fn(&str, serde_json::Value) -> Reponse,
     pub reliee: &'a dyn Fn(),
+    /// Un jeton d'écoute en direct, si l'enseignant l'a voulu.
+    pub voix: &'a dyn Fn() -> Reponse,
 }
 
 /// Ce que la demande devient, une fois la parole transcrite et la fenêtre consultée.
 fn traiter(fil: &Fil, suite: Suite) -> Reponse {
-    let phrase = |texte: &str| {
-        let mut r = (fil.fenetre)("telecommande:phrase", serde_json::json!({ "texte": texte }));
+    // `secours` : la fenêtre peut demander à Mistral, si l'enseignant l'a voulu ; pas pour un premier essai.
+    let phrase = |texte: &str, secours: bool| {
+        let mut r = (fil.fenetre)("telecommande:phrase", serde_json::json!({ "texte": texte, "secours": secours }));
         r.entendu = texte.to_string();
         r
     };
     match suite {
         Suite::Repondre(r) => r,
-        Suite::Parole(octets) => match (fil.transcrire)(&octets) {
-            Ok(texte) if !texte.trim().is_empty() => phrase(texte.trim()),
-            Ok(_) => Reponse { ok: false, fait: "Je n'ai rien entendu.".into(), ..Default::default() },
-            Err(e) => Reponse { ok: false, fait: format!("Transcription impossible : {e}"), ..Default::default() },
-        },
-        Suite::Phrase(texte) => phrase(texte.trim()),
+        Suite::Parole { son, direct } => {
+            // L'écoute en direct d'abord : comprise, c'est fait — vite. Sinon, le même son transcrit ici, avec la
+            // liste des commandes, a sa chance (à l'essai, l'écoute en direct se trompait plus souvent).
+            if !direct.trim().is_empty() {
+                let r = phrase(direct.trim(), false);
+                if r.ok {
+                    return r;
+                }
+            }
+            match (fil.transcrire)(&son) {
+                Ok(texte) if !texte.trim().is_empty() => phrase(texte.trim(), true),
+                Ok(_) => Reponse { ok: false, fait: "Je n'ai rien entendu.".into(), ..Default::default() },
+                Err(e) => Reponse { ok: false, fait: format!("Transcription impossible : {e}"), ..Default::default() },
+            }
+        }
+        Suite::Phrase(texte) => phrase(texte.trim(), true),
         Suite::Decision { id, oui } => (fil.fenetre)("telecommande:decision", serde_json::json!({ "id": id, "oui": oui })),
         Suite::Aide => (fil.fenetre)("telecommande:aide", serde_json::json!({})),
+        Suite::Voix => (fil.voix)(),
     }
 }
 
@@ -280,6 +318,7 @@ pub async fn telecommande_ouvrir(
             transcrire: &|octets| transcrire(&app_fil, octets, invite.as_deref().unwrap_or_default()),
             fenetre: &|evenement, charge| demander_a_la_fenetre(&app_fil, evenement, charge),
             reliee: &|| marquer_reliee(&app_fil),
+            voix: &|| voix_en_direct(&app_fil),
         };
         servir(server, &fil, &cles, &jeton, &stop, &|| fermer_la_seance(&app_fil, &stop));
     });
@@ -332,7 +371,10 @@ mod tests {
         let mut parole = demande(1, Genre::Parole);
         parole.audio = STANDARD.encode(b"RIFF....WAVE");
         let scelle = relais::telecommande::sceller(&publique, &parole).unwrap();
-        assert_eq!(lire_demande(&privee, "j-1", &mut dernier, &scelle).unwrap(), Suite::Parole(b"RIFF....WAVE".to_vec()));
+        assert_eq!(
+            lire_demande(&privee, "j-1", &mut dernier, &scelle).unwrap(),
+            Suite::Parole { son: b"RIFF....WAVE".to_vec(), direct: String::new() }
+        );
         // Rejouée — relevée sur le réseau et renvoyée — : refusée.
         assert!(lire_demande(&privee, "j-1", &mut dernier, &scelle).is_err());
         // Une autre séance : refusée.
@@ -348,6 +390,8 @@ mod tests {
         assert!(matches!(lire_demande(&privee, "j-1", &mut dernier, &bonjour).unwrap(), Suite::Repondre(Reponse { ok: true, .. })));
         let aide = relais::telecommande::sceller(&publique, &demande(4, Genre::Aide)).unwrap();
         assert_eq!(lire_demande(&privee, "j-1", &mut dernier, &aide).unwrap(), Suite::Aide);
+        let voix = relais::telecommande::sceller(&publique, &demande(5, Genre::Voix)).unwrap();
+        assert_eq!(lire_demande(&privee, "j-1", &mut dernier, &voix).unwrap(), Suite::Voix);
     }
 
     /// Envoie un corps en POST, à la main, et rend le code et le corps de la réponse.
@@ -377,10 +421,21 @@ mod tests {
             let reliee = AtomicBool::new(false);
             let fil = Fil {
                 transcrire: &|octets| Ok(format!("minuteur {} minutes", octets.len())),
-                fenetre: &|evenement, charge| Reponse {
-                    ok: true, fait: format!("{evenement} : {}", charge["texte"].as_str().unwrap_or("")), ..Default::default()
+                // Une fenêtre qui ne comprend pas « Malaka » ; « secours » dit si Mistral aurait pu servir.
+                fenetre: &|evenement, charge| {
+                    let texte = charge["texte"].as_str().unwrap_or("");
+                    Reponse {
+                        ok: texte != "Malaka",
+                        fait: format!("{evenement} : {texte}{}", if charge["secours"] == false { " (sans secours)" } else { "" }),
+                        ..Default::default()
+                    }
                 },
                 reliee: &|| reliee.store(true, Ordering::Relaxed),
+                voix: &|| Reponse {
+                    ok: true,
+                    voix: Some(VoixEnDirect { jeton: "rt_essai".into(), modele: "m".into(), ..Default::default() }),
+                    ..Default::default()
+                },
             };
             servir(server, &fil, &cles, "j-1", &arret, &|| {});
             reliee.load(Ordering::Relaxed)
@@ -400,10 +455,30 @@ mod tests {
         assert_eq!(r.fait, "telecommande:phrase : minuteur 5 minutes");
         assert!(!String::from_utf8_lossy(&corps).contains("minuteur"), "la réponse ne passe pas en clair");
 
+        // Dite et entendue en direct : le texte du direct d'abord, sans Mistral ; compris, le son n'est pas transcrit.
+        let mut parole = demande(5, Genre::Parole);
+        parole.audio = STANDARD.encode([0u8; 7]);
+        parole.texte = "Va à la CAA".into();
+        let r: Reponse = relais::telecommande::dechiffrer(&cle_retour, &envoyer(&parole).1).unwrap();
+        assert_eq!((r.entendu.as_str(), r.fait.as_str()), ("Va à la CAA", "telecommande:phrase : Va à la CAA (sans secours)"));
+        // Pas compris : le même son, transcrit ici, a sa chance — avec le secours, cette fois.
+        let mut parole = demande(6, Genre::Parole);
+        parole.audio = STANDARD.encode([0u8; 7]);
+        parole.texte = "Malaka".into();
+        let r: Reponse = relais::telecommande::dechiffrer(&cle_retour, &envoyer(&parole).1).unwrap();
+        assert_eq!((r.entendu.as_str(), r.fait.as_str()), ("minuteur 7 minutes", "telecommande:phrase : minuteur 7 minutes"));
+
         // « Que dire ? » : la fenêtre répond.
-        let (code, corps) = envoyer(&demande(3, Genre::Aide));
+        let (code, corps) = envoyer(&demande(7, Genre::Aide));
         assert_eq!(code, 200);
         assert_eq!(relais::telecommande::dechiffrer::<Reponse>(&cle_retour, &corps).unwrap().fait, "telecommande:aide : ");
+
+        // Un jeton d'écoute en direct : il ne passe que chiffré.
+        let (code, corps) = envoyer(&demande(8, Genre::Voix));
+        assert_eq!(code, 200);
+        assert!(!String::from_utf8_lossy(&corps).contains("rt_essai"));
+        let r: Reponse = relais::telecommande::dechiffrer(&cle_retour, &corps).unwrap();
+        assert_eq!(r.voix.map(|v| v.jeton), Some("rt_essai".to_string()));
 
         // Rejouée, ou d'une autre séance : refusée, sans rien dire.
         assert_eq!(envoyer(&parole).0, 403);

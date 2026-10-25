@@ -307,6 +307,9 @@ export function comprendre(phrase: string, ctx: ContexteTelecommande): Compris {
   return { genre: "chercher", ...cherche };
 }
 
+/** Le réglage : « oui », le téléphone écoute d'abord en direct chez Mistral (Voxtral Realtime), puis sur le Mac. */
+export const CLE_TEMPS_REEL = "telecommande:realtime";
+
 /** Le modèle qui lit, en secours, une phrase que la télécommande n'a pas comprise (essai du 25 octobre : le plus juste). */
 export const MODELE_DE_SECOURS = "ministral-14b-latest";
 

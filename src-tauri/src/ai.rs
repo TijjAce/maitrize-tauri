@@ -1020,6 +1020,53 @@ pub async fn transcrire_audio(
 // pas : la même page garde la même empreinte, et ne repart pas vers le téléphone.
 
 /// Le modèle et la voix qui lisent les consignes : une voix française, posée.
+/// Voxtral Realtime : la voix transcrite pendant qu'on la dit (télécommande du tableau). Le « -3 » : le « -2602 »
+/// refuse qu'on lui impose le français (erreur 3051, essai du 25 octobre).
+pub(crate) const MODELE_TEMPS_REEL: &str = "voxtral-mini-transcribe-realtime-3";
+
+/// Un jeton de Voxtral Realtime : de courte durée, valable pour ce seul modèle.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct JetonTempsReel {
+    pub jeton: String,
+    pub modele: String,
+    pub expire: String,
+}
+
+/// Demande à Mistral un jeton pour écouter en direct : le téléphone s'en sert, et ne voit jamais la clé.
+pub(crate) async fn jeton_temps_reel(db: &State<'_, Db>, modele: &str) -> Result<JetonTempsReel, String> {
+    let cle = cle_mistral(db)?;
+    let rep = reqwest::Client::new()
+        .post("https://api.mistral.ai/v1/client/sessions")
+        .bearer_auth(cle)
+        .json(&serde_json::json!({ "purpose": "realtime", "model": modele }))
+        .send()
+        .await
+        .map_err(|e| format!("Envoi impossible : {e}"))?;
+    let statut = rep.status();
+    let quota = quota_minute(rep.headers());
+    let corps = rep.text().await.map_err(|e| e.to_string())?;
+    if !statut.is_success() {
+        return Err(message_erreur(statut.as_u16(), &corps, quota));
+    }
+    lire_le_jeton(&corps, modele)
+}
+
+/// Le jeton dans la réponse de Mistral : `client_secret.value`, qui commence par « rt_ ».
+fn lire_le_jeton(corps: &str, modele: &str) -> Result<JetonTempsReel, String> {
+    let v: serde_json::Value = serde_json::from_str(corps).map_err(|e| format!("Réponse illisible : {e}"))?;
+    let secret = &v["client_secret"];
+    let jeton = secret["value"].as_str().filter(|j| j.starts_with("rt_")).ok_or("Réponse sans jeton d'écoute.")?;
+    let expire = secret["expires_at"].as_str().or(v["expires_at"].as_str()).unwrap_or_default();
+    Ok(JetonTempsReel { jeton: jeton.to_string(), modele: modele.to_string(), expire: expire.to_string() })
+}
+
+/// La clé ouvre-t-elle Voxtral Realtime ? Demandé en cochant la case de la télécommande : le dire tout de suite.
+#[tauri::command]
+pub async fn mistral_jeton_temps_reel(db: State<'_, Db>, modele: Option<String>) -> Result<JetonTempsReel, String> {
+    jeton_temps_reel(&db, modele.as_deref().unwrap_or(MODELE_TEMPS_REEL)).await
+}
+
 const MODELE_VOIX: &str = "voxtral-mini-tts-latest";
 const VOIX_DES_CONSIGNES: &str = "fr_marie_neutral";
 const DOLLARS_PAR_MILLE_CARACTERES_VOIX: f64 = 0.016;
@@ -1123,6 +1170,23 @@ mod tests_voix {
         assert_ne!(a, fichier_de_la_voix(d, "Je colorie les carrés."));
         assert_eq!(a.extension().and_then(|x| x.to_str()), Some("mp3"));
         assert_eq!(a.parent(), Some(d));
+    }
+}
+
+#[cfg(test)]
+mod tests_temps_reel {
+    use super::lire_le_jeton;
+
+    #[test]
+    fn lit_le_jeton_de_mistral_et_rien_d_autre() {
+        let corps = r#"{"object":"client.session","purpose":"realtime","expires_at":"2026-10-25T19:15:00Z",
+            "client_secret":{"value":"rt_abc","expires_at":"2026-10-25T19:15:00Z"}}"#;
+        let j = lire_le_jeton(corps, "m").unwrap();
+        assert_eq!((j.jeton.as_str(), j.modele.as_str(), j.expire.as_str()), ("rt_abc", "m", "2026-10-25T19:15:00Z"));
+        // Pas un jeton d'écoute — une clé, ou rien — : refusé.
+        assert!(lire_le_jeton(r#"{"client_secret":{"value":"sk-abc"}}"#, "m").is_err());
+        assert!(lire_le_jeton(r#"{"object":"client.session"}"#, "m").is_err());
+        assert!(lire_le_jeton("pas du JSON", "m").is_err());
     }
 }
 
