@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { densiteDuDocument, lignesDuDocument,
-  SUGGESTIONS_DOCUMENT, consigneDocument, feuilleDuDocument, markdownVersHtml, titreDuDocument,
-} from "./documentIa";
+  SUGGESTIONS_DOCUMENT, consigneDocument, feuilleDuDocument, markdownVersHtml, titreDuDocument, nettoyerMiseEnPage } from "./documentIa";
 
 describe("le Markdown d'un document", () => {
   it("échappe tout avant de mettre en forme : le modèle n'écrit jamais de code", () => {
@@ -152,5 +151,27 @@ describe("le titre d'une réponse", () => {
     expect(titreDuDocument("Voici un tableau simple.\n\n## Fiche interview sur l'IA\n\n### Étape 1")).toBe("Fiche interview sur l'IA");
     expect(titreDuDocument("# Les fractions\n\n## Séance 1")).toBe("Les fractions");
     expect(titreDuDocument("Une réponse sans titre, **en gras**.")).toBe("Une réponse sans titre, en gras.");
+  });
+});
+
+describe("une feuille retouchée, nettoyée", () => {
+  it("garde le document, ses classes et ses liens http(s)", () => {
+    expect(nettoyerMiseEnPage('<div class="doc-ia doc-dense" lang="fr" contenteditable="true"><h2>Titre</h2><table class="air-m1"><tr><td colspan="2">x</td></tr></table></div>'))
+      .toBe('<div class="doc-ia doc-dense" lang="fr"><h2>Titre</h2><table class="air-m1"><tr><td colspan="2">x</td></tr></table></div>');
+    expect(nettoyerMiseEnPage('<p>Voir <a href="https://eduscol.education.fr/x">Éduscol</a></p>'))
+      .toBe('<p>Voir <a href="https://eduscol.education.fr/x" target="_blank" rel="noreferrer">Éduscol</a></p>');
+  });
+
+  it("ne laisse passer aucun script, d'aucune façon", () => {
+    const passe = [
+      "<img/src=x/onerror=alert(1)>", '<svg onload="alert(1)"><circle/></svg>', "<script>alert(1)</script>",
+      '<iframe srcdoc="<script>alert(1)</script>"></iframe>', '<p onclick="alert(1)" style="background:url(javascript:alert(1))">t</p>',
+      "<a href=javascript:alert(1)>x</a>", '<a href="jav&#x61;script:alert(1)">x</a>', "<scr<script>ipt>alert(1)</script>",
+      "<img src=x onerror=alert(1)", '<object data="x.swf"></object>', '<link rel="stylesheet" href="https://x">',
+    ].map(nettoyerMiseEnPage).join("|");
+    // Plus aucune balise, sinon <p> et <a> nues ; ce qui reste d'une balise ouverte n'est que du texte (« &lt;img … »).
+    expect(passe.replace(/<\/?(p|a)>/g, "")).not.toContain("<");
+    expect(nettoyerMiseEnPage('<p onclick="alert(1)">t</p>')).toBe("<p>t</p>");
+    expect(nettoyerMiseEnPage("<a href=javascript:alert(1)>x</a>")).toBe("<a>x</a>");
   });
 });

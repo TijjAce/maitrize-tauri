@@ -275,17 +275,49 @@ export function feuilleDuDocument(markdown: string): { titre: string; corps: str
 /** Les degrés d'aération d'un tableau, du plus serré au plus aéré ; « » est celui de départ. */
 export const AIRS_TABLEAU = ["air-m2", "air-m1", "", "air-1", "air-2", "air-3"] as const;
 
+/** Ce qu'une feuille retouchée garde : les balises d'un document, rien qui s'exécute ni ne se charge. */
+const BALISES_DE_FEUILLE = new Set([
+  "div", "p", "span", "br", "hr", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "table", "thead", "tbody", "tfoot",
+  "tr", "td", "th", "caption", "colgroup", "col", "b", "strong", "i", "em", "u", "s", "sub", "sup", "code", "pre",
+  "blockquote", "mark", "small", "a", "section", "figure", "figcaption",
+]);
+const SANS_FIN = new Set(["br", "hr", "col"]);
+
+/** La valeur d'un attribut, entre guillemets ou non ; rien s'il n'y est pas. */
+const attribut = (attributs: string, nom: string) => {
+  const m = new RegExp(`(?:^|\\s)${nom}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\`]+))`, "i").exec(attributs);
+  return m ? (m[1] ?? m[2] ?? m[3] ?? "") : null;
+};
+
 /**
- * Le HTML d'une feuille retouchée, débarrassé de ce qui ne doit ni se garder
- * ni s'imprimer : scripts, cadres, gestionnaires d'événements, liens
- * « javascript: », et les attributs de l'édition.
+ * Le HTML d'une feuille retouchée, reconstruit balise par balise : seules les balises d'un document passent, avec
+ * leur classe (la densité, l'air d'un tableau, les cases à cocher), leur langue, l'étendue d'une case, et l'adresse
+ * http(s) d'un lien. Tout le reste — scripts, cadres, images, gestionnaires d'événements, styles, liens
+ * « javascript: », attributs de l'édition — s'en va. La feuille s'affiche dans la fenêtre de l'application et
+ * s'imprime : une liste d'interdits par expressions régulières se contournait (`<img/src=x/onerror=…>`).
  */
 export function nettoyerMiseEnPage(html: string): string {
-  return html
-    .replace(/<(script|style|iframe|object|embed|template)\b[\s\S]*?<\/\1\s*>/gi, "")
-    .replace(/<\/?(script|style|iframe|object|embed|template|link|meta)\b[^>]*>/gi, "")
-    .replace(/\s(on[a-z]+|contenteditable|spellcheck)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(/\s(href|src)\s*=\s*("|')\s*javascript:[^"']*\2/gi, ' $1="#"');
+  const sans = html
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<(script|style|iframe|object|embed|noscript|template|svg|math|textarea|select|button|form)\b[\s\S]*?<\/\1\s*>/gi, "");
+  return sans.replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)\b([^<>]*)>|<|>/g, (tout, nom?: string, attributs = "") => {
+    if (!nom) return tout === "<" ? "&lt;" : "&gt;";
+    const n = nom.toLowerCase();
+    if (!BALISES_DE_FEUILLE.has(n)) return "";
+    if (tout.startsWith("</")) return SANS_FIN.has(n) ? "" : `</${n}>`;
+    let garde = "";
+    const classe = (attribut(attributs, "class") ?? "").replace(/[^a-zA-Z0-9_ -]/g, "").replace(/\s+/g, " ").trim();
+    if (classe) garde += ` class="${classe}"`;
+    const langue = attribut(attributs, "lang");
+    if (langue && /^[a-z]{2}(-[A-Z]{2})?$/.test(langue)) garde += ` lang="${langue}"`;
+    for (const etendue of ["colspan", "rowspan"]) {
+      const v = attribut(attributs, etendue);
+      if (v && /^\d{1,3}$/.test(v)) garde += ` ${etendue}="${v}"`;
+    }
+    const lien = n === "a" ? attribut(attributs, "href") : null;
+    if (lien && /^https?:\/\/[^\s"'<>]+$/i.test(lien)) garde += ` href="${lien}" target="_blank" rel="noreferrer"`;
+    return `<${n}${garde}>`;
+  });
 }
 
 /** La feuille d'une réponse : retouchée si on l'a retouchée, telle que l'IA l'a écrite sinon. */
