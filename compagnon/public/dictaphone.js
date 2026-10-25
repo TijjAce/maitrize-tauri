@@ -1806,8 +1806,129 @@ function ongletTablettes() {
   return `${carte}${souci}${aidesDuJour()}`;
 }
 
-/** Le partage par le WiFi : répondre à l'ordinateur qui demande des pages ou une photo. */
+// ── La télécommande du tableau ────────────────────────────────────────────
+//
+// On parle, et le Mac — projeté au tableau — affiche : « minuteur cinq minutes », « affiche les supports
+// visuels »… Le téléphone trouve le Mac par Nuage, puis lui envoie chaque phrase en direct, scellée (voir
+// telecommande.rs). Le bouton se garde appuyé tant qu'on parle ; rien du son ne reste sur le téléphone.
+
+const TC_VIDE = { reliee: false, enCours: false, ecoute: false, entendu: "", fait: "", ok: true, question: "", id: "", souci: "", ecrire: false, brouillon: "" };
+let tc = { ...TC_VIDE };
+let tcMicro = null, tcCtx = null, tcNoeud = null, tcMorceaux = [], tcDepart = 0;
+
+async function relierTelecommande() {
+  tc.enCours = true; tc.souci = ""; rendre();
+  try {
+    const r = await invoke("telecommande_relier");
+    tc = { ...TC_VIDE, reliee: true, fait: r.fait || "Relié au Mac.", ok: true };
+  } catch (e) {
+    tc.souci = String(e);
+  } finally {
+    tc.enCours = false; rendre();
+  }
+}
+
+function delierTelecommande() {
+  arreterLEcoute();
+  void invoke("telecommande_delier");
+  tc = { ...TC_VIDE };
+  rendre();
+}
+
+/** Ce que le Mac répond à une phrase, ou à un oui. */
+async function auTableau(commande, args) {
+  tc.enCours = true; tc.souci = ""; tc.question = ""; tc.id = ""; rendre();
+  try {
+    const r = await invoke(commande, args);
+    tc.entendu = r.entendu || ""; tc.fait = r.fait || ""; tc.ok = !!r.ok; tc.question = r.aConfirmer || ""; tc.id = r.id || "";
+  } catch (e) {
+    tc.souci = String(e);
+    if (/reliez de nouveau|pas reliée/.test(tc.souci)) tc.reliee = false;
+  } finally {
+    tc.enCours = false; rendre();
+  }
+}
+
+/** Le bouton appuyé : le micro s'ouvre. L'écran ne se redessine pas : le doigt reste sur le même bouton. */
+async function ecouterLaCommande() {
+  if (tc.ecoute || tc.enCours) return;
+  tc.ecoute = true; tc.souci = "";
+  const bouton = document.getElementById("tc-micro");
+  if (bouton) { bouton.classList.add("rouge"); const l = document.getElementById("tc-legende"); if (l) l.textContent = "Je vous écoute…"; }
+  try {
+    tcMicro = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    tc.ecoute = false; tc.souci = "Le micro n'est pas accessible."; rendre(); return;
+  }
+  if (!tc.ecoute) { arreterLEcoute(); return; }  // déjà relâché pendant que le micro s'ouvrait
+  tcCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const source = tcCtx.createMediaStreamSource(tcMicro);
+  tcNoeud = tcCtx.createScriptProcessor(4096, 1, 1);
+  tcMorceaux = [];
+  tcDepart = Date.now();
+  tcNoeud.onaudioprocess = (e) => { tcMorceaux.push(reechantillonner(new Float32Array(e.inputBuffer.getChannelData(0)), tcCtx.sampleRate)); };
+  const muet = tcCtx.createGain();
+  muet.gain.value = 0;
+  source.connect(tcNoeud); tcNoeud.connect(muet); muet.connect(tcCtx.destination);
+}
+
+/** Ferme le micro ; rend ce qui a été entendu. */
+function arreterLEcoute() {
+  const morceaux = tcMorceaux;
+  try { if (tcNoeud) tcNoeud.disconnect(); } catch (e) { /* déjà coupé */ }
+  try { if (tcCtx) void tcCtx.close(); } catch (e) { /* déjà fermé */ }
+  if (tcMicro) tcMicro.getTracks().forEach((t) => t.stop());
+  tcMicro = null; tcCtx = null; tcNoeud = null; tcMorceaux = [];
+  return morceaux;
+}
+
+/** Le bouton relâché : la phrase part vers le Mac. */
+async function envoyerLaCommande() {
+  if (!tc.ecoute) return;
+  tc.ecoute = false;
+  const duree = Date.now() - tcDepart;
+  const morceaux = arreterLEcoute();
+  if (!tcDepart || duree < 500 || !morceaux.length) { tc.souci = "Gardez le bouton appuyé pendant que vous parlez."; rendre(); return; }
+  tcDepart = 0;
+  await auTableau("telecommande_parler", { audioB64: enBase64(versWav(morceaux)) });
+}
+
+function enBase64(octets) {
+  let bin = "";
+  for (let i = 0; i < octets.length; i += 0x8000) bin += String.fromCharCode.apply(null, octets.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+function carteTelecommande() {
+  const souci = tc.souci ? `<p class="erreur-ligne">${echapper(tc.souci)}</p>` : "";
+  if (!tc.reliee) {
+    return `<div class="carte carte-telecommande">
+      <div class="carte-tete"><span class="grand-ico">${icone("micro")}</span><h3>Piloter le Mac</h3>
+        <p class="sous">Vous parlez, et le Mac projeté au tableau affiche. Sur l'ordinateur : Réglages › Téléphone › Ouvrir la télécommande.</p></div>
+      <button class="btn-plein" id="relier-tc" ${tc.enCours ? "disabled" : ""}>${icone("wifi")}${tc.enCours ? "Recherche du Mac…" : "Piloter le Mac"}</button>
+      ${souci}
+    </div>`;
+  }
+  const reponse = tc.question
+    ? `<div class="tc-question"><p>${echapper(tc.question)}</p>
+        <div class="tc-choix"><button class="btn-plein" id="tc-oui" ${tc.enCours ? "disabled" : ""}>${icone("coche")}Oui</button><button class="btn-doux" id="tc-non" ${tc.enCours ? "disabled" : ""}>Non</button></div></div>`
+    : tc.fait ? `<p class="tc-fait${tc.ok ? "" : " rate"}">${echapper(tc.fait)}</p>` : "";
+  const ecrire = tc.ecrire
+    ? `<div class="tc-ecrire"><input id="tc-texte" type="text" enterkeyhint="send" autocomplete="off" placeholder="minuteur cinq minutes" value="${echapper(tc.brouillon)}">
+        <button class="btn-plein" id="tc-envoyer-texte" ${tc.enCours ? "disabled" : ""}>Envoyer</button></div>`
+    : "";
+  return `<div class="carte carte-telecommande reliee">
+    <button class="rond" id="tc-micro" aria-label="Maintenir pour parler au Mac" ${tc.enCours ? "disabled" : ""}>${icone("micro")}</button>
+    <p class="rond-legende" id="tc-legende">${tc.enCours ? "Le Mac s'en occupe…" : "Maintenir pour parler"}</p>
+    ${tc.entendu ? `<p class="tc-entendu">« ${echapper(tc.entendu)} »</p>` : ""}
+    ${reponse}${souci}${ecrire}
+    <div class="tc-liens">${tc.ecrire ? "" : `<button class="lien-btn" id="tc-clavier">Écrire plutôt</button>`}<button class="lien-btn" id="tc-delier">Arrêter de piloter</button></div>
+  </div>`;
+}
+
+/** Le partage par le WiFi : piloter le Mac au tableau, et répondre à l'ordinateur qui demande des pages ou une photo. */
 const ongletWifi = () => `
+  ${carteTelecommande()}
   <p class="intro">Quand l'ordinateur demande les pages d'un manuel ou une photo, il affiche un QR code : scannez-le ici, sur le même WiFi que lui.</p>
   ${carteWifi()}${bulles(true)}`;
 
@@ -1961,6 +2082,7 @@ const ONGLETS = [
 function allerA(id) {
   if (id === onglet || !ONGLETS.some((o) => o.id === id)) return;
   fermerCamera();
+  if (tc.ecoute) { tc.ecoute = false; arreterLEcoute(); }
   scanSouci = ""; choixOuvert = false; confirmerCode = false; codeNeuf = false; pagesAOublier = "";
   onglet = id;
   pourLesNotes = id === "notes";
@@ -2040,6 +2162,23 @@ function rendre() {
   clic("lire-nuage", () => { void lireUnQrCode("nuage"); });
   clic("se-connecter", () => { void seConnecter(); });
   clic("lire-wifi", () => { void lireUnQrCode("wifi"); });
+  clic("relier-tc", () => { void relierTelecommande(); });
+  clic("tc-delier", () => { delierTelecommande(); });
+  clic("tc-oui", () => { void auTableau("telecommande_decider", { id: tc.id, oui: true }); });
+  clic("tc-non", () => { void auTableau("telecommande_decider", { id: tc.id, oui: false }); });
+  clic("tc-clavier", () => { tc.ecrire = true; rendre(); document.getElementById("tc-texte")?.focus(); });
+  const tcTexte = document.getElementById("tc-texte");
+  const tcEnvoyer = () => { const t = (tc.brouillon || "").trim(); if (!t) return; tc.brouillon = ""; void auTableau("telecommande_ecrire", { texte: t }); };
+  if (tcTexte) {
+    tcTexte.oninput = () => { tc.brouillon = tcTexte.value; };
+    tcTexte.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); tcEnvoyer(); } };
+  }
+  clic("tc-envoyer-texte", tcEnvoyer);
+  const tcMicroBouton = document.getElementById("tc-micro");
+  if (tcMicroBouton) {
+    tcMicroBouton.onpointerdown = (e) => { e.preventDefault(); void ecouterLaCommande(); };
+    tcMicroBouton.oncontextmenu = (e) => e.preventDefault();
+  }
   clic("stop-scan", () => { fermerCamera(); rendre(); });
   clic("photographier-pages", () => { void photographierLesPages(); });
   clic("oublier-envoyees", () => { pagesAOublier = "envoyees"; rendre(); });
@@ -2132,6 +2271,10 @@ function rendre() {
 }
 
 // ── Au démarrage ──────────────────────────────────────────────────────────
+
+// La télécommande : le doigt levé, où qu'il soit, fait partir la phrase.
+document.addEventListener("pointerup", () => { if (tc.ecoute) void envoyerLaCommande(); });
+document.addEventListener("pointercancel", () => { if (tc.ecoute) void envoyerLaCommande(); });
 
 // Pas de zoom : l'écran est fait pour le pouce, et un pincement le déréglait.
 document.addEventListener("gesturestart", (e) => e.preventDefault());

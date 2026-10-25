@@ -30,6 +30,7 @@ pub mod feuille_pdf;
 mod ppi_pdf;
 mod sync;
 mod synthese_pdf;
+mod telecommande;
 mod telephone;
 mod trousseau;
 
@@ -126,6 +127,8 @@ pub fn run() {
         .manage(whisper_embarque::Moteur::default())
         .manage(arasaac::BanqueArasaac::default())
         .manage(portable::Portable(Mutex::new(None)))
+        .manage(telecommande::Telecommande(Mutex::new(None)))
+        .manage(telecommande::Attentes(Mutex::new(std::collections::HashMap::new())))
         .manage(portable::PhotoCapture(Mutex::new(None)))
         .invoke_handler(seule_la_fenetre_principale(tauri::generate_handler![
             // Séquences / séances
@@ -233,6 +236,8 @@ pub fn run() {
             // Capture photo depuis le téléphone
             portable::photo_capture_demarrer, portable::photo_capture_arreter,
             // Le téléphone relié par Nuage : relier, relever, publier
+            telecommande::telecommande_ouvrir, telecommande::telecommande_fermer, telecommande::telecommande_etat,
+            telecommande::telecommande_repondre,
             telephone::telephone_etat, telephone::telephone_comptes, telephone::telephone_relier,
             telephone::telephone_code, telephone::telephone_code_ordinateur, telephone::telephone_code_appliquer,
             telephone::telephone_oublier, telephone::telephone_relever, telephone::telephone_publier_journal,

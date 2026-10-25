@@ -759,6 +759,29 @@ fn empreinte(a: &relais::Agenda) -> String {
     Sha256::digest(&json).iter().map(|o| format!("{o:02x}")).collect()
 }
 
+/// Le relais n'est pas réglé sur ce poste.
+const SANS_RELAIS: &str = "Le téléphone n'est pas relié à cet ordinateur : reliez-le depuis Réglages › Téléphone.";
+
+/// Les clés du relais de ce poste : la privée, qui rouvre ce que scelle le téléphone, et celle du retour.
+pub(crate) fn cles_du_relais(c: &Connection) -> R<([u8; 32], [u8; 32])> {
+    let r = lire_relais(c).ok_or(SANS_RELAIS)?;
+    Ok((relais::cle_de(&r.cle_privee)?, relais::cle_de(&r.cle_retour)?))
+}
+
+/// Écrit un fichier du retour — ou l'efface, sans octets — dans le dossier du relais.
+pub(crate) async fn ecrire_au_retour(db: &State<'_, Db>, nom: &str, octets: Option<Vec<u8>>) -> R<()> {
+    let (r, compte) = {
+        let c = db.lock();
+        (lire_relais(&c).ok_or(SANS_RELAIS)?, lire_compte(&c).ok_or(SANS_COMPTE)?)
+    };
+    let acces = acces_au_dossier(&r, &compte);
+    let chemin = format!("{}/{}", relais::DOSSIER_RETOUR, nom);
+    match octets {
+        Some(o) => webdav::ecrire(&acces, &chemin, o).await,
+        None => webdav::supprimer(&acces, &chemin).await,
+    }
+}
+
 /// Publie l'emploi du temps s'il n'est plus celui qu'on a publié. Rend vrai s'il est parti.
 async fn publier_si_change(db: &State<'_, Db>, r: &Relais, compte: &CompteNuage) -> R<bool> {
     let (mut a, deja, date_connue) = {

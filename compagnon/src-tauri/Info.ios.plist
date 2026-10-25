@@ -10,8 +10,8 @@
   pour lire le QR code de l'ordinateur — ces vues-là sont analysées à la
   volée et jetées — et pour photographier les pages d'un manuel quand
   l'ordinateur les demande : celles-là restent sur le téléphone jusqu'à ce
-  qu'on les supprime. Et le réseau local, parce que l'envoi à l'ordinateur se
-  fait d'iPhone à Mac sur le WiFi de l'école — iOS le demande depuis sa
+  qu'on les supprime. Et le réseau local, parce que l'envoi à l'ordinateur — et
+  la télécommande du tableau — se fait d'iPhone à Mac sur le WiFi de l'école — iOS le demande depuis sa
   version 14, même pour une connexion directe par adresse IP.
 
   Le nom sous l'icône est celui de l'App Store : « MaitrizeV2 Compagnon ».
@@ -35,10 +35,10 @@
 		<true/>
 	</dict>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Pour enregistrer ce que vous dictez en classe. Le son part scellé vers votre ordinateur, par votre Nuage : lui seul peut l'ouvrir.</string>
+	<string>Pour enregistrer ce que vous dictez en classe, et ce que vous dites à votre ordinateur quand vous le pilotez. Le son part scellé vers lui : lui seul peut l'ouvrir.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Pour lire le QR code affiché par votre ordinateur, photographier les pages d'un manuel qu'il vous demande, et prendre les photos que vous rangez dans Mes pictos. Les pages restent sur le téléphone jusqu'à ce que vous les supprimiez ; les photos partent scellées vers votre ordinateur.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Pour répondre à votre ordinateur sur le même WiFi, et montrer les aides à la tâche aux tablettes de vos élèves, sur le même réseau que le téléphone.</string>
+	<string>Pour répondre à votre ordinateur et le piloter à la voix sur le même WiFi, et montrer les aides à la tâche aux tablettes de vos élèves, sur le même réseau que le téléphone.</string>
 </dict>
 </plist>

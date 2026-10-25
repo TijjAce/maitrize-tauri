@@ -43,6 +43,7 @@ use x25519_dalek::{PublicKey, StaticSecret};
 
 pub mod connexion;
 pub mod porte;
+pub mod telecommande;
 
 type R<T> = Result<T, String>;
 
