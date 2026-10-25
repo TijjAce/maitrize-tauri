@@ -1815,6 +1815,9 @@ function ongletTablettes() {
 const TC_VIDE = { reliee: false, enCours: false, ecoute: false, entendu: "", fait: "", ok: true, question: "", id: "", souci: "", ecrire: false, brouillon: "", aide: false, comprend: null };
 let tc = { ...TC_VIDE };
 let tcMicro = null, tcCtx = null, tcNoeud = null, tcMorceaux = [], tcDepart = 0;
+/** Une phrase oubliée ouverte part d'elle-même au bout d'une demi-minute. */
+const TC_DUREE_MAX = 30000;
+let tcLimite = null;
 
 /*
  * L'écoute en direct, si le Mac la veut : pendant qu'on parle, la voix part à Voxtral Realtime (Mistral) avec un
@@ -1981,12 +1984,20 @@ async function queDire() {
   rendre();
 }
 
-/** Le bouton appuyé : le micro s'ouvre. L'écran ne se redessine pas : le doigt reste sur le même bouton. */
+/**
+ * Un toucher : le micro s'ouvre, jusqu'au toucher suivant — on parle sans tenir le bouton, et la phrase ne se coupe
+ * pas avant la fin. L'écran ne se redessine pas : le second toucher trouve le même bouton.
+ */
 async function ecouterLaCommande() {
   if (tc.ecoute || tc.enCours) return;
   tc.ecoute = true; tc.souci = "";
   const bouton = document.getElementById("tc-micro");
-  if (bouton) { bouton.classList.add("rouge"); const l = document.getElementById("tc-legende"); if (l) l.textContent = "Je vous écoute…"; }
+  if (bouton) {
+    bouton.classList.add("rouge"); bouton.innerHTML = icone("stop");
+    const l = document.getElementById("tc-legende"); if (l) l.textContent = "Je vous écoute — touchez pour finir";
+  }
+  clearTimeout(tcLimite);
+  tcLimite = setTimeout(() => { if (tc.ecoute) void envoyerLaCommande(); }, TC_DUREE_MAX);
   void ouvrirLeFlux();  // en même temps que le micro
   try {
     tcMicro = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -2012,6 +2023,7 @@ async function ecouterLaCommande() {
 
 /** Ferme le micro ; rend ce qui a été entendu. */
 function arreterLEcoute() {
+  clearTimeout(tcLimite);
   const morceaux = tcMorceaux;
   try { if (tcNoeud) tcNoeud.disconnect(); } catch (e) { /* déjà coupé */ }
   try { if (tcCtx) void tcCtx.close(); } catch (e) { /* déjà fermé */ }
@@ -2020,7 +2032,7 @@ function arreterLEcoute() {
   return morceaux;
 }
 
-/** Le bouton relâché : la phrase part au Mac — le son, et le texte du direct s'il est là. */
+/** Le second toucher : la phrase part au Mac — le son, et le texte du direct s'il est là. */
 async function envoyerLaCommande() {
   if (!tc.ecoute) return;
   tc.ecoute = false;
@@ -2030,7 +2042,7 @@ async function envoyerLaCommande() {
   tcFlux = null;
   if (!tcDepart || duree < 500 || !morceaux.length) {
     fermerLeDirect(flux);
-    tc.souci = "Gardez le bouton appuyé pendant que vous parlez."; rendre(); return;
+    tc.souci = "Touchez, parlez, puis touchez encore quand vous avez fini."; rendre(); return;
   }
   tcDepart = 0;
   let texte = null;
@@ -2072,8 +2084,8 @@ function carteTelecommande() {
     : g.exemples.map((x) => `<p class="tc-forme">« ${echapper(x)} »</p>`).join("")}</div>`;
   const aide = tc.aide ? `<div class="tc-aide">${tc.comprend ? tc.comprend.map(groupe).join("") : `<p class="tc-forme">Le Mac répond…</p>`}</div>` : "";
   return `<div class="carte carte-telecommande reliee">
-    <button class="rond" id="tc-micro" aria-label="Maintenir pour parler au Mac" ${tc.enCours ? "disabled" : ""}>${icone("micro")}</button>
-    <p class="rond-legende" id="tc-legende">${tc.enCours ? "Le Mac s'en occupe…" : "Maintenir pour parler"}</p>
+    <button class="rond" id="tc-micro" aria-label="Parler au Mac : toucher pour commencer, toucher pour finir" ${tc.enCours ? "disabled" : ""}>${icone("micro")}</button>
+    <p class="rond-legende" id="tc-legende">${tc.enCours ? "Le Mac s'en occupe…" : "Toucher pour parler"}</p>
     ${tc.entendu ? `<p class="tc-entendu">« ${echapper(tc.entendu)} »</p>` : ""}
     ${reponse}${souci}${ecrire}
     <div class="tc-liens"><button class="lien-btn" id="tc-que-dire">${tc.aide ? "Fermer la liste" : "Que dire ?"}</button>${tc.ecrire ? "" : `<button class="lien-btn" id="tc-clavier">Écrire plutôt</button>`}<button class="lien-btn" id="tc-delier">Arrêter de piloter</button></div>
@@ -2237,7 +2249,7 @@ const ONGLETS = [
 function allerA(id) {
   if (id === onglet || !ONGLETS.some((o) => o.id === id)) return;
   fermerCamera();
-  if (tc.ecoute) { tc.ecoute = false; arreterLEcoute(); }
+  if (tc.ecoute) { tc.ecoute = false; arreterLEcoute(); fermerLeDirect(tcFlux); tcFlux = null; }
   scanSouci = ""; choixOuvert = false; confirmerCode = false; codeNeuf = false; pagesAOublier = "";
   onglet = id;
   pourLesNotes = id === "notes";
@@ -2336,7 +2348,7 @@ function rendre() {
   clic("tc-envoyer-texte", tcEnvoyer);
   const tcMicroBouton = document.getElementById("tc-micro");
   if (tcMicroBouton) {
-    tcMicroBouton.onpointerdown = (e) => { e.preventDefault(); void ecouterLaCommande(); };
+    tcMicroBouton.onclick = () => { if (tc.ecoute) void envoyerLaCommande(); else void ecouterLaCommande(); };
     tcMicroBouton.oncontextmenu = (e) => e.preventDefault();
   }
   clic("stop-scan", () => { fermerCamera(); rendre(); });
@@ -2433,8 +2445,6 @@ function rendre() {
 // ── Au démarrage ──────────────────────────────────────────────────────────
 
 // La télécommande : le doigt levé, où qu'il soit, fait partir la phrase.
-document.addEventListener("pointerup", () => { if (tc.ecoute) void envoyerLaCommande(); });
-document.addEventListener("pointercancel", () => { if (tc.ecoute) void envoyerLaCommande(); });
 
 // Pas de zoom : l'écran est fait pour le pouce, et un pincement le déréglait.
 document.addEventListener("gesturestart", (e) => e.preventDefault());
