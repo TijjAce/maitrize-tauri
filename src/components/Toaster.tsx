@@ -13,13 +13,14 @@ const fermerLeToast = (id: number) => window.dispatchEvent(new CustomEvent("mait
 /** Affiche une notification en haut de l'écran (10 s par défaut). */
 export function toast(
   message: string,
-  opts: { duree?: number; icone?: string; action?: ToastDetail["action"] } = {},
+  opts: { duree?: number; icone?: string; action?: ToastDetail["action"]; clavier?: boolean } = {},
 ) {
   const id = ++prochainId;
   const duree = opts.duree ?? 10000;
   let action = opts.action;
-  // Un bandeau qui offre « Annuler » : ⌘Z fait de même tant qu'il est là, une seule fois (voir annulation.ts).
-  if (action?.label === "Annuler") {
+  // Un bandeau qui offre « Annuler » : ⌘Z fait de même tant qu'il est là, une seule fois (voir annulation.ts) —
+  // sauf là où l'écran a son propre historique (`clavier: false`) : ⌘Z y défait déjà la suppression.
+  if (action?.label === "Annuler" && opts.clavier !== false) {
     const geste = action;
     const debut = Date.now();
     let fait = false;
@@ -41,8 +42,8 @@ export function toast(
  * séquence et ses séances : voir suppressionsAnnulables.ts) ; un élève et son
  * dossier restent hors de portée.
  */
-export function toastAnnulable(message: string, annuler: () => void | Promise<void>, icone = "🗑") {
-  toast(message, { icone, duree: DUREE_ANNULABLE, action: { label: "Annuler", faire: annuler } });
+export function toastAnnulable(message: string, annuler: () => void | Promise<void>, icone = "🗑", o: { clavier?: boolean } = {}) {
+  toast(message, { icone, duree: DUREE_ANNULABLE, action: { label: "Annuler", faire: annuler }, clavier: o.clavier });
 }
 
 /** Le temps qu'un bandeau « Annuler » reste là, et qu'une suppression peut se défaire. */

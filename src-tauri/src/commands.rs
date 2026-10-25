@@ -2102,6 +2102,22 @@ pub fn setting_set(db: State<Db>, cle: String, valeur: String) -> R<()> {
     crate::sync::set_setting(&c, &cle, &valeur)
 }
 
+/// Écrit un réglage qui tient toute une collection — les plans de salle, les agencements — par écart : ce que
+/// l'écran a changé depuis `avant` l'emporte, le reste garde ce que la base a, reçu d'un autre ordinateur
+/// entre-temps compris. L'écran lisait ces réglages en s'ouvrant et les réécrivait d'un bloc : un placement fait
+/// sur l'autre ordinateur disparaissait au placement suivant ici, et des deux côtés. Rend la valeur en base.
+#[tauri::command]
+pub fn setting_ecart(db: State<Db>, cle: String, avant: String, apres: String) -> R<String> {
+    let c = db.lock();
+    let valeur = reglage_par_ecart(&crate::sync::get_setting(&c, &cle), &avant, &apres);
+    crate::sync::set_setting(&c, &cle, &valeur)?;
+    Ok(valeur)
+}
+
+pub(crate) fn reglage_par_ecart(ici: &str, avant: &str, apres: &str) -> String {
+    if ici.trim().is_empty() { apres.to_string() } else { fusionner_ecran(ici, avant, apres) }
+}
+
 /// Les notes rapides, dans les réglages partagés : le panneau 📝 les écrit là.
 const NOTES_RAPIDES: &str = "notesRapides";
 
@@ -3321,6 +3337,27 @@ fn vacances_de_la_reponse(v: &serde_json::Value) -> Vec<VacancePeriode> {
     }
     out.sort_by(|a, b| a.debut.cmp(&b.debut));
     out
+}
+
+#[cfg(test)]
+mod tests_reglage_par_ecart {
+    use super::reglage_par_ecart;
+
+    #[test]
+    fn ce_que_l_autre_ordinateur_a_ajoute_reste() {
+        // L'écran avait lu le plan du lundi ; l'autre ordinateur a ajouté celui du mardi ; on place quelqu'un lundi.
+        let ici = r#"{"lundi":{"a":"p1"},"mardi":{"b":"p2"}}"#;
+        let fusion: serde_json::Value = serde_json::from_str(&reglage_par_ecart(ici, r#"{"lundi":{"a":"p1"}}"#, r#"{"lundi":{"a":"p1","c":"p3"}}"#)).unwrap();
+        assert_eq!(fusion, serde_json::json!({"lundi":{"a":"p1","c":"p3"},"mardi":{"b":"p2"}}));
+        // Ce que l'écran retire s'en va ; une base vide prend ce que l'écran montre.
+        let retire: serde_json::Value = serde_json::from_str(&reglage_par_ecart(ici, r#"{"lundi":{"a":"p1"}}"#, "{}")).unwrap();
+        assert_eq!(retire, serde_json::json!({"mardi":{"b":"p2"}}));
+        assert_eq!(reglage_par_ecart("", "{}", r#"{"x":1}"#), r#"{"x":1}"#);
+        // Des agencements, élément par élément.
+        let profils: serde_json::Value = serde_json::from_str(&reglage_par_ecart(
+            r#"[{"id":"s1","nom":"Salle"},{"id":"s2","nom":"Là-bas"}]"#, r#"[{"id":"s1","nom":"Salle"}]"#, r#"[{"id":"s1","nom":"Ma salle"}]"#)).unwrap();
+        assert_eq!(profils, serde_json::json!([{"id":"s1","nom":"Ma salle"},{"id":"s2","nom":"Là-bas"}]));
+    }
 }
 
 #[cfg(test)]

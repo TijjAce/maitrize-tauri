@@ -48,5 +48,19 @@ export function useTexteAutosave(texte: Texte, apres?: () => void) {
   // En quittant l'écran, rien ne se perd.
   React.useEffect(() => () => { void sauver(); }, [sauver]);
 
-  return { titre, setTitre, contenu, setContenu, etat, sauver };
+  // Le texte relu de la base a changé ailleurs — sur l'autre ordinateur, la page restée ouverte ici — : sans rien
+  // tapé ici depuis, l'éditeur le reprend (`version` le fait se redessiner). Avant, la première frappe ici
+  // renvoyait l'ancien texte par-dessus.
+  const [version, setVersion] = React.useState(0);
+  React.useEffect(() => {
+    const ailleurs = texte.titre !== enregistres.current.titre || texte.contenu !== enregistres.current.contenu;
+    const rienTape = valeurs.current.titre === enregistres.current.titre && valeurs.current.contenu === enregistres.current.contenu;
+    if (!ailleurs || !rienTape) return;
+    enregistres.current = { titre: texte.titre, contenu: texte.contenu };
+    setTitre(texte.titre);
+    setContenu(texte.contenu);
+    setVersion((v) => v + 1);
+  }, [texte.titre, texte.contenu]);
+
+  return { titre, setTitre, contenu, setContenu, etat, sauver, version };
 }

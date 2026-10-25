@@ -35,6 +35,23 @@ export const natureDuSlot = (s: SlotEdt): Nature => s.nature ?? natureDepuisTitr
 
 export const JOURS_EDT = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 
+const HEURE = /^\d{1,2}:\d{2}$/;
+
+/**
+ * Les créneaux d'un fichier d'emploi du temps exporté (`{ annee, slots }`, ou la liste seule) ; rien pour un autre
+ * fichier — une progression, une programmation prise par erreur ne doivent pas vider l'année.
+ */
+export function creneauxDuFichier(contenu: unknown): Omit<SlotEdt, "id">[] | null {
+  const liste = Array.isArray(contenu) ? contenu : (contenu as { slots?: unknown } | null)?.slots;
+  if (!Array.isArray(liste) || !liste.length) return null;
+  const creneau = (x: unknown): x is SlotEdt => {
+    const s = x as Partial<SlotEdt> | null;
+    return !!s && typeof s === "object" && typeof s.jour === "string" && typeof s.titre === "string"
+      && typeof s.heureDebut === "string" && HEURE.test(s.heureDebut) && typeof s.heureFin === "string" && HEURE.test(s.heureFin);
+  };
+  return liste.every(creneau) ? liste.map((s) => ({ ...s, couleur: typeof s.couleur === "string" ? s.couleur : "" })) : null;
+}
+
 export interface Temps { classe: number; reunion: number; total: number }
 
 /**

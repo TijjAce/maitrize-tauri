@@ -31,7 +31,7 @@ import { ProjetPedagogiqueTab } from "./ProjetPedagogique";
 import { InformationsTab } from "./Informations";
 import { PagesDeGardeTab } from "./PagesDeGarde";
 import { confirmer } from "../components/confirmer";
-import { tempsDeLaSemaineType, natureDuSlot, type SlotEdt } from "../organisation";
+import { creneauxDuFichier, tempsDeLaSemaineType, natureDuSlot, type SlotEdt } from "../organisation";
 import { lireNiveaux } from "../classe";
 import { duree, plageGrille } from "../heures";
 import { ProgrammationIme } from "../components/ProgrammationIme";
@@ -371,7 +371,7 @@ function SectionProgression({ cible, liste, lecture, relire, sources, teinte, se
   const { annee, niveau, periode } = cible;
   const cle = cleCible(cible);
   const prog = progressionDe(liste, annee, niveau, periode);
-  const { present: etat, commit, modifier } = useCollectionParEcart<EtatProg>({
+  const { present: etat, commit, defaireOuRemettre } = useCollectionParEcart<EtatProg>({
     cle, lecture, vide: ETAT_VIDE, relire, pareil: memeEtat, echec: "Progression non enregistrée", clavier,
     enBase: (k) => { const c = lireCle(k); return lireEtat(progressionDe(liste, c.annee, c.niveau, c.periode)); },
     ecrire: (k, avant, apres) => { const c = lireCle(k); return api.progressionAnnuelleEcrire(c.annee, c.niveau, c.periode, enJson(avant), enJson(apres)); },
@@ -399,10 +399,11 @@ function SectionProgression({ cible, liste, lecture, relire, sources, teinte, se
     const place = colonnes.findIndex((x) => x.id === c.id);
     const cases = casesDeLaColonne(etat, c.id);
     const n = new Set([...Object.keys(cases.cellules), ...Object.keys(cases.seances)]).size;
-    commit(sansColonne(etat, c.id));
+    const apres = sansColonne(etat, c.id);
+    commit(apres);
     setEditCol(null);
     toastAnnulable(`Colonne « ${c.titre || "sans titre"} » supprimée${n ? `, avec ${n} case${n > 1 ? "s" : ""}` : ""}.`,
-      () => modifier(ici, (e) => remettreColonne(e, c, place, cases)));
+      () => defaireOuRemettre(ici, apres, (e) => remettreColonne(e, c, place, cases)), "🗑", { clavier: false });
   };
   const menuCol = (e: React.MouseEvent, c: Colonne) => {
     const i = colonnes.findIndex((x) => x.id === c.id);
@@ -846,7 +847,7 @@ function SectionProgrammation({ annee, niveau, liste, lecture, relire, sequences
   const nav = useNavigate();
   const cle = cleNiveauDeLAnnee(annee, niveau);
   // Une ligne ajoutée sur un autre ordinateur reste quand on en modifie une ici.
-  const { present: lignes, commit: persister, modifier } = useCollectionParEcart<Ligne[]>({
+  const { present: lignes, commit: persister, defaireOuRemettre } = useCollectionParEcart<Ligne[]>({
     cle, lecture, vide: [], relire, echec: "Programmation non enregistrée", clavier,
     enBase: (k) => { const [a, n = ""] = k.split("|"); return lireLignes(programmationDe(liste, a, n)); },
     ecrire: (k, avant, apres) => {
@@ -879,10 +880,11 @@ function SectionProgrammation({ annee, niveau, liste, lecture, relire, sequences
   };
   const supprimer = (l: Ligne) => {
     const place = lignes.findIndex((x) => x.id === l.id);
-    persister(lignes.filter((x) => x.id !== l.id));
+    const apres = lignes.filter((x) => x.id !== l.id);
+    persister(apres);
     setEditDomaine(null);
     toastAnnulable(`${l.estDomaine ? "Domaine" : "Activité"} « ${l.label.trim() || "sans titre"} » supprimé${l.estDomaine ? "" : "e"}.`,
-      () => modifier(cle, (ls) => remettreLigne(ls, l, place)));
+      () => defaireOuRemettre(cle, apres, (ls) => remettreLigne(ls, l, place)), "🗑", { clavier: false });
   };
 
   const seqIdsDe = (l: Ligne, col: string) => l.seqs?.[col] ?? [];
@@ -1317,6 +1319,8 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
     ecrire: (k, avant, apres) => api.edtTypiqueEcrire(k, JSON.stringify(avant), JSON.stringify(apres)),
   });
   React.useEffect(() => { api.settingGet("niveauClasse").then((v) => setNiveau(v ?? "")); }, []);
+  const slotsRef = React.useRef(slots);
+  slotsRef.current = slots;
   const upsert = (s: Slot) => persister(slots.some((x) => x.id === s.id) ? slots.map((x) => x.id === s.id ? s : x) : [...slots, s]);
 
   const supprimer = (id: string) => persister(slots.filter((s) => s.id !== id));
@@ -1336,12 +1340,12 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
     telechargerTexte(`emploi-du-temps-${annee}.json`, JSON.stringify({ annee, slots }, null, 2));
   };
   const importer = async (file: File) => {
-    try {
-      const b = JSON.parse(await file.text());
-      const arr: Slot[] = Array.isArray(b) ? b : (b.slots ?? []);
-      if (!Array.isArray(arr)) throw new Error();
-      persister(arr.map((s) => ({ ...s, id: s.id || newId() })));
-    } catch { toast("Fichier d'emploi du temps illisible.", { icone: "⚠️" }); }
+    let lus: ReturnType<typeof creneauxDuFichier> = null;
+    try { lus = creneauxDuFichier(JSON.parse(await file.text())); } catch { /* illisible : voir plus bas */ }
+    // Un autre fichier — une progression, une programmation — ne vide pas l'année.
+    if (!lus) { toast("Ce fichier n'est pas un emploi du temps exporté par Maitrize : rien n'a changé.", { icone: "⚠️", duree: 7000 }); return; }
+    if (slots.length > 0 && !(await confirmer(`Remplacer l'emploi du temps ${annee} (${slots.length} créneau${slots.length > 1 ? "x" : ""}) par celui du fichier ?`, { oui: "Remplacer", danger: true }))) return;
+    persister(lus.map((s) => ({ ...s, id: (s as Slot).id || newId() })));
   };
   const imprimer = () => {
     const hex = (c: string) => couleurHex[c] || couleurHex.blue;
@@ -1416,10 +1420,13 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
       window.removeEventListener("mousemove", onMove);
       const d = dragRef.current; majDrag(null);
       if (!d) return;
-      const s2 = slots.find((x) => x.id === d.id); if (!s2) return;
+      // Les créneaux tels qu'ils sont au lâcher, et non au moment où on a pris celui-ci : ce qu'une synchronisation a
+      // apporté pendant le glisser reste.
+      const actuels = slotsRef.current;
+      const s2 = actuels.find((x) => x.id === d.id); if (!s2) return;
       const nj = JOURS[d.jourIndex], nd = minHHMM(d.startMin), nf = minHHMM(d.startMin + d.durMin);
       if (nj !== s2.jour || nd !== s2.heureDebut) {
-        persister(slots.map((x) => x.id === d.id ? { ...x, jour: nj, heureDebut: nd, heureFin: nf } : x));
+        persister(actuels.map((x) => x.id === d.id ? { ...x, jour: nj, heureDebut: nd, heureFin: nf } : x));
       }
     };
     window.addEventListener("mousemove", onMove);
@@ -1698,9 +1705,14 @@ function TravailDeCycle({ annee, setAnnee }: AnneeProps) {
   const onFichier = async (file: File) => {
     try {
       const b = JSON.parse(await file.text());
-      setPending({ lignesJson: b.lignesJson || "[]", annee: b.annee || annee });
+      // Deux exports mènent ici : celui d'à côté (`lignesJson`, en texte) et « Exporter ce tableau » de la
+      // Programmation (`lignes`). Un autre fichier ne fait pas une colonne vide. Elle va à l'année affichée.
+      const lignesJson = typeof b?.lignesJson === "string" ? b.lignesJson : Array.isArray(b?.lignes) ? JSON.stringify(b.lignes) : "";
+      const lignes: unknown = lignesJson ? JSON.parse(lignesJson) : null;
+      if (!Array.isArray(lignes) || !lignes.length) throw new Error();
+      setPending({ lignesJson, annee });
       setTag({ niveau: b.niveau || "CP", enseignant: b.enseignant || file.name.replace(/\.json$/, "") });
-    } catch { toast("Fichier de programmation invalide.", { icone: "⚠️" }); }
+    } catch { toast("Ce fichier n'est pas une programmation exportée par Maitrize : rien n'a été importé.", { icone: "⚠️", duree: 7000 }); }
   };
   const confirmerImport = async () => {
     if (!pending) return;

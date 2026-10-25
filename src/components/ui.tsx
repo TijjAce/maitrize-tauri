@@ -218,7 +218,8 @@ export function useSegmentNav<T extends string>(ids: readonly T[], current: T, s
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
       const t = e.target as HTMLElement;
-      if (/^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName)) return;
+      // Dans un texte — un champ, ou un éditeur riche (feuille du remplaçant, pages de garde) —, ⌘← va en début de ligne.
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName) || t?.isContentEditable) return;
       const i = ids.indexOf(current);
       if (i < 0) return;
       if (e.key === "ArrowLeft" && i > 0) { e.preventDefault(); set(ids[i - 1]); }

@@ -113,9 +113,24 @@ export function useCollectionParEcart<T>(o: OptionsEcriture<T>) {
     if (!w.actif) void vider(cle, w);
   }
   const modifier = (cle: string, f: (e: T) => T) => {
-    if (cle === opts.current.cle) { commit(f(presentRef.current)); return; }
+    if (cle === opts.current.cle) {
+      // Rien à changer : rien ne s'inscrit dans l'historique, et ce qu'on pouvait rétablir le reste.
+      const suite = f(presentRef.current);
+      if (!pareil(suite, presentRef.current)) commit(suite);
+      return;
+    }
     const w = ecrivain(cle);
     envoyer(cle, f(w.aEnvoyer ?? w.envoye));
+  };
+  /**
+   * Le bouton « Annuler » d'une suppression : si rien n'a bougé depuis, elle se défait dans l'historique — et ⌘Z
+   * reprend ensuite le geste d'avant — ; sinon, ce qu'elle a retiré revient par `remettre`. Le bandeau ne s'inscrit
+   * pas au clavier (`toastAnnulable(…, { clavier: false })`) : ⌘Z défait déjà la suppression par l'historique, et
+   * l'inscrire deux fois faisait qu'un second ⌘Z la refaisait.
+   */
+  const defaireOuRemettre = (cle: string, apres: T, remettre: (e: T) => T) => {
+    if (cle === opts.current.cle && pareil(presentRef.current, apres)) undo();
+    else modifier(cle, remettre);
   };
 
   // Afficher ce que la base a pour la clé choisie, puis ce qui arrive
@@ -139,5 +154,5 @@ export function useCollectionParEcart<T>(o: OptionsEcriture<T>) {
 
   /** Vrai une fois la clé affichée relue de la base : rien ne doit s'y ajouter avant. */
   const pret = o.lecture != null && affichee.current === o.cle;
-  return { present, commit, modifier, undo, redo, pret };
+  return { present, commit, modifier, defaireOuRemettre, undo, redo, pret };
 }

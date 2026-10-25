@@ -10,7 +10,7 @@ import { avecImages } from "./imagesTexte";
 // Enregistrement automatique, sans bouton.
 
 export function EditeurTexte({ texte, onClose }: { texte: Texte; onClose: () => void }) {
-  const { titre, setTitre, contenu, setContenu, etat, sauver } = useTexteAutosave(texte);
+  const { titre, setTitre, contenu, setContenu, etat, sauver, version } = useTexteAutosave(texte);
   const fermer = async () => { await sauver(); onClose(); };
   const imprimer = async () => {
     await sauver();
@@ -33,7 +33,7 @@ export function EditeurTexte({ texte, onClose }: { texte: Texte; onClose: () => 
           <button className="btn primary sm" onClick={fermer}>Fermer</button>
         </div>
         <div className="editeur-plein-corps">
-          <EditeurRiche valeur={texte.contenu} onChange={setContenu}
+          <EditeurRiche key={version} valeur={version ? contenu : texte.contenu} onChange={setContenu}
             placeholder="Écrivez ici… Sélectionnez un passage pour le reformuler." minHauteur="60vh" />
         </div>
       </div>
