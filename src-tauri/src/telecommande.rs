@@ -54,6 +54,8 @@ pub(crate) enum Suite {
     Phrase(String),
     /// Oui ou non à la question `id`.
     Decision { id: String, oui: bool },
+    /// Ce que la fenêtre comprend, pour « Que dire ? » sur le téléphone.
+    Aide,
 }
 
 /// Rouvre une demande et dit ce qu'il faut en faire ; refuse ce qui n'est pas de ce téléphone, de cette séance,
@@ -76,6 +78,7 @@ pub(crate) fn lire_demande(privee: &[u8; 32], jeton: &str, dernier_numero: &mut 
         Genre::Texte => Suite::Phrase(d.texte),
         Genre::Confirmer => Suite::Decision { id: d.id, oui: true },
         Genre::Annuler => Suite::Decision { id: d.id, oui: false },
+        Genre::Aide => Suite::Aide,
     })
 }
 
@@ -86,16 +89,15 @@ fn nom_du_mac() -> String {
 }
 
 /// Transcrit une phrase dite, comme les dictées : sur cet ordinateur, ou en ligne si c'est le réglage.
-fn transcrire(app: &AppHandle, octets: &[u8]) -> R<String> {
-    use crate::whisper_embarque::{choix_ici, noms_de_la_classe, transcrire_octets, Choix, Moteur, Usage};
-    let db = app.state::<Db>();
-    let (choix, noms) = {
-        let c = db.lock();
-        (choix_ici(&c, Usage::Dictees), noms_de_la_classe(&c))
-    };
+///
+/// Sur cet ordinateur, Whisper lit d'abord `invite` — des commandes, les pages qu'on nomme, les prénoms de la classe
+/// (voir `inviteDeLaVoix` dans telecommande.ts) — comme s'il venait de les entendre : une commande de deux mots ne
+/// s'écrit juste qu'à ce prix. Elle ne quitte jamais l'ordinateur.
+fn transcrire(app: &AppHandle, octets: &[u8], invite: &str) -> R<String> {
+    use crate::whisper_embarque::{choix_ici, transcrire_une_commande, Choix, Moteur, Usage};
+    let choix = choix_ici(&app.state::<Db>().lock(), Usage::Dictees);
     match choix? {
-        // Les prénoms de la classe aident Whisper à les écrire juste, sur cet ordinateur.
-        Choix::Local(modele) => transcrire_octets(&app.state::<Moteur>(), octets, &modele, &noms),
+        Choix::Local(modele) => transcrire_une_commande(&app.state::<Moteur>(), octets, &modele, invite),
         Choix::EnLigne => {
             let b64 = base64::engine::general_purpose::STANDARD.encode(octets);
             tauri::async_runtime::block_on(crate::ai::transcrire_audio(app.state::<Db>(), b64, "commande.wav".into()))
@@ -143,6 +145,7 @@ fn traiter(fil: &Fil, suite: Suite) -> Reponse {
         },
         Suite::Phrase(texte) => phrase(texte.trim()),
         Suite::Decision { id, oui } => (fil.fenetre)("telecommande:decision", serde_json::json!({ "id": id, "oui": oui })),
+        Suite::Aide => (fil.fenetre)("telecommande:aide", serde_json::json!({})),
     }
 }
 
@@ -243,7 +246,12 @@ fn serveur() -> R<tiny_http::Server> {
 
 /// Ouvre la télécommande : le serveur, le jeton, et l'ouverture déposée dans le relais pour le téléphone.
 #[tauri::command]
-pub async fn telecommande_ouvrir(app: AppHandle, db: State<'_, Db>, tc: State<'_, Telecommande>) -> R<InfoTelecommande> {
+pub async fn telecommande_ouvrir(
+    app: AppHandle,
+    db: State<'_, Db>,
+    tc: State<'_, Telecommande>,
+    invite: Option<String>,
+) -> R<InfoTelecommande> {
     // Une séance d'avant, s'il en reste une, s'arrête : son jeton ne vaudra plus rien.
     if let Some((stop, _)) = tc.0.lock().unwrap_or_else(PoisonError::into_inner).take() {
         stop.store(true, Ordering::Relaxed);
@@ -269,7 +277,7 @@ pub async fn telecommande_ouvrir(app: AppHandle, db: State<'_, Db>, tc: State<'_
     let app_fil = app.clone();
     std::thread::spawn(move || {
         let fil = Fil {
-            transcrire: &|octets| transcrire(&app_fil, octets),
+            transcrire: &|octets| transcrire(&app_fil, octets, invite.as_deref().unwrap_or_default()),
             fenetre: &|evenement, charge| demander_a_la_fenetre(&app_fil, evenement, charge),
             reliee: &|| marquer_reliee(&app_fil),
         };
@@ -338,6 +346,8 @@ mod tests {
         assert_eq!(lire_demande(&privee, "j-1", &mut dernier, &decision).unwrap(), Suite::Decision { id: "q1".into(), oui: false });
         let bonjour = relais::telecommande::sceller(&publique, &demande(3, Genre::Bonjour)).unwrap();
         assert!(matches!(lire_demande(&privee, "j-1", &mut dernier, &bonjour).unwrap(), Suite::Repondre(Reponse { ok: true, .. })));
+        let aide = relais::telecommande::sceller(&publique, &demande(4, Genre::Aide)).unwrap();
+        assert_eq!(lire_demande(&privee, "j-1", &mut dernier, &aide).unwrap(), Suite::Aide);
     }
 
     /// Envoie un corps en POST, à la main, et rend le code et le corps de la réponse.
@@ -389,6 +399,11 @@ mod tests {
         assert_eq!(r.entendu, "minuteur 5 minutes");
         assert_eq!(r.fait, "telecommande:phrase : minuteur 5 minutes");
         assert!(!String::from_utf8_lossy(&corps).contains("minuteur"), "la réponse ne passe pas en clair");
+
+        // « Que dire ? » : la fenêtre répond.
+        let (code, corps) = envoyer(&demande(3, Genre::Aide));
+        assert_eq!(code, 200);
+        assert_eq!(relais::telecommande::dechiffrer::<Reponse>(&cle_retour, &corps).unwrap().fait, "telecommande:aide : ");
 
         // Rejouée, ou d'une autre séance : refusée, sans rien dire.
         assert_eq!(envoyer(&parole).0, 403);

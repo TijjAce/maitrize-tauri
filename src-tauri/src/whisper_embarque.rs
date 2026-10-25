@@ -95,6 +95,12 @@ const JETONS_DE_L_INVITE: usize = 100;
 /// Les jetons d'une fenêtre de trente secondes, au plus.
 const PLAFOND: usize = 224;
 
+/// Les jetons d'une commande de la télécommande, au plus : une commande ne s'étire pas.
+const JETONS_D_UNE_COMMANDE: usize = 48;
+
+/// Ce qu'on montre au modèle avant une commande, au plus : guère plus, il écouterait moins le son.
+const JETONS_DE_L_INVITE_COMMANDE: usize = 160;
+
 /// Le moteur, partagé : charger 300 Mo à chaque phrase serait absurde.
 #[derive(Default)]
 pub struct Moteur(pub Mutex<Option<Charge>>);
@@ -195,6 +201,32 @@ impl Charge {
             }
         }
         Ok(morceaux.join(" "))
+    }
+
+    /// Une commande de la télécommande : une phrase brève, écoutée après `invite` — des commandes du même genre,
+    /// comme si elles venaient d'être dites. Sans elles, Whisper invente sur deux mots (« Plein écran » devenait
+    /// « Médical ») ; avec, il écrit le vocabulaire qu'on lui a montré. Une seule fenêtre : une commande tient
+    /// en trente secondes.
+    pub fn transcrire_commande(&mut self, pcm: &[f32], invite: &str) -> R<String> {
+        let mut plein = pcm[..pcm.len().min(m::N_SAMPLES)].to_vec();
+        plein.resize(m::N_SAMPLES, 0.0);
+        let son = self.ecouter(&plein)?;
+        let invite = self.debut_qui_tient(invite, JETONS_DE_L_INVITE_COMMANDE)?;
+        let guide = self.prefixe(&invite)?.unwrap_or_else(|| self.depart.clone());
+        self.ecrire(&son, &guide, JETONS_D_UNE_COMMANDE)
+    }
+
+    /// Les premières phrases de `texte` qui tiennent en `max` jetons : une phrase entière, ou rien d'elle.
+    fn debut_qui_tient(&self, texte: &str, max: usize) -> R<String> {
+        let mut garde = String::new();
+        for phrase in texte.split_inclusive(". ") {
+            let essai = format!("{garde}{phrase}");
+            if self.encoder(essai.trim_end())?.len() > max {
+                break;
+            }
+            garde = essai;
+        }
+        Ok(garde.trim_end().to_string())
     }
 
     fn encoder(&self, texte: &str) -> R<Vec<u32>> {
@@ -675,12 +707,25 @@ pub fn transcrire_octets(moteur: &State<'_, Moteur>, octets: &[u8], modele: &str
     if pcm.is_empty() {
         return Err("Enregistrement vide.".into());
     }
-    let voulu = if modele.is_empty() {
-        le_plus_juste(&modeles_installes()).ok_or(SANS_MODELE)?
+    avec_le_modele(moteur, &modele_voulu(modele)?, |c| c.transcrire(&pcm, noms))
+}
+
+/// Une commande de la télécommande, écoutée après `invite` (voir `Charge::transcrire_commande`).
+pub fn transcrire_une_commande(moteur: &State<'_, Moteur>, octets: &[u8], modele: &str, invite: &str) -> R<String> {
+    let pcm = pcm_du_wav(octets)?;
+    if pcm.is_empty() {
+        return Err("Enregistrement vide.".into());
+    }
+    avec_le_modele(moteur, &modele_voulu(modele)?, |c| c.transcrire_commande(&pcm, invite))
+}
+
+/// Ce modèle-là, ou, sans modèle nommé, le plus juste de ceux qui sont là.
+fn modele_voulu(modele: &str) -> R<String> {
+    if modele.is_empty() {
+        le_plus_juste(&modeles_installes()).ok_or_else(|| SANS_MODELE.to_string())
     } else {
-        modele.to_string()
-    };
-    avec_le_modele(moteur, &voulu, |c| c.transcrire(&pcm, noms))
+        Ok(modele.to_string())
+    }
 }
 
 /**
@@ -841,6 +886,32 @@ mod tests {
         println!("→ {texte}");
         let attendu = std::env::var("MAITRIZE_ATTENDU").unwrap_or_else(|_| "famille".into());
         assert!(texte.to_lowercase().contains(&attendu.to_lowercase()), "texte obtenu : {texte}");
+    }
+
+    /**
+     * Les commandes de la télécommande, transcrites pour de vrai : sans rien avant, puis après `MAITRIZE_INVITE_COMMANDE`.
+     *   MAITRIZE_MODELE=/…/small MAITRIZE_DOSSIER=/…/voix MAITRIZE_INVITE_COMMANDE="Minuteur cinq minutes. …" \
+     *     cargo test transcrit_des_commandes -- --ignored --nocapture
+     */
+    #[test]
+    #[ignore]
+    fn transcrit_des_commandes() {
+        let dossier = std::env::var("MAITRIZE_MODELE").expect("MAITRIZE_MODELE");
+        let voix = std::env::var("MAITRIZE_DOSSIER").expect("MAITRIZE_DOSSIER");
+        let invite = std::env::var("MAITRIZE_INVITE_COMMANDE").unwrap_or_default();
+        let mut charge = Charge::ouvrir_dossier("essai", Path::new(&dossier)).unwrap();
+        let mut fichiers: Vec<_> = std::fs::read_dir(&voix)
+            .unwrap()
+            .filter_map(|e| e.ok().map(|e| e.path()))
+            .filter(|p| p.extension().is_some_and(|x| x == "wav"))
+            .collect();
+        fichiers.sort();
+        for f in fichiers {
+            let pcm = pcm_du_wav(&std::fs::read(&f).unwrap()).unwrap();
+            let seul = charge.transcrire_commande(&pcm, "").unwrap();
+            let guide = charge.transcrire_commande(&pcm, &invite).unwrap();
+            println!("{}\t{seul}\t{guide}", f.file_stem().unwrap().to_string_lossy());
+        }
     }
 
     #[test]

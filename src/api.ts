@@ -485,7 +485,11 @@ export interface ElementPasse {
 /** La télécommande du téléphone ouverte sur ce Mac (voir telecommande.rs). */
 export interface InfoTelecommande { adresses: string[]; ouverte: string; reliee: boolean }
 /** Ce que la fenêtre répond au téléphone. */
-export interface ReponseTelecommande { ok: boolean; entendu?: string; fait?: string; aConfirmer?: string; id?: string }
+export interface ReponseTelecommande {
+  ok: boolean; entendu?: string; fait?: string; aConfirmer?: string; id?: string;
+  /** Ce que la télécommande comprend, pour « Que dire ? » sur le téléphone. */
+  comprend?: import("./telecommande").Groupe[];
+}
 /** Ce qu'une reprise a fait ; reprendre `lignes` depuis `copie`, sans leurs liens, l'annule. */
 export interface BilanReprise { copie: string; lignes: Cible[]; fichiers: number }
 
@@ -970,7 +974,7 @@ export const api = {
   boiteRecuperer: (id: string) => invoke<void>("boite_recuperer", { id }),
   boiteSupprimer: (id: string) => invoke<void>("boite_supprimer", { id }),
   // Version portable : serveur local sur le WiFi + QR code (lecture seule).
-  telecommandeOuvrir: () => invoke<InfoTelecommande>("telecommande_ouvrir"),
+  telecommandeOuvrir: (invite: string) => invoke<InfoTelecommande>("telecommande_ouvrir", { invite }),
   telecommandeFermer: () => invoke<void>("telecommande_fermer"),
   telecommandeEtat: () => invoke<InfoTelecommande | null>("telecommande_etat"),
   telecommandeRepondre: (attente: string, reponse: ReponseTelecommande) => invoke<void>("telecommande_repondre", { attente, reponse }),

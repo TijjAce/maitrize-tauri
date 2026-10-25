@@ -44,6 +44,8 @@ pub enum Genre {
     Confirmer,
     /// Non à la question posée (`id`).
     Annuler,
+    /// Ce que l'ordinateur comprend : de quoi le montrer sur le téléphone (« Que dire ? »).
+    Aide,
 }
 
 /// Une demande du téléphone, scellée pour l'ordinateur.
@@ -63,6 +65,17 @@ pub struct Demande {
     pub id: String,
 }
 
+/// Une sorte de phrases que l'ordinateur comprend, avec des exemples.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Groupe {
+    pub titre: String,
+    pub exemples: Vec<String>,
+    /// Toucher un exemple l'envoie tel quel ; sinon, il montre seulement la forme de la phrase.
+    #[serde(default)]
+    pub a_toucher: bool,
+}
+
 /// Ce que l'ordinateur répond.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
@@ -80,6 +93,9 @@ pub struct Reponse {
     /// La demande en attente de cette réponse.
     #[serde(default)]
     pub id: String,
+    /// Ce que l'ordinateur comprend, en réponse à `Genre::Aide`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub comprend: Vec<Groupe>,
 }
 
 /// Une adresse du réseau local, et rien d'autre : la télécommande ne parle jamais qu'à un ordinateur de la classe
@@ -141,6 +157,12 @@ mod tests {
 
         let reponse = Reponse { ok: true, entendu: "minuteur dix minutes".into(), fait: "Minuteur de 10 minutes lancé.".into(), ..Default::default() };
         assert_eq!(dechiffrer::<Reponse>(&cle_retour, &chiffrer(&cle_retour, &reponse).unwrap()).unwrap(), reponse);
+        let aide = Reponse {
+            ok: true,
+            comprend: vec![Groupe { titre: "Minuteur".into(), exemples: vec!["Minuteur cinq minutes".into()], a_toucher: true }],
+            ..Default::default()
+        };
+        assert_eq!(dechiffrer::<Reponse>(&cle_retour, &chiffrer(&cle_retour, &aide).unwrap()).unwrap(), aide);
     }
 
     #[test]
@@ -159,5 +181,9 @@ mod tests {
         assert_eq!((d.genre, d.id.as_str(), d.audio.as_str()), (Genre::Confirmer, "q1", ""));
         assert_eq!(serde_json::to_string(&Demande { jeton: "j".into(), numero: 2, ..Default::default() }).unwrap(),
             r#"{"jeton":"j","numero":2,"genre":"bonjour"}"#);
+        // La fenêtre répond en JavaScript : « aToucher », et rien de plus qu'il ne faut.
+        let r: Reponse = serde_json::from_str(r#"{"ok":true,"comprend":[{"titre":"Écran","exemples":["Ferme"],"aToucher":true}]}"#).unwrap();
+        assert!(r.comprend[0].a_toucher);
+        assert!(!serde_json::to_string(&Reponse::default()).unwrap().contains("comprend"));
     }
 }

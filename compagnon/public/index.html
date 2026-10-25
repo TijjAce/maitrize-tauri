@@ -296,7 +296,17 @@
  .tc-ecrire input { flex:1; min-width:0; font:inherit; font-size:16px; padding:10px 12px; border-radius:12px;
    border:1px solid var(--sep); background:var(--champ); color:var(--txt); }
  .tc-ecrire .btn-plein { width:auto; padding:10px 16px; }
- .tc-liens { display:flex; gap:18px; justify-content:center; margin-top:12px; }
+ .tc-liens { display:flex; flex-wrap:wrap; gap:6px 18px; justify-content:center; margin-top:12px; }
+ /* « Que dire ? » : ce que le Mac comprend, rangé comme sa palette ; les phrases à toucher en pastilles. */
+ .tc-aide { align-self:stretch; display:flex; flex-direction:column; gap:14px; margin-top:14px; padding-top:14px;
+   border-top:1px solid var(--sep); text-align:left; }
+ .tc-groupe h4 { margin:0 0 7px; font-size:13px; font-weight:700; color:var(--txt2); }
+ .tc-exemples { display:flex; flex-wrap:wrap; gap:6px; }
+ .tc-exemple { font:inherit; font-size:14.5px; line-height:1.25; padding:8px 12px; border:none; border-radius:999px;
+   background:var(--acc-doux); color:var(--acc-txt); text-align:left; cursor:pointer; }
+ .tc-exemple:active { transform:scale(.97); }
+ .tc-exemple:disabled { opacity:.5; }
+ .tc-forme { margin:0 0 4px; font-size:14.5px; color:var(--txt2); font-style:italic; overflow-wrap:anywhere; }
  .carte-info { display:flex; align-items:center; gap:8px; margin:12px 2px 0; font-size:14.5px; color:var(--txt2); }
  .carte-info .ic { width:18px; height:18px; color:var(--vert); }
  .lien-btn { border:none; background:none; color:var(--acc-txt); font-size:15px; font-weight:600;

@@ -8,7 +8,7 @@ import { toast } from "./Toaster";
 import { ouvrirOnglet } from "./ui";
 import { demanderMinuteur, EVT_FERMER_AFFICHAGE } from "../demandeMinuteur";
 import { preparerSon } from "../pages/SupportsVisuels";
-import { comprendre, dureeEnClair, TROUVAILLES_DE_LA_CLASSE, type Destination } from "../telecommande";
+import { ceQuIlComprend, comprendre, destinationsDe, dureeEnClair, inviteDeLaVoix, nomDeLaPage, TROUVAILLES_DE_LA_CLASSE, type Destination } from "../telecommande";
 
 // La télécommande du téléphone, côté fenêtre : ce que dit l'enseignant devient un geste à l'écran — donc au
 // tableau, quand le Mac est projeté (voir telecommande.ts pour ce qui est compris, telecommande.rs pour le réseau).
@@ -17,10 +17,11 @@ import { comprendre, dureeEnClair, TROUVAILLES_DE_LA_CLASSE, type Destination } 
  * Les pages de ⌘K, telles que la voix les nomme. Lues au moment de servir : la palette importe ce module, et une
  * liste faite au chargement lirait la sienne avant qu'elle existe.
  */
-const destinations = (): Destination[] => [
-  ...NAV.map((n) => ({ label: n.label, to: n.to })),
-  ...SOUS_ONGLETS.map((s) => ({ label: s.label, to: s.to, page: s.page, onglet: s.onglet })),
-];
+const destinations = (): Destination[] => destinationsDe(NAV, SOUS_ONGLETS);
+
+/** Ce que dit le téléphone à « que dire ? » — la liste entière s'ouvre dessous. */
+const QUE_DIRE_EN_BREF =
+  "Par exemple : « minuteur cinq minutes », « affiche les supports visuels », « plein écran », « ferme », « note pour [prénom] : … ».";
 
 /** Les notes qui attendent le « oui » du téléphone, par question. */
 const notesEnAttente = new Map<string, { eleveId: string; prenom: string; texte: string }>();
@@ -31,8 +32,6 @@ async function pleinEcran(actif: boolean) {
     await getCurrentWindow().setFullscreen(actif);
   } catch { /* hors de l'application */ }
 }
-
-const nomSeul = (label: string) => label.split(" (")[0].split(" : ")[0];
 
 /** Fait ce que la phrase demande, et dit au téléphone ce qui a été fait. */
 async function executer(texte: string, nav: (to: string) => void): Promise<ReponseTelecommande> {
@@ -55,7 +54,7 @@ async function executer(texte: string, nav: (to: string) => void): Promise<Repon
       const d = c.destination;
       nav(d.to);
       if (d.page && d.onglet) setTimeout(() => ouvrirOnglet(d.page!, d.onglet!), 140);
-      return { ok: true, fait: `${nomSeul(d.label)} : affiché.` };
+      return { ok: true, fait: `${nomDeLaPage(d.label)} : affiché.` };
     }
     case "chercher": {
       const trouves = (await api.recherche(c.quoi).catch(() => [])).filter((r) => TROUVAILLES_DE_LA_CLASSE.has(r.kind));
@@ -70,6 +69,9 @@ async function executer(texte: string, nav: (to: string) => void): Promise<Repon
       notesEnAttente.set(id, { eleveId: c.eleve.id, prenom, texte: c.texte });
       return { ok: true, aConfirmer: `Noter pour ${prenom} : « ${c.texte} » ?`, id };
     }
+    case "aide":
+      // La liste entière part avec : le téléphone l'ouvre.
+      return { ok: true, fait: QUE_DIRE_EN_BREF, comprend: ceQuIlComprend(destinations()) };
     case "rien":
       return { ok: false, fait: c.pourquoi };
   }
@@ -102,9 +104,14 @@ export function useTelecommande() {
     const decision = listen<{ attente: string; id: string; oui: boolean }>("telecommande:decision", (e) => {
       void repondre(e.payload.attente, () => decider(e.payload.id, e.payload.oui));
     });
+    // « Que dire ? » sur le téléphone : ce que cette fenêtre comprend, du même vocabulaire que ce qu'elle exécute.
+    const aide = listen<{ attente: string }>("telecommande:aide", (e) => {
+      void repondre(e.payload.attente, async () => ({ ok: true, comprend: ceQuIlComprend(destinations()) }));
+    });
     return () => {
       void phrase.then((f) => f());
       void decision.then((f) => f());
+      void aide.then((f) => f());
     };
   }, []);
 }
@@ -129,7 +136,8 @@ export async function basculerLaTelecommande(ouverte: boolean) {
     } else {
       // Le clic prépare le son : le minuteur lancé de loin sonnera.
       preparerSon();
-      await api.telecommandeOuvrir();
+      // Ce que Whisper lira avant chaque phrase : les commandes, et les prénoms pour « note pour… ».
+      await api.telecommandeOuvrir(inviteDeLaVoix(await api.elevesList().catch(() => [])));
       toast("Télécommande ouverte : sur l'iPhone, compagnon › WiFi › « Piloter le Mac ».", { icone: "📽", duree: 8000 });
     }
   } catch (e) {
@@ -149,6 +157,8 @@ export function CarteTelecommande() {
           <p>Vous parlez à l'iPhone, et ce Mac — projeté au tableau — affiche : « minuteur cinq minutes », « affiche les
             supports visuels », « montre la carte mentale », « plein écran », « ferme ». « Note pour [prénom] : … »
             s'écrit dans ses observations après un « oui » sur le téléphone, sans s'afficher au tableau.</p>
+          <p>Sur l'iPhone, « Que dire ? » montre tout ce que la télécommande comprend, et chaque page par son nom :
+            toucher une phrase l'envoie, comme si on l'avait dite.</p>
           <p>La voix ne montre que ce qu'on peut montrer à la classe : ni les élèves, ni le cahier journal, ni les
             réglages. Elle est transcrite sur ce Mac, comme les dictées ; chaque phrase arrive scellée, même sur le WiFi
             de l'école.</p>
