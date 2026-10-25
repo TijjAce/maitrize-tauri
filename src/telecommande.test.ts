@@ -133,6 +133,12 @@ describe("la télécommande, comme on parle en classe", () => {
     ["Affiche la prise.", page("frise")],
     ["Je vous montre le d'abord ensuite.", page("dabord")],
     ["Note pour Barnabé. A lu 12 mots seul.", { genre: "note", eleve: { id: "e1" }, texte: "A lu 12 mots seul." }],
+    // … et Voxtral, en ligne.
+    ["Alfiche la frise.", page("frise")],
+    ["Affriche le tableau de jetons.", page("jetons")],
+    ["Affichent les supports visuels.", page("supports")],
+    ["La fiche la frise.", page("frise")],
+    ["Femme.", { genre: "fermer" }],
     ["Cherche les fractions.", { genre: "chercher", quoi: "fractions", sorte: null }],
     ["C'est bon, tu peux fermer.", { genre: "fermer" }],
     ["Note que Barnabé a bien travaillé.", { genre: "note", eleve: { id: "e1" }, texte: "A bien travaillé." }],
@@ -147,6 +153,8 @@ describe("la télécommande, comme on parle en classe", () => {
     expect(comprendre("Montre le lot", classe)).toMatchObject({ genre: "chercher" });
     expect(comprendre("Affiche la crise", classe)).toMatchObject(page("frise"));
     expect(comprendre("Affiche la cerise", classe)).toMatchObject({ genre: "chercher" });
+    expect(comprendre("Fiches", classe)).toMatchObject({ genre: "aller", destination: { to: "/ateliers" } });
+    expect(comprendre("Montre les femmes", classe)).toMatchObject({ genre: "chercher" });
   });
 
   it("n'ouvre toujours pas ce qui nomme les élèves, même poliment", () => {
