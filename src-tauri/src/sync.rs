@@ -1479,6 +1479,8 @@ fn depot_a_appliquer(lot: &Lot, machine: &str, relire_les_miens: bool) -> bool {
 }
 /// Nombre d'objets de deltas conservés sur le stockage.
 const DELTAS_GARDES: usize = 400;
+/// À partir de combien de changements reçus d'un coup un instantané se prend avant de les appliquer.
+const LOT_IMPORTANT: usize = 100;
 
 #[derive(Serialize, Deserialize)]
 struct Lot {
@@ -1648,6 +1650,13 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
     }
     res.recus = a_appliquer.len();
 
+    // Un gros lot : l'état d'ici d'abord, dans la frise de « Revenir en arrière ».
+    let dossier_des_etats = crate::db::sauvegardes_dir();
+    let avant_le_lot = if a_appliquer.len() >= LOT_IMPORTANT {
+        crate::instantanes::copier_avant_un_lot(&db.lock(), &dossier_des_etats)
+    } else {
+        None
+    };
     if !a_appliquer.is_empty() || !cles.is_empty() {
         let mut c = db.lock();
         if !a_appliquer.is_empty() {
@@ -1660,6 +1669,10 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
         }
         set_setting(&c, CLE_DERNIERE_SYNC,
                     &chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string())?;
+    }
+    if let Some(copie) = avant_le_lot {
+        let maintenant = chrono::Local::now().naive_local();
+        crate::instantanes::ranger(&db, copie, &dossier_des_etats, crate::instantanes::MOTIF_AVANT_SYNCHRO, maintenant);
     }
 
     // 3. Se signaler à l'autre machine : c'est ce qui rend la liaison visible

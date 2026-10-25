@@ -5,7 +5,7 @@
 // d'avant une mise à jour ou une opération. Ici, de quoi les ranger et dire ce
 // qu'un retour changerait.
 
-import type { Ecart, EtatPasse } from "./api";
+import type { Cible, Ecart, ElementPasse, EtatPasse } from "./api";
 
 /** La date d'un état, en heure locale ; une copie d'un jour sans heure compte pour minuit. */
 export function dateDe(e: EtatPasse): Date {
@@ -25,6 +25,8 @@ export function motifEnClair(motif: string): string {
   const connus: Record<string, string> = {
     auto: "", jour: "",
     "avant-retour": "avant un retour en arrière",
+    "avant-reprise": "avant la reprise d'un élément",
+    "avant-synchro": "avant un gros envoi de l'autre ordinateur",
     "avant-import": "avant un import",
     "avant-restauration": "avant une restauration",
   };
@@ -34,8 +36,9 @@ export function motifEnClair(motif: string): string {
 /** Le signe d'un état qui n'est pas un simple instantané. */
 export function signeDuMotif(motif: string): string {
   if (motif.startsWith("avant-v")) return "⬆";
-  if (motif === "avant-retour") return "↶";
+  if (motif === "avant-retour" || motif === "avant-reprise") return "↶";
   if (motif === "avant-import" || motif === "avant-restauration") return "⤓";
+  if (motif === "avant-synchro") return "⇅";
   return "";
 }
 
@@ -144,6 +147,28 @@ export function bilanDesEcarts(ecarts: Ecart[]): Bilan {
   };
 }
 
+// ── Reprendre un seul élément ────────────────────────────────────────────
+
+/** Le nom d'une chose d'une table, au singulier : « séquence ». */
+export const nomDeLaChose = (table: string) => (CHOSES[table] ?? ["élément"])[0];
+
+/** Le nom d'un élément tel que la liste le montre : un créneau par sa date courte. */
+export const libelleEnClair = (e: ElementPasse) => dateCourte(e.libelle);
+
+/** Ce qui revient avec un élément : « 8 séances », « 2 observations et 1 dossier d'élève ». */
+export function avecEnClair(avec: [string, number][]): string {
+  const morceaux = avec.map(([table, n]) => compter(n, table));
+  return morceaux.length > 1 ? `${morceaux.slice(0, -1).join(", ")} et ${morceaux[morceaux.length - 1]}` : morceaux[0] ?? "";
+}
+
+/** Les éléments d'un état, en deux listes — supprimés depuis, modifiés depuis —, chacune par sorte puis par nom. */
+export function elementsRanges(elements: ElementPasse[]): { supprimes: ElementPasse[]; modifies: ElementPasse[] } {
+  const ordre = Object.keys(CHOSES);
+  const rang = (t: string) => (ordre.includes(t) ? ordre.indexOf(t) : ordre.length);
+  const tries = [...elements].sort((a, b) => rang(a.table) - rang(b.table) || a.libelle.localeCompare(b.libelle, "fr"));
+  return { supprimes: tries.filter((e) => e.supprime), modifies: tries.filter((e) => !e.supprime) };
+}
+
 // ── Après un retour, la fenêtre se recharge ────────────────────────────────
 //
 // Tous les écrans doivent relire leurs données : on recharge. Ce qu'il faut
@@ -157,6 +182,9 @@ export interface RetourFait {
   /** « du lundi 13 octobre à 17:40 », « d'hier à 22:59 ». */
   vers: string;
   fichiers: number;
+  /** Une reprise d'un seul élément, pas un retour : ce qui a été repris (« « Les nombres » »), et toutes les lignes
+   * écrites, que l'annulation reprend depuis `copie`. */
+  reprise?: { quoi: string; lignes: Cible[] };
 }
 
 export function noterLeRetour(r: RetourFait) {

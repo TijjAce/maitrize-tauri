@@ -24,6 +24,8 @@ use std::sync::Mutex;
 const ENTREE: &str = "maitrize.sqlite3";
 /// Le motif des instantanés pris tout seuls, dans leur nom.
 pub const MOTIF_AUTO: &str = "auto";
+/// Le motif d'un instantané pris juste avant d'appliquer un gros lot reçu de l'autre ordinateur.
+pub const MOTIF_AVANT_SYNCHRO: &str = "avant-synchro";
 /// Au moins une heure entre deux instantanés.
 const INTERVALLE_MINUTES: i64 = 60;
 /// Réglage de ce poste : le numéro du journal au dernier instantané.
@@ -50,11 +52,17 @@ pub fn quand(e: &EtatPasse) -> Option<NaiveDateTime> {
 
 /// Le nom de l'instantané pris à `maintenant`.
 pub fn nom_auto(maintenant: NaiveDateTime) -> String {
-    format!("maitrize-{}-{MOTIF_AUTO}-{}.sqlite3.zip", maintenant.format("%Y-%m-%d"), maintenant.format("%H%M%S"))
+    nom_d_instantane(MOTIF_AUTO, maintenant)
 }
 
+fn nom_d_instantane(motif: &str, maintenant: NaiveDateTime) -> String {
+    format!("maitrize-{}-{motif}-{}.sqlite3.zip", maintenant.format("%Y-%m-%d"), maintenant.format("%H%M%S"))
+}
+
+/// Un instantané compressé — pris tout seul, ou avant un gros lot reçu — : la frise les garde et les éclaircit
+/// ensemble.
 fn est_auto(e: &EtatPasse) -> bool {
-    e.motif == MOTIF_AUTO && e.nom.ends_with(".zip")
+    (e.motif == MOTIF_AUTO || e.motif == MOTIF_AVANT_SYNCHRO) && e.nom.ends_with(".zip")
 }
 
 /// Un instantané est dû si quelque chose a changé depuis le dernier, et que
@@ -230,27 +238,54 @@ pub(crate) fn convertir_les_copies_du_jour(dossier: &Path) -> usize {
 
 /// Prend l'instantané dû, s'il l'est ; rend son nom.
 pub fn prendre_si_du(db: &Db, dossier: &Path, maintenant: NaiveDateTime) -> Option<String> {
-    let (brut, m) = {
+    let copie = {
         let c = db.lock();
         if !du(&c, dossier, maintenant) {
             return None;
         }
-        let m = marque(&c);
-        match copier(&c, dossier) {
-            Ok(brut) => (brut, m),
-            Err(err) => {
-                crate::commands::diag_ecrire(format!("INSTANTANÉ : {err}"));
-                return None;
-            }
-        }
+        copier_l_etat(&c, dossier)?
     };
     // La compression se fait base relâchée : on peut travailler pendant ce temps.
-    let nom = nom_auto(maintenant);
-    let fait = compresser(&brut, dossier, &nom);
-    std::fs::remove_file(&brut).ok();
+    ranger(db, copie, dossier, MOTIF_AUTO, maintenant)
+}
+
+/// La base copiée pour un instantané, pas encore compressée, et le numéro du journal à ce moment.
+pub struct CopieDeLEtat {
+    brut: PathBuf,
+    marque: i64,
+}
+
+/// Copie la base pour un instantané — le seul moment où il faut la tenir.
+fn copier_l_etat(c: &Connection, dossier: &Path) -> Option<CopieDeLEtat> {
+    match copier(c, dossier) {
+        Ok(brut) => Some(CopieDeLEtat { brut, marque: marque(c) }),
+        Err(err) => {
+            crate::commands::diag_ecrire(format!("INSTANTANÉ : {err}"));
+            None
+        }
+    }
+}
+
+/// Avant d'appliquer un gros lot reçu de l'autre ordinateur, l'état d'ici — s'il a changé depuis le dernier
+/// instantané : sinon, ce dernier le garde déjà. À ranger ensuite, base relâchée (`ranger`).
+///
+/// Une restauration de travers ou une vieille base, là-bas, se répand ici par la synchronisation : sans cet
+/// instantané, l'état d'avant pouvait n'exister nulle part, le dernier datant de près d'une heure.
+pub fn copier_avant_un_lot(c: &Connection, dossier: &Path) -> Option<CopieDeLEtat> {
+    if derniere_marque(c) == Some(marque(c)) {
+        return None;
+    }
+    copier_l_etat(c, dossier)
+}
+
+/// Compresse une copie en instantané `motif`, la range dans la frise et note sa marque ; rend son nom.
+pub fn ranger(db: &Db, copie: CopieDeLEtat, dossier: &Path, motif: &str, maintenant: NaiveDateTime) -> Option<String> {
+    let nom = nom_d_instantane(motif, maintenant);
+    let fait = compresser(&copie.brut, dossier, &nom);
+    std::fs::remove_file(&copie.brut).ok();
     match fait {
         Ok(()) => {
-            db.lock().execute("INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)", [CLE_MARQUE, &m.to_string()]).ok();
+            db.lock().execute("INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)", [CLE_MARQUE, &copie.marque.to_string()]).ok();
             purger(dossier, maintenant);
             Some(nom)
         }
@@ -428,6 +463,35 @@ mod tests {
         drop(alors);
         drop(ouverte);
         assert!(!provisoire.exists(), "la base décompressée s'efface après usage");
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// Avant un gros lot reçu de l'autre ordinateur : l'état d'ici, s'il a changé depuis le dernier instantané. Il
+    /// entre dans la frise avec son motif, et compte comme un instantané pour l'heure qui suit.
+    #[test]
+    fn un_instantane_se_prend_avant_un_gros_lot_recu() {
+        let d = dossier();
+        let db = base(&d);
+        let s = d.join("Sauvegardes");
+        db.lock().execute("INSERT INTO projets (id, titre, date_creation) VALUES ('p1', 'Le potager', '2026-10-01')", []).unwrap();
+        prendre_si_du(&db, &s, le("2026-10-20 09:00")).expect("le premier");
+        // Rien n'a changé depuis : le dernier instantané garde déjà l'état d'ici.
+        assert!(copier_avant_un_lot(&db.lock(), &s).is_none());
+        db.lock().execute("UPDATE projets SET titre = 'Le jardin' WHERE id = 'p1'", []).unwrap();
+        let copie = copier_avant_un_lot(&db.lock(), &s).expect("l'état d'ici a changé");
+        // Le lot s'applique pendant que la copie attend d'être rangée.
+        db.lock().execute("UPDATE projets SET titre = 'Reçu de là-bas' WHERE id = 'p1'", []).unwrap();
+        let nom = ranger(&db, copie, &s, MOTIF_AVANT_SYNCHRO, le("2026-10-20 09:20")).expect("rangé");
+        assert_eq!(nom, "maitrize-2026-10-20-avant-synchro-092000.sqlite3.zip");
+        let etat = etats_dans(&s).into_iter().find(|e| e.nom == nom).unwrap();
+        assert_eq!(etat.motif, "avant-synchro");
+        let ouverte = ouvrir(&s.join(&nom), &d).unwrap();
+        let titre: String = Connection::open(&ouverte.chemin).unwrap().query_row("SELECT titre FROM projets WHERE id = 'p1'", [], |r| r.get(0)).unwrap();
+        assert_eq!(titre, "Le jardin", "l'état d'avant le lot");
+        // Le lot appliqué compte comme un changement ; l'instantané de l'heure suivante viendra.
+        assert_eq!(prendre_si_du(&db, &s, le("2026-10-20 10:00")), None, "moins d'une heure après");
+        assert!(prendre_si_du(&db, &s, le("2026-10-20 10:25")).is_some());
+        assert!(!std::fs::read_dir(&s).unwrap().flatten().any(|e| e.file_name().to_string_lossy().starts_with(".instantane-")));
         std::fs::remove_dir_all(&d).ok();
     }
 
