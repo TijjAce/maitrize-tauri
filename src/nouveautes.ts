@@ -18,6 +18,19 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.38",
+    titre: "Reprendre une seule chose d'un état passé, des listes de mots qui se gardent, et des dizaines de corrections",
+    points: [
+      { quoi: "« Revenir en arrière » sait ne reprendre qu'un élément : sous un état passé, « Ne reprendre qu'un élément » montre ce qui a été supprimé ou modifié depuis. Un clic fait revenir une séquence avec ses séances, un élève avec ses observations, ou remet l'ancienne version d'une séance — sans défaire le reste de votre travail. « Annuler » le défait.", ou: "Réglages › Données & synchro › Revenir en arrière" },
+      { quoi: "Revenir en arrière reprend aussi les manuels importés, Mes générateurs, les motifs du coloriage, les pages de garde, le projet pédagogique et les référentiels ajoutés. Et Maitrize garde un état juste avant d'appliquer un gros envoi de l'autre ordinateur (⇅).", ou: "Réglages › Données & synchro › Revenir en arrière" },
+      { quoi: "Les ateliers à mots — étiquettes, ombres, loto et dominos des syllabes, intrus, mots codés, syllabe manquante, œil de lynx — retrouvent leur liste quand on revient ; le loto, le mémory et l'imagier, leur sélection d'images et leurs réglages.", ou: "Fabriquer" },
+      { quoi: "Des feuilles plus justes : « vous mangez » se coupe « mang | ez » ; un nombre n'est plus encadré par lui-même ; « combien de plus » part de la ville qui en a le plus ; les cadrans de l'après-midi sont tous différents ; plus de tonnes ni d'exercice sans contenu au CP ; la lune se lit [y] ; « 1 € de plusieurs façons » règle son nombre de cases.", ou: "Fabriquer" },
+      { quoi: "Organisation : un placement fait sur l'autre ordinateur n'est plus effacé par le suivant fait ici ; importer un autre fichier ne vide plus l'année ; « Exporter ce tableau » du travail de cycle se réimporte ; une feuille restée ouverte se recharge quand l'autre ordinateur la modifie.", ou: "Organisation" },
+      { quoi: "Synchronisation et sauvegardes plus sûres : une ligne supprimée ne revient plus sur l'autre ordinateur ; un texte tapé pendant une synchronisation n'est plus perdu ; une restauration se fait en entier ou pas du tout ; les sauvegardes en ligne restent visibles même avec beaucoup de dépôts ; une photo ou un PDF ne part plus à moitié écrit ; si le disque des données n'est pas branché au démarrage, un message propose de réessayer.", ou: "Réglages › Données & synchro" },
+      { quoi: "Plus sûr : une page ouverte dans le navigateur n'exécute que les scripts de Maitrize ; une feuille retouchée par l'IA est reconstruite balise par balise ; le dossier de la copie sur le Bureau n'est ouvert qu'à vous ; l'ancienne sauvegarde en ligne, moins protégée, s'efface.", ou: "Partout" },
+    ],
+  },
+  {
     version: "1.6.37",
     titre: "De la couleur et des tableaux dans les séances, et une bibliothèque pour choisir une séquence ou une méthodologie",
     points: [
