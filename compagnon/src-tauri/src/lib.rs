@@ -91,6 +91,7 @@ pub fn run() {
             telecommande_parler,
             telecommande_ecrire,
             telecommande_decider,
+            telecommande_aide,
             telecommande_delier,
             telecommande_reliee,
         ])

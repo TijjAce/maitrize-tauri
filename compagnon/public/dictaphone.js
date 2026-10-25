@@ -1812,7 +1812,7 @@ function ongletTablettes() {
 // visuels »… Le téléphone trouve le Mac par Nuage, puis lui envoie chaque phrase en direct, scellée (voir
 // telecommande.rs). Le bouton se garde appuyé tant qu'on parle ; rien du son ne reste sur le téléphone.
 
-const TC_VIDE = { reliee: false, enCours: false, ecoute: false, entendu: "", fait: "", ok: true, question: "", id: "", souci: "", ecrire: false, brouillon: "" };
+const TC_VIDE = { reliee: false, enCours: false, ecoute: false, entendu: "", fait: "", ok: true, question: "", id: "", souci: "", ecrire: false, brouillon: "", aide: false, comprend: null };
 let tc = { ...TC_VIDE };
 let tcMicro = null, tcCtx = null, tcNoeud = null, tcMorceaux = [], tcDepart = 0;
 
@@ -1841,12 +1841,29 @@ async function auTableau(commande, args) {
   try {
     const r = await invoke(commande, args);
     tc.entendu = r.entendu || ""; tc.fait = r.fait || ""; tc.ok = !!r.ok; tc.question = r.aConfirmer || ""; tc.id = r.id || "";
+    // « Que dire ? » dit ou écrit : la liste arrive avec la réponse, et s'ouvre.
+    if (r.comprend && r.comprend.length) { tc.comprend = r.comprend; tc.aide = true; }
   } catch (e) {
     tc.souci = String(e);
     if (/reliez de nouveau|pas reliée/.test(tc.souci)) tc.reliee = false;
   } finally {
     tc.enCours = false; rendre();
   }
+}
+
+/** « Que dire ? » : ce que le Mac comprend, demandé une fois par séance — ses pages changent avec sa version. */
+async function queDire() {
+  tc.aide = !tc.aide;
+  if (tc.aide && !tc.comprend) {
+    rendre();
+    try {
+      tc.comprend = (await invoke("telecommande_aide")).comprend || [];
+    } catch (e) {
+      tc.aide = false; tc.souci = String(e);
+      if (/reliez de nouveau|pas reliée/.test(tc.souci)) tc.reliee = false;
+    }
+  }
+  rendre();
 }
 
 /** Le bouton appuyé : le micro s'ouvre. L'écran ne se redessine pas : le doigt reste sur le même bouton. */
@@ -1917,12 +1934,18 @@ function carteTelecommande() {
     ? `<div class="tc-ecrire"><input id="tc-texte" type="text" enterkeyhint="send" autocomplete="off" placeholder="minuteur cinq minutes" value="${echapper(tc.brouillon)}">
         <button class="btn-plein" id="tc-envoyer-texte" ${tc.enCours ? "disabled" : ""}>Envoyer</button></div>`
     : "";
+  // Ce que le Mac comprend : des phrases à toucher — elles partent comme si on les avait dites —, et la forme des autres.
+  const groupe = (g) => `<div class="tc-groupe"><h4>${echapper(g.titre)}</h4>${g.aToucher
+    ? `<div class="tc-exemples">${g.exemples.map((x) => `<button class="tc-exemple" data-phrase="${echapper(x)}" ${tc.enCours ? "disabled" : ""}>${echapper(x)}</button>`).join("")}</div>`
+    : g.exemples.map((x) => `<p class="tc-forme">« ${echapper(x)} »</p>`).join("")}</div>`;
+  const aide = tc.aide ? `<div class="tc-aide">${tc.comprend ? tc.comprend.map(groupe).join("") : `<p class="tc-forme">Le Mac répond…</p>`}</div>` : "";
   return `<div class="carte carte-telecommande reliee">
     <button class="rond" id="tc-micro" aria-label="Maintenir pour parler au Mac" ${tc.enCours ? "disabled" : ""}>${icone("micro")}</button>
     <p class="rond-legende" id="tc-legende">${tc.enCours ? "Le Mac s'en occupe…" : "Maintenir pour parler"}</p>
     ${tc.entendu ? `<p class="tc-entendu">« ${echapper(tc.entendu)} »</p>` : ""}
     ${reponse}${souci}${ecrire}
-    <div class="tc-liens">${tc.ecrire ? "" : `<button class="lien-btn" id="tc-clavier">Écrire plutôt</button>`}<button class="lien-btn" id="tc-delier">Arrêter de piloter</button></div>
+    <div class="tc-liens"><button class="lien-btn" id="tc-que-dire">${tc.aide ? "Fermer la liste" : "Que dire ?"}</button>${tc.ecrire ? "" : `<button class="lien-btn" id="tc-clavier">Écrire plutôt</button>`}<button class="lien-btn" id="tc-delier">Arrêter de piloter</button></div>
+    ${aide}
   </div>`;
 }
 
@@ -2167,6 +2190,11 @@ function rendre() {
   clic("tc-oui", () => { void auTableau("telecommande_decider", { id: tc.id, oui: true }); });
   clic("tc-non", () => { void auTableau("telecommande_decider", { id: tc.id, oui: false }); });
   clic("tc-clavier", () => { tc.ecrire = true; rendre(); document.getElementById("tc-texte")?.focus(); });
+  clic("tc-que-dire", () => { void queDire(); });
+  // Une phrase touchée part ; la liste se ferme pour laisser voir ce que le Mac a fait.
+  document.querySelectorAll(".tc-exemple").forEach((b) => {
+    b.onclick = () => { tc.aide = false; void auTableau("telecommande_ecrire", { texte: b.dataset.phrase }); };
+  });
   const tcTexte = document.getElementById("tc-texte");
   const tcEnvoyer = () => { const t = (tc.brouillon || "").trim(); if (!t) return; tc.brouillon = ""; void auTableau("telecommande_ecrire", { texte: t }); };
   if (tcTexte) {

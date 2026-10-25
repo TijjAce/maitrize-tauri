@@ -87,3 +87,20 @@ rfd = { version = "0.16", default-features = false, features = ["common-controls
 [dev-dependencies]
 # Un dossier jetable par essai : les essais n'écrivent jamais dans les fichiers de l'application.
 tempfile = "3"
+
+# Whisper, même en développement, avec ses calculs optimisés : sans eux, la build de développement mettait des
+# minutes à transcrire une commande de deux mots (télécommande, dictées). Le reste garde la compilation rapide du
+# débogage ; les versions publiées, optimisées en entier, ne changent pas.
+[profile.dev.package]
+candle-core = { opt-level = 3 }
+candle-nn = { opt-level = 3 }
+candle-transformers = { opt-level = 3 }
+gemm = { opt-level = 3 }
+gemm-common = { opt-level = 3 }
+gemm-f16 = { opt-level = 3 }
+gemm-f32 = { opt-level = 3 }
+gemm-f64 = { opt-level = 3 }
+gemm-c32 = { opt-level = 3 }
+gemm-c64 = { opt-level = 3 }
+half = { opt-level = 3 }
+safetensors = { opt-level = 3 }

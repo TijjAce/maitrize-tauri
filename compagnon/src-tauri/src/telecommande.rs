@@ -102,6 +102,12 @@ pub async fn telecommande_decider(id: String, oui: bool) -> R<Reponse> {
     envoyer(&lien()?, Demande { genre, id, ..Default::default() }, Duration::from_secs(20)).await
 }
 
+/// Ce que l'ordinateur comprend, pour « Que dire ? » : des phrases à dire, et ses pages par leur nom.
+#[tauri::command]
+pub async fn telecommande_aide() -> R<Reponse> {
+    envoyer(&lien()?, Demande { genre: Genre::Aide, ..Default::default() }, Duration::from_secs(10)).await
+}
+
 /// Oublie la séance : il faudra la relier de nouveau.
 #[tauri::command]
 pub fn telecommande_delier() {
