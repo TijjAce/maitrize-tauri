@@ -7,10 +7,12 @@ import { Aide } from "./Aide";
 import { toast } from "./Toaster";
 import { ouvrirOnglet } from "./ui";
 import { demanderMinuteur, EVT_FERMER_AFFICHAGE } from "../demandeMinuteur";
-import { preparerSon } from "../pages/SupportsVisuels";
+import { etatDuMinuteur, piloterLeMinuteur, preparerSon } from "../pages/SupportsVisuels";
+import { zoomerDeLoin } from "../theme";
 import {
-  CLE_SECOURS, CLE_TEMPS_REEL, MODELE_DE_SECOURS, ceQuIlComprend, comprendre, consigneDuSecours, destinationsDe, dureeEnClair,
-  inviteDeLaVoix, lireLeSecours, nomDeLaPage, TROUVAILLES_DE_LA_CLASSE, type Compris, type ContexteTelecommande, type Destination,
+  CLE_SECOURS, CLE_TEMPS_REEL, MODELE_DE_SECOURS, catalogue, ceQuIlComprend, comprendre, consigneDeMistral, destinationsDe,
+  dureeEnClair, estComplexe, inviteDeLaVoix, lireLesActions, nomDeLaPage, TROUVAILLES_DE_LA_CLASSE, type Compris,
+  type ContexteTelecommande, type Destination,
 } from "../telecommande";
 
 // La télécommande du téléphone, côté fenêtre : ce que dit l'enseignant devient un geste à l'écran — donc au
@@ -36,42 +38,98 @@ async function pleinEcran(actif: boolean) {
   } catch { /* hors de l'application */ }
 }
 
-/** Le temps qu'on laisse à Mistral : au-delà, la télécommande répond sans lui (le téléphone attend). */
-const DELAI_DU_SECOURS = 8000;
+/** Les tailles de « plus grand » et « plus petit », au tableau, par-dessus celle des réglages. */
+const ZOOMS = [0.8, 1, 1.25, 1.5, 1.75, 2];
+let zoom = 1;
 
-/**
- * Mistral, en secours : il lit la phrase que la télécommande n'a pas comprise — le texte seul, le son reste sur ce
- * Mac — et sa réponse ne passe que relue (`lireLeSecours`). Rien s'il n'est pas voulu, pas joignable, ou trop lent.
- */
-async function secours(texte: string, ctx: ContexteTelecommande): Promise<Compris | null> {
-  if ((await api.settingGet(CLE_SECOURS).catch(() => null)) !== "oui") return null;
-  try {
-    const reponse = await Promise.race([
-      api.mistralChat([{ role: "system", content: consigneDuSecours(ctx.destinations) }, { role: "user", content: texte }], MODELE_DE_SECOURS, true),
-      new Promise<never>((_, refuser) => setTimeout(() => refuser(new Error("délai")), DELAI_DU_SECOURS)),
-    ]);
-    return lireLeSecours(reponse, ctx);
-  } catch {
-    return null;
-  }
+/** Le temps qu'on laisse à Mistral : au-delà, la télécommande répond sans lui (le téléphone attend). */
+const DELAI_DE_MISTRAL = 8000;
+/** Entre deux actions d'une même phrase : la page demandée a le temps de s'ouvrir. */
+const ENTRE_DEUX_ACTIONS = 450;
+
+/** Où en sont le minuteur et l'affichage : Mistral en a besoin pour « encore deux minutes », « plus grand ». */
+function ceQuiEstEnCours(): string {
+  const m = etatDuMinuteur();
+  const minuteur = !m ? "aucun minuteur" : m.fini ? "le minuteur a sonné"
+    : `minuteur ${m.enMarche ? "en marche" : "arrêté"}, ${dureeEnClair(Math.round(m.restant / 1000))} restantes`;
+  return `${minuteur} ; page affichée : ${window.location.hash.replace(/^#/, "") || "/"} ; taille ${Math.round(ZOOMS[zoom] * 100)} %.`;
+}
+
+/** Ce que la voix peut ouvrir — séquences, séances, jeux, outils, textes —, lu à chaque phrase : il change. */
+async function ceQuOnPeutOuvrir(eleves: { nom: string }[]) {
+  const [sequences, seances, jeux, outils, textes] = await Promise.all([
+    api.sequencesList().catch(() => []), api.seancesList().catch(() => []), api.jeuxList().catch(() => []),
+    api.outilsClasseList().catch(() => []), api.textesList().catch(() => []),
+  ]);
+  return catalogue({ sequences, seances, jeux, outils, textes }, eleves, nowIso().slice(0, 10));
 }
 
 /**
- * Fait ce que la phrase demande, et dit au téléphone ce qui a été fait. `avecSecours` : Mistral peut lire une phrase
- * incomprise — pas au premier essai d'une phrase entendue en direct, que la transcription de ce Mac rattrape d'abord.
+ * Mistral lit la phrase — le texte seul, le son reste sur ce Mac — avec tout ce qu'il peut faire : les actions, les
+ * pages de la classe, ce que la voix peut ouvrir, et ce qui est en cours. Ses actions ne passent que relues
+ * (`lireLesActions`), puis se font dans l'ordre. Rien s'il n'est pas voulu, pas joignable, ou trop lent.
  */
-async function executer(texte: string, nav: (to: string) => void, avecSecours = true): Promise<ReponseTelecommande> {
+async function parMistral(texte: string, ctx: ContexteTelecommande, nav: (to: string) => void): Promise<ReponseTelecommande | null> {
+  const elements = await ceQuOnPeutOuvrir(ctx.eleves);
+  let actions: Compris[] | null;
+  try {
+    const reponse = await Promise.race([
+      api.mistralChat([
+        { role: "system", content: consigneDeMistral(ctx.destinations, elements, ceQuiEstEnCours()) },
+        { role: "user", content: texte },
+      ], MODELE_DE_SECOURS, true),
+      new Promise<never>((_, refuser) => setTimeout(() => refuser(new Error("délai")), DELAI_DE_MISTRAL)),
+    ]);
+    actions = lireLesActions(reponse, ctx, elements, texte);
+  } catch {
+    return null;
+  }
+  if (!actions) return null;
+  const faits: ReponseTelecommande[] = [];
+  for (const [i, a] of actions.entries()) {
+    if (i > 0) await new Promise((r) => setTimeout(r, ENTRE_DEUX_ACTIONS));
+    faits.push(await agir(a, nav));
+  }
+  if (!faits.some((f) => f.ok)) return null;
+  const question = faits.find((f) => f.aConfirmer);
+  const dit = faits.map((f) => f.fait).filter(Boolean).join(" ");
+  return { ...question, ok: true, fait: `${dit} (Mistral)`.trim(), comprend: faits.find((f) => f.comprend)?.comprend };
+}
+
+/**
+ * Fait ce que la phrase demande, et dit au téléphone ce qui a été fait. Une phrase simple — une commande, ce qu'on
+ * dit le plus — se comprend ici, sans attendre. Une phrase complexe, ou incomprise, va à Mistral si l'enseignant
+ * l'a voulu (Réglages › Téléphone).
+ */
+async function executer(texte: string, nav: (to: string) => void): Promise<ReponseTelecommande> {
   const eleves = (await api.elevesList().catch(() => [])).map((e) => ({ id: e.id, nom: e.nom }));
   const ctx = { destinations: destinations(), eleves };
+  const mistral = texte.trim() !== "" && (await api.settingGet(CLE_SECOURS).catch(() => null)) === "oui";
+  const complexe = mistral && estComplexe(texte, ctx.destinations);
+  if (complexe) {
+    const r = await parMistral(texte, ctx, nav);
+    if (r) return r;
+  }
   const c = comprendre(texte, ctx);
   const fait = await agir(c, nav);
-  // Pas compris, ou rien trouvé : Mistral lit la phrase, si l'enseignant l'a voulu.
-  if (avecSecours && (c.genre === "rien" || !fait.ok) && texte.trim()) {
-    const lu = await secours(texte, ctx);
-    const refait = lu ? await agir(lu, nav) : null;
-    if (refait?.ok) return refait.fait ? { ...refait, fait: `${refait.fait} (Mistral)` } : refait;
+  if (mistral && !complexe && (c.genre === "rien" || !fait.ok)) {
+    const r = await parMistral(texte, ctx, nav);
+    if (r) return r;
   }
   return fait;
+}
+
+/** Le minuteur en cours, piloté : ce qu'on en dit au téléphone. */
+function minuteurPilote(ordre: "pause" | "reprendre" | "arreter" | "ajouter", secondes = 0): ReponseTelecommande {
+  const restant = piloterLeMinuteur(ordre, secondes * 1000);
+  if (restant === null) return { ok: false, fait: "Pas de minuteur en cours." };
+  const reste = `${dureeEnClair(Math.round(restant / 1000))} restantes`;
+  switch (ordre) {
+    case "pause": return { ok: true, fait: `Minuteur en pause : ${reste}.` };
+    case "reprendre": return { ok: true, fait: `Minuteur repris : ${reste}.` };
+    case "arreter": return { ok: true, fait: "Minuteur arrêté." };
+    case "ajouter": return { ok: true, fait: `${secondes > 0 ? "Plus" : "Moins"} ${dureeEnClair(Math.abs(secondes))} : ${reste}.` };
+  }
 }
 
 /** Le geste de ce qui a été compris, et ce qu'on en dit au téléphone. */
@@ -82,6 +140,10 @@ async function agir(c: Compris, nav: (to: string) => void): Promise<ReponseTelec
       setTimeout(() => ouvrirOnglet("caa", "minuteur"), 140);
       demanderMinuteur(c.secondes);
       return { ok: true, fait: `Minuteur de ${dureeEnClair(c.secondes)} lancé.` };
+    case "minuteurPause": return minuteurPilote("pause");
+    case "minuteurReprendre": return minuteurPilote("reprendre");
+    case "minuteurArreter": return minuteurPilote("arreter");
+    case "minuteurAjouter": return minuteurPilote("ajouter", c.secondes);
     case "pleinEcran":
       await pleinEcran(c.actif);
       return { ok: true, fait: c.actif ? "Plein écran." : "Plein écran quitté." };
@@ -89,11 +151,28 @@ async function agir(c: Compris, nav: (to: string) => void): Promise<ReponseTelec
       window.dispatchEvent(new Event(EVT_FERMER_AFFICHAGE));
       await pleinEcran(false);
       return { ok: true, fait: "Fermé." };
+    case "zoom":
+      zoom = c.sens === "normal" ? 1 : Math.max(0, Math.min(ZOOMS.length - 1, zoom + (c.sens === "plus" ? 1 : -1)));
+      zoomerDeLoin(ZOOMS[zoom]);
+      return { ok: true, fait: ZOOMS[zoom] === 1 ? "Taille normale." : `Affiché à ${Math.round(ZOOMS[zoom] * 100)} %.` };
+    case "defiler": {
+      const zone = document.querySelector(".page-scroll") ?? document.scrollingElement;
+      zone?.scrollBy({ top: (c.sens === "bas" ? 1 : -1) * Math.round((zone.clientHeight || window.innerHeight) * 0.7), behavior: "smooth" });
+      return { ok: true, fait: c.sens === "bas" ? "Plus bas." : "Plus haut." };
+    }
+    case "retour":
+      window.history.back();
+      return { ok: true, fait: "Page d'avant." };
     case "aller": {
       const d = c.destination;
       nav(d.to);
       if (d.page && d.onglet) setTimeout(() => ouvrirOnglet(d.page!, d.onglet!), 140);
       return { ok: true, fait: `${nomDeLaPage(d.label)} : affiché.` };
+    }
+    case "ouvrir": {
+      const e = c.element;
+      allerVers({ kind: e.sorte, id: e.id, titre: e.titre, sousTitre: "", extrait: "", date: "", parent: "" }, nav);
+      return { ok: true, fait: `« ${e.titre} » : affiché.` };
     }
     case "chercher": {
       const trouves = (await api.recherche(c.quoi).catch(() => [])).filter((r) => TROUVAILLES_DE_LA_CLASSE.has(r.kind));
@@ -137,8 +216,8 @@ export function useTelecommande() {
       try { reponse = await faire(); } catch (e) { reponse = { ok: false, fait: texteErreur(e) }; }
       await api.telecommandeRepondre(attente, reponse).catch(() => {});
     };
-    const phrase = listen<{ attente: string; texte: string; secours?: boolean }>("telecommande:phrase", (e) => {
-      void repondre(e.payload.attente, () => executer(e.payload.texte, (to) => nav.current(to), e.payload.secours !== false));
+    const phrase = listen<{ attente: string; texte: string }>("telecommande:phrase", (e) => {
+      void repondre(e.payload.attente, () => executer(e.payload.texte, (to) => nav.current(to)));
     });
     const decision = listen<{ attente: string; id: string; oui: boolean }>("telecommande:decision", (e) => {
       void repondre(e.payload.attente, () => decider(e.payload.id, e.payload.oui));
@@ -227,9 +306,11 @@ export function CarteTelecommande() {
             montre le texte sous le bouton ; la phrase est prête dès qu'on lâche. Ce Mac donne à l'iPhone un jeton
             d'une phrase, jamais la clé. Si ce texte n'est pas compris — ou sans réseau —, ce Mac transcrit le même son,
             comme avant.</p>
-          <p>Mistral en secours : quand la télécommande ne comprend pas une phrase, Mistral la lit (en ligne, le texte
-            seul) et choisit parmi les pages de la classe ; Maitrize vérifie sa réponse avant d'agir. Le téléphone le
-            signale par « (Mistral) ».</p>
+          <p>Mistral pour les phrases complexes : « lance dix minutes et affiche la carte mentale », « ouvre la séance
+            d'aujourd'hui en plein écran »… et pour celles que la télécommande ne comprend pas. Mistral reçoit la phrase
+            (en ligne, le texte seul), tout ce que la télécommande sait faire, les pages de la classe et les titres de
+            vos séquences, séances, jeux, outils et textes — les prénoms masqués. Il rend une liste d'actions, que
+            Maitrize vérifie une à une avant de les faire dans l'ordre. Le téléphone le signale par « (Mistral) ».</p>
           <p>La voix ne montre que ce qu'on peut montrer à la classe : ni les élèves, ni le cahier journal, ni les
             réglages. Elle est transcrite sur ce Mac, comme les dictées ; chaque phrase arrive scellée, même sur le WiFi
             de l'école.</p>
@@ -249,7 +330,7 @@ export function CarteTelecommande() {
       </label>
       <label className="pb-coche">
         <input type="checkbox" checked={secoursVoulu} onChange={(e) => basculerLeSecours(e.target.checked)} />
-        <span>Mistral en secours, quand la télécommande ne comprend pas</span>
+        <span>Mistral pour les phrases complexes, et celles qui ne sont pas comprises (en ligne)</span>
       </label>
       {info && (
         <p className="meta" style={{ margin: "10px 0 0", fontSize: 13 }}>

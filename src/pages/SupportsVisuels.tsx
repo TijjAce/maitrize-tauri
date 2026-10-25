@@ -581,6 +581,38 @@ function changerEtat(e: EtatMinuteur) {
   abonnes.forEach((f) => f());
 }
 
+/** Ce que la télécommande peut faire du minuteur en cours. */
+export type OrdreMinuteur = "pause" | "reprendre" | "arreter" | "ajouter";
+
+/**
+ * Le minuteur en cours, piloté de loin : en pause, repris, arrêté — remis à sa durée, l'affichage fermé —, allongé
+ * ou raccourci de `ms`. Rend le temps qui reste ensuite, ou rien s'il n'y a pas de minuteur.
+ */
+export function piloterLeMinuteur(ordre: OrdreMinuteur, ms = 0): number | null {
+  const e = etatMinuteur;
+  const maintenant = Date.now();
+  if (!e) return null;
+  if (ordre === "pause" && estEnMarche(e, maintenant)) changerEtat(mettreEnPause(e, maintenant));
+  else if (ordre === "reprendre" && !estEnMarche(e, maintenant) && !estFini(e, maintenant)) {
+    preparerSon();
+    changerEtat(demarrer(e, maintenant));
+  } else if (ordre === "arreter") {
+    changerEtat(minuteurPret(e.total));
+    window.dispatchEvent(new Event(EVT_FERMER_AFFICHAGE));
+  } else if (ordre === "ajouter") {
+    // Raccourci, il garde une seconde : « enlève cinq minutes » d'un minuteur de trois ne le fait pas sonner faux.
+    changerEtat(prolonger(e, Math.max(ms, 1000 - restantA(e, maintenant)), maintenant));
+  }
+  return restantA(etatMinuteur ?? e, Date.now());
+}
+
+/** Où en est le minuteur, pour dire à Mistral ce qui est en cours ; rien s'il n'y en a pas. */
+export function etatDuMinuteur(): { enMarche: boolean; fini: boolean; restant: number } | null {
+  const e = etatMinuteur;
+  const maintenant = Date.now();
+  return e ? { enMarche: estEnMarche(e, maintenant), fini: estFini(e, maintenant), restant: restantA(e, maintenant) } : null;
+}
+
 /**
  * Le son se prépare pendant un clic : sans geste de l'utilisateur, la webview le garderait muet. La télécommande
  * le prépare quand on l'ouvre : le minuteur qu'elle lance sonnera.
