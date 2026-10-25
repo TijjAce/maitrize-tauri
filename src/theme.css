@@ -363,6 +363,36 @@ input, textarea, select { font-family: inherit; font-size: 14px; }
   overflow: hidden; overflow-wrap: anywhere; }
 .biblio-choisi { display: flex; align-items: center; gap: 12px; }
 .biblio-choisi-titre { flex: 1; min-width: 0; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* La bibliothèque des démarches : des rayons (les disciplines), des étagères (leurs domaines), un livre par démarche aux couleurs de sa matière. */
+.modal.biblio-demarches { width: 960px; max-width: 94vw; height: 88vh; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
+.biblio-demarches-corps { flex: 1; min-height: 0; display: flex; }
+.biblio-rayons { width: 230px; flex: none; display: flex; flex-direction: column; gap: 2px; padding: 12px 10px; overflow-y: auto;
+  border-right: 1px solid var(--border); }
+.biblio-rayons .nav-item { font-size: 13px; padding: 7px 10px; gap: 9px; }
+.biblio-rayons-titre { margin: 12px 10px 4px; font-size: 11.5px; font-weight: 700; color: var(--text-2); }
+.biblio-rayons .nav-item + .biblio-rayons-titre { margin-top: 16px; }
+.biblio-rayon-nom { flex: 1; min-width: 0; line-height: 1.25; }
+.biblio-rayon-nombre { flex: none; font-size: 11.5px; font-weight: 600; color: var(--text-2); }
+.biblio-rayons .nav-item.active .biblio-rayon-nombre { color: inherit; }
+.biblio-demarches-principal { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.biblio-filtres { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 14px 20px 12px; }
+.biblio-filtres .seg { flex-wrap: wrap; }
+.biblio-demarches-recherche { flex: 1; min-width: 200px; }
+.biblio-demarches-defile { flex: 1; min-height: 0; overflow-y: auto; padding: 6px 20px 20px; }
+.biblio-etagere + .biblio-etagere { margin-top: 26px; }
+.biblio-etagere-titre { margin: 0 0 12px; font-size: 13.5px; font-weight: 700; display: flex; align-items: baseline; gap: 8px; }
+.biblio-livre-demarche { --livre: var(--accent); }
+.biblio-livre-demarche .biblio-couverture { position: relative; aspect-ratio: 4 / 5;
+  background: color-mix(in srgb, var(--livre) 15%, var(--panel)); box-shadow: inset 6px 0 0 var(--livre); }
+.biblio-livre-demarche:hover .biblio-couverture, .biblio-livre-demarche:focus-visible .biblio-couverture { box-shadow: inset 6px 0 0 var(--livre), var(--shadow); }
+.choix-support-vignette.biblio-livre-demarche { background: color-mix(in srgb, var(--livre) 15%, var(--panel)); box-shadow: inset 4px 0 0 var(--livre); }
+.biblio-livre-classe { position: absolute; top: 8px; right: 9px; font-size: 11px; font-weight: 700; color: var(--livre); }
+.biblio-livre-contenu { position: absolute; left: 14px; bottom: 8px; font-size: 11px; font-weight: 600; color: var(--text-2); }
+.biblio-fiche { display: flex; flex-direction: column; gap: 10px; }
+.biblio-fiche .biblio-choisi-titre { white-space: normal; }
+.biblio-fiche-sorte { display: block; font-size: 11.5px; font-weight: 650; color: var(--text-2); margin-bottom: 2px; }
+.biblio-fiche-resume { margin: 0; font-size: 14px; line-height: 1.55; }
+.biblio-fiche-total { font-weight: 650; font-size: 13px; margin-top: 4px; }
 .lien.titre-seance:hover { color: var(--accent); text-decoration: underline; }
 /* Le suivi d'une séquence : son état d'après le cahier journal, et sa barre d'avancement. */
 .suivi-etat { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; padding: 1px 8px;

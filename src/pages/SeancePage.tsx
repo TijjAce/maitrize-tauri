@@ -5,6 +5,7 @@ import { api, DUREES, formatDuree, nowIso, texteErreur, type MaterielItem, type 
 import { Empty, Input, Modal, TextareaAuto } from "../components/ui";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { CompetenceTree, labelCourt, type CompetenceSelectionnee } from "../components/CompetenceTree";
+import { demarchesDeLaCompetence } from "../demarches";
 import { ajouterManuelle, consigneSousCompetences, estManuelle, lireSousCompetences } from "../sousCompetences";
 import { pseudonymiserTout, restaurer } from "../confidentialite";
 import { nomsAMasquer } from "../nomsAMasquer";
@@ -140,6 +141,12 @@ export default function SeancePage() {
   const citables = React.useMemo(() => citablesDeLaSeance(supportsEtat)
     .map((c) => (c.poser ? { ...c, poser: async () => { await assurer(); return c.poser!(); } } : c)),
   [supportsEtat.items, supportsEtat.bureau]); // eslint-disable-line react-hooks/exhaustive-deps
+  // La bibliothèque des démarches de l'éditeur s'ouvre sur celles de la compétence de la séquence, à sa classe.
+  const demarchesDeLaSequence = React.useMemo(() => {
+    let c: CompetenceSelectionnee | null = null;
+    try { c = sequence?.competenceVisee ? JSON.parse(sequence.competenceVisee) : null; } catch { /* ignore */ }
+    return c ? { proposees: demarchesDeLaCompetence(c, c.referentielNom), classe: c.niveau } : undefined;
+  }, [sequence?.competenceVisee]);
   const [choixOuvert, setChoixOuvert] = React.useState(false);
   const [fiche, setFiche] = React.useState<RenvoiDeSupport | null>(null);
   const [feuilleVue, setFeuilleVue] = React.useState<MaterielItem | null>(null);
@@ -191,7 +198,7 @@ export default function SeancePage() {
           </label>
           <EditeurDeroulement ref={editeur} valeur={s.deroulement} onChange={(deroulement) => up({ deroulement })}
             citables={citables} onOuvrirCitation={ouvrirCitation} onAjouterSupport={() => setChoixOuvert(true)}
-            onFabriquer={() => { void fabriquer(); }} />
+            onFabriquer={() => { void fabriquer(); }} demarches={demarchesDeLaSequence} />
           <ReglesCitees texte={sansMarqueurs(s.deroulement)} jeux={jeux} onJeuModifie={rechargerJeux} />
         </article>
 

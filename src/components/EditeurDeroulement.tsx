@@ -12,7 +12,8 @@ import {
   ICONE_CITE, iconeOrganisation, imagesDuDocument, ligneEnHtml, ligneProtegee, lireSeance, marqueDeCitation, memeNom, seanceEnCartes,
   type GenreCite, type PhaseDeSeance, type SeanceEnPhases,
 } from "../documentSeance";
-import { demarcheDe, demarchesParFamille, tableauDesPhases } from "../demarches";
+import { tableauDesPhases, type Demarche } from "../demarches";
+import { BibliothequeDesDemarches } from "./BibliothequeDesDemarches";
 import { CitationButton } from "./Deroulement";
 import { inscrireAnnulable } from "../annulation";
 
@@ -247,7 +248,9 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
   /** « ＋ Ajouter ou créer un support… », au bas du menu « @ ». */
   onAjouterSupport: () => void;
   onFabriquer: () => void;
-}>(function EditeurDeroulement({ valeur, onChange, citables, onOuvrirCitation, onAjouterSupport, onFabriquer }, ref) {
+  /** Les démarches de la compétence de la séquence, et sa classe : la bibliothèque des démarches s'ouvre sur elles. */
+  demarches?: { proposees: Demarche[]; classe?: string | null };
+}>(function EditeurDeroulement({ valeur, onChange, citables, onOuvrirCitation, onAjouterSupport, onFabriquer, demarches }, ref) {
   const racine = React.useRef<HTMLDivElement>(null);
   const [modele, setModele] = React.useState<Modele>(() => versModele(lireSeance(valeur)));
   const courant = React.useRef(modele);
@@ -651,22 +654,15 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
         <button type="button" className="doc-outil" onClick={nouvellePhase} title="Ajouter une phase : son titre, sa durée, son déroulement, la posture de l'enseignant">¶ Phase</button>
         {!modele.phases.length && (
           // Les phases de la première séance d'une démarche (quatre temps, leçon de code, investigation…), à la suite du texte.
-          <select className="doc-outil doc-demarche" value="" aria-label="Poser les phases d'une démarche"
-            onChange={(e) => {
-              const d = demarcheDe(e.target.value);
-              const phases = d?.seances[0]?.phases ?? [];
+          <BibliothequeDesDemarches label="🧭 Démarche…" className="doc-outil" title="Poser les phases d'une démarche"
+            proposees={demarches?.proposees} classe={demarches?.classe} apport="phases" verbe="Poser ses phases"
+            onChoisir={(d) => {
+              const phases = d.seances[0]?.phases ?? [];
               if (!phases.length) return;
               const m = courant.current;
               const ajout = versModele(lireSeance(documentDeLaSeance({ tableauDeroulement: JSON.stringify(tableauDesPhases(phases)) })));
               changer({ ...m, phases: [...m.phases, ...ajout.phases] });
-            }}>
-            <option value="">🧭 Démarche…</option>
-            {demarchesParFamille().map((g) => (
-              <optgroup key={g.famille} label={g.famille}>
-                {g.demarches.map((d) => <option key={d.id} value={d.id}>{d.nom}</option>)}
-              </optgroup>
-            ))}
-          </select>
+            }} />
         )}
         <span className="doc-sep" />
         <button type="button" className="doc-outil" aria-pressed={!!etats.bold} title={`Gras (${raccourci("B")})`} onClick={() => cmd("bold")}><b>G</b></button>
