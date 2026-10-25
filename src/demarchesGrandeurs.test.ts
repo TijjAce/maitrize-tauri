@@ -8,8 +8,7 @@ import {
 } from "./monnaie";
 import {
   EXERCICES_MESURES, REGLAGES_MESURES, conversions, cotes, ecrireMesure, htmlMesures, longueurs, mesuresAComparer, mesuresARanger, pesesDeuxADeux, polygoneAuHasard,
-  type Classe, type Grandeur,
-} from "./mesures";
+  type Classe, type Grandeur, exerciceDisponible } from "./mesures";
 import { REGLAGES_HEURE, cheminDuree, direHeure, durees, ecrireDuree, htmlAtelierHeure, momentsDeLaJournee, problemesDeDurees } from "./heure";
 import { hasard } from "./hasard";
 
@@ -304,6 +303,29 @@ describe("l'heure et les durées", () => {
     expect([...horloges].sort()).toEqual(moments.map((m) => m.h).sort());
     for (const exercice of ["horloges", "durees", "problemes", "moments"] as const) {
       expect(htmlAtelierHeure({ ...REGLAGES_HEURE, exercice }, 5), exercice).toContain('class="page corrige"');
+    }
+  });
+});
+
+describe("les mesures que la classe connaît", () => {
+  it("ne proposent pas un exercice sans contenu pour la classe, et ne font jamais une feuille vide", () => {
+    expect(exerciceDisponible("estimer", "masse", "CP")).toBe(false);
+    expect(exerciceDisponible("unites", "contenance", "CE1")).toBe(false);
+    expect(exerciceDisponible("convertir", "masse", "CP")).toBe(false);
+    expect(exerciceDisponible("convertir", "masse", "CE1")).toBe(true);
+    expect(exerciceDisponible("estimer", "longueur", "CP")).toBe(true);
+    for (const e of EXERCICES_MESURES) for (const grandeur of e.grandeurs) for (const classe of ["CP", "CE1", "CE2"] as const) {
+      if (!exerciceDisponible(e.id, grandeur, classe)) continue;
+      if (e.id === "estimer" || e.id === "unites") {
+        expect(htmlMesures({ ...REGLAGES_MESURES, exercice: e.id, grandeur, classe }, 7), `${e.id} ${grandeur} ${classe}`).toContain('class="me-qcm"');
+      }
+      if (e.id === "convertir") expect(conversions(grandeur, classe, 6, 7).length, `${grandeur} ${classe}`).toBeGreaterThan(0);
+    }
+  });
+
+  it("au CP, les masses ne se convertissent pas en tonnes", () => {
+    for (let graine = 1; graine <= 30; graine++) {
+      expect(conversions("masse", "CP", 8, graine).map((c) => c.enonce).join(" ")).not.toMatch(/\bt\b/);
     }
   });
 });

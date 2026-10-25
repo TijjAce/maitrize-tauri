@@ -274,8 +274,9 @@ function feuilleEstCeUnePhrase(_r: ReglagesGrammaire, graine: number): string {
 }
 
 function feuilleTypes(r: ReglagesGrammaire, graine: number): string {
-  const items = melanger(hasard(graine), PHRASES_A_PONCTUER).slice(0, 6);
   const types: TypeDePhrase[] = r.classe === "CP" ? ["déclarative", "interrogative", "impérative"] : ["déclarative", "interrogative", "impérative", "exclamative"];
+  // Seulement des phrases dont le type a sa case : au CP, pas d'exclamative.
+  const items = melanger(hasard(graine), PHRASES_A_PONCTUER.filter((x) => types.includes(x.type))).slice(0, 6);
   const noms = r.classe === "CP" ? { "déclarative": "elle dit", "interrogative": "elle demande", "impérative": "elle ordonne", "exclamative": "elle s'exclame" } : { "déclarative": "déclarative", "interrogative": "interrogative", "impérative": "impérative", "exclamative": "exclamative (forme)" };
   const produire = r.classe === "CE2" ? `<div class="gr-sous-titre">Transforme en question, de deux façons</div><div class="gr-q">Tu aimes les pommes.</div>${ligne()}${ligne()}` : "";
   return `<div class="page">${titre("Les types de phrases")}${TETE}${regle("Ajoute le point qui convient : . ? ou ! Puis coche ce que fait la phrase.")}

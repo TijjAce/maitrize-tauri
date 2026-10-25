@@ -56,9 +56,26 @@ export interface Posee { termes: number[]; operation: OperationPosee; resultat: 
 const chiffresDe = (n: number) => String(Math.abs(Math.round(n))).split("").map(Number);
 const entre = (alea: () => number, a: number, b: number) => a + Math.floor(alea() * (b - a + 1));
 
-/** Une retenue à l'addition (ou un cassage à la soustraction), rang par rang. */
+/**
+ * Une retenue dans une multiplication posée : dans un produit partiel — sauf au dernier chiffre, dont le produit
+ * s'écrit tel quel (63 × 2 = 126 n'en a pas) —, ou dans l'addition des produits partiels (23 × 32 : 46 + 690).
+ */
+export function multiplicationARetenue(a: number, b: number): boolean {
+  const da = chiffresDe(a).reverse(), db = chiffresDe(b).reverse();
+  for (const d of db) {
+    let retenue = 0;
+    for (let k = 0; k < da.length; k++) {
+      const p = da[k] * d + retenue;
+      if (k < da.length - 1 && p >= 10) return true;
+      retenue = Math.floor(p / 10);
+    }
+  }
+  return db.length > 1 && aUneRetenue(db.map((d, i) => a * d * 10 ** i), "+");
+}
+
+/** Une retenue à l'addition ou à la multiplication (ou un cassage à la soustraction), rang par rang. */
 function aUneRetenue(termes: number[], operation: OperationPosee): boolean {
-  if (operation === "×") return termes[1] > 1 && chiffresDe(termes[0]).some((c) => c * (termes[1] % 10) >= 10);
+  if (operation === "×") return multiplicationARetenue(termes[0], termes[1]);
   for (let rang = 0, p = 1; rang < 6; rang++, p *= 10) {
     const chiffres = termes.map((t) => Math.floor(t / p) % 10);
     if (operation === "+" && chiffres.reduce((s, c) => s + c, 0) >= 10) return true;

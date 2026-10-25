@@ -26,6 +26,8 @@ export interface Son {
   sorte: SorteGrapheme;
   /** Des mots déchiffrables où on l'entend. */
   mots: string[];
+  /** Des mots des autres sons où on l'entend aussi, écrit autrement (« vert » pour [ɛ]) : jamais des intrus. */
+  aussi?: string[];
 }
 
 /**
@@ -42,14 +44,14 @@ export const SONS: Son[] = [
     mots: ["ami", "lit", "midi", "riz", "livre", "souris", "pyjama", "image"] },
   { id: "o", son: "[o]", graphemes: ["o", "au", "eau"], sorte: "voyelle",
     mots: ["moto", "vélo", "eau", "bateau", "auto", "chapeau", "école", "domino"] },
-  { id: "u", son: "[u]", graphemes: ["u"], sorte: "voyelle",
+  { id: "u", son: "[y]", graphemes: ["u"], sorte: "voyelle",
     mots: ["lune", "rue", "mur", "jupe", "tortue", "nature", "usine", "salut"] },
   { id: "e", son: "[ə]", graphemes: ["e"], sorte: "voyelle",
     mots: ["cheval", "petit", "menu", "repas", "chemin", "melon", "renard", "semaine"] },
   { id: "é", son: "[e]", graphemes: ["é", "er", "ez"], sorte: "voyelle",
     mots: ["école", "été", "café", "bébé", "cahier", "panier", "nez", "épée"] },
   { id: "è", son: "[ɛ]", graphemes: ["è", "ê", "ai", "ei"], sorte: "voyelle",
-    mots: ["mère", "tête", "maison", "lait", "neige", "fête", "règle", "balai"] },
+    mots: ["mère", "tête", "maison", "lait", "neige", "fête", "règle", "balai"], aussi: ["sept", "vert", "hiver", "jouet"] },
   { id: "m", son: "[m]", graphemes: ["m"], sorte: "consonne",
     mots: ["maman", "moto", "midi", "mur", "lame", "pomme", "mouton", "domino"] },
   { id: "l", son: "[l]", graphemes: ["l"], sorte: "consonne",
@@ -57,7 +59,7 @@ export const SONS: Son[] = [
   { id: "r", son: "[ʁ]", graphemes: ["r"], sorte: "consonne",
     mots: ["rue", "rat", "rire", "mur", "armoire", "arbre", "robe", "tartine"] },
   { id: "s", son: "[s]", graphemes: ["s", "ss", "ç"], sorte: "consonne",
-    mots: ["sac", "salade", "souris", "tasse", "classe", "leçon", "sept", "poisson"] },
+    mots: ["sac", "salade", "souris", "tasse", "classe", "leçon", "sept", "poisson"], aussi: ["cygne"] },
   { id: "f", son: "[f]", graphemes: ["f", "ph"], sorte: "consonne",
     mots: ["farine", "fille", "café", "girafe", "photo", "téléphone", "fourmi", "chiffre"] },
   { id: "ch", son: "[ʃ]", graphemes: ["ch"], sorte: "complexe",
@@ -147,7 +149,8 @@ export const contientLeSon = (mot: string, son: Son) =>
  */
 export function intrus(son: Son, combien: number, r: () => number): string[] {
   const vivier = SONS.filter((s) => s.id !== son.id).flatMap((s) => s.mots);
-  const propres = [...new Set(vivier)].filter((m) => !contientLeSon(m, son));
+  // Ni le graphème travaillé, ni le son écrit autrement : « vert », « sept » ne sont pas des intrus du [ɛ].
+  const propres = [...new Set(vivier)].filter((m) => !contientLeSon(m, son) && !(son.aussi ?? []).includes(m));
   return melanger(r, propres).slice(0, combien);
 }
 

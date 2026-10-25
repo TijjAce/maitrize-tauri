@@ -7,7 +7,7 @@ import { graineAuHasard } from "../hasard";
 import { useGraine } from "../modifierFeuille";
 import { Boutons, Coche, Colonnes, bureau, imprimer } from "./AteliersMaths";
 import { EXERCICES_MONNAIE, PLAFONDS_MONNAIE, REGLAGES_MONNAIE, STYLE_MONNAIE, htmlMonnaie, type ExerciceMonnaie } from "../monnaie";
-import { EXERCICES_MESURES, REGLAGES_MESURES, STYLE_MESURES, htmlMesures, type Classe, type ExerciceMesures, type Grandeur } from "../mesures";
+import { EXERCICES_MESURES, REGLAGES_MESURES, STYLE_MESURES, exerciceDisponible, htmlMesures, type Classe, type ExerciceMesures, type Grandeur } from "../mesures";
 import { EXERCICES_DONNEES, REGLAGES_DONNEES, STYLE_DONNEES, htmlDonnees, type ExerciceDonnees } from "../donnees";
 
 // ── Fabriquer › Mathématiques : la monnaie, les mesures ───────────────────
@@ -63,7 +63,7 @@ const GRANDEURS: { id: Grandeur; libelle: string }[] = [
 export function MesuresTab() {
   const [r, maj] = useReglages("mesures", REGLAGES_MESURES);
   const [graine, setGraine] = useGraine();
-  const exercices = EXERCICES_MESURES.filter((e) => e.grandeurs.includes(r.grandeur));
+  const exercices = EXERCICES_MESURES.filter((e) => e.grandeurs.includes(r.grandeur) && exerciceDisponible(e.id, r.grandeur, r.classe));
   // Un exercice qui ne vaut pas pour la grandeur choisie : le premier de la liste.
   const exercice = exercices.some((e) => e.id === r.exercice) ? r.exercice : exercices[0].id;
   const html = React.useMemo(() => htmlMesures({ ...r, exercice }, graine), [r, exercice, graine]);

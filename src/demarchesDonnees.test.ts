@@ -87,3 +87,14 @@ describe("les tableaux et les diagrammes", () => {
     expect(htmlDonnees({ ...REGLAGES_DONNEES, exercice: "lireDiagramme", classe: "CP" }, 1).match(/<rect /g)!.length).toBeGreaterThan(8);
   });
 });
+
+describe("les problèmes avec un diagramme", () => {
+  it("demandent « combien de plus » à la ville qui en a le plus, jamais un écart nul ou négatif", () => {
+    for (let graine = 1; graine <= 300; graine++) {
+      const html = htmlDonnees({ ...REGLAGES_DONNEES, exercice: "problemes", classe: "CE2" }, graine);
+      const ecart = /(\d+) − (\d+) = (-?\d+)<\/b><\/div><div>3\./.exec(html);
+      expect(ecart, `graine ${graine}`).not.toBeNull();
+      expect(Number(ecart![3]), `graine ${graine}`).toBeGreaterThan(0);
+    }
+  });
+});

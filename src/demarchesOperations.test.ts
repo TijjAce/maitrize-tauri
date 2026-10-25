@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { demarcheDe, demarcheSuggeree } from "./demarches";
 import { DEMARCHES_OPERATIONS } from "./demarchesOperations";
 import { planDesFeuilles } from "./feuillesDesSequences";
-import { REGLAGES_POSEES, enLigne, htmlOperationsPosees, operationsPosees } from "./operationsPosees";
+import { REGLAGES_POSEES, enLigne, htmlOperationsPosees, operationsPosees, multiplicationARetenue } from "./operationsPosees";
 import { programmationProposee } from "./programmation";
 
 const REF = "Cycle 2 — CP, CE1, CE2 (programmes 2026)";
@@ -101,5 +101,20 @@ describe("les opérations posées", () => {
     expect(enLigne(5480, false)).toBe("5 480");
     const euros = htmlOperationsPosees({ ...REGLAGES_POSEES, operation: "+", chiffres: 4, euros: true, combien: 3, posees: false }, 2);
     expect(euros).toMatch(/\d+,\d\d €/);
+  });
+});
+
+describe("la retenue d'une multiplication posée", () => {
+  it("se lit comme on pose : produits partiels, sauf leur dernier chiffre, puis leur addition", () => {
+    expect([[63, 2], [20, 8], [24, 3], [46, 31], [23, 32], [21, 13], [312, 3]].map(([a, b]) => multiplicationARetenue(a, b)))
+      .toEqual([false, false, true, true, true, false, false]);
+  });
+
+  it("donne des multiplications sans retenue quand on n'en veut pas, avec quand on en veut", () => {
+    for (const chiffresDuSecond of [1, 2] as const) for (const retenue of ["sans", "avec"] as const) for (let graine = 1; graine <= 40; graine++) {
+      for (const o of operationsPosees({ ...REGLAGES_POSEES, operation: "×", chiffres: 3, chiffresDuSecond, retenue }, graine)) {
+        expect(multiplicationARetenue(o.termes[0], o.termes[1]), `${o.termes.join(" × ")} ${retenue}`).toBe(retenue === "avec");
+      }
+    }
   });
 });

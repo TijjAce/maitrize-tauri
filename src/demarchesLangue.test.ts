@@ -97,6 +97,11 @@ describe("la conjugaison", () => {
     expect(formes("prendre", "passeCompose")[2]).toBe("a pris");
     expect(radicalEtTerminaison("chanter", "chantons")).toEqual({ radical: "chant", terminaison: "ons" });
     expect(radicalEtTerminaison("manger", "mangeons")).toEqual({ radical: "mange", terminaison: "ons" });
+    // Le e de « mange » ne reste au radical que devant a ou o.
+    const coupe = (v: string, f: string) => { const x = radicalEtTerminaison(v, f); return `${x.radical}|${x.terminaison}`; };
+    expect(["mange", "mangez", "mangent", "mangerai", "mangeais", "mangions"].map((f) => coupe("manger", f)))
+      .toEqual(["mang|e", "mang|ez", "mang|ent", "mang|erai", "mange|ais", "mang|ions"]);
+    expect(["commençons", "commence", "commençait"].map((f) => coupe("commencer", f))).toEqual(["commenç|ons", "commenc|e", "commenç|ait"]);
     // Tous les verbes au programme se conjuguent à tous les temps de la classe.
     for (const classe of ["CE1", "CE2"] as const) for (const v of AU_PROGRAMME[classe].verbes) for (const t of AU_PROGRAMME[classe].temps) {
       for (const f of formes(v, t)) expect(f, `${v} ${t}`).toMatch(/^[a-zàâçéèêëîïôûù' ]+$/);
@@ -134,5 +139,14 @@ describe("l'atelier « Grammaire et conjugaison »", () => {
     expect(verbesDeLaFeuille({ ...REGLAGES_GRAMMAIRE, classe: "CE1", verbes: "chanter, faire, être" }, 1)).toEqual(["chanter", "être"]);
     expect(verbesDeLaFeuille({ ...REGLAGES_GRAMMAIRE, classe: "CE2", verbes: "faire" }, 1)).toEqual(["faire"]);
     expect(verbesDeLaFeuille({ ...REGLAGES_GRAMMAIRE, classe: "CP" }, 1)).toEqual(["être", "avoir"]);
+  });
+});
+
+describe("les types de phrases au CP", () => {
+  it("ne donnent que des phrases dont le type a sa case : pas d'exclamative", () => {
+    for (let graine = 1; graine <= 60; graine++) {
+      const html = htmlGrammaire({ ...REGLAGES_GRAMMAIRE, classe: "CP", exercice: "types" }, graine);
+      expect(html, `graine ${graine}`).not.toContain("s'exclame");
+    }
   });
 });

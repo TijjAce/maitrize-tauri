@@ -92,8 +92,9 @@ export const conjugaison = (verbe: string, temps: Temps) => formes(verbe, temps)
 export function radicalEtTerminaison(verbe: string, forme: string): { radical: string; terminaison: string } {
   const r = verbe.slice(0, -2);
   // Nous mangeons, je commençais : le e ou la cédille restent au radical ; la terminaison est la même que pour chanter.
+  // Seulement devant a ou o : « vous mangez » se coupe « mang | ez », « je mangerai » « mang | erai ».
   const modifie = radicalDevant(r, "a");
-  const k = modifie !== r && forme.startsWith(modifie) ? modifie.length : r.length;
+  const k = modifie !== r && forme.startsWith(modifie) && /^[aoâ]/.test(forme.slice(modifie.length)) ? modifie.length : r.length;
   return { radical: forme.slice(0, k), terminaison: forme.slice(k) };
 }
 

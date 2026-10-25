@@ -109,3 +109,13 @@ describe("les aiguilles à colorier", () => {
   });
 });
 
+describe("l'après-midi aussi", () => {
+  it("tire des cadrans tous différents, le matin ou l'après-midi, sans midi ni minuit", () => {
+    for (const precision of ["heures", "demies", "quarts"] as const) for (let graine = 1; graine <= 200; graine++) {
+      const liste = heures({ ...REGLAGES_HEURE, apresMidi: true, precision, combien: 9 }, graine);
+      const cadrans = new Set(liste.map((t) => `${t.h % 12}:${t.m}`));
+      expect(cadrans.size, `${precision}, graine ${graine}`).toBe(liste.length);
+      expect(liste.every((t) => t.h % 12 !== 0)).toBe(true);
+    }
+  });
+});

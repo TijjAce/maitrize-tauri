@@ -22,6 +22,7 @@ import { MODES_IMAGES, listeSelonMode } from "../imagesSelonMode";
 import { deposerSurLeBureau } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { BandeauModification, BandeauPourLaSeance } from "../components/BandeauModification";
+import { useModification } from "../modifierFeuille";
 import { DominosTab, FluenceTab, IntrusTab, LettresTab, LotoSyllabesTab, PairesTab, SyllabaireTab } from "./AteliersSons";
 import {
   ArbreCalculTab, OperationsPoseesTab, CartesCalculTab, CartesNombresTab, CompteEstBonTab, CubesTab, FractionsTab, HeureTab, JeuDeLOieTab, MartiniereTab, NumerationTab, PyramidesTab,
@@ -230,6 +231,15 @@ export default function Jeux() {
   });
   const [recherche, setRecherche] = React.useState("");
   const [inventaireOuvert, setInventaireOuvert] = React.useState(false);
+  // « Modifier dans Fabriquer » : l'atelier se remonte, réglé comme la feuille. Resté ouvert derrière (la page est
+  // gardée en vie), il gardait sinon ses anciens réglages et son ancien tirage, sous un bandeau qui disait le contraire.
+  const modification = useModification();
+  const [generation, setGeneration] = React.useState(0);
+  const modificationVue = React.useRef(modification);
+  React.useEffect(() => {
+    if (modification && modification !== modificationVue.current) setGeneration((g) => g + 1);
+    modificationVue.current = modification;
+  }, [modification]);
   // Le moment de la séquence où chaque atelier est rangé, et la façon de lire le catalogue.
   const { usages, changer } = useUsagesDesAteliers(ONGLETS);
   const ranger = (id: Onglet, usage: Usage) => {
@@ -405,6 +415,7 @@ export default function Jeux() {
       {outil && <MaterielDeLAtelier atelier={outil.id} />}
       {outil && <ProjetDuMomentBandeau atelier={outil.id} />}
       <AtelierContext.Provider value={onglet}>
+      <React.Fragment key={generation}>
       <ModeImagesDeLAtelier atelier={onglet} />
       {onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
@@ -484,6 +495,7 @@ export default function Jeux() {
           <Loto key={onglet} gen={GENERATEURS[onglet === "jeux" ? "loto" : onglet]} atelier={onglet} etat={etat}
             progression={progression} onTelecharger={telecharger} />
         ))}
+      </React.Fragment>
       </AtelierContext.Provider>
     </Page>
     </ProjetDuMomentProvider>

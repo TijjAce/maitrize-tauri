@@ -424,7 +424,10 @@ function course(alea: () => number): (corr: boolean) => string {
 /** Une rangée de dix gobelets, sans sens : on part de la gauche ou de la droite. L'un est déjà vert. */
 function feuilleGobelets(r: ReglagesReperage, graine: number): string {
   const alea = hasard(graine);
-  const g1 = entier(alea, 3, 9), d2 = entier(alea, 2, 5);
+  const g1 = entier(alea, 3, 9);
+  // Le second jeton n'est jamais sous le gobelet du premier, compté de l'autre côté.
+  let d2 = entier(alea, 2, 5);
+  while (11 - d2 === g1) d2 = entier(alea, 2, 5);
   const gauche2 = 11 - d2;
   const v = choisir(alea, [...Array(10).keys()].map((i) => i + 1).filter((k) => k !== g1 && k !== gauche2));
   const couleurs = new Map([[g1, COULEURS[0].hex], [gauche2, COULEURS[1].hex]]);
@@ -474,8 +477,8 @@ function feuilleEcrire(r: ReglagesReperage, graine: number): string {
 function problemesDeRang(alea: () => number, classe: ClasseReperage, combien: number): { enonce: string; reponse: string }[] {
   const cp = classe === "CP";
   const modeles = cp ? [
-    () => { const n = entier(alea, 5, 12), k = entier(alea, 2, n - 1); return { enonce: `Il y a ${n} personnes qui font la queue à la caisse. Je suis le ${ordinalEnLettres(k)} dans la file. Combien y a-t-il de personnes devant moi ?`, reponse: `${k - 1} personnes : ${k} − 1 = ${k - 1}.` }; },
-    () => { const n = entier(alea, 5, 12), k = entier(alea, 2, n - 1); return { enonce: `Il y a ${n} enfants dans la file de la cantine. Je suis le ${ordinalEnLettres(k)}. Combien d'enfants y a-t-il derrière moi ?`, reponse: `${n - k} enfants : ${n} − ${k} = ${n - k}.` }; },
+    () => { const n = entier(alea, 5, 12), k = entier(alea, 2, n - 1); return { enonce: `Il y a ${n} personnes qui font la queue à la caisse. Je suis le ${ordinalEnLettres(k)} dans la file. Combien y a-t-il de personnes devant moi ?`, reponse: `${k - 1} personne${k - 1 > 1 ? "s" : ""} : ${k} − 1 = ${k - 1}.` }; },
+    () => { const n = entier(alea, 5, 12), k = entier(alea, 2, n - 1); return { enonce: `Il y a ${n} enfants dans la file de la cantine. Je suis le ${ordinalEnLettres(k)}. Combien d'enfants y a-t-il derrière moi ?`, reponse: `${n - k} enfant${n - k > 1 ? "s" : ""} : ${n} − ${k} = ${n - k}.` }; },
     () => { const a = entier(alea, 2, 9); return { enonce: `Dans la file du bus, il y a ${a} personnes devant moi. À quel rang suis-je ?`, reponse: `Le ${ordinalEnLettres(a + 1)} : ${a} + 1 = ${a + 1}.` }; },
     () => { const k = entier(alea, 3, 15); return { enonce: `Le chat est le ${ordinalEnLettres(k)} animal de la file. Combien d'animaux sont devant lui ?`, reponse: `${k - 1} animaux : ${k} − 1 = ${k - 1}.` }; },
   ] : [

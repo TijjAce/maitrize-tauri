@@ -114,3 +114,18 @@ describe("l'atelier « Orthographe et dictées »", () => {
     expect(htmlOrthographe({ ...REGLAGES_ORTHOGRAPHE, exercice: "piegee", classe: "CE1" }, 1)).toMatch(/contient \d erreurs sur/);
   });
 });
+
+describe("la dictée de mots à trous", () => {
+  it("cache toujours une lettre, jamais l'espace de « il y a » ni le trait d'union de « là-bas »", () => {
+    for (const classe of ["CP", "CE1", "CE2"] as const) for (let graine = 1; graine <= 120; graine++) {
+      const html = htmlOrthographe({ ...REGLAGES_ORTHOGRAPHE, exercice: "dicteeDeMots", classe, aide: true }, graine);
+      const eleve = html.split('class="page corrige"')[0];
+      const mots = [...html.split('class="page corrige"')[1].matchAll(/<div><b>\d+\.<\/b> ([^<]+)<\/div>/g)].map((x) => x[1]);
+      const trous = [...eleve.matchAll(/<span class="or-atrous">(.*?)<span class="or-trou"><\/span>/g)].map((x) => x[1]);
+      trous.forEach((avant, i) => {
+        const cache = mots[i]?.[avant.replace(/&#39;|&amp;/g, "x").length];
+        expect(cache, `${classe} ${graine} : ${mots[i]}`).toMatch(/\p{L}/u);
+      });
+    }
+  });
+});
