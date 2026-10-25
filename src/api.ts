@@ -482,6 +482,10 @@ export interface ElementPasse {
   /** Ce qui reviendrait avec lui : [table, nombre]. */
   avec: [string, number][];
 }
+/** La télécommande du téléphone ouverte sur ce Mac (voir telecommande.rs). */
+export interface InfoTelecommande { adresses: string[]; ouverte: string; reliee: boolean }
+/** Ce que la fenêtre répond au téléphone. */
+export interface ReponseTelecommande { ok: boolean; entendu?: string; fait?: string; aConfirmer?: string; id?: string }
 /** Ce qu'une reprise a fait ; reprendre `lignes` depuis `copie`, sans leurs liens, l'annule. */
 export interface BilanReprise { copie: string; lignes: Cible[]; fichiers: number }
 
@@ -966,6 +970,10 @@ export const api = {
   boiteRecuperer: (id: string) => invoke<void>("boite_recuperer", { id }),
   boiteSupprimer: (id: string) => invoke<void>("boite_supprimer", { id }),
   // Version portable : serveur local sur le WiFi + QR code (lecture seule).
+  telecommandeOuvrir: () => invoke<InfoTelecommande>("telecommande_ouvrir"),
+  telecommandeFermer: () => invoke<void>("telecommande_fermer"),
+  telecommandeEtat: () => invoke<InfoTelecommande | null>("telecommande_etat"),
+  telecommandeRepondre: (attente: string, reponse: ReponseTelecommande) => invoke<void>("telecommande_repondre", { attente, reponse }),
   portableDemarrer: () => invoke<PortableInfo>("portable_demarrer"),
   portableArreter: () => invoke<void>("portable_arreter"),
   portableEtat: () => invoke<PortableInfo | null>("portable_etat"),

@@ -14,6 +14,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { copierLeBureau, suivreLaCopie } from "../components/CopieDuBureau";
 import { CONTACTS, REPERES, cleEtab } from "../etablissement";
 import { USAGES, cleUsage, type Usage } from "../transcription";
+import { CarteTelecommande } from "../components/Telecommande";
 import { Aide } from "../components/Aide";
 import { VocauxRecus } from "../components/VocauxRecus";
 import { TelephoneNuage } from "../components/TelephoneNuage";
@@ -471,6 +472,8 @@ export default function Reglages() {
 
       {/* Ce que le téléphone a déposé : au même endroit que ce par quoi ça passe. */}
       <VocauxRecus />
+
+      <CarteTelecommande />
 
       <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>

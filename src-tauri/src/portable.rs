@@ -86,7 +86,7 @@ struct Bundle {
  * macOS. L'adresse IP reste alors le seul recours, et c'est pour cela qu'on
  * garde les deux.
  */
-fn nom_local() -> String {
+pub(crate) fn nom_local() -> String {
     #[cfg(target_os = "macos")]
     {
         // `scutil` donne le nom Bonjour, celui que publie le partage — et non
@@ -112,7 +112,7 @@ fn nom_local() -> String {
 
 /// IP locale sans dépendance : « connecter » un socket UDP fixe la route locale
 /// (aucune donnée n'est réellement envoyée).
-fn ip_locale() -> String {
+pub(crate) fn ip_locale() -> String {
     UdpSocket::bind("0.0.0.0:0")
         .and_then(|s| {
             s.connect("8.8.8.8:80")?;
@@ -264,7 +264,7 @@ const OUVERTURE_MAX: Duration = Duration::from_secs(10 * 3600);
 
 /// Le partage ouvert à `ouvert`, visité pour la dernière fois à `visite`, doit-il se fermer à `maintenant` ? Une
 /// horloge qu'on recule ne le garde pas ouvert plus longtemps.
-fn doit_se_fermer(ouvert: SystemTime, visite: SystemTime, maintenant: SystemTime) -> bool {
+pub(crate) fn doit_se_fermer(ouvert: SystemTime, visite: SystemTime, maintenant: SystemTime) -> bool {
     let depuis = |t: SystemTime| maintenant.duration_since(t).unwrap_or_default();
     depuis(visite) >= INACTIVITE_MAX || depuis(ouvert) >= OUVERTURE_MAX || maintenant < ouvert
 }
@@ -455,7 +455,7 @@ const MAX_VOCAL: u64 = 300_000_000;
 const MAX_PHOTO: u64 = 60_000_000;
 
 /// Le corps d'une requête, s'il ne dépasse pas `max` octets.
-fn lire_corps(req: &mut tiny_http::Request, max: u64) -> Option<Vec<u8>> {
+pub(crate) fn lire_corps(req: &mut tiny_http::Request, max: u64) -> Option<Vec<u8>> {
     if req.body_length().is_some_and(|n| n as u64 > max) {
         return None;
     }

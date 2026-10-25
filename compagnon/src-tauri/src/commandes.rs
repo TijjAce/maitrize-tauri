@@ -914,7 +914,7 @@ pub async fn relais_joignable(app: tauri::AppHandle) -> R<bool> {
 
 /// Un accès retiré dans Nuage ne reviendra pas : on l'oublie, et l'écran
 /// redemandera de se connecter au lieu de réessayer sans fin.
-fn oublier_si_retire<T>(resultat: R<T>) -> R<T> {
+pub(crate) fn oublier_si_retire<T>(resultat: R<T>) -> R<T> {
     if matches!(&resultat, Err(e) if e == relais::porte::ACCES_RETIRE) {
         trousseau::effacer();
     }
@@ -926,7 +926,7 @@ fn relais_requis(app: &tauri::AppHandle) -> R<relais::Appairage> {
 }
 
 /// Le relais, et la connexion qui y fait entrer.
-fn relais_et_connexion(app: &tauri::AppHandle) -> R<(relais::Appairage, Connexion)> {
+pub(crate) fn relais_et_connexion(app: &tauri::AppHandle) -> R<(relais::Appairage, Connexion)> {
     let a = relais_requis(app)?;
     let k = connexion_gardee().ok_or("Le téléphone n'est pas encore connecté à votre compte Nuage.")?;
     Ok((a, k))

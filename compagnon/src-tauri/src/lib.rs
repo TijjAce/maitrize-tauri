@@ -16,9 +16,11 @@
 
 mod commandes;
 mod portail;
+mod telecommande;
 
 use commandes::*;
 use portail::*;
+use telecommande::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -84,6 +86,13 @@ pub fn run() {
             pages_etat,
             pages_envoyer,
             pages_oublier,
+            // La télécommande du tableau : on parle, l'ordinateur projeté affiche.
+            telecommande_relier,
+            telecommande_parler,
+            telecommande_ecrire,
+            telecommande_decider,
+            telecommande_delier,
+            telecommande_reliee,
         ])
         .run(tauri::generate_context!())
         .expect("le dictaphone n'a pas pu démarrer");

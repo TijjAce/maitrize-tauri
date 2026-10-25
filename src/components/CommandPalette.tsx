@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { api, DocumentCoffre, ResultatRecherche, joursFeriesFR, anneeScolaireActuelle, raccourci } from "../api";
+import { basculerLaTelecommande } from "./Telecommande";
 import { ouvrirOnglet } from "./ui";
 import { montrerLesNouveautes } from "./QuoiDeNeuf";
 import { EVT_CHERCHER_BUREAU } from "../bureauAteliers";
@@ -98,7 +99,7 @@ export const EVT_JOUR = "maitrize:aller-au-jour";
 export const EVT_PDF_COFFRE = "maitrize:ouvrir-pdf";
 
 /** Sous-onglets, invisibles depuis la barre latérale. */
-const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; onglet: string; sous: string }[] = [
+export const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; onglet: string; sous: string }[] = [
   { ico: "👀", label: "Observations", to: "/eleves", page: "eleves", onglet: "observations", sous: "Élèves" },
   { ico: "📝", label: "Évaluations", to: "/eleves", page: "eleves", onglet: "evaluations", sous: "Élèves" },
   { ico: "📄", label: "Papiers des élèves", to: "/eleves", page: "eleves", onglet: "papiers", sous: "Élèves" },
@@ -159,7 +160,7 @@ const SOUS_ONGLETS: { ico: string; label: string; to: string; page: string; ongl
   { ico: "📋", label: "Projet pédagogique", to: "/organisation", page: "organisation", onglet: "projet", sous: "Organisation" },
 ];
 
-const NAV: { ico: string; label: string; to: string }[] = [
+export const NAV: { ico: string; label: string; to: string }[] = [
   { ico: "🏠", label: "Tableau de bord", to: "/" },
   { ico: "🗂", label: "Plan de travail", to: "/plan" },
   { ico: "🧩", label: "Ateliers & Espaces", to: "/ateliers" },
@@ -194,7 +195,7 @@ const KIND_NOM: Record<string, string> = {
  * journal **au bon jour**, une séance sa séquence, une observation l'onglet
  * qui la contient.
  */
-function allerVers(r: ResultatRecherche, nav: (to: string) => void) {
+export function allerVers(r: ResultatRecherche, nav: (to: string) => void) {
   const onglet = (page: string, tab: string) => setTimeout(() => ouvrirOnglet(page, tab), 140);
   switch (r.kind) {
     // Tout ce qui vit sur le bureau s'y retrouve — dans son dossier, surligné.
@@ -442,6 +443,8 @@ export function CommandPalette() {
     { id: "a-pictos", ico: "🧩", label: "Trouver un pictogramme (par son mot ou son numéro)", sous: "Action · ARASAAC, Sclera, Makaton, Mes pictos", famille: "action",
       run: () => { setOpen(false); window.dispatchEvent(new Event(EVT_OUVRIR_PICTOS)); } },
     { id: "a-neuf", ico: "✨", label: "Quoi de neuf", sous: "Action · ce qui a changé dans l'app", famille: "action", run: () => { setOpen(false); montrerLesNouveautes(); } },
+    { id: "a-telecommande", ico: "📽", label: "Télécommande du tableau : piloter ce Mac à la voix, depuis l'iPhone", sous: "Action · ouvrir ou fermer", famille: "action",
+      run: () => { setOpen(false); void api.telecommandeEtat().then((info) => basculerLaTelecommande(!!info)).catch(() => {}); } },
     { id: "a-raccourcis", ico: "⌨️", label: "Raccourcis clavier", sous: "Action · les touches du clavier, partout et écran par écran · ?", famille: "action", run: voirLesRaccourcis },
     { id: "r-demain", ico: "🌅", label: "Préparer pour demain", sous: "Réponse directe", famille: "action", run: repondre("Préparer pour demain", preparerDemain) },
     { id: "r-jour", ico: "📅", label: "Planning d'aujourd'hui", sous: "Réponse directe", famille: "action", run: repondre("Planning d'aujourd'hui", () => planningJour("today")) },

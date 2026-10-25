@@ -8,6 +8,7 @@ import { confirmer } from "../components/confirmer";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { useMemoire } from "../components/useMemoire";
+import { EVT_FERMER_AFFICHAGE, EVT_MINUTEUR_DEMANDE, prendreLaDemande } from "../demandeMinuteur";
 import { chargerImages, usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import { CasePicto } from "../components/CasePicto";
 import {
@@ -580,8 +581,11 @@ function changerEtat(e: EtatMinuteur) {
   abonnes.forEach((f) => f());
 }
 
-/** Le son se prépare pendant un clic : sans geste de l'utilisateur, la webview le garderait muet. */
-function preparerSon() {
+/**
+ * Le son se prépare pendant un clic : sans geste de l'utilisateur, la webview le garderait muet. La télécommande
+ * le prépare quand on l'ouvre : le minuteur qu'elle lance sonnera.
+ */
+export function preparerSon() {
   try {
     const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctx) return;
@@ -713,6 +717,27 @@ function Minuteur({ banque }: { banque: boolean }) {
 
   const lancerRef = React.useRef(lancerOuPause);
   lancerRef.current = lancerOuPause;
+
+  // La télécommande du téléphone : une durée demandée se règle, part, et s'affiche en grand ; « ferme » referme.
+  const choisirRef = React.useRef(choisirDuree);
+  choisirRef.current = choisirDuree;
+  React.useEffect(() => {
+    const appliquer = () => {
+      const secondes = prendreLaDemande();
+      if (secondes === null) return;
+      choisirRef.current(Math.floor(secondes / 60), secondes % 60);
+      changerEtat(demarrer(minuteurPret(secondes * 1000), Date.now()));
+      setPleinEcran(true);
+    };
+    const fermer = () => setPleinEcran(false);
+    appliquer();
+    window.addEventListener(EVT_MINUTEUR_DEMANDE, appliquer);
+    window.addEventListener(EVT_FERMER_AFFICHAGE, fermer);
+    return () => {
+      window.removeEventListener(EVT_MINUTEUR_DEMANDE, appliquer);
+      window.removeEventListener(EVT_FERMER_AFFICHAGE, fermer);
+    };
+  }, []);
   React.useEffect(() => {
     if (!pleinEcran) return;
     const touche = (e: KeyboardEvent) => {

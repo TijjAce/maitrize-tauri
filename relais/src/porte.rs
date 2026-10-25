@@ -104,6 +104,11 @@ pub async fn lire_aide(a: &Appairage, k: &Connexion, id: &str) -> R<Option<Vec<u
     lire_retour(a, k, &format!("{DOSSIER_AIDES}/{nom}"), 60).await
 }
 
+/// La télécommande ouverte sur l'ordinateur, chiffrée ; rien s'il ne l'a pas ouverte.
+pub async fn lire_telecommande(a: &Appairage, k: &Connexion) -> R<Option<Vec<u8>>> {
+    lire_retour(a, k, crate::telecommande::FICHIER, 10).await
+}
+
 /// Le dossier des dépôts répond-il à ce téléphone ? Dit pourquoi sinon.
 pub async fn verifier(a: &Appairage, k: &Connexion) -> R<()> {
     crate::adresse_chiffree(&k.serveur)?;

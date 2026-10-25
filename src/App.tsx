@@ -44,6 +44,7 @@ import { Retour, useSuiviDesLieux, useTitreDuLieu } from "./components/Retour";
 import { getVersion } from "@tauri-apps/api/app";
 import { Toaster, toast } from "./components/Toaster";
 import { useAnnonceDuRetour } from "./components/RevenirEnArriere";
+import { useTelecommande } from "./components/Telecommande";
 import { proposerApresUnIncident } from "./rapportErreur";
 import { ConfirmerHost } from "./components/confirmer";
 import { FinDAnneeHost } from "./components/FinDAnnee";
@@ -158,6 +159,8 @@ export default function App() {
   useSuiviDesLieux(location.pathname + location.search);
   // Après un retour en arrière, la fenêtre s'est rechargée : le dire, et offrir d'annuler.
   useAnnonceDuRetour();
+  // Ce que dit l'enseignant à son iPhone, quand la télécommande du tableau est ouverte.
+  useTelecommande();
   // Une base abîmée ou disparue a été remplacée au démarrage par le dernier état sain : le dire.
   React.useEffect(() => {
     api.reparationAnnonce().then((t) => { if (t) toast(t, { icone: "🛟", duree: 60000 }); }).catch(() => {});

@@ -278,6 +278,25 @@
  label.btn-plein { cursor:pointer; }
  .btn-plein.inactif { opacity:.45; pointer-events:none; }
  .carte-wifi { margin-top:10px; padding:16px; }
+ /* La télécommande du tableau : un grand bouton qu'on garde appuyé, ce que le Mac a compris, et ce qu'il a fait. */
+ .carte-telecommande.reliee { display:flex; flex-direction:column; align-items:center; text-align:center; padding:20px 16px 14px; }
+ .carte-telecommande .rond { width:132px; height:132px; margin:4px 0 12px; touch-action:none;
+   -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+ .carte-telecommande .rond .ic { width:50px; height:50px; }
+ .carte-telecommande .rond:disabled { opacity:.6; }
+ .tc-entendu { margin:10px 0 0; font-size:15px; color:var(--txt2); font-style:italic; overflow-wrap:anywhere; }
+ .tc-fait { margin:6px 0 0; font-size:15.5px; font-weight:600; overflow-wrap:anywhere; }
+ .tc-fait.rate { color:var(--rouge); }
+ .tc-question { align-self:stretch; margin-top:12px; }
+ .tc-question p { margin:0 0 10px; font-size:15.5px; font-weight:600; overflow-wrap:anywhere; }
+ .tc-choix { display:flex; gap:8px; }
+ .tc-choix > * { flex:1; }
+ .carte .tc-choix > .btn-doux { margin-top:0; }
+ .tc-ecrire { align-self:stretch; display:flex; gap:8px; margin-top:12px; }
+ .tc-ecrire input { flex:1; min-width:0; font:inherit; font-size:16px; padding:10px 12px; border-radius:12px;
+   border:1px solid var(--sep); background:var(--champ); color:var(--txt); }
+ .tc-ecrire .btn-plein { width:auto; padding:10px 16px; }
+ .tc-liens { display:flex; gap:18px; justify-content:center; margin-top:12px; }
  .carte-info { display:flex; align-items:center; gap:8px; margin:12px 2px 0; font-size:14.5px; color:var(--txt2); }
  .carte-info .ic { width:18px; height:18px; color:var(--vert); }
  .lien-btn { border:none; background:none; color:var(--acc-txt); font-size:15px; font-weight:600;
