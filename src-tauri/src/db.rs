@@ -76,6 +76,44 @@ pub fn definir_dossier(chemin: Option<&std::path::Path>) -> std::io::Result<()> 
     }
 }
 
+/// Au démarrage, le dossier choisi pour les données, s'il manque — disque débranché, lecteur absent, dossier
+/// déplacé : l'enseignant le rebranche et réessaie, en choisit un autre, ou quitte.
+///
+/// L'ouverture de la base plantait avant toute fenêtre, sans laisser de trace : le journal d'incidents vit dans ce
+/// dossier. Et un dossier déplacé était recréé vide, si bien que Maitrize s'ouvrait sur une base vide.
+#[cfg(desktop)]
+pub fn attendre_le_dossier_choisi() {
+    if std::env::var("MAITRIZE_DATA_DIR").is_ok_and(|d| !d.is_empty()) {
+        return;
+    }
+    const REESSAYER: &str = "Réessayer";
+    const CHOISIR: &str = "Choisir un autre dossier…";
+    while let Some(dir) = dossier_choisi() {
+        if dir.is_dir() {
+            return;
+        }
+        let reponse = rfd::MessageDialog::new()
+            .set_level(rfd::MessageLevel::Warning)
+            .set_title("Dossier des données introuvable")
+            .set_description(format!(
+                "Maitrize range vos données dans ce dossier, qui est introuvable :\n\n{}\n\n\
+                 Branchez le disque qui le contient, ou remettez le dossier à sa place, puis choisissez « {REESSAYER} ».",
+                dir.display()
+            ))
+            .set_buttons(rfd::MessageButtons::YesNoCancelCustom(REESSAYER.into(), CHOISIR.into(), "Quitter".into()))
+            .show();
+        match reponse {
+            rfd::MessageDialogResult::Custom(b) if b == REESSAYER => {}
+            rfd::MessageDialogResult::Custom(b) if b == CHOISIR => {
+                if let Some(autre) = rfd::FileDialog::new().set_title("Le dossier des données de Maitrize").pick_folder() {
+                    definir_dossier(Some(&autre)).ok();
+                }
+            }
+            _ => std::process::exit(0),
+        }
+    }
+}
+
 /// Dossier racine des données de l'app (créé si absent).
 pub fn data_dir() -> PathBuf {
     // Override pour tests multi-utilisateurs : lancer une 2e instance avec
@@ -91,8 +129,8 @@ pub fn data_dir() -> PathBuf {
     // Emplacement choisi par l'enseignant — disque externe, autre partition.
     // S'il a disparu (clé retirée, volume non monté), on ne se rabat PAS en
     // silence sur le dossier par défaut : l'app repartirait d'une base vide et
-    // ferait croire à une perte de données. On recrée le chemin, et s'il est
-    // inaccessible l'ouverture échouera avec un message clair.
+    // ferait croire à une perte de données. Le démarrage attend qu'il revienne
+    // (`attendre_le_dossier_choisi`).
     if let Some(dir) = dossier_choisi() {
         std::fs::create_dir_all(&dir).ok();
         return dir;
@@ -283,9 +321,10 @@ pub fn open(version: &str) -> Connection {
     let path = data_dir().join("maitrize.sqlite3");
     // Une base disparue ou abîmée est mise de côté, et l'on repart du
     // dernier état sain (voir instantanes.rs) : la fenêtre s'ouvre toujours.
-    if let Some(fait) = crate::instantanes::reparer_si_besoin(
+    let reparee = crate::instantanes::reparer_si_besoin(
         &path, &sauvegardes_dir(), &data_dir().join(crate::instantanes::DOSSIER_DE_COTE), &std::env::temp_dir(),
-    ) {
+    );
+    if let Some(fait) = &reparee {
         crate::commands::diag_ecrire(format!("RÉPARATION AU DÉMARRAGE : {fait}"));
         crate::instantanes::annoncer(format!("Au démarrage, {fait}."));
     }
@@ -308,6 +347,11 @@ pub fn open(version: &str) -> Connection {
     crate::journal::poser_declencheurs(&conn, &identifiant_machine(&conn));
     crate::seed::seed_referentiels(&conn);
     conn.execute("INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, ?2)", [CLE_VERSION_BASE, version]).ok();
+    if reparee.is_some() {
+        // L'état repris est plus ancien que la base perdue : ce que cet ordinateur a déposé depuis sur le
+        // stockage revient au prochain passage de la synchronisation.
+        conn.execute("INSERT OR REPLACE INTO settings (cle, valeur) VALUES (?1, '1')", [crate::sync::CLE_RELIRE_LES_MIENS]).ok();
+    }
     conn
 }
 

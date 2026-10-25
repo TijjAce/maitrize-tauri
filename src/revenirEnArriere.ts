@@ -116,6 +116,8 @@ const CHOSES: Record<string, [string, string]> = {
   outils_classe: ["outil", "outils"],
   reunions: ["réunion", "réunions"],
   observations_eleve: ["temps d'observation", "temps d'observation"],
+  atelier_espace: ["atelier rangé dans un espace", "ateliers rangés dans un espace"],
+  referentiels: ["référentiel ajouté", "référentiels ajoutés"],
   settings: ["réglage", "réglages"],
 };
 

@@ -194,7 +194,6 @@ pub fn fusionner(a: &[u8], b: &[u8]) -> (Vec<u8>, String) {
 }
 
 /// Le texte que porte un état, sans rien fusionner.
-#[cfg(test)]
 pub fn texte(etat: &[u8]) -> String {
     texte_de(&doc_depuis(etat))
 }

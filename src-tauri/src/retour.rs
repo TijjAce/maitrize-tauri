@@ -116,14 +116,38 @@ fn colonnes(c: &Connection, schema: &str, table: &str) -> Vec<Colonne> {
     .unwrap_or_default()
 }
 
+/// Une table que le retour reprend, et la part qu'il en reprend.
+struct Reprise {
+    table: String,
+    /// La colonne qui doit valoir 0 pour qu'une ligne soit reprise : rien, toute la table.
+    seulement: Option<&'static str>,
+}
+
+impl Reprise {
+    /// La condition SQL de la part reprise, sur l'alias `a` (vide : la table de la requête).
+    fn part(&self, a: &str) -> String {
+        match self.seulement {
+            None => "1".into(),
+            Some(col) if a.is_empty() => format!("\"{col}\" = 0"),
+            Some(col) => format!("{a}.\"{col}\" = 0"),
+        }
+    }
+}
+
 /// Les tables que le retour reprend : celles qui voyagent d'un ordinateur à
-/// l'autre et ont un identifiant (une liaison n'en a pas : voir plus bas).
-fn tables(c: &Connection) -> Vec<String> {
+/// l'autre et ont un identifiant (une liaison n'en a pas : voir plus bas), et
+/// les référentiels ajoutés par l'enseignant — ceux de l'application se
+/// reposent d'eux-mêmes à chaque démarrage.
+fn tables(c: &Connection) -> Vec<Reprise> {
     crate::journal::TABLES_SYNC.iter()
-        .filter(|t| colonnes(c, "main", t).iter().any(|x| x.nom == "id"))
-        .map(|t| t.to_string())
+        .map(|t| Reprise { table: t.to_string(), seulement: None })
+        .chain([Reprise { table: "referentiels".into(), seulement: Some("est_integre") }])
+        .filter(|r| colonnes(c, "main", &r.table).iter().any(|x| x.nom == "id"))
         .collect()
 }
+
+/// Les liaisons, sans identifiant : un atelier rangé dans un espace. Elles existent ou non.
+const LIAISONS: &[(&str, &str, &str)] = &[("atelier_espace", "atelier_id", "espace_id")];
 
 fn compte(c: &Connection, sql: &str) -> rusqlite::Result<usize> {
     c.query_row(sql, [], |r| r.get::<_, i64>(0)).map(|n| n as usize)
@@ -156,11 +180,27 @@ fn differe(communes: &[String]) -> String {
     if conditions.is_empty() { "0".into() } else { conditions.join(" OR ") }
 }
 
-/// Les réglages qui voyagent : ce sont eux qui font partie de l'état de l'application.
+/// Le travail gardé dans des réglages qui ne voyagent pas d'un ordinateur à l'autre, mais fait partie de l'état de
+/// l'application : les manuels importés, « Mes générateurs », les motifs du coloriage magique, les pages de garde,
+/// le projet pédagogique, l'ordre des tableaux de la progression, l'échelle d'impression d'un matériel, les périodes
+/// choisies des séquences toutes faites.
+const REGLAGES_DU_TRAVAIL: &[&str] = &[
+    "manuel:", "manuels:", "generateurs:", "coloriage:", "garde:", "projetPedagogique:", "ordreDesTableaux:", "impression:",
+    "sequencesToutesFaites:",
+];
+
+/// Un réglage que le retour reprend : ceux qui voyagent, et le travail gardé sur ce poste. Ceux du poste lui-même,
+/// les secrets, les repères et les caches restent.
+fn repris(cle: &str) -> bool {
+    crate::journal::reglage_partage(cle)
+        || (REGLAGES_DU_TRAVAIL.iter().any(|p| cle.starts_with(p)) && !crate::journal::reglage_secret(cle))
+}
+
+/// Les réglages qui font partie de l'état de l'application.
 fn reglages(c: &Connection, schema: &str) -> Vec<(String, String)> {
     let Ok(mut st) = c.prepare(&format!("SELECT cle, valeur FROM {schema}.settings")) else { return vec![] };
     st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?.unwrap_or_default())))
-        .map(|it| it.flatten().filter(|(k, _)| crate::journal::reglage_partage(k)).collect())
+        .map(|it| it.flatten().filter(|(k, _)| repris(k)).collect())
         .unwrap_or_default()
 }
 
@@ -171,22 +211,24 @@ fn existe(c: &Connection, schema: &str, table: &str) -> bool {
 /// Ce qui changerait, table par table, en revenant à l'état attaché sous le nom `instantane`.
 pub fn ecarts(c: &Connection) -> rusqlite::Result<Vec<Ecart>> {
     let mut v = Vec::new();
-    for t in tables(c) {
-        let ici = libelle(c, "main", &t, "m");
-        let e = if !existe(c, "instantane", &t) {
+    for r in tables(c) {
+        let t = &r.table;
+        let (pm, pi) = (r.part("m"), r.part("i"));
+        let ici = libelle(c, "main", t, "m");
+        let e = if !existe(c, "instantane", t) {
             Ecart {
                 table: t.clone(),
-                parties: compte(c, &format!("SELECT COUNT(*) FROM main.\"{t}\""))?,
-                exemples_parties: ici.as_ref().map(|l| exemples(c, &format!("SELECT {l} FROM main.\"{t}\" m"))).unwrap_or_default(),
+                parties: compte(c, &format!("SELECT COUNT(*) FROM main.\"{t}\" m WHERE {pm}"))?,
+                exemples_parties: ici.as_ref().map(|l| exemples(c, &format!("SELECT {l} FROM main.\"{t}\" m WHERE {pm}"))).unwrap_or_default(),
                 ..Default::default()
             }
         } else {
-            let alors: BTreeSet<String> = colonnes(c, "instantane", &t).into_iter().map(|x| x.nom).collect();
-            let communes: Vec<String> = colonnes(c, "main", &t).into_iter().map(|x| x.nom).filter(|n| alors.contains(n)).collect();
-            let revenues = format!("FROM instantane.\"{t}\" i WHERE i.id NOT IN (SELECT id FROM main.\"{t}\")");
-            let parties = format!("FROM main.\"{t}\" m WHERE m.id NOT IN (SELECT id FROM instantane.\"{t}\")");
-            let changees = format!("FROM main.\"{t}\" m JOIN instantane.\"{t}\" i ON i.id = m.id WHERE {}", differe(&communes));
-            let d_alors = libelle(c, "instantane", &t, "i");
+            let alors: BTreeSet<String> = colonnes(c, "instantane", t).into_iter().map(|x| x.nom).collect();
+            let communes: Vec<String> = colonnes(c, "main", t).into_iter().map(|x| x.nom).filter(|n| alors.contains(n)).collect();
+            let revenues = format!("FROM instantane.\"{t}\" i WHERE {pi} AND i.id NOT IN (SELECT id FROM main.\"{t}\")");
+            let parties = format!("FROM main.\"{t}\" m WHERE {pm} AND m.id NOT IN (SELECT id FROM instantane.\"{t}\")");
+            let changees = format!("FROM main.\"{t}\" m JOIN instantane.\"{t}\" i ON i.id = m.id WHERE {pm} AND ({})", differe(&communes));
+            let d_alors = libelle(c, "instantane", t, "i");
             Ecart {
                 table: t.clone(),
                 revenues: compte(c, &format!("SELECT COUNT(*) {revenues}"))?,
@@ -198,6 +240,20 @@ pub fn ecarts(c: &Connection) -> rusqlite::Result<Vec<Ecart>> {
             }
         };
         if e.revenues + e.parties + e.changees > 0 {
+            v.push(e);
+        }
+    }
+    for (t, a, b) in LIAISONS {
+        if !existe(c, "main", t) || !existe(c, "instantane", t) {
+            continue;
+        }
+        let e = Ecart {
+            table: t.to_string(),
+            revenues: compte(c, &format!("SELECT COUNT(*) FROM instantane.{t} WHERE ({a}, {b}) NOT IN (SELECT {a}, {b} FROM main.{t})"))?,
+            parties: compte(c, &format!("SELECT COUNT(*) FROM main.{t} WHERE ({a}, {b}) NOT IN (SELECT {a}, {b} FROM instantane.{t})"))?,
+            ..Default::default()
+        };
+        if e.revenues + e.parties > 0 {
             v.push(e);
         }
     }
@@ -223,16 +279,18 @@ pub fn ecarts(c: &Connection) -> rusqlite::Result<Vec<Ecart>> {
 /// qui en dépend.
 pub fn revenir(c: &Connection) -> rusqlite::Result<Vec<Ecart>> {
     let avant = ecarts(c)?;
-    for t in tables(c) {
-        if !existe(c, "instantane", &t) {
-            c.execute(&format!("DELETE FROM main.\"{t}\""), [])?;
+    for r in tables(c) {
+        let t = &r.table;
+        let (p, pm, pi) = (r.part(""), r.part("m"), r.part("i"));
+        if !existe(c, "instantane", t) {
+            c.execute(&format!("DELETE FROM main.\"{t}\" WHERE {p}"), [])?;
             continue;
         }
-        let alors: BTreeSet<String> = colonnes(c, "instantane", &t).into_iter().map(|x| x.nom).collect();
-        let ici = colonnes(c, "main", &t);
+        let alors: BTreeSet<String> = colonnes(c, "instantane", t).into_iter().map(|x| x.nom).collect();
+        let ici = colonnes(c, "main", t);
         let communes: Vec<String> = ici.iter().map(|x| x.nom.clone()).filter(|n| alors.contains(n)).collect();
         // Ce qui n'existait pas alors s'en va.
-        c.execute(&format!("DELETE FROM main.\"{t}\" WHERE id NOT IN (SELECT id FROM instantane.\"{t}\")"), [])?;
+        c.execute(&format!("DELETE FROM main.\"{t}\" WHERE {p} AND id NOT IN (SELECT id FROM instantane.\"{t}\")"), [])?;
         // Ce qui a été changé depuis reprend ses valeurs d'alors.
         let autres: Vec<&String> = communes.iter().filter(|x| *x != "id").collect();
         if !autres.is_empty() {
@@ -240,25 +298,26 @@ pub fn revenir(c: &Connection) -> rusqlite::Result<Vec<Ecart>> {
             let sources = autres.iter().map(|x| format!("i.\"{x}\"")).collect::<Vec<_>>().join(", ");
             c.execute(&format!(
                 "UPDATE main.\"{t}\" AS m SET ({cibles}) = (SELECT {sources} FROM instantane.\"{t}\" i WHERE i.id = m.id)
-                  WHERE EXISTS (SELECT 1 FROM instantane.\"{t}\" i WHERE i.id = m.id AND ({}))", differe(&communes)), [])?;
+                  WHERE {pm} AND EXISTS (SELECT 1 FROM instantane.\"{t}\" i WHERE i.id = m.id AND ({}))", differe(&communes)), [])?;
         }
         // Ce qui a été supprimé depuis revient ; une colonne apparue depuis prend sa valeur neutre.
         let noms: Vec<String> = ici.iter().filter(|x| alors.contains(&x.nom) || x.neutre.is_some()).map(|x| format!("\"{}\"", x.nom)).collect();
         let valeurs: Vec<String> = ici.iter().filter(|x| alors.contains(&x.nom) || x.neutre.is_some())
             .map(|x| if alors.contains(&x.nom) { format!("i.\"{}\"", x.nom) } else { x.neutre.unwrap_or("''").to_string() }).collect();
         c.execute(&format!(
-            "INSERT INTO main.\"{t}\" ({}) SELECT {} FROM instantane.\"{t}\" i WHERE i.id NOT IN (SELECT id FROM main.\"{t}\")",
+            "INSERT INTO main.\"{t}\" ({}) SELECT {} FROM instantane.\"{t}\" i WHERE {pi} AND i.id NOT IN (SELECT id FROM main.\"{t}\")",
             noms.join(", "), valeurs.join(", ")), [])?;
     }
     // Les liaisons (un atelier dans un espace) : elles existent ou non.
-    for (t, a, b) in [("atelier_espace", "atelier_id", "espace_id")] {
+    for (t, a, b) in LIAISONS {
         if !existe(c, "main", t) || !existe(c, "instantane", t) {
             continue;
         }
         c.execute(&format!("DELETE FROM main.{t} WHERE ({a}, {b}) NOT IN (SELECT {a}, {b} FROM instantane.{t})"), [])?;
         c.execute(&format!("INSERT OR IGNORE INTO main.{t} ({a}, {b}) SELECT {a}, {b} FROM instantane.{t}"), [])?;
     }
-    // Les réglages qui voyagent ; ceux de ce poste et les secrets restent.
+    // Les réglages du travail ; ceux de ce poste et les secrets restent. Un réglage partagé qui s'en va part aussi
+    // de l'autre ordinateur (le journal note sa suppression).
     let (ici, alors) = (reglages(c, "main"), reglages(c, "instantane"));
     for (k, _) in ici.iter().filter(|(k, _)| !alors.iter().any(|(x, _)| x == k)) {
         c.execute("DELETE FROM main.settings WHERE cle = ?1", params![k])?;
@@ -276,10 +335,11 @@ fn ramener_les_fichiers(c: &Connection, corbeille: &Path, fichiers: &Path) -> us
     if noms.is_empty() {
         return 0;
     }
-    // Les noms des fichiers joints sont uniques (un identifiant) : les chercher dans le texte de la base suffit.
+    // Les noms des fichiers joints sont uniques (un identifiant) : les chercher dans le texte de la base suffit —
+    // ses tables, et ses réglages, qui en citent aussi (la banque de gestes, les pages des manuels).
     let mut texte = String::new();
-    for t in crate::journal::TABLES_SYNC {
-        let cols = colonnes(c, "main", t);
+    for t in tables(c).into_iter().map(|r| r.table).chain(["settings".to_string()]) {
+        let cols = colonnes(c, "main", &t);
         if cols.is_empty() {
             continue;
         }
@@ -301,13 +361,13 @@ pub(crate) fn revenir_a(c: &Connection, copie: &Path, corbeille: &Path, fichiers
     c.execute("ATTACH DATABASE ?1 AS instantane", params![copie.to_string_lossy()]).map_err(|e| format!("État illisible : {e}"))?;
     let fait = (|| -> rusqlite::Result<Vec<Ecart>> {
         c.execute_batch("BEGIN IMMEDIATE; PRAGMA defer_foreign_keys = ON;")?;
-        match revenir(c) {
-            Ok(e) => c.execute_batch("COMMIT").map(|_| e),
-            Err(err) => {
-                c.execute_batch("ROLLBACK").ok();
-                Err(err)
-            }
+        let fait = revenir(c).and_then(|e| c.execute_batch("COMMIT").map(|_| e));
+        if fait.is_err() {
+            // Un COMMIT refusé — une clé étrangère différée qui manque — laisse la transaction ouverte : toutes les
+            // écritures suivantes y seraient restées, perdues en quittant.
+            c.execute_batch("ROLLBACK").ok();
         }
+        fait
     })();
     c.execute("DETACH DATABASE instantane", []).ok();
     let ecarts = fait.map_err(|e| format!("Retour impossible, rien n'a changé : {e}"))?;
@@ -474,6 +534,111 @@ mod tests {
         let lire = |k: &str| -> String { c.query_row("SELECT valeur FROM settings WHERE cle = ?1", [k], |r| r.get(0)).unwrap() };
         assert_eq!(lire("matiereCouleursOverride"), "{\"EPS\":\"red\"}");
         assert_eq!(lire("identifiantMachine"), "B", "ce qui appartient à ce poste reste");
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    fn reglage(c: &Connection, k: &str) -> Option<String> {
+        c.query_row("SELECT valeur FROM settings WHERE cle = ?1", [k], |r| r.get(0)).ok()
+    }
+
+    /// Le travail gardé dans des réglages qui ne voyagent pas — un manuel importé, « Mes générateurs » — et les
+    /// référentiels ajoutés par l'enseignant reviennent aussi ; l'aperçu les montre. Ceux de l'application, non.
+    #[test]
+    fn le_travail_des_reglages_locaux_et_les_referentiels_ajoutes_reviennent() {
+        let d = dossier();
+        let c = base(&d.join("ici.sqlite3"), "A");
+        c.execute_batch(
+            "INSERT INTO settings (cle, valeur) VALUES ('manuel:m1', '{\"titre\":\"Réussir mon CRPE\"}');
+             INSERT INTO settings (cle, valeur) VALUES ('generateurs:perso', '[{\"id\":\"g1\"}]');
+             INSERT INTO referentiels (id, nom, est_integre, date_ajout) VALUES ('r-perso', 'Mon référentiel', 0, '2026-10-01');
+             INSERT INTO referentiels (id, nom, est_integre, date_ajout) VALUES ('r-app', 'Programme', 1, '2026-10-01');",
+        ).unwrap();
+        c.execute("VACUUM INTO ?1", params![d.join("alors.sqlite3").to_string_lossy()]).unwrap();
+        // Depuis : le manuel supprimé, les générateurs retouchés, le référentiel supprimé ; l'application a mis à
+        // jour le sien.
+        c.execute_batch(
+            "DELETE FROM settings WHERE cle = 'manuel:m1';
+             UPDATE settings SET valeur = '[]' WHERE cle = 'generateurs:perso';
+             DELETE FROM referentiels WHERE id = 'r-perso';
+             UPDATE referentiels SET nom = 'Programme 2026' WHERE id = 'r-app';",
+        ).unwrap();
+        let ecarts = ecarts_avec(&c, &d.join("alors.sqlite3")).unwrap();
+        let de = |t: &str| ecarts.iter().find(|e| e.table == t).cloned().unwrap_or_default();
+        assert_eq!((de("settings").revenues, de("settings").changees), (1, 1), "l'aperçu les voit : {ecarts:?}");
+        assert_eq!((de("referentiels").revenues, de("referentiels").changees), (1, 0), "{ecarts:?}");
+
+        revenir_a(&c, &d.join("alors.sqlite3"), &d.join("Corbeille"), &d.join("Fichiers")).unwrap();
+        assert!(reglage(&c, "manuel:m1").is_some_and(|v| v.contains("CRPE")));
+        assert_eq!(reglage(&c, "generateurs:perso").as_deref(), Some("[{\"id\":\"g1\"}]"));
+        let nom = |id: &str| -> Option<String> { c.query_row("SELECT nom FROM referentiels WHERE id = ?1", [id], |r| r.get(0)).ok() };
+        assert_eq!(nom("r-perso").as_deref(), Some("Mon référentiel"));
+        assert_eq!(nom("r-app").as_deref(), Some("Programme 2026"), "le référentiel de l'application ne recule pas");
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// Un fichier que seul un réglage cite — une image de la banque de gestes — revient de la corbeille, et un
+    /// atelier rangé dans un espace depuis compte dans l'aperçu.
+    #[test]
+    fn un_fichier_cite_par_un_reglage_revient_et_les_liaisons_se_voient() {
+        let d = dossier();
+        let c = base(&d.join("ici.sqlite3"), "A");
+        let (corbeille, fichiers) = (d.join("Corbeille"), d.join("Fichiers"));
+        std::fs::create_dir_all(&corbeille).unwrap();
+        std::fs::create_dir_all(&fichiers).unwrap();
+        c.execute_batch(
+            "INSERT INTO settings (cle, valeur) VALUES ('fabriquer:gestesBM', '{\"bonjour\":\"geste-1.png\"}');
+             INSERT INTO ateliers (id, titre, date_creation) VALUES ('at1', 'Puzzles', '2026-10-01');
+             INSERT INTO espaces (id, titre, date_creation) VALUES ('es1', 'Coin calme', '2026-10-01');",
+        ).unwrap();
+        c.execute("VACUUM INTO ?1", params![d.join("alors.sqlite3").to_string_lossy()]).unwrap();
+        std::fs::write(corbeille.join("geste-1.png"), b"png").unwrap();
+        c.execute_batch(
+            "UPDATE settings SET valeur = '{}' WHERE cle = 'fabriquer:gestesBM';
+             INSERT INTO atelier_espace (atelier_id, espace_id) VALUES ('at1', 'es1');",
+        ).unwrap();
+        let ecarts = ecarts_avec(&c, &d.join("alors.sqlite3")).unwrap();
+        assert!(ecarts.iter().any(|e| e.table == "atelier_espace" && e.parties == 1), "{ecarts:?}");
+        let (_, revenus) = revenir_a(&c, &d.join("alors.sqlite3"), &corbeille, &fichiers).unwrap();
+        assert_eq!(revenus, 1);
+        assert!(fichiers.join("geste-1.png").is_file());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// Un réglage partagé créé depuis l'état choisi s'en va, ici et chez l'autre : sa suppression entre au journal.
+    #[test]
+    fn un_reglage_partage_qui_s_en_va_part_aussi_de_l_autre_ordinateur() {
+        let d = dossier();
+        let c = base(&d.join("ici.sqlite3"), "A");
+        c.execute("VACUUM INTO ?1", params![d.join("alors.sqlite3").to_string_lossy()]).unwrap();
+        c.execute("INSERT INTO settings (cle, valeur) VALUES ('salle:plan', '[]')", []).unwrap();
+        revenir_a(&c, &d.join("alors.sqlite3"), &d.join("Corbeille"), &d.join("Fichiers")).unwrap();
+        assert_eq!(reglage(&c, "salle:plan"), None);
+        let op: String = c.query_row(
+            "SELECT operation FROM changements WHERE table_nom = 'settings' AND ligne_id = 'salle:plan' ORDER BY seq DESC LIMIT 1",
+            [], |r| r.get(0)).unwrap();
+        assert_eq!(op, "suppr");
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// Un état qu'on ne peut pas reprendre — une séance dont la séquence manque — ne change rien, et ne laisse pas
+    /// la base dans une transaction ouverte : les écritures suivantes s'enregistrent.
+    #[test]
+    fn un_retour_refuse_ne_laisse_pas_la_base_en_suspens() {
+        let d = dossier();
+        let c = base(&d.join("ici.sqlite3"), "A");
+        c.execute("INSERT INTO projets (id, titre, date_creation) VALUES ('p1', 'Le potager', '2026-10-01')", []).unwrap();
+        // L'état d'alors porte une séance orpheline.
+        let alors = Connection::open(d.join("alors.sqlite3")).unwrap();
+        crate::db::migrer_pour_test(&alors);
+        alors.pragma_update(None, "foreign_keys", "OFF").unwrap();
+        alors.execute("INSERT INTO seances (id, titre, sequence_id) VALUES ('se1', 'Orpheline', 'absente')", []).unwrap();
+        drop(alors);
+        let err = revenir_a(&c, &d.join("alors.sqlite3"), &d.join("Corbeille"), &d.join("Fichiers")).unwrap_err();
+        assert!(err.contains("rien n'a changé"), "{err}");
+        assert!(c.is_autocommit(), "la transaction est défaite");
+        assert_eq!(titres(&c, "projets"), vec!["Le potager"]);
+        c.execute("INSERT INTO projets (id, titre, date_creation) VALUES ('p2', 'Le cirque', '2026-10-02')", []).unwrap();
+        assert!(c.is_autocommit());
         std::fs::remove_dir_all(&d).ok();
     }
 }

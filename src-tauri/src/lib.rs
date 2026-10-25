@@ -76,6 +76,8 @@ pub fn run() {
     // La version de l'application, connue avant d'ouvrir la base : une
     // nouvelle version la copie avant de la migrer (voir `db::open`).
     let contexte = tauri::generate_context!();
+    #[cfg(desktop)]
+    db::attendre_le_dossier_choisi();
     let conn = db::open(&contexte.package_info().version.to_string());
 
     tauri::Builder::default()

@@ -1223,6 +1223,14 @@ mod tests_deltas_vus {
         assert_eq!(partis.len(), 60);
         assert!(partis.iter().all(|k| k.as_str() < "maitrize/deltas/20261001090000000"));
     }
+
+    #[test]
+    fn apres_une_reparation_nos_propres_depots_reviennent() {
+        let lot = |m: &str| super::Lot { machine: m.into(), changements: vec![] };
+        assert!(super::depot_a_appliquer(&lot("autre"), "moi", false));
+        assert!(!super::depot_a_appliquer(&lot("moi"), "moi", false), "d'ordinaire, déjà chez nous");
+        assert!(super::depot_a_appliquer(&lot("moi"), "moi", true), "la base est repartie d'un instantané");
+    }
 }
 
 #[cfg(test)]
@@ -1459,6 +1467,16 @@ const PREFIXE_DELTA: &str = "maitrize/deltas/";
 const CLE_SEQ_ENVOYEE: &str = "syncSeqEnvoyee";
 /// Objets déjà relus, pour ne pas réappliquer en boucle.
 const CLE_DELTAS_VUS: &str = "syncDeltasVus";
+/// Repère du poste, posé par une réparation au démarrage : la base repart d'un état plus ancien, et ce que cet
+/// ordinateur a déposé depuis doit revenir du stockage au prochain passage (voir `depot_a_appliquer`).
+pub const CLE_RELIRE_LES_MIENS: &str = "syncRelireLesMiens";
+
+/// Un dépôt dont les changements s'appliquent ici : ceux des autres ordinateurs ; les nôtres aussi après une
+/// réparation. Ils étaient toujours écartés, déjà chez nous — sauf quand la base repart d'un instantané : le
+/// travail fait ici entre l'instantané et la panne, pourtant sur le stockage et chez l'autre, ne revenait jamais.
+fn depot_a_appliquer(lot: &Lot, machine: &str, relire_les_miens: bool) -> bool {
+    lot.machine != machine || relire_les_miens
+}
 /// Nombre d'objets de deltas conservés sur le stockage.
 const DELTAS_GARDES: usize = 400;
 
@@ -1560,7 +1578,7 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
     // Les tables que connaissent les autres ordinateurs : une table récente
     // leur est annoncée dès qu'ils la connaissent (voir `annoncer_tables`).
     let autres = tables_des_autres(&sonde, &cfg0, phrase.trim(), &moi).await;
-    let (cfg, phrase, mut machine, repere, vus, mut lot) = {
+    let (cfg, phrase, mut machine, repere, vus, relire_les_miens, mut lot) = {
         let c = db.lock();
         let phrase = get_setting(&c, "sauvegarde_phrase");
         if phrase.trim().is_empty() {
@@ -1578,7 +1596,7 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
         crate::journal::compacter(&c, depuis);
         let (changements, repere) = crate::journal::changements_locaux(&c, depuis).map_err(e)?;
         (cfg, phrase.trim().to_string(), machine.clone(), repere, deltas_vus(&c),
-         Lot { machine, changements })
+         get_setting(&c, CLE_RELIRE_LES_MIENS) == "1", Lot { machine, changements })
     };
 
     let cl = client(&cfg);
@@ -1622,8 +1640,8 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
         let Ok(octets) = obj.body.collect().await else { continue };
         let Ok(clair) = dechiffrer_sauvegarde(&phrase, octets.into_bytes().as_ref()) else { continue };
         let Ok(lot) = serde_json::from_slice::<Lot>(&clair) else { continue };
-        // Nos propres dépôts : déjà chez nous, rien à appliquer.
-        if lot.machine != machine {
+        // Nos propres dépôts : déjà chez nous, rien à appliquer — sauf après une réparation.
+        if depot_a_appliquer(&lot, &machine, relire_les_miens) {
             a_appliquer.extend(lot.changements);
         }
         vus.insert(cle.clone());
@@ -1636,6 +1654,10 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
             res.appliques = crate::journal::appliquer(&mut c, &a_appliquer).map_err(e)?;
         }
         noter_vus(&c, &vus, &presentes)?;
+        if relire_les_miens {
+            set_setting(&c, CLE_RELIRE_LES_MIENS, "")?;
+            crate::commands::diag_ecrire("SYNCHRO après la réparation : les dépôts de cet ordinateur sont repris".to_string());
+        }
         set_setting(&c, CLE_DERNIERE_SYNC,
                     &chrono::Local::now().format("%Y-%m-%d-%H%M%S").to_string())?;
     }
