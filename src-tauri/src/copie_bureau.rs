@@ -345,6 +345,17 @@ fn preparer(racine: &Path, fichiers: &Path, entrees: &[Entree], dossiers: &[Stri
     prep
 }
 
+/// La copie tient les dossiers des élèves : un autre compte de l'ordinateur n'y entre pas (droits 700).
+fn reserver_au_proprietaire(racine: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(racine, std::fs::Permissions::from_mode(0o700)).ok();
+    }
+    #[cfg(not(unix))]
+    let _ = racine;
+}
+
 /// Met la copie en accord avec le bureau.
 fn appliquer(racine: &Path, fichiers: &Path, entrees: &[Entree], dossiers: &[String], maintenant: chrono::DateTime<chrono::Local>) -> Bilan {
     let mut bilan = Bilan { date: maintenant.to_rfc3339(), ..Default::default() };
@@ -352,6 +363,7 @@ fn appliquer(racine: &Path, fichiers: &Path, entrees: &[Entree], dossiers: &[Str
         noter(&mut bilan, &racine.to_string_lossy(), &err);
         return bilan;
     }
+    reserver_au_proprietaire(racine);
     let ancien = lire_manifeste(racine);
     let mut nouveau = Manifeste::default();
 
@@ -853,6 +865,7 @@ pub async fn copie_bureau_appliquer(db: State<'_, Db>, entrees: Vec<Entree>, dos
 pub fn copie_bureau_ouvrir(db: State<Db>) -> R<()> {
     let racine = PathBuf::from(info(&db).racine);
     std::fs::create_dir_all(&racine).map_err(|e| e.to_string())?;
+    reserver_au_proprietaire(&racine);
     tauri_plugin_opener::open_path(&racine, None::<&str>).map_err(|e| e.to_string())
 }
 

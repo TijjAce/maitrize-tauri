@@ -835,13 +835,19 @@ pub fn purger_temporaires() {
     if let Ok(entrees) = std::fs::read_dir(dossier_temporaire()) {
         for e in entrees.flatten().filter(|e| vieux(e)) { std::fs::remove_file(e.path()).ok(); }
     }
-    let anciens = ["maitrize-", "synthese-gs-", "GEVA-Sco", "bilan-ppi-", "tla-"];
+    // « .etat-… » : une copie de la base décompressée pour revenir en arrière, effacée après usage — sauf si
+    // l'application s'est fermée entre-temps.
+    let anciens = ["maitrize-", "synthese-gs-", "GEVA-Sco", "bilan-ppi-", "tla-", ".etat-"];
     if let Ok(entrees) = std::fs::read_dir(std::env::temp_dir()) {
         for e in entrees.flatten() {
             let nom = e.file_name().to_string_lossy().to_string();
             let fichier = e.file_type().is_ok_and(|f| f.is_file());
             if fichier && anciens.iter().any(|p| nom.starts_with(p)) && vieux(&e) { std::fs::remove_file(e.path()).ok(); }
         }
+    }
+    // Les fichiers d'un bureau commun ouverts depuis Nuage, en copie de travail.
+    if let Ok(entrees) = std::fs::read_dir(std::env::temp_dir().join("maitrize-nuage")) {
+        for e in entrees.flatten().filter(|e| vieux(e) && e.file_type().is_ok_and(|f| f.is_file())) { std::fs::remove_file(e.path()).ok(); }
     }
 }
 
@@ -2275,16 +2281,48 @@ pub fn enregistrer_archive(chemin: String, fichiers: Vec<FichierArchive>) -> R<(
 /// Écrit un document HTML temporaire et l'ouvre dans le navigateur par défaut
 /// (rendu riche : blocs positionnés, tableaux, images → imprimable / PDF natif).
 #[tauri::command]
-pub fn ouvrir_html(html: String) -> R<()> {
+pub fn ouvrir_html(html: String, scripts: Option<Vec<String>>) -> R<()> {
     let nom = format!(
         "maitrize-{}.html",
         std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
     );
     let path = dossier_temporaire().join(nom);
-    std::fs::write(&path, html).map_err(e)?;
+    std::fs::write(&path, avec_politique(&html, &scripts.unwrap_or_default())).map_err(e)?;
     // Ouverture via NSWorkspace (plugin opener) → compatible App Sandbox.
     tauri_plugin_opener::open_path(&path, None::<&str>).map_err(e)?;
     Ok(())
+}
+
+/**
+ * La page qu'on ouvre dans le navigateur n'exécute que les scripts que l'application y a mis, reconnus à leur
+ * empreinte, et ne charge rien d'ailleurs : ce qu'elle cite — un bilan, une réponse de l'IA, le titre d'un document
+ * reçu d'un ami — ne peut rien y lancer. La règle se pose en tête de `<head>`, avant tout le reste.
+ */
+pub(crate) fn avec_politique(html: &str, scripts: &[String]) -> String {
+    use base64::Engine;
+    use sha2::Digest;
+    let empreintes: Vec<String> = scripts
+        .iter()
+        .map(|s| format!("'sha256-{}'", base64::engine::general_purpose::STANDARD.encode(sha2::Sha256::digest(s.as_bytes()))))
+        .collect();
+    let permis = if empreintes.is_empty() { "'none'".to_string() } else { empreintes.join(" ") };
+    let regle = format!(
+        "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; \
+         font-src data:; script-src {permis}; base-uri 'none'; form-action 'none'\">"
+    );
+    // Après la balise <head> (pas <header>) ; à défaut, après le doctype : une balise avant lui ferait passer la page
+    // en mode dégradé.
+    let bas = html.to_ascii_lowercase();
+    let fin_de_balise = |debut: usize| bas[debut..].find('>').map(|i| debut + i + 1);
+    let tete = bas.match_indices("<head").map(|(i, _)| i).find(|&i| matches!(bas.as_bytes().get(i + 5), Some(b'>' | b' ' | b'\t' | b'\n' | b'\r')));
+    let ou = match tete {
+        Some(i) => fin_de_balise(i),
+        None => bas.find("<!doctype").and_then(fin_de_balise),
+    };
+    match ou {
+        Some(i) => format!("{}{regle}{}", &html[..i], &html[i..]),
+        None => format!("{regle}{html}"),
+    }
 }
 
 // ── Impression du planning : génère un vrai PDF puis l'ouvre dans Aperçu ─────
@@ -3283,6 +3321,24 @@ fn vacances_de_la_reponse(v: &serde_json::Value) -> Vec<VacancePeriode> {
     }
     out.sort_by(|a, b| a.debut.cmp(&b.debut));
     out
+}
+
+#[cfg(test)]
+mod tests_page_ouverte {
+    use super::avec_politique;
+
+    #[test]
+    fn la_regle_se_pose_en_tete_et_ne_permet_que_les_scripts_de_l_application() {
+        let page = avec_politique("<!doctype html><html><head><meta charset=\"utf-8\"></head><body><header>x</header></body></html>", &[]);
+        assert!(page.starts_with("<!doctype html><html><head><meta http-equiv=\"Content-Security-Policy\""));
+        assert!(page.contains("script-src 'none'"));
+        // L'empreinte d'un script est celle de son texte : « alert(1) » → sha256 bien connu.
+        let avec = avec_politique("<html><head></head></html>", &["alert(1)".to_string()]);
+        assert!(avec.contains("script-src 'sha256-bhHHL3z2vDgxUt0W3dWQOrprscmda2Y5pLsLg4GF+pI='"));
+        // Sans <head>, après le doctype ; sans rien, en tête.
+        assert!(avec_politique("<!DOCTYPE html><body><header>x</header></body>", &[]).starts_with("<!DOCTYPE html><meta"));
+        assert!(avec_politique("<p>x</p>", &[]).starts_with("<meta"));
+    }
 }
 
 #[cfg(test)]

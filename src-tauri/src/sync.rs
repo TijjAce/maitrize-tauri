@@ -847,6 +847,13 @@ async fn purger_distantes(cl: &Client, cfg: &S3Cfg) -> usize {
             n += 1;
         }
     }
+    // L'ancienne sauvegarde unique (v1) était chiffrée par une dérivation rapide, qu'on peut éprouver phrase après
+    // phrase : dès qu'une sauvegarde d'aujourd'hui est là, elle s'en va.
+    let v1 = liste.iter().any(|s| s.cle == OBJET_SAUVEGARDE_V1);
+    let v2 = liste.iter().any(|s| s.cle != OBJET_SAUVEGARDE_V1);
+    if v1 && v2 && cl.delete_object().bucket(&cfg.bucket).key(OBJET_SAUVEGARDE_V1).send().await.is_ok() {
+        n += 1;
+    }
     n
 }
 

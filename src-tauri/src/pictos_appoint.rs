@@ -153,6 +153,13 @@ pub fn fichier_sur(nom: &str) -> String {
     format!("{}.png", if base.is_empty() { "image" } else { base })
 }
 
+/// Ce qu'une banque peut peser : l'archive téléchargée (Sclera fait une centaine de Mo), une image, toutes les
+/// images décompressées, et leur nombre. Au-delà, ce n'est plus une banque de pictogrammes.
+const MAX_ARCHIVE: u64 = 600_000_000;
+const MAX_IMAGE: u64 = 5_000_000;
+const MAX_BANQUE: u64 = 1_500_000_000;
+const MAX_IMAGES: usize = 60_000;
+
 /// Range les images d'un zip dans `dossier`, et rend l'index, trié par mot.
 ///
 /// Seuls les vrais PNG entrent : une image qu'on ne saurait pas lire
@@ -160,9 +167,13 @@ pub fn fichier_sur(nom: &str) -> String {
 /// disque du Mac ignore les majuscules — se départagent par « ~2 ».
 pub fn extraire(s: &Source, zip: &[u8], dossier: &Path) -> Result<Vec<Entree>, String> {
     let mut archive = zip::ZipArchive::new(std::io::Cursor::new(zip)).map_err(|e| format!("Archive illisible : {e}"))?;
+    if archive.len() > MAX_IMAGES {
+        return Err(format!("L'archive de {} contient trop de fichiers ({}).", s.nom, archive.len()));
+    }
     std::fs::create_dir_all(dossier).map_err(|e| e.to_string())?;
     let mut pris: HashSet<String> = HashSet::new();
     let mut entrees = Vec::new();
+    let mut ecrit = 0u64;
     for i in 0..archive.len() {
         let mut f = archive.by_index(i).map_err(|e| format!("Archive illisible : {e}"))?;
         if f.is_dir() {
@@ -176,10 +187,15 @@ pub fn extraire(s: &Source, zip: &[u8], dossier: &Path) -> Result<Vec<Entree>, S
         if mot.is_empty() {
             continue;
         }
-        let mut octets = Vec::with_capacity(f.size() as usize);
-        f.read_to_end(&mut octets).map_err(|e| format!("Image illisible ({nom}) : {e}"))?;
-        if !octets.starts_with(b"\x89PNG") {
+        // La taille annoncée par l'archive n'engage à rien : on lit au plus une image de taille raisonnable.
+        let mut octets = Vec::with_capacity(f.size().min(MAX_IMAGE) as usize);
+        (&mut f).take(MAX_IMAGE + 1).read_to_end(&mut octets).map_err(|e| format!("Image illisible ({nom}) : {e}"))?;
+        if octets.len() as u64 > MAX_IMAGE || !octets.starts_with(b"\x89PNG") {
             continue;
+        }
+        ecrit += octets.len() as u64;
+        if ecrit > MAX_BANQUE {
+            return Err(format!("Les images de {} dépassent {} Mo une fois décompressées.", s.nom, MAX_BANQUE / 1_000_000));
         }
         let mut fichier = fichier_sur(&nom);
         let mut n = 2;
@@ -305,9 +321,15 @@ pub async fn pictos_appoint_telecharger(app: AppHandle, banque: String) -> Resul
         .error_for_status()
         .map_err(|e| format!("Le site de {} a refusé la demande : {e}", s.nom))?;
     let total = reponse.content_length().unwrap_or(0);
+    if total > MAX_ARCHIVE {
+        return Err(format!("L'archive de {} est bien plus grosse que prévu : téléchargement arrêté.", s.nom));
+    }
     let mut octets: Vec<u8> = Vec::with_capacity(total as usize);
     let mut signale = 0u64;
     while let Some(morceau) = reponse.chunk().await.map_err(|e| format!("Réception : {e}"))? {
+        if (octets.len() + morceau.len()) as u64 > MAX_ARCHIVE {
+            return Err(format!("L'archive de {} est bien plus grosse que prévu : téléchargement arrêté.", s.nom));
+        }
         octets.extend_from_slice(&morceau);
         let recus = octets.len() as u64;
         if recus - signale >= 512 * 1024 || recus == total {

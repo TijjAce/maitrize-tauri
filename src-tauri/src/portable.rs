@@ -519,14 +519,33 @@ pub(crate) fn ranger_note(
     Ok(true)
 }
 
+/// Ce que le téléphone envoie, plafonné : un vocal d'une heure, une page photographiée, une note. Au-delà — ou si
+/// l'envoi annonce lui-même plus —, rien n'est lu.
+const MAX_VOCAL: u64 = 300_000_000;
+const MAX_PHOTO: u64 = 60_000_000;
+const MAX_TEXTE: u64 = 1_000_000;
+
+/// Le corps d'une requête, s'il ne dépasse pas `max` octets.
+fn lire_corps(req: &mut tiny_http::Request, max: u64) -> Option<Vec<u8>> {
+    if req.body_length().is_some_and(|n| n as u64 > max) {
+        return None;
+    }
+    let mut octets = Vec::new();
+    std::io::Read::read_to_end(&mut std::io::Read::take(req.as_reader(), max + 1), &mut octets).ok()?;
+    (octets.len() as u64 <= max).then_some(octets)
+}
+
+/// Le texte d'une requête, s'il ne dépasse pas `max` octets.
+fn lire_texte(req: &mut tiny_http::Request, max: u64) -> Option<String> {
+    String::from_utf8(lire_corps(req, max)?).ok()
+}
+
 fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &str, app: &tauri::AppHandle) {
     let url = req.url().to_string();
     let autorise = url.contains(&format!("t={token}"));
     // Le dépôt d'un vocal se lit avant toute réponse : le corps ne se relit pas.
     if autorise && url.starts_with("/api/vocal") {
-        let mut octets = Vec::new();
-        let lu = std::io::Read::read_to_end(req.as_reader(), &mut octets).is_ok();
-        let (code, body) = match lu.then(|| ecrire_vocal(app, &url, octets)) {
+        let (code, body) = match lire_corps(&mut req, MAX_VOCAL).map(|octets| ecrire_vocal(app, &url, octets)) {
             Some(Ok(id)) => (200, format!("{{\"ok\":true,\"id\":{}}}", serde_json::to_string(&id).unwrap_or_default())),
             Some(Err(message)) => (400, format!("{{\"ok\":false,\"erreur\":{}}}", serde_json::to_string(&message).unwrap_or_default())),
             None => (400, "{\"ok\":false}".to_string()),
@@ -538,9 +557,7 @@ fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &st
     }
     // Une note écrite : le corps est le texte, rien d'autre.
     if autorise && url.starts_with("/api/note") {
-        let mut texte = String::new();
-        let lu = std::io::Read::read_to_string(req.as_reader(), &mut texte).is_ok();
-        let (code, body) = match lu.then(|| ecrire_note(app, &url, &texte)) {
+        let (code, body) = match lire_texte(&mut req, MAX_TEXTE).map(|texte| ecrire_note(app, &url, &texte)) {
             Some(Ok(id)) => (200, format!("{{\"ok\":true,\"id\":{}}}", serde_json::to_string(&id).unwrap_or_default())),
             Some(Err(message)) => (400, format!("{{\"ok\":false,\"erreur\":{}}}", serde_json::to_string(&message).unwrap_or_default())),
             None => (400, "{\"ok\":false}".to_string()),
@@ -575,9 +592,8 @@ fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &st
     // l'événement `photo:recue` que la fenêtre « Manuels » attend.
     if autorise && url.starts_with("/api/photo") {
         let ext = match parametre(&url, "ext").as_str() { "png" => "png", "pdf" => "pdf", _ => "jpg" };
-        let mut octets = Vec::new();
-        let lu = std::io::Read::read_to_end(req.as_reader(), &mut octets).is_ok() && !octets.is_empty();
-        let (code, body) = if lu {
+        let octets = lire_corps(&mut req, MAX_PHOTO).unwrap_or_default();
+        let (code, body) = if !octets.is_empty() {
             let fichier = format!("{}.{}", Uuid::new_v4(), ext);
             match std::fs::write(crate::db::fichiers_dir().join(&fichier), &octets) {
                 Ok(()) => {
@@ -596,9 +612,7 @@ fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &st
     }
     // L'écriture se lit avant toute réponse : le corps ne se relit pas.
     if autorise && url.starts_with("/api/observation") {
-        let mut corps = String::new();
-        let lu = std::io::Read::read_to_string(req.as_reader(), &mut corps).is_ok();
-        let (code, body) = match lu.then(|| ecrire_observation(app, &corps)) {
+        let (code, body) = match lire_texte(&mut req, MAX_TEXTE).map(|corps| ecrire_observation(app, &corps)) {
             Some(Ok(())) => (200, "{\"ok\":true}".to_string()),
             Some(Err(message)) => (400, format!("{{\"ok\":false,\"erreur\":{}}}", serde_json::to_string(&message).unwrap_or_default())),
             None => (400, "{\"ok\":false}".to_string()),
@@ -700,8 +714,8 @@ fn photo_repondre(mut req: tiny_http::Request, token: &str, app: &tauri::AppHand
     }
     if req.method() == &tiny_http::Method::Post && url.starts_with("/upload") {
         let ext = match parametre(&url, "ext").as_str() { "png" => "png", "pdf" => "pdf", _ => "jpg" };
-        let mut buf = Vec::new();
-        if req.as_reader().read_to_end(&mut buf).is_ok() && !buf.is_empty() {
+        let buf = lire_corps(&mut req, MAX_PHOTO).unwrap_or_default();
+        if !buf.is_empty() {
             let fichier = format!("{}.{}", Uuid::new_v4(), ext);
             if std::fs::write(crate::db::fichiers_dir().join(&fichier), &buf).is_ok() {
                 let _ = app.emit("photo:recue", fichier);
@@ -1329,7 +1343,15 @@ fetch('/api/data?t=' + encodeURIComponent(T))
 
 #[cfg(test)]
 mod tests {
-    use super::{parametre, PORT_PORTABLE, serie_demandee};
+    use super::{lire_corps, lire_texte, parametre, PORT_PORTABLE, serie_demandee};
+
+    #[test]
+    fn un_envoi_trop_gros_n_est_pas_lu() {
+        let mut req: tiny_http::Request = tiny_http::TestRequest::new().with_body("une note").into();
+        assert_eq!(lire_texte(&mut req, 100).as_deref(), Some("une note"));
+        let mut req: tiny_http::Request = tiny_http::TestRequest::new().with_body("une note bien trop longue").into();
+        assert_eq!(lire_corps(&mut req, 8), None);
+    }
 
     #[test]
     fn le_port_habituel_ne_bouge_pas() {
