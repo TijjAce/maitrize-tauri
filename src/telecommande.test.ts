@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { NAV, SOUS_ONGLETS } from "./components/CommandPalette";
 import {
-  ceQuIlComprend, comprendre, destinationsDe, dureeDite, dureeEnClair, enChiffres, epurer, inviteDeLaVoix, nomDeLaPage, plat,
-  pourLaClasse,
+  ceQuIlComprend, comprendre, consigneDuSecours, destinationsDe, dureeDite, dureeEnClair, enChiffres, epurer, inviteDeLaVoix,
+  lireLeSecours, nomDeLaPage, plat, pourLaClasse,
   type ContexteTelecommande, type Destination,
 } from "./telecommande";
 
@@ -160,6 +160,40 @@ describe("la télécommande, comme on parle en classe", () => {
   it("n'ouvre toujours pas ce qui nomme les élèves, même poliment", () => {
     expect(comprendre("Tu peux afficher les observations s'il te plaît ?", classe)).toMatchObject({ genre: "chercher" });
     expect(comprendre("Je voudrais voir l'emploi du temps", classe)).toMatchObject({ genre: "chercher" });
+  });
+});
+
+describe("Mistral en secours", () => {
+  const vraies = destinationsDe(NAV, SOUS_ONGLETS);
+  const classe: ContexteTelecommande = { destinations: vraies, eleves: ctx.eleves };
+
+  it("ne lui dit que les actions et les pages de la classe : ni les élèves, ni les pages cachées", () => {
+    const consigne = consigneDuSecours(vraies);
+    for (const nom of new Set(vraies.filter(pourLaClasse).map((d) => nomDeLaPage(d.label)))) expect(consigne).toContain(nom);
+    for (const tu of ["Barnabé", "Isidore", "Observations", "Emploi du temps", "Synthèse d'un élève"]) expect(consigne).not.toContain(tu);
+  });
+
+  it("ne fait de sa réponse que ce qui est permis, et relu", () => {
+    const lu = (j: unknown) => lireLeSecours(typeof j === "string" ? j : JSON.stringify(j), classe);
+    expect(lu({ action: "page", page: "Loto" })).toMatchObject({ genre: "aller", destination: { onglet: "jeux" } });
+    expect(lu("```json\n{\"action\":\"page\",\"page\":\"D'abord / ensuite\"}\n```")).toMatchObject({ genre: "aller", destination: { onglet: "dabord" } });
+    // Une page cachée à la voix, ou inventée : rien.
+    for (const page of ["Élèves", "Observations", "Emploi du temps", "La page des notes"]) expect(lu({ action: "page", page }), page).toBeNull();
+    expect(lu({ action: "minuteur", secondes: 150 })).toEqual({ genre: "minuteur", secondes: 150 });
+    expect(lu({ action: "minuteur", secondes: 2 })).toBeNull();
+    expect(lu({ action: "minuteur", secondes: 99999 })).toBeNull();
+    expect(lu({ action: "plein_ecran", actif: false })).toEqual({ genre: "pleinEcran", actif: false });
+    expect(lu({ action: "fermer" })).toEqual({ genre: "fermer" });
+    expect(lu({ action: "chercher", quoi: "la séquence sur les fractions" })).toEqual({ genre: "chercher", quoi: "fractions", sorte: "sequence" });
+    // Une note : un élève de la classe, un seul.
+    expect(lu({ action: "note", eleve: "Barnabé", texte: "a lu seul" })).toEqual({ genre: "note", eleve: ctx.eleves[0], texte: "A lu seul" });
+    expect(lu({ action: "note", eleve: "Isidore Ciel", texte: "a fini" })).toMatchObject({ genre: "note", eleve: { id: "e3" } });
+    expect(lu({ action: "note", eleve: "Isidore", texte: "a fini" })).toBeNull();
+    expect(lu({ action: "note", eleve: "Zoé", texte: "bravo" })).toBeNull();
+    expect(lu({ action: "aide" })).toEqual({ genre: "aide" });
+    expect(lu({ action: "rien", pourquoi: "?" })).toBeNull();
+    expect(lu("pas du JSON")).toBeNull();
+    expect(lu({ action: "supprimer_tout" })).toBeNull();
   });
 });
 

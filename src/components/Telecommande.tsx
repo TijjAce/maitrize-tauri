@@ -8,7 +8,10 @@ import { toast } from "./Toaster";
 import { ouvrirOnglet } from "./ui";
 import { demanderMinuteur, EVT_FERMER_AFFICHAGE } from "../demandeMinuteur";
 import { preparerSon } from "../pages/SupportsVisuels";
-import { ceQuIlComprend, comprendre, destinationsDe, dureeEnClair, inviteDeLaVoix, nomDeLaPage, TROUVAILLES_DE_LA_CLASSE, type Destination } from "../telecommande";
+import {
+  CLE_SECOURS, MODELE_DE_SECOURS, ceQuIlComprend, comprendre, consigneDuSecours, destinationsDe, dureeEnClair, inviteDeLaVoix,
+  lireLeSecours, nomDeLaPage, TROUVAILLES_DE_LA_CLASSE, type Compris, type ContexteTelecommande, type Destination,
+} from "../telecommande";
 
 // La télécommande du téléphone, côté fenêtre : ce que dit l'enseignant devient un geste à l'écran — donc au
 // tableau, quand le Mac est projeté (voir telecommande.ts pour ce qui est compris, telecommande.rs pour le réseau).
@@ -33,10 +36,43 @@ async function pleinEcran(actif: boolean) {
   } catch { /* hors de l'application */ }
 }
 
+/** Le temps qu'on laisse à Mistral : au-delà, la télécommande répond sans lui (le téléphone attend). */
+const DELAI_DU_SECOURS = 8000;
+
+/**
+ * Mistral, en secours : il lit la phrase que la télécommande n'a pas comprise — le texte seul, le son reste sur ce
+ * Mac — et sa réponse ne passe que relue (`lireLeSecours`). Rien s'il n'est pas voulu, pas joignable, ou trop lent.
+ */
+async function secours(texte: string, ctx: ContexteTelecommande): Promise<Compris | null> {
+  if ((await api.settingGet(CLE_SECOURS).catch(() => null)) !== "oui") return null;
+  try {
+    const reponse = await Promise.race([
+      api.mistralChat([{ role: "system", content: consigneDuSecours(ctx.destinations) }, { role: "user", content: texte }], MODELE_DE_SECOURS, true),
+      new Promise<never>((_, refuser) => setTimeout(() => refuser(new Error("délai")), DELAI_DU_SECOURS)),
+    ]);
+    return lireLeSecours(reponse, ctx);
+  } catch {
+    return null;
+  }
+}
+
 /** Fait ce que la phrase demande, et dit au téléphone ce qui a été fait. */
 async function executer(texte: string, nav: (to: string) => void): Promise<ReponseTelecommande> {
   const eleves = (await api.elevesList().catch(() => [])).map((e) => ({ id: e.id, nom: e.nom }));
-  const c = comprendre(texte, { destinations: destinations(), eleves });
+  const ctx = { destinations: destinations(), eleves };
+  const c = comprendre(texte, ctx);
+  const fait = await agir(c, nav);
+  // Pas compris, ou rien trouvé : Mistral lit la phrase, si l'enseignant l'a voulu.
+  if ((c.genre === "rien" || !fait.ok) && texte.trim()) {
+    const lu = await secours(texte, ctx);
+    const refait = lu ? await agir(lu, nav) : null;
+    if (refait?.ok) return refait.fait ? { ...refait, fait: `${refait.fait} (Mistral)` } : refait;
+  }
+  return fait;
+}
+
+/** Le geste de ce qui a été compris, et ce qu'on en dit au téléphone. */
+async function agir(c: Compris, nav: (to: string) => void): Promise<ReponseTelecommande> {
   switch (c.genre) {
     case "minuteur":
       nav("/caa");
@@ -149,6 +185,12 @@ export async function basculerLaTelecommande(ouverte: boolean) {
 export function CarteTelecommande() {
   const info = useEtatTelecommande();
   const [occupe, setOccupe] = React.useState(false);
+  const [secoursVoulu, setSecoursVoulu] = React.useState(false);
+  React.useEffect(() => { api.settingGet(CLE_SECOURS).then((v) => setSecoursVoulu(v === "oui")).catch(() => {}); }, []);
+  const basculerLeSecours = (oui: boolean) => {
+    setSecoursVoulu(oui);
+    api.settingSet(CLE_SECOURS, oui ? "oui" : "").catch((e) => { setSecoursVoulu(!oui); toast(texteErreur(e), { icone: "⚠️" }); });
+  };
   return (
     <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -159,6 +201,9 @@ export function CarteTelecommande() {
             s'écrit dans ses observations après un « oui » sur le téléphone, sans s'afficher au tableau.</p>
           <p>Sur l'iPhone, « Que dire ? » montre tout ce que la télécommande comprend, et chaque page par son nom :
             toucher une phrase l'envoie, comme si on l'avait dite.</p>
+          <p>Mistral en secours : quand la télécommande ne comprend pas une phrase, Mistral la lit (en ligne, le texte
+            seul : le son reste sur ce Mac) et choisit parmi les pages de la classe ; Maitrize vérifie sa réponse avant
+            d'agir. Le téléphone le signale par « (Mistral) ».</p>
           <p>La voix ne montre que ce qu'on peut montrer à la classe : ni les élèves, ni le cahier journal, ni les
             réglages. Elle est transcrite sur ce Mac, comme les dictées ; chaque phrase arrive scellée, même sur le WiFi
             de l'école.</p>
@@ -172,6 +217,10 @@ export function CarteTelecommande() {
           {info ? "Fermer" : "Ouvrir la télécommande"}
         </button>
       </div>
+      <label className="pb-coche" style={{ marginTop: 10 }}>
+        <input type="checkbox" checked={secoursVoulu} onChange={(e) => basculerLeSecours(e.target.checked)} />
+        <span>Mistral en secours, quand la télécommande ne comprend pas</span>
+      </label>
       {info && (
         <p className="meta" style={{ margin: "10px 0 0", fontSize: 13 }}>
           {info.reliee ? "✓ L'iPhone pilote ce Mac." : "Ouverte : en attente de l'iPhone."}
