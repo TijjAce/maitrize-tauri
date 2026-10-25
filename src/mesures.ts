@@ -449,6 +449,20 @@ export function unitesConnues(g: Grandeur, classe: Classe): string[] {
 /** Les références d'une grandeur que la classe peut lire : les siennes et celles des classes d'avant. */
 export const referencesPour = (g: Grandeur, classe: Classe) => REFERENCES.filter((x) => x.grandeur === g && RANG[x.classe] <= RANG[classe]);
 
+/** Une mesure juste qui s'écrit « nombre unité » : de quoi « Choisir l'unité ». */
+const unitePure = (x: Reference) => /^[\d  ]+ [a-zA-Z]+$/.test(x.options[x.juste]);
+
+/**
+ * Un exercice qui a de quoi remplir sa feuille pour cette grandeur et cette classe : on n'estime pas les masses au
+ * CP, ni les contenances avant le CE2 ; on ne convertit que ce que la classe apprend. L'atelier ne propose pas les autres.
+ */
+export function exerciceDisponible(id: ExerciceMesures, g: Grandeur, classe: Classe): boolean {
+  if (id === "estimer") return referencesPour(g, classe).length > 0;
+  if (id === "unites") return referencesPour(g, classe).some(unitePure);
+  if (id === "convertir") return aDesRelations(g, classe);
+  return true;
+}
+
 function feuilleEstimer(r: ReglagesMesures, graine: number): string {
   const alea = hasard(graine);
   const liste = melanger(alea, referencesPour(r.grandeur, r.classe)).slice(0, Math.max(1, Math.min(10, r.combien)));
@@ -462,7 +476,7 @@ function feuilleEstimer(r: ReglagesMesures, graine: number): string {
 function feuilleUnites(r: ReglagesMesures, graine: number): string {
   const alea = hasard(graine);
   const connues = unitesConnues(r.grandeur, r.classe);
-  const liste = melanger(alea, referencesPour(r.grandeur, r.classe).filter((x) => /^[\d  ]+ [a-zA-Z]+$/.test(x.options[x.juste])))
+  const liste = melanger(alea, referencesPour(r.grandeur, r.classe).filter(unitePure))
     .slice(0, Math.max(1, Math.min(10, r.combien)));
   const lignes = liste.map((x, i) => {
     const [, nombre] = /^([\d  ]+) /.exec(x.options[x.juste])!;
@@ -488,6 +502,31 @@ const trou = `<span class="me-blanc"></span>`;
  */
 export function conversions(g: Grandeur, classe: Classe, combien: number, graine: number): Conversion[] {
   const alea = hasard(graine);
+  const parClasse = relationsParClasse(g, alea);
+  const rang = RANG[classe];
+  const propres = parClasse[classe].length ? parClasse[classe] : (["CE2", "CE1", "CP"] as Classe[]).filter((k) => RANG[k] <= rang).map((k) => parClasse[k]).find((l) => l.length) ?? [];
+  const anciens = (["CP", "CE1", "CE2"] as Classe[]).filter((k) => RANG[k] <= rang).flatMap((k) => parClasse[k]).filter((f) => !propres.includes(f));
+  // Une grandeur que la classe ne convertit pas encore (les masses au CP) : les relations de la classe suivante
+  // seulement — pas les tonnes du CE2 sous un rappel qui ne dit que « 1 kg = 1 000 g ».
+  const suivante = (["CP", "CE1", "CE2"] as Classe[]).filter((k) => RANG[k] > rang).map((k) => parClasse[k]).find((l) => l.length) ?? [];
+  const ordre = propres.length || anciens.length ? [...melanger(alea, propres), ...melanger(alea, anciens)] : melanger(alea, suivante);
+  const sortie: Conversion[] = [];
+  const vus = new Set<string>();
+  for (let garde = 0; ordre.length && sortie.length < Math.max(1, Math.min(12, combien)) && garde < 500; garde++) {
+    const x = ordre[garde % ordre.length]();
+    if (!vus.has(x.enonce)) { vus.add(x.enonce); sortie.push(x); }
+  }
+  return melanger(alea, sortie);
+}
+
+/** La grandeur a-t-elle des relations entre unités qu'on apprend dans cette classe ou avant ? */
+export function aDesRelations(g: Grandeur, classe: Classe): boolean {
+  const p = relationsParClasse(g, () => 0);
+  return (Object.keys(p) as Classe[]).some((k) => RANG[k] <= RANG[classe] && p[k].length > 0);
+}
+
+/** Les relations entre les unités d'une grandeur, rangées par la classe qui les apprend. */
+function relationsParClasse(g: Grandeur, alea: () => number): Record<Classe, (() => Conversion)[]> {
   const n = (x: number) => milliers(x);
   const c = (enonce: string, ...reponses: (number | string)[]): Conversion => ({ enonce, reponses: reponses.map((x) => (typeof x === "number" ? n(x) : x)) });
   // Les relations de la classe d'abord, puis celles qu'on connaît depuis les classes d'avant.
@@ -553,18 +592,7 @@ export function conversions(g: Grandeur, classe: Classe, combien: number, graine
       () => { const x = [25, 50, 75, 20, 40, 60, 80][entre(alea, 0, 6)]; return c(`${x} cL + ${trou} cL = 1 L`, 100 - x); },
     );
   }
-  const rang = RANG[classe];
-  const propres = parClasse[classe].length ? parClasse[classe] : (["CE2", "CE1", "CP"] as Classe[]).filter((k) => RANG[k] <= rang).map((k) => parClasse[k]).find((l) => l.length) ?? [];
-  const anciens = (["CP", "CE1", "CE2"] as Classe[]).filter((k) => RANG[k] <= rang).flatMap((k) => parClasse[k]).filter((f) => !propres.includes(f));
-  // Une grandeur que la classe ne convertit pas encore (les masses au CP) : les relations de la classe suivante.
-  const ordre = propres.length || anciens.length ? [...melanger(alea, propres), ...melanger(alea, anciens)] : melanger(alea, Object.values(parClasse).flat());
-  const sortie: Conversion[] = [];
-  const vus = new Set<string>();
-  for (let garde = 0; ordre.length && sortie.length < Math.max(1, Math.min(12, combien)) && garde < 500; garde++) {
-    const x = ordre[garde % ordre.length]();
-    if (!vus.has(x.enonce)) { vus.add(x.enonce); sortie.push(x); }
-  }
-  return melanger(alea, sortie);
+  return parClasse;
 }
 
 /** L'énoncé, ses blancs remplis par les réponses : pour le corrigé. */

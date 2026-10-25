@@ -65,6 +65,9 @@ describe("la numération du cycle 3", () => {
     expect(d).toEqual({ pas: 1, bas: "3", haut: "4", libelle: "à l'unité près" });
     const dix = encadrement({ entier: 3, dec: 45 }, decimaux, () => 0.1);
     expect(dix).toEqual({ pas: 0.1, bas: "3,4", haut: "3,5", libelle: "au dixième près" });
+    // Un nombre qui tombe sur un pas ne s'encadre pas par lui-même : 2 500 à la centaine, jamais « 2 500 < 2 500 ».
+    for (let i = 0; i < 50; i++) expect(encadrement({ entier: 2500, dec: 0 }, REGLAGES_NUMERATION, alea).pas).toBe(1000);
+    expect(encadrement({ entier: 3, dec: 40 }, decimaux, () => 0.1).libelle).toBe("à l'unité près");
   });
 
   it("place les chiffres dans le tableau, classe par classe", () => {

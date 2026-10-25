@@ -92,3 +92,22 @@ describe("la fiche", () => {
     expect(f.titre).toContain("Le son");
   });
 });
+
+describe("les sons et leurs intrus", () => {
+  it("écrit chaque son à sa façon : [y] pour la lune, [u] pour le loup", () => {
+    const sons = SONS.map((s) => s.son);
+    expect(new Set(sons).size).toBe(sons.length);
+    expect(SONS.find((s) => s.id === "u")!.son).toBe("[y]");
+  });
+
+  it("ne prend jamais pour intrus un mot où l'on entend le son écrit autrement", () => {
+    const e = SONS.find((s) => s.id === "è")!, ss = SONS.find((s) => s.id === "s")!;
+    for (let graine = 1; graine <= 200; graine++) {
+      let n = graine;
+      const alea = () => ((n = (n * 16807) % 2147483647) / 2147483647);
+      expect(intrus(e, 8, alea)).not.toEqual(expect.arrayContaining(["vert"]));
+      for (const m of ["sept", "vert", "hiver", "jouet"]) expect(intrus(e, 40, alea)).not.toContain(m);
+      expect(intrus(ss, 40, alea)).not.toContain("cygne");
+    }
+  });
+});

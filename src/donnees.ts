@@ -267,11 +267,14 @@ function feuilleProblemes(_r: ReglagesDonnees, graine: number): string {
   const alea = hasard(graine);
   const villes = ["Alphaville", "Bêtaville", "Gammaville", "Deltaville"];
   const effectifs = villes.map(() => 5 * entre(alea, 2, 18));
+  // Deux villes à comparer qui n'ont pas autant d'élèves ; la question part de celle qui en a le plus.
+  while (effectifs[1] === effectifs[0]) effectifs[1] = 5 * entre(alea, 2, 18);
+  const [plus, moins] = effectifs[0] > effectifs[1] ? [0, 1] : [1, 0];
   const total = effectifs.reduce((s, x) => s + x, 0);
   const e = { valeurs: villes, effectifs };
   const qs = [
     { question: `Les ${total} élèves de l'école Poséidon habitent dans ces quatre villes. Combien habitent à Deltaville ? Trace sa barre.`, reponse: `${total} − ${effectifs.slice(0, 3).join(" − ")} = ${effectifs[3]}` },
-    { question: "Combien d'élèves de plus habitent à Alphaville qu'à Bêtaville ?", reponse: `${effectifs[0]} − ${effectifs[1]} = ${effectifs[0] - effectifs[1]}${effectifs[0] < effectifs[1] ? " : c'est Bêtaville qui en a plus" : ""}` },
+    { question: `Combien d'élèves de plus habitent à ${villes[plus]} qu'à ${villes[moins]} ?`, reponse: `${effectifs[plus]} − ${effectifs[moins]} = ${effectifs[plus] - effectifs[moins]}` },
     { question: "Combien d'élèves habitent à Gammaville ou à Deltaville ?", reponse: `${effectifs[2]} + ${effectifs[3]} = ${effectifs[2] + effectifs[3]}` },
   ];
   return `<div class="page">${entete("Des problèmes avec un diagramme", "Lis le diagramme : chaque barre dit combien d'élèves habitent dans chaque ville. Une barre manque !")}

@@ -88,3 +88,22 @@ describe("la demi-droite graduée et les nombres ordinaux du cycle 2", () => {
     if (m) expect(ordinalEnLettres(Number(m[2]) + 1)).toBe(m[1]);
   });
 });
+
+describe("les ordinaux du CP", () => {
+  it("ne cachent jamais deux jetons sous le même gobelet", () => {
+    for (let graine = 1; graine <= 400; graine++) {
+      const html = htmlReperage({ exercice: "ord-gobelets", classe: "CP" }, graine);
+      const g = /sous le (\S+) gobelet en partant de la gauche/.exec(html)![1];
+      const d = /sous le (\S+) gobelet en partant de la droite/.exec(html)![1];
+      const rang = (mot: string) => Array.from({ length: 12 }, (_, i) => i + 1).find((n) => ordinalEnLettres(n) === mot)!;
+      expect(rang(g), `graine ${graine}`).not.toBe(11 - rang(d));
+    }
+  });
+
+  it("accordent « personne » et « enfant » au singulier", () => {
+    for (let graine = 1; graine <= 300; graine++) {
+      const html = htmlReperage({ exercice: "ord-devant", classe: "CP" }, graine);
+      expect(html, `graine ${graine}`).not.toMatch(/\b1 (personnes|enfants)\b/);
+    }
+  });
+});

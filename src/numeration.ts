@@ -132,10 +132,25 @@ export const comparer = (a: Nombre, b: Nombre, r: ReglagesNumeration) => {
   return va < vb ? "<" : va > vb ? ">" : "=";
 };
 
+/** Un nombre qu'on encadre strictement : ni une dizaine ronde, ni (décimal) un nombre entier. */
+export const encadrable = (n: Nombre, r: ReglagesNumeration) => (r.decimaux ? n.dec !== 0 : n.entier % 10 !== 0);
+
+/** Les nombres d'un exercice d'encadrement : tous encadrables, tirés de nouveau au besoin. */
+function nombresAEncadrer(r: ReglagesNumeration, combien: number, alea: () => number): Nombre[] {
+  const pris: Nombre[] = [];
+  for (let essai = 0; essai < 30 && pris.length < combien; essai++) {
+    for (const n of nombresNumeration(r, combien, alea)) {
+      if (pris.length < combien && encadrable(n, r) && !pris.some((p) => p.entier === n.entier && p.dec === n.dec)) pris.push(n);
+    }
+  }
+  return pris.length ? pris : nombresNumeration(r, combien, alea);
+}
+
 /** Encadrer à la dizaine, à la centaine, au millier — ou à l'unité et au dixième près pour un décimal. */
 export function encadrement(n: Nombre, r: ReglagesNumeration, alea: () => number): { pas: number; bas: string; haut: string; libelle: string } {
   if (r.decimaux) {
-    const enDixiemes = alea() < 0.5 && r.decimales > 1;
+    // Au dixième près, seulement si le nombre ne tombe pas sur un dixième : « 3,4 < 3,40 < 3,5 » serait faux.
+    const enDixiemes = alea() < 0.5 && r.decimales > 1 && n.dec % 10 ** (r.decimales - 1) !== 0;
     if (enDixiemes) {
       const bas = Math.floor(valeur(n, r) * 10) / 10;
       return { pas: 0.1, bas: fr(bas, 1), haut: fr(bas + 0.1, 1), libelle: "au dixième près" };
@@ -144,7 +159,9 @@ export function encadrement(n: Nombre, r: ReglagesNumeration, alea: () => number
   }
   // Un pas plus grand que le nombre n'encadre rien : « 0 < 758 < 10 000 ».
   const possibles = [10, 100, 1000, 10000, 100000, 1000000].filter((p) => p * 10 <= Math.max(1000, r.jusqua) && p <= n.entier);
-  const pas = possibles.length ? choisir(alea, possibles) : 10;
+  // Un pas qui divise le nombre l'encadrerait par lui-même : « 50 < 50 < 60 ».
+  const stricts = possibles.filter((p) => n.entier % p !== 0);
+  const pas = stricts.length ? choisir(alea, stricts) : possibles.length ? choisir(alea, possibles) : 10;
   const bas = Math.floor(n.entier / pas) * pas;
   const libelles: Record<number, string> = { 10: "à la dizaine près", 100: "à la centaine près", 1000: "au millier près", 10000: "à la dizaine de mille près", 100000: "à la centaine de mille près", 1000000: "au million près" };
   return { pas, bas: fr(bas), haut: fr(bas + pas), libelle: libelles[pas] };
@@ -212,7 +229,7 @@ export function htmlNumeration(r: ReglagesNumeration, graine: number): string {
         `<div class="nu-paires">${paires.map(([a, b]) => `<div>${ecrireNombre(a, r)} <span class="nu-signe"></span> ${ecrireNombre(b, r)}</div>`).join("")}</div>`,
         `<div class="nu-paires">${paires.map(([a, b]) => `<div>${ecrireNombre(a, r)} <b>${escapeHtml(comparer(a, b, r))}</b> ${ecrireNombre(b, r)}</div>`).join("")}</div>`);
     } else if (ex === "encadrer") {
-      const nombres = nombresNumeration(r, combien, alea);
+      const nombres = nombresAEncadrer(r, combien, alea);
       const cadres = nombres.map((n) => ({ n, e: encadrement(n, r, alea) }));
       bloc("Encadre chaque nombre comme on te le demande.",
         `<div class="nu-lignes">${cadres.map(({ n, e }) => `<div><span class="nu-cadre"></span> &lt; ${ecrireNombre(n, r)} &lt; <span class="nu-cadre"></span> <span class="nu-aussi">(${e.libelle})</span></div>`).join("")}</div>`,

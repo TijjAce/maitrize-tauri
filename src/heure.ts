@@ -69,12 +69,14 @@ const MINUTES: Record<PrecisionHeure, number[]> = {
 /** Les heures de la feuille, toutes différentes tant que la précision le permet. */
 export function heures(r: ReglagesHeure, graine: number): Heure[] {
   const alea = hasard(graine);
+  // L'après-midi aussi, un cadran se lit de deux façons : on tire des cadrans tous différents (10 h et 22 h n'en font
+  // qu'un), puis le matin ou l'après-midi. Midi et minuit, ni l'un ni l'autre, n'en sont pas.
   const possibles: Heure[] = [];
-  for (let h = r.apresMidi ? 0 : 1; h <= (r.apresMidi ? 23 : 12); h++) for (const m of MINUTES[r.precision]) possibles.push({ h, m });
+  for (let h = 1; h <= (r.apresMidi ? 11 : 12); h++) for (const m of MINUTES[r.precision]) possibles.push({ h, m });
   const combien = Math.max(1, Math.min(24, r.combien));
   const sortie: Heure[] = [];
   while (sortie.length < combien) sortie.push(...melanger(alea, possibles).slice(0, combien - sortie.length));
-  return sortie;
+  return r.apresMidi ? sortie.map((t) => (alea() < 0.5 ? t : autreLecture(t))) : sortie;
 }
 
 const deux = (m: number) => String(m).padStart(2, "0");

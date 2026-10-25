@@ -247,9 +247,12 @@ function feuilleDicteeDeMots(r: ReglagesOrthographe, graine: number, motsDeLaCla
   const n = Math.max(4, Math.min(10, r.combien));
   const mots = (saisis.length ? source : melanger(hasard(graine), source)).slice(0, r.aide ? Math.max(4, n - 2) : n);
   const trou = (m: string) => {
-    // Les plus fragiles : une lettre sur deux à trouver, au milieu du mot.
-    const k = Math.max(1, Math.floor(m.length / 2));
-    return escapeHtml(m.slice(0, k - 1)) + '<span class="or-trou"></span>' + escapeHtml(m.slice(k));
+    // Les plus fragiles : une lettre à trouver, au milieu du mot — une lettre, jamais l'espace de « il y a » ni le
+    // trait d'union de « là-bas ».
+    const milieu = Math.max(0, Math.floor(m.length / 2) - 1);
+    const autour = Array.from({ length: m.length }, (_, d) => [milieu - d, milieu + d]).flat().filter((i) => i >= 0 && i < m.length);
+    const i = autour.find((x) => /\p{L}/u.test(m[x])) ?? milieu;
+    return escapeHtml(m.slice(0, i)) + '<span class="or-trou"></span>' + escapeHtml(m.slice(i + 1));
   };
   const items = mots.map((m, i) => `<div class="or-num"><b>${i + 1}.</b> ${r.aide ? `<span class="or-atrous">${trou(m)}</span>` : '<span class="or-ligne-mot"></span>'}</div>`).join("");
   const consigne = r.aide
