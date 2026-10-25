@@ -4,7 +4,9 @@ import { Modal, Field, Input, Select, Textarea, useAsync } from "./ui";
 import { CompetenceTree, CompetenceSelectionnee, labelCourt } from "./CompetenceTree";
 import { FichierImg } from "./Deroulement";
 import { PhotoTelephone } from "./PhotoTelephone";
-import { demarcheDe, demarchesDeLaCompetence, demarcheSuggeree, demarchesParFamille, resumeDuCadre } from "../demarches";
+import { demarcheDe, demarchesDeLaCompetence, demarcheSuggeree, resumeDuCadre } from "../demarches";
+import { BibliothequeDesDemarches } from "./BibliothequeDesDemarches";
+import { livreDe } from "../bibliothequeDemarches";
 import { sequencesParCompetence, titresVisant } from "../sequencesVisees";
 import {
   ateliersRattaches, classeDe, feuilleDuGenerateur, feuilleRattachee, planDesFeuilles, type AtelierRattache, type ContexteFeuilles, type FeuilleAFabriquer,
@@ -67,8 +69,6 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   const possibles = React.useMemo(() => (comp ? demarchesDeLaCompetence(comp, comp.referentielNom) : []),
     [s.competenceVisee]); // eslint-disable-line react-hooks/exhaustive-deps
   const cartes = demarcheDuCadre && !possibles.includes(demarcheDuCadre) ? [...possibles, demarcheDuCadre] : possibles;
-  // Tous les déroulements, pour en prendre un autre : la liste ne s'ouvre qu'à la demande.
-  const [autreDeroulement, setAutreDeroulement] = React.useState(false);
   // Le Vilain Petit Canard a ses feuilles à lui, faites de pictogrammes : on les charge dès qu'on le choisit.
   const niveauDuCanard = niveauDeLaDemarche(cadre);
   const [imagesDuCanard, setImagesDuCanard] = React.useState<Images | null>(null);
@@ -233,7 +233,7 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
       competenceVisee: JSON.stringify(c), matiere: c.domaineTitre, cycle: ref.cycle || s.cycle, couleur: couleurPourMatiere(c.domaineTitre),
       ...(programmationTouchee ? {} : { niveau: prog?.niveau || niveau, periode }),
     });
-    setCadre(demarche.id); setSuivi(""); setCadreChoisi(false); setAutreDeroulement(false);
+    setCadre(demarche.id); setSuivi(""); setCadreChoisi(false);
   };
   // La période peut choisir la séquence — au CP, les nombres jusqu'à 59 ou jusqu'à 100 ; au CE1, la table de 7 en
   // période 3, La Martinière aux autres — : tant qu'on n'a pas choisi soi-même le déroulement, il suit la période.
@@ -241,7 +241,7 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
   React.useEffect(() => {
     if (comp && !cadreChoisi) setCadre(demarcheSuggeree(comp, comp.referentielNom, s.periode).id);
   }, [s.periode]); // eslint-disable-line react-hooks/exhaustive-deps
-  const effacer = () => { up({ competenceVisee: "", matiere: "", cycle: "", couleur: "blue" }); setCadre(""); setSuivi(""); setCadreChoisi(false); setAutreDeroulement(false); };
+  const effacer = () => { up({ competenceVisee: "", matiere: "", cycle: "", couleur: "blue" }); setCadre(""); setSuivi(""); setCadreChoisi(false); };
 
   return (
     <Modal large titre={sequence.titre && sequence.titre !== "Nouvelle séquence" ? "Modifier la séquence" : "Nouvelle séquence"} onClose={onClose}
@@ -319,24 +319,14 @@ export function FormSequence({ sequence, nouvelle = false, onClose, onSaved }: {
                   <button key={d.id} type="button" role="radio" aria-checked={cadre === d.id}
                     className={`deroulement-choix${cadre === d.id ? " actif" : ""}`} onClick={() => prendreLeCadre(d.id)}>
                     <b>{d.nom}</b>
-                    <span className="meta">{resumeDuCadre(d)}{periode ? ` · période ${periode}` : ""}</span>
+                    <span className="meta">{livreDe(d).sorte === "sequence" ? "📚 Séquence toute faite" : "🧭 Méthodologie"} · {resumeDuCadre(d)}{periode ? ` · période ${periode}` : ""}</span>
                   </button>
                 );
               })}
             </div>
-            {autreDeroulement ? (
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "8px 0 6px" }}>
-                <Select value={cadre} onChange={(e) => prendreLeCadre(e.target.value)} style={{ maxWidth: 460 }} aria-label="Un autre déroulement">
-                  {demarchesParFamille().map((g) => (
-                    <optgroup key={g.famille} label={g.famille}>
-                      {g.demarches.map((d) => <option key={d.id} value={d.id}>{d.nom}</option>)}
-                    </optgroup>
-                  ))}
-                </Select>
-              </div>
-            ) : (
-              <button type="button" className="lien" style={{ margin: "6px 0 4px", fontSize: 12.5 }} onClick={() => setAutreDeroulement(true)}>Un autre déroulement…</button>
-            )}
+            {/* Tous les déroulements, dans leur bibliothèque : celui qu'on y prend se montre ici, comme les cartes. */}
+            <BibliothequeDesDemarches label="Un autre déroulement…" className="lien" style={{ margin: "6px 0 4px", fontSize: 12.5 }}
+              depuis={demarcheDuCadre} classe={comp?.niveau} directement choisie={cadre} onChoisir={(d) => prendreLeCadre(d.id)} />
             <div className="meta" style={{ fontSize: 12.5, lineHeight: 1.5 }}>{demarche.resume}</div>
             <div className="meta" style={{ fontSize: 12, lineHeight: 1.4, opacity: .85 }}>📖 {demarche.source}</div>
             <ol className="deroulement-seances">

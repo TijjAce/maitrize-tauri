@@ -1,7 +1,9 @@
 import React from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Page } from "../App";
-import { demarcheDe, demarcheSuggeree, demarchesParFamille, resumeDuCadre, seancesDuCadre, type Demarche } from "../demarches";
+import { demarcheSuggeree, demarchesDeLaCompetence, resumeDuCadre, seancesDuCadre, type Demarche } from "../demarches";
+import { BibliothequeDesDemarches } from "../components/BibliothequeDesDemarches";
+import { livreDe } from "../bibliothequeDemarches";
 import { MATERIEL_DES_MOTS, avecLaSeanceDesMots, estLaSeanceDesMots } from "../motsDesProblemes";
 import { api, Sequence, Seance, MaterielItem, Jeu, nouvelleSeance, nowIso, formatDuree, telechargerTexte, teinteSequence } from "../api";
 import { decalee, deplacee, ordonnees, renumerotees } from "../ordreSeances";
@@ -239,20 +241,14 @@ export default function SequenceDetail() {
       </div>
       {(seances?.length ?? 0) === 0 ? (
         <>
-          <Empty icone="📝" titre="Aucune séance" sous="Ajoutez la première séance, ou posez un cadre : une démarche d'un guide crée les séances et leurs phases." />
+          <Empty icone="📝" titre="Aucune séance" sous="Ajoutez la première séance, ou posez une séquence toute faite ou une méthodologie : elle crée les séances et leurs phases." />
           <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", alignItems: "center", marginTop: -6, marginBottom: 18 }}>
             <button className="btn sm primary" title={`${suggeree.source} — ${resumeDuCadre(avecLaSeanceDesMots(suggeree))}`} onClick={() => poserCadre(suggeree)}>
-              🧭 {suggeree.nom}
+              {livreDe(suggeree).sorte === "sequence" ? "📚" : "🧭"} {suggeree.nom}
             </button>
-            <select className="select" value="" style={{ fontSize: 12.5, maxWidth: 340 }} aria-label="Poser une autre démarche"
-              onChange={(e) => { const d = demarcheDe(e.target.value); if (d) poserCadre(d); }}>
-              <option value="">Autre démarche…</option>
-              {demarchesParFamille().map((g) => (
-                <optgroup key={g.famille} label={g.famille}>
-                  {g.demarches.map((d) => <option key={d.id} value={d.id}>{d.nom} · {resumeDuCadre(avecLaSeanceDesMots(d))}</option>)}
-                </optgroup>
-              ))}
-            </select>
+            {/* Les séquences toutes faites et les méthodologies : leur bibliothèque, comme celle de « Citer un passage » (demande de l'enseignant, octobre 2026). */}
+            <BibliothequeDesDemarches label="Autre séquence ou méthodologie…" proposees={comp ? demarchesDeLaCompetence(comp, comp.referentielNom) : []}
+              depuis={suggeree} classe={comp?.niveau} voir={avecLaSeanceDesMots} onChoisir={(d) => { void poserCadre(d); }} />
           </div>
         </>
       ) : (
