@@ -307,6 +307,84 @@ export function comprendre(phrase: string, ctx: ContexteTelecommande): Compris {
   return { genre: "chercher", ...cherche };
 }
 
+/** Le modèle qui lit, en secours, une phrase que la télécommande n'a pas comprise (essai du 25 octobre : le plus juste). */
+export const MODELE_DE_SECOURS = "ministral-14b-latest";
+
+/** Le réglage : « oui », Mistral lit les phrases incomprises. */
+export const CLE_SECOURS = "telecommande:mistral";
+
+/**
+ * Ce qu'on dit à Mistral quand la télécommande n'a pas compris : les actions possibles et les pages de la classe,
+ * par leur nom — ni les élèves, ni rien d'autre de la classe. Sa réponse ne vaut qu'une fois relue par `lireLeSecours`.
+ */
+export function consigneDuSecours(destinations: Destination[]): string {
+  const pages = [...new Set(destinations.filter(pourLaClasse).map((d) => nomDeLaPage(d.label)))];
+  return `Tu es la télécommande vocale d'une classe : l'enseignant parle à son téléphone, et le Mac, projeté au tableau, affiche. Tu reçois la transcription de ce qu'il a dit ; elle peut contenir des fautes d'écoute. Choisis l'action demandée et réponds uniquement par un objet JSON, sans texte autour.
+
+Actions :
+- {"action":"minuteur","secondes":N} — lancer un minuteur. « deux minutes trente » = 150 ; « un quart d'heure » = 900.
+- {"action":"page","page":"NOM"} — afficher une page ; NOM est exactement un nom de la liste ci-dessous.
+- {"action":"plein_ecran","actif":true} ou {"action":"plein_ecran","actif":false}
+- {"action":"fermer"} — fermer ce qui est affiché.
+- {"action":"chercher","quoi":"MOTS"} — afficher une séquence, une séance, un jeu, un atelier ou un texte nommés dans la phrase et absents de la liste ; MOTS : les mots qui le nomment.
+- {"action":"note","eleve":"PRÉNOM","texte":"TEXTE"} — noter une observation sur un élève, sans rien afficher.
+- {"action":"aide"} — l'enseignant demande ce qu'il peut dire.
+- {"action":"rien","pourquoi":"…"} — la phrase ne demande rien de tout cela.
+
+Pages : ${pages.join(" ; ")}.
+
+Si un mot ressemble à l'oreille au nom d'une page (« la prise » pour « la frise »), choisis cette page. N'invente jamais une page hors de la liste.`;
+}
+
+/** L'élève que Mistral a nommé : son nom entier ou son prénom, et un seul élève de la classe. */
+function eleveNomme(nom: string, eleves: ContexteTelecommande["eleves"]): ContexteTelecommande["eleves"][number] | null {
+  const dit = plat(nom);
+  if (!dit) return null;
+  const entiers = eleves.filter((e) => plat(e.nom) === dit);
+  const retenus = entiers.length ? entiers : eleves.filter((e) => plat(e.nom).split(" ")[0] === dit);
+  return retenus.length === 1 ? retenus[0] : null;
+}
+
+/**
+ * La réponse de Mistral, relue : une action connue, une page de la classe — jamais une autre —, un élève de la
+ * classe, une durée possible ; sinon rien. La règle du tableau se tient ici, et non dans la consigne.
+ */
+export function lireLeSecours(reponse: string, ctx: ContexteTelecommande): Compris | null {
+  let j: { action?: string; secondes?: unknown; page?: unknown; actif?: unknown; quoi?: unknown; eleve?: unknown; texte?: unknown };
+  try {
+    j = JSON.parse(reponse.trim().replace(/^```(?:json)?\s*|\s*```$/g, ""));
+  } catch {
+    return null;
+  }
+  switch (j?.action) {
+    case "minuteur": {
+      const secondes = Math.round(Number(j.secondes));
+      return secondes >= 5 && secondes <= 3 * 3600 ? { genre: "minuteur", secondes } : null;
+    }
+    case "page": {
+      const d = ctx.destinations.filter(pourLaClasse).find((x) => nomDeLaPage(x.label) === j.page);
+      return d ? { genre: "aller", destination: d } : null;
+    }
+    case "plein_ecran":
+      return { genre: "pleinEcran", actif: j.actif !== false };
+    case "fermer":
+      return { genre: "fermer" };
+    case "chercher": {
+      const c = aChercher(plat(String(j.quoi ?? "")));
+      return c.quoi ? { genre: "chercher", ...c } : null;
+    }
+    case "note": {
+      const eleve = eleveNomme(String(j.eleve ?? ""), ctx.eleves);
+      const texte = String(j.texte ?? "").trim();
+      return eleve && texte ? { genre: "note", eleve, texte: texte.charAt(0).toUpperCase() + texte.slice(1) } : null;
+    }
+    case "aide":
+      return { genre: "aide" };
+    default:
+      return null;
+  }
+}
+
 /**
  * Ce que Whisper lit avant chaque commande, comme s'il venait de l'entendre : des commandes, les pages qu'on nomme le
  * plus, puis les prénoms de la classe pour « note pour… ». Sans cela, il invente sur deux mots (« Plein écran »
