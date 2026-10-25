@@ -184,6 +184,30 @@ pub fn fichiers_dir() -> PathBuf {
     dir
 }
 
+/// Le nom caché sous lequel un fichier joint s'écrit avant de prendre le sien : la synchronisation ignore les
+/// noms qui commencent par un point (`fichiers_locaux`).
+pub(crate) fn provisoire_de(chemin: &std::path::Path) -> PathBuf {
+    let nom = chemin.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    chemin.with_file_name(format!(".{nom}.ecriture"))
+}
+
+/// Écrit un fichier joint d'un seul coup : sous un nom caché, puis renommé. Une synchronisation qui passait pendant
+/// l'écriture envoyait le fichier à moitié écrit, et l'autre ordinateur le gardait ainsi pour toujours.
+pub(crate) fn ecrire_fichier_joint(chemin: &std::path::Path, octets: &[u8]) -> std::io::Result<()> {
+    let provisoire = provisoire_de(chemin);
+    std::fs::write(&provisoire, octets).and_then(|_| std::fs::rename(&provisoire, chemin)).inspect_err(|_| {
+        std::fs::remove_file(&provisoire).ok();
+    })
+}
+
+/// Copie un fichier dans les fichiers joints, de la même façon : sous un nom caché, puis renommé.
+pub(crate) fn copier_fichier_joint(source: &std::path::Path, chemin: &std::path::Path) -> std::io::Result<()> {
+    let provisoire = provisoire_de(chemin);
+    std::fs::copy(source, &provisoire).and_then(|_| std::fs::rename(&provisoire, chemin)).inspect_err(|_| {
+        std::fs::remove_file(&provisoire).ok();
+    })
+}
+
 /// La corbeille des fichiers joints : un fichier effacé y passe un an.
 ///
 /// Revenir à un état passé de l'application doit retrouver les documents de
@@ -405,6 +429,16 @@ pub fn copie_de_securite(conn: &Connection, motif: &str) -> Result<String, Strin
 /// Copies faites avant une opération ou une mise à jour, gardées à part des copies de chaque jour.
 const COPIES_DE_SECURITE_GARDEES: usize = 10;
 
+/// Le moment d'une copie, tiré de son nom (`maitrize-AAAA-MM-JJ[-motif-HHMMSS].sqlite3`) : sa date, puis son heure.
+fn moment_de_la_copie(p: &std::path::Path) -> String {
+    let nom = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    let date = nom.get(9..19).unwrap_or("");
+    let heure = nom.trim_end_matches(".sqlite3").rsplit('-').next()
+        .filter(|h| h.len() == 6 && h.bytes().all(|b| b.is_ascii_digit()))
+        .unwrap_or("000000");
+    format!("{date}{heure}")
+}
+
 /// Ne garde que les copies les plus récentes : sept copies de chaque jour, et
 /// dix copies faites avant une opération ou une mise à jour.
 ///
@@ -420,8 +454,9 @@ pub(crate) fn purger_sauvegardes(dir: &std::path::Path) {
         .partition(|p| p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.len() == "maitrize-AAAA-MM-JJ.sqlite3".len()));
     for (fichiers, gardees) in [(&mut du_jour, SAUVEGARDES_GARDEES), (&mut de_securite, COPIES_DE_SECURITE_GARDEES)] {
         if fichiers.len() <= gardees { continue; }
-        // Le nom porte la date ISO : l'ordre alphabétique est l'ordre chronologique.
-        fichiers.sort();
+        // Le nom porte la date ISO, puis le motif, puis l'heure : on range par la date et l'heure. Par le nom seul,
+        // « avant-import » passait avant « avant-v… » du même jour, et la plus récente pouvait partir la première.
+        fichiers.sort_by_key(|p| moment_de_la_copie(p));
         for vieux in &fichiers[..fichiers.len() - gardees] {
             std::fs::remove_file(vieux).ok();
         }
@@ -586,6 +621,21 @@ mod tests_copies {
         assert_eq!(jours, SAUVEGARDES_GARDEES, "{restent:?}");
         assert_eq!(restent.len() - jours, COPIES_DE_SECURITE_GARDEES, "{restent:?}");
         assert!(restent.contains(&"maitrize-2026-10-03.sqlite3".to_string()), "les sept derniers jours restent");
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    #[test]
+    fn la_copie_de_securite_la_plus_recente_reste_quel_que_soit_son_motif() {
+        let d = dossier("purge-motifs");
+        for k in 1..=10 {
+            std::fs::write(d.join(format!("maitrize-2026-10-09-avant-v1.6.3{k}-0900{k:02}.sqlite3")), b"x").unwrap();
+        }
+        // La dernière de la journée, « avant-import », passe avant « avant-v… » par ordre alphabétique.
+        std::fs::write(d.join("maitrize-2026-10-09-avant-import-235900.sqlite3"), b"x").unwrap();
+        purger_sauvegardes(&d);
+        let restent = copies(&d);
+        assert!(restent.contains(&"maitrize-2026-10-09-avant-import-235900.sqlite3".to_string()), "{restent:?}");
+        assert!(!restent.contains(&"maitrize-2026-10-09-avant-v1.6.31-090001.sqlite3".to_string()), "{restent:?}");
         std::fs::remove_dir_all(&d).ok();
     }
 }

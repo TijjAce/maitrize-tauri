@@ -258,7 +258,11 @@ unsafe fn imprimer_dans(vue: *mut objc2_web_kit::WKWebView, chemin: &std::path::
 pub async fn feuille_en_pdf(app: AppHandle, html: String) -> Result<String, String> {
     let nom = format!("{}.pdf", uuid::Uuid::new_v4());
     let sortie = crate::db::fichiers_dir().join(&nom);
-    ecrire_pdf(&app, html, sortie).await?;
+    // Imprimée sous un nom caché (qui garde « .pdf », pour l'impression), puis renommée : la synchronisation
+    // n'envoie jamais une feuille à moitié écrite.
+    let provisoire = sortie.with_file_name(format!(".{nom}"));
+    ecrire_pdf(&app, html, provisoire.clone()).await?;
+    std::fs::rename(&provisoire, &sortie).map_err(|err| { std::fs::remove_file(&provisoire).ok(); err.to_string() })?;
     Ok(nom)
 }
 
