@@ -595,7 +595,7 @@ fn repondre(mut req: tiny_http::Request, token: &str, page: &str, data_json: &st
         let octets = lire_corps(&mut req, MAX_PHOTO).unwrap_or_default();
         let (code, body) = if !octets.is_empty() {
             let fichier = format!("{}.{}", Uuid::new_v4(), ext);
-            match std::fs::write(crate::db::fichiers_dir().join(&fichier), &octets) {
+            match crate::db::ecrire_fichier_joint(&crate::db::fichiers_dir().join(&fichier), &octets) {
                 Ok(()) => {
                     let _ = app.emit("photo:recue", fichier.clone());
                     (200, format!("{{\"ok\":true,\"fichier\":{}}}", serde_json::to_string(&fichier).unwrap_or_default()))
@@ -717,7 +717,7 @@ fn photo_repondre(mut req: tiny_http::Request, token: &str, app: &tauri::AppHand
         let buf = lire_corps(&mut req, MAX_PHOTO).unwrap_or_default();
         if !buf.is_empty() {
             let fichier = format!("{}.{}", Uuid::new_v4(), ext);
-            if std::fs::write(crate::db::fichiers_dir().join(&fichier), &buf).is_ok() {
+            if crate::db::ecrire_fichier_joint(&crate::db::fichiers_dir().join(&fichier), &buf).is_ok() {
                 let _ = app.emit("photo:recue", fichier);
                 let _ = req.respond(tiny_http::Response::from_string("OK"));
                 return !serie;

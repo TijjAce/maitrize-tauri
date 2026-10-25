@@ -2033,7 +2033,7 @@ pub async fn coffre_download(db: State<'_, Db>, url: String, nom: String) -> R<D
         return Err("Ce document n'est pas un PDF.".into());
     }
     let fichier = format!("{}.pdf", new_id());
-    std::fs::write(fichiers_dir().join(&fichier), &bytes).map_err(e)?;
+    crate::db::ecrire_fichier_joint(&fichiers_dir().join(&fichier), &bytes).map_err(e)?;
     let doc = DocumentCoffre {
         id: new_id(), nom, nom_fichier: fichier, taille_octets: bytes.len() as i64, date_ajout: now_iso(),
     };
@@ -2194,7 +2194,7 @@ pub fn fichier_save(nom: String, base64: String) -> R<String> {
     let ext = std::path::Path::new(&nom).extension()
         .and_then(|s| s.to_str()).unwrap_or("bin");
     let fichier = format!("{}.{}", new_id(), ext);
-    std::fs::write(fichiers_dir().join(&fichier), data).map_err(e)?;
+    crate::db::ecrire_fichier_joint(&fichiers_dir().join(&fichier), &data).map_err(e)?;
     Ok(fichier)
 }
 
@@ -2255,7 +2255,7 @@ pub fn fichier_importer_depuis_chemin(chemin: String) -> R<String> {
     let src = std::path::Path::new(&chemin);
     let ext = src.extension().and_then(|s| s.to_str()).unwrap_or("bin");
     let fichier = format!("{}.{}", new_id(), ext);
-    std::fs::copy(src, fichiers_dir().join(&fichier)).map_err(e)?;
+    crate::db::copier_fichier_joint(src, &fichiers_dir().join(&fichier)).map_err(e)?;
     Ok(fichier)
 }
 
@@ -3703,7 +3703,11 @@ pub fn export_json(c: &rusqlite::Connection) -> R<String> {
 pub fn import_data(db: State<Db>, json: String) -> R<String> {
     let c = db.lock();
     let copie = crate::db::copie_de_securite(&c, "avant-import")?;
-    import_json(&c, &json)?;
+    let rates = import_json(&c, &json)?;
+    if rates > 0 {
+        return Err(format!("Les données sont restaurées, mais {rates} fichier(s) joint(s) n'ont pas pu s'écrire (disque plein ?). \
+                            Vos données d'avant restent dans la copie « {copie} »."));
+    }
     Ok(copie)
 }
 
@@ -3715,13 +3719,16 @@ pub fn import_data(db: State<Db>, json: String) -> R<String> {
 /// l'autre machine comme si on venait de tout ressaisir. On relève donc le
 /// repère avant, et l'on marque comme distant tout ce que la restauration a
 /// produit — ce n'est pas du travail neuf, c'est une remise en état.
-pub fn import_json(c: &rusqlite::Connection, json: &str) -> R<()> {
+pub fn import_json(c: &rusqlite::Connection, json: &str) -> R<usize> {
     let avant = crate::journal::dernier_seq(c);
+    // Ce qui attendait encore de partir vers l'autre ordinateur est remplacé par la restauration : il ne part plus.
+    // Sinon, une suppression faite ici par mégarde, puis défaite par la restauration, partait quand même là-bas.
+    let en_attente = crate::sync::get_setting(c, "syncSeqEnvoyee").parse::<i64>().unwrap_or(0).min(avant);
     // Les dossiers du plan de travail d'ici : une sauvegarde de l'autre
     // ordinateur les ferait disparaître, même vides.
     let dossiers = crate::journal::reglages_des_dossiers(c);
     let resultat = import_json_brut(c, json);
-    crate::journal::marquer_distants(c, avant);
+    crate::journal::marquer_distants(c, if resultat.is_ok() { en_attente } else { avant });
     // Remis après le marquage : ce sont des dossiers d'ici que l'autre
     // ordinateur ne connaît pas, ils doivent partir vers lui.
     if resultat.is_ok() {
@@ -3730,10 +3737,22 @@ pub fn import_json(c: &rusqlite::Connection, json: &str) -> R<()> {
     resultat
 }
 
-fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
+/// Restaure les tables, tout ou rien, puis les fichiers joints ; rend combien de fichiers n'ont pas pu s'écrire.
+fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<usize> {
     let root: serde_json::Value = serde_json::from_str(json).map_err(e)?;
     let obj = root.as_object().ok_or("JSON racine invalide")?;
 
+    // Tout ou rien : une erreur en chemin (disque plein, application quittée) laissait des tables de la sauvegarde
+    // et les autres d'aujourd'hui.
+    c.execute_batch("BEGIN IMMEDIATE").map_err(e)?;
+    if let Err(err) = importer_les_tables(c, obj).and_then(|_| c.execute_batch("COMMIT").map_err(e)) {
+        c.execute_batch("ROLLBACK").ok();
+        return Err(format!("Restauration arrêtée, rien n'a changé : {err}"));
+    }
+    Ok(restaurer_les_fichiers(c, obj))
+}
+
+fn importer_les_tables(c: &rusqlite::Connection, obj: &serde_json::Map<String, serde_json::Value>) -> R<()> {
     for t in TABLES_EXPORT {
         let Some(arr) = obj.get(*t).and_then(|v| v.as_array()) else { continue };
         // Ne pas vider les référentiels intégrés (table non listée). Pour
@@ -3793,7 +3812,13 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
         }
     }
 
-    // Restaure les fichiers joints (photos, PDF).
+    Ok(())
+}
+
+/// Les fichiers joints d'une sauvegarde (photos, PDF), chacun écrit d'un seul coup : sur un disque plein, le bon
+/// fichier d'avant reste entier au lieu d'être tronqué. Rend combien n'ont pas pu s'écrire.
+fn restaurer_les_fichiers(c: &rusqlite::Connection, obj: &serde_json::Map<String, serde_json::Value>) -> usize {
+    let mut rates = 0;
     if let Some(fichiers) = obj.get("_fichiers").and_then(|v| v.as_object()) {
         use base64::Engine;
         for (nom, val) in fichiers {
@@ -3801,16 +3826,18 @@ fn import_json_brut(c: &rusqlite::Connection, json: &str) -> R<()> {
             let Ok(chemin) = fichier_de_l_application(nom) else { continue };
             if let Some(b64) = val.as_str() {
                 if let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(b64) {
-                    if std::fs::write(&chemin, bytes).is_ok() {
+                    if crate::db::ecrire_fichier_joint(&chemin, &bytes).is_ok() {
                         // Ramené par la restauration : s'il avait été effacé, sa marque tombe.
                         c.execute("DELETE FROM fichiers_effaces WHERE nom=?1", params![nom]).ok();
                         c.execute("INSERT OR IGNORE INTO fichiers_rendus (nom) VALUES (?1)", params![nom]).ok();
+                    } else {
+                        rates += 1;
                     }
                 }
             }
         }
     }
-    Ok(())
+    rates
 }
 
 #[cfg(test)]
@@ -4037,6 +4064,38 @@ mod tests_restauration {
         assert_eq!(reglage(&mac, "identifiantMachine"), "id-du-mac");
         assert_eq!(reglage(&mac, "syncSeqEnvoyee"), "913");
         assert_eq!(reglage(&mac, "ecole"), "École restaurée", "les données, elles, sont restaurées");
+    }
+
+    /// Une restauration qui échoue en chemin ne change rien : avant, des tables étaient celles de la sauvegarde et les
+    /// autres celles d'aujourd'hui.
+    #[test]
+    fn une_restauration_ratee_ne_change_rien() {
+        let ici = poste("id-ici", "0");
+        ici.execute_batch("PRAGMA foreign_keys = ON;").unwrap();
+        // Les réglages passent d'abord ; puis une séance qui pointe vers une séquence absente arrête tout.
+        let abimee = r#"{"_format":"maitrize-backup-v1",
+            "settings":[{"cle":"ecole","valeur":"École restaurée"}],
+            "seances":[{"id":"s1","titre":"Orpheline","sequence_id":"absente","numero":1,"duree":45}]}"#;
+        let err = super::import_json(&ici, abimee).unwrap_err();
+        assert!(err.contains("rien n'a changé"), "{err}");
+        assert_eq!(reglage(&ici, "ecole"), "École d'ici");
+    }
+
+    /// Ce qui attendait de partir avant la restauration ne part plus : la restauration l'a remplacé.
+    #[test]
+    fn ce_qui_attendait_de_partir_est_remplace_par_la_restauration() {
+        let ici = poste("id-ici", "0");
+        crate::journal::poser_declencheurs(&ici, "id-ici");
+        let repere = crate::journal::dernier_seq(&ici);
+        ici.execute("UPDATE settings SET valeur = ?1 WHERE cle = 'syncSeqEnvoyee'", [repere.to_string()]).unwrap();
+        // Une séquence supprimée par mégarde, et la suppression pas encore envoyée.
+        ici.execute("INSERT INTO sequences (id, titre, date_creation) VALUES ('q1', 'Les nombres', '2026-10-01')", []).unwrap();
+        ici.execute("DELETE FROM sequences WHERE id = 'q1'", []).unwrap();
+        let (en_attente, _) = crate::journal::changements_locaux(&ici, repere).unwrap();
+        assert!(en_attente.iter().any(|ch| ch.ligne_id == "q1"));
+        super::import_json(&ici, r#"{"_format":"maitrize-backup-v1","sequences":[{"id":"q1","titre":"Les nombres","date_creation":"2026-10-01"}]}"#).unwrap();
+        let (apres, _) = crate::journal::changements_locaux(&ici, repere).unwrap();
+        assert!(apres.iter().all(|ch| ch.ligne_id != "q1"), "la suppression ne part plus");
     }
 
     /// Le défaut signalé : passer d'un ordinateur à l'autre effaçait les

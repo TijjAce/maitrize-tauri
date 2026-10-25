@@ -316,7 +316,7 @@ fn lire_recus(c: &Connection) -> R<HashSet<String>> {
 fn ecrire_image(b64: &str, ext: &str) -> Option<String> {
     let bytes = STANDARD.decode(b64).ok()?;
     let nom = format!("{}.{}", uuid::Uuid::new_v4(), ext);
-    std::fs::write(fichiers_dir().join(&nom), bytes).ok()?;
+    crate::db::ecrire_fichier_joint(&fichiers_dir().join(&nom), &bytes).ok()?;
     Some(nom)
 }
 
@@ -798,15 +798,16 @@ async fn lister_distantes(cl: &Client, cfg: &S3Cfg) -> R<Vec<SauvegardeDistante>
     // Date de dernière écriture de la base locale, au même format que les noms
     // de sauvegarde, pour que la comparaison soit une simple comparaison de
     // chaînes.
-    let date_locale = std::fs::metadata(crate::db::data_dir().join("maitrize.sqlite3"))
-        .ok()
-        .and_then(|m| m.modified().ok())
-        .map(|t| chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d-%H%M%S").to_string());
+    // Le journal d'écriture compris (-wal) : avant qu'il soit reversé dans la base, le fichier de la base garde
+    // l'heure d'avant, et l'avertissement ne venait pas.
+    let date_locale = derniere_ecriture_locale();
 
+    // Les sauvegardes seules (« maitrize/sauvegarde.enc » et « maitrize/sauvegarde-… ») : sous « maitrize/ », les
+    // mille premières clés d'une page étaient toutes des dépôts de synchronisation, et les sauvegardes disparaissaient.
     let resp = cl
         .list_objects_v2()
         .bucket(&cfg.bucket)
-        .prefix("maitrize/")
+        .prefix("maitrize/sauvegarde")
         .send()
         .await
         .map_err(|err| format!("Lecture du stockage impossible : {err}"))?;
@@ -903,17 +904,21 @@ pub async fn sauvegarde_pull(db: State<'_, Db>, cle: Option<String>) -> R<String
         .map_err(|_| "Déchiffrement impossible — la phrase secrète ne correspond pas.".to_string())?;
     let json = String::from_utf8(clair).map_err(|_| "Sauvegarde corrompue.".to_string())?;
     let copie;
+    let rates;
     {
         let c = db.lock();
-        copie = crate::db::copie_de_securite(&c, "avant-restauration")?;
-        crate::commands::import_json(&c, &json)?;
+        copie = crate::db::copie_de_securite(&c, "avant-restauration")
+            .map_err(|err| format!("Restauration arrêtée avant de commencer, rien n'a changé : {err}"))?;
+        rates = crate::commands::import_json(&c, &json)
+            .map_err(|err| format!("{err} Vos données d'avant sont aussi dans la copie « {copie} »."))?;
         // L'import réécrit les réglages : le repère de synchro se pose après,
         // sinon il serait remplacé par celui de la machine d'origine.
         let horodatage = cible.trim_start_matches(PREFIXE_SAUVEGARDE).trim_end_matches(".enc");
         set_setting(&c, CLE_DERNIERE_SYNC, horodatage)?;
     }
-    Ok(format!("✅ Sauvegarde restaurée. Rechargez l'application pour voir les données. \
-                Vos données d'avant sont gardées dans la copie « {copie} »."))
+    Ok(format!("✅ Sauvegarde restaurée{}. Rechargez l'application pour voir les données. \
+                Vos données d'avant sont gardées dans la copie « {copie} ».",
+        if rates > 0 { format!(" — mais {rates} fichier(s) joint(s) n'ont pas pu s'écrire (disque plein ?)") } else { String::new() }))
 }
 
 /// Ce qu'un essai de restauration a trouvé dans une sauvegarde.
@@ -1201,6 +1206,22 @@ mod tests_deltas_vus {
         assert_eq!(gardes.len(), 1500);
         assert!(gardes.iter().all(|k| presentes.contains(k)));
         assert!(gardes.windows(2).all(|w| w[0] < w[1]), "dans l'ordre des écritures");
+    }
+
+    #[test]
+    fn on_n_elague_que_les_vieux_depots_que_tout_le_monde_a_relus() {
+        // 600 dépôts, un par minute à partir du 1er octobre à 8 h (UTC).
+        let toutes: Vec<String> = (0..600).map(|i| {
+            let t = chrono::NaiveDate::from_ymd_opt(2026, 10, 1).unwrap().and_hms_opt(8, 0, 0).unwrap() + chrono::Duration::minutes(i);
+            format!("{}{}-f1c0f4ac.enc", super::PREFIXE_DELTA, t.format("%Y%m%d%H%M%S%3f"))
+        }).collect();
+        // Tous relus : seuls partent ceux d'au-delà des plus récents.
+        assert_eq!(super::a_elaguer(&toutes, "20261231000000000").len(), 600 - super::DELTAS_GARDES);
+        // Un ordinateur passé pour la dernière fois à 9 h : rien de ce qui a suivi ne part.
+        let limite = "20261001090000000";
+        let partis = super::a_elaguer(&toutes, limite);
+        assert_eq!(partis.len(), 60);
+        assert!(partis.iter().all(|k| k.as_str() < "maitrize/deltas/20261001090000000"));
     }
 }
 
@@ -1648,13 +1669,38 @@ pub async fn sync_deltas(db: State<'_, Db>) -> R<ResultatSync> {
         }
     }
 
-    // 5. Élaguer le journal partagé, qui n'a pas à grandir sans fin.
-    if cles.len() > DELTAS_GARDES {
-        for vieille in toutes.iter().rev().skip(DELTAS_GARDES) {
-            cl.delete_object().bucket(&cfg.bucket).key(vieille).send().await.ok();
+    // 5. Élaguer le journal partagé, qui n'a pas à grandir sans fin : au-delà des plus récents, ce que tous les
+    // ordinateurs ont déjà relu — chacun a relu ce qui est plus ancien que son dernier passage. Un ordinateur resté
+    // éteint garde ce qu'il n'a pas vu. (La condition portait sur les seuls dépôts nouveaux : rien ne s'élaguait.)
+    if toutes.len() > DELTAS_GARDES {
+        if let Some(limite) = dernier_passage_de_tous(&cl, &cfg, &phrase).await {
+            for vieille in a_elaguer(&toutes, &limite) {
+                cl.delete_object().bucket(&cfg.bucket).key(vieille).send().await.ok();
+            }
         }
     }
     Ok(res)
+}
+
+/// Les dépôts à effacer : au-delà des `DELTAS_GARDES` plus récents, ceux d'avant `limite` (horodatage UTC des clés).
+fn a_elaguer<'a>(toutes: &'a [String], limite: &str) -> Vec<&'a String> {
+    toutes.iter().rev().skip(DELTAS_GARDES)
+        .filter(|k| k.strip_prefix(PREFIXE_DELTA).and_then(|r| r.get(..17)).is_some_and(|h| h < limite))
+        .collect()
+}
+
+/// Le plus ancien dernier passage des ordinateurs du stockage, à l'horodatage des clés de dépôt (UTC), moins un jour
+/// de marge ; rien si une fiche ne se lit pas : on n'élague alors rien.
+async fn dernier_passage_de_tous(cl: &Client, cfg: &S3Cfg, phrase: &str) -> Option<String> {
+    let mut plus_ancien: Option<chrono::NaiveDateTime> = None;
+    for cle in cles_sous(cl, cfg, PREFIXE_MACHINE).await.ok()? {
+        let corps = cl.get_object().bucket(&cfg.bucket).key(&cle).send().await.ok()?.body.collect().await.ok()?;
+        let fiche: Machine = serde_json::from_slice(&dechiffrer_sauvegarde(phrase, corps.into_bytes().as_ref()).ok()?).ok()?;
+        // L'heure locale de cet ordinateur : la marge d'un jour couvre un autre fuseau.
+        let vue = chrono::NaiveDateTime::parse_from_str(&fiche.vue_le, "%Y-%m-%d-%H%M%S").ok()?;
+        plus_ancien = Some(plus_ancien.map_or(vue, |p| p.min(vue)));
+    }
+    plus_ancien.map(|p| (p - chrono::Duration::days(1)).format("%Y%m%d%H%M%S%3f").to_string())
 }
 
 
