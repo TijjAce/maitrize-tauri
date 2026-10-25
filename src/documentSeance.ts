@@ -15,10 +15,15 @@
 //   [@outil:o1|Réglette de lecture]   un support cité (outil, affichage,
 //                                     évaluation, jeu, materiel, feuille)
 //   [cite:…]                          une citation d'un document du coffre
+//   {rouge|un mot}                    la couleur du texte ; {fond-jaune|…} :
+//                                     le surligneur (voir COULEURS_DU_TEXTE)
+//   | Groupe | Activité |             un tableau, une rangée par ligne ;
+//   | --- | --- |                     sous la première, elle est l'en-tête
 //   ### Posture de l'enseignant       un champ de la phase, puis ses lignes
 //
-// Une ligne de texte qui commence par « # » s'écrit « \# » : tapée dans une
-// carte, elle ne devient ni une phase ni un champ.
+// Une ligne de texte qui commence par « # » ou « | » s'écrit « \# », « \| » :
+// tapée dans une carte, elle ne devient ni une phase, ni un champ, ni un
+// tableau. Dans une case de tableau, « \| » est un « | ».
 //
 // Le tableau des phases (`tableauDeroulement`) que lisent les tablettes,
 // l'impression et les aides à la tâche se tire des phases à chaque
@@ -39,7 +44,9 @@ export type Bloc =
   | { t: "phase"; titre: string; duree: string }
   | { t: "texte"; texte: string }
   | { t: "liste"; items: string[] }
-  | { t: "image"; nom: string };
+  | { t: "image"; nom: string }
+  /** `entete` : la première rangée est la ligne d'en-tête. */
+  | { t: "tableau"; lignes: string[][]; entete: boolean };
 
 const RE_PHASE = /^##(?!#)\s*(.*)$/;
 const RE_CHAMP = /^###\s*(.+?)\s*$/;
@@ -50,8 +57,86 @@ const RE_IMAGE_SEULE = /^\s*\[img:([^\]]+)\]\s*$/;
 const RE_IMAGE = /\[img:([^\]]+)\]/g;
 const RE_CITE_SUPPORT = /\[@([a-z]+):([^|\]]+)\|([^\]]*)\]/g;
 
-/** Une ligne de texte qui commence par « # » se protège : elle ne deviendra ni phase ni champ. */
-export const ligneProtegee = (ligne: string) => (/^\s*#/.test(ligne) ? `\\${ligne}` : ligne);
+/** Une ligne de texte qui commence par « # » ou « | » se protège : elle ne deviendra ni phase, ni champ, ni tableau. */
+export const ligneProtegee = (ligne: string) => (/^\s*[#|]/.test(ligne) ? `\\${ligne}` : ligne);
+
+// ── Les couleurs ──────────────────────────────────────────────────────────
+
+/** Une couleur du déroulement : son nom dans le texte, son nom à l'écran, sa valeur dans l'éditeur. */
+export interface CouleurDuDeroulement { nom: string; libelle: string; valeur: string }
+
+/** Les couleurs du texte, de quoi le marquer à l'écran comme à l'impression. */
+export const COULEURS_DU_TEXTE: CouleurDuDeroulement[] = [
+  { nom: "rouge", libelle: "Rouge", valeur: "#dc2626" }, { nom: "orange", libelle: "Orange", valeur: "#ea580c" },
+  { nom: "vert", libelle: "Vert", valeur: "#16a34a" }, { nom: "bleu", libelle: "Bleu", valeur: "#2563eb" },
+  { nom: "violet", libelle: "Violet", valeur: "#9333ea" },
+];
+/** Les surligneurs : transparents, ils se lisent sur un fond clair comme sur un fond sombre. */
+export const SURLIGNAGES: CouleurDuDeroulement[] = [
+  { nom: "fond-jaune", libelle: "Jaune", valeur: "rgba(250, 204, 21, 0.4)" }, { nom: "fond-vert", libelle: "Vert", valeur: "rgba(34, 197, 94, 0.3)" },
+  { nom: "fond-bleu", libelle: "Bleu", valeur: "rgba(59, 130, 246, 0.3)" }, { nom: "fond-rose", libelle: "Rose", valeur: "rgba(236, 72, 153, 0.3)" },
+];
+const NOMS_DES_COULEURS = [...COULEURS_DU_TEXTE, ...SURLIGNAGES].map((c) => c.nom).join("|");
+const RE_COULEUR = new RegExp(`\\{(${NOMS_DES_COULEURS})\\|([^{}]*)\\}`, "g");
+/** Le début d'une marque de couleur, « {rouge| » : dans une case de tableau, son « | » n'en ferme pas la case. */
+const RE_OUVERTURE_COULEUR = new RegExp(`^\\{(?:${NOMS_DES_COULEURS})\\|`);
+
+/** Les marques de couleur d'un texte, du dedans vers le dehors ; `remplacer` dit ce qu'elles deviennent (leur texte seul, sinon). */
+export function sansCouleurs(texte: string, remplacer: (nom: string, dedans: string) => string = (_n, dedans) => dedans): string {
+  let avant: string, t = texte;
+  do { avant = t; t = t.replace(RE_COULEUR, (_m, nom: string, dedans: string) => remplacer(nom, dedans)); } while (t !== avant);
+  return t;
+}
+
+/** Les trois composantes d'une couleur écrite en CSS (« #dc2626 », « rgb(220, 38, 38) », « rgba(…) ») ; rien sinon. */
+export function composantes(css: string): [number, number, number] | null {
+  const c = (css ?? "").trim();
+  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(c);
+  if (hex) {
+    const h = hex[1].length === 3 ? hex[1].split("").map((x) => x + x).join("") : hex[1];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  const m = /^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i.exec(c);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+
+/** Le nom, dans cette palette, d'une couleur écrite en CSS ; rien pour une couleur qui n'en est pas. */
+export function nomDeLaCouleur(css: string, palette: CouleurDuDeroulement[]): string | null {
+  const c = composantes(css);
+  if (!c) return null;
+  return palette.find((p) => { const q = composantes(p.valeur)!; return q.every((x, i) => Math.abs(x - c[i]) <= 6); })?.nom ?? null;
+}
+
+// ── Les tableaux ──────────────────────────────────────────────────────────
+
+const RE_LIGNE_DE_TABLEAU = /^\s*\|.*\|\s*$/;
+const RE_SEPARATEUR = /^\s*:?-+:?\s*$/;
+
+/** Les cases d'une rangée « | a | b | » : un « \| » reste dans sa case, comme le « | » d'un support cité ou d'une couleur. */
+export function casesDeLaLigne(ligne: string): string[] {
+  const t = ligne.trim();
+  const cases: string[] = [];
+  let ici = "";
+  for (let i = 1; i < t.length; i++) {
+    if (t.startsWith("[@", i) || t.startsWith("[cite:", i)) {
+      const fin = t.indexOf("]", i);
+      if (fin > 0) { ici += t.slice(i, fin + 1); i = fin; continue; }
+    }
+    const couleur = t[i] === "{" ? RE_OUVERTURE_COULEUR.exec(t.slice(i)) : null;
+    if (couleur) { ici += couleur[0]; i += couleur[0].length - 1; continue; }
+    if (t[i] === "\\" && t[i + 1] === "|") { ici += "|"; i++; continue; }
+    if (t[i] === "|") { cases.push(ici.trim()); ici = ""; continue; }
+    ici += t[i];
+  }
+  return cases;
+}
+
+/** Une rangée de tableau en texte : les « | » d'une case se protègent, sauf ceux des supports cités et des couleurs. */
+export const ligneDeTableau = (cases: string[]) => `| ${cases.map((c) => c.replace(/\n/g, " ")
+  .split(new RegExp(`(\\[@[a-z]+:[^|\\]]+\\|[^\\]]*\\]|\\[cite:[^\\]]+\\]|\\{(?:${NOMS_DES_COULEURS})\\|)`))
+  .map((p, i) => (i % 2 ? p : p.replace(/\|/g, "\\|"))).join("").trim()).join(" | ")} |`;
+/** La ligne qui fait de la rangée d'avant la ligne d'en-tête. */
+export const separateurDeTableau = (colonnes: number) => `| ${Array.from({ length: Math.max(1, colonnes) }, () => "---").join(" | ")} |`;
 
 /** Une marque de citation d'un support : son titre ne peut pas fermer la marque. */
 export const marqueDeCitation = (genre: GenreCite, id: string, titre: string) =>
@@ -79,6 +164,14 @@ export function lireDocument(markup: string): Bloc[] {
     if (phase) { blocs.push({ t: "phase", ...phase }); continue; }
     const img = RE_IMAGE_SEULE.exec(brute);
     if (img) { blocs.push({ t: "image", nom: img[1].trim() }); continue; }
+    if (RE_LIGNE_DE_TABLEAU.test(brute)) {
+      const cases = casesDeLaLigne(brute);
+      const der = blocs[blocs.length - 1];
+      if (der?.t !== "tableau") blocs.push({ t: "tableau", lignes: [cases], entete: false });
+      else if (der.lignes.length === 1 && !der.entete && cases.length > 0 && cases.every((c) => RE_SEPARATEUR.test(c))) der.entete = true;
+      else der.lignes.push(cases);
+      continue;
+    }
     const li = RE_LISTE.exec(brute);
     if (li) {
       const der = blocs[blocs.length - 1];
@@ -86,7 +179,7 @@ export function lireDocument(markup: string): Bloc[] {
       continue;
     }
     // Une image dans une ligne de texte : le texte avant, l'image, le texte après.
-    const ligne = brute.replace(/^(\s*)\\(?=#)/, "$1");
+    const ligne = brute.replace(/^(\s*)\\(?=[#|])/, "$1");
     let reste = ligne, m: RegExpExecArray | null;
     RE_IMAGE.lastIndex = 0;
     let coupee = false;
@@ -109,6 +202,10 @@ export function ecrireDocument(blocs: Bloc[]): string {
     if (b.t === "phase") return [`##${b.titre.trim() ? ` ${b.titre.replace(/\n/g, " ").trim()}` : ""}${b.duree.trim() ? ` (${b.duree.trim()})` : ""}`];
     if (b.t === "image") return [`[img:${b.nom}]`];
     if (b.t === "liste") return b.items.map((x) => `- ${x.replace(/\n/g, " ")}`);
+    if (b.t === "tableau") {
+      const lignes = b.lignes.map(ligneDeTableau);
+      return b.entete ? [lignes[0], separateurDeTableau(b.lignes[0].length), ...lignes.slice(1)] : lignes;
+    }
     return [ligneProtegee(b.texte.replace(/\n/g, " "))];
   }).join("\n");
 }
@@ -238,7 +335,7 @@ export const phasesOuLeChampEstRempli = (markup: string, nom: string) =>
 
 /** Une ligne sans ses marques : le titre des supports cités reste, la mise en forme s'efface. */
 export function texteSansMarques(ligne: string): string {
-  return ligne
+  return sansCouleurs(ligne)
     .replace(RE_CITE_SUPPORT, (_t, _g, _id, titre: string) => titre)
     .replace(/\[(img|cite):[^\]]+\]/g, "")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
@@ -250,6 +347,8 @@ function lignesSimples(markup: string, images = false): string[] {
   return lireDocument(markup).flatMap((b): string[] => {
     if (b.t === "image") return images ? [`[img:${b.nom}]`] : [];
     if (b.t === "liste") return b.items.map((x) => `• ${texteSansMarques(x)}`);
+    // Un tableau, rangée par rangée : ses cases remplies, séparées d'un point.
+    if (b.t === "tableau") return b.lignes.map((l) => l.map((c) => texteSansMarques(c).trim()).filter(Boolean).join(" · ")).filter(Boolean);
     if (b.t === "phase") return [];
     return [texteSansMarques(b.texte)];
   });
@@ -386,39 +485,48 @@ export function lireCitationDuCoffre(b64: string): { texte: string; source: stri
 }
 
 /**
- * Une ligne de texte en HTML : le texte échappé, le gras et l'italique, les
- * supports cités en pastilles. Dans l'éditeur (`edition`), les pastilles et
- * les citations du coffre ne se modifient pas au clavier et gardent de quoi
- * se réécrire.
+ * Une ligne de texte en HTML : le texte échappé, le gras, l'italique et les
+ * couleurs, les supports cités en pastilles. Dans l'éditeur (`edition`), les
+ * pastilles et les citations du coffre ne se modifient pas au clavier et
+ * gardent de quoi se réécrire, et les couleurs s'écrivent comme les pose la
+ * vue web — elle saura les changer ou les retirer.
  */
 export function ligneEnHtml(ligne: string, edition = false): string {
   const RE = /\[@([a-z]+):([^|\]]+)\|([^\]]*)\]|\[cite:([^\]]+)\]/g;
-  let out = "", dernier = 0, m: RegExpExecArray | null;
-  const texte = (t: string) => echapper(t)
-    .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
-    .replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\w)/g, "$1<i>$2</i>");
-  while ((m = RE.exec(ligne))) {
-    out += texte(ligne.slice(dernier, m.index));
-    if (m[4] !== undefined) {
+  // Les pastilles d'abord, mises de côté : le gras ou une couleur peuvent les entourer.
+  const pastilles: string[] = [];
+  const reperee = ligne.replace(RE, (tout: string, g: string, id: string, titre: string, cite?: string) => {
+    let html = "";
+    if (cite !== undefined) {
       // Dans l'éditeur, la citation tient sur une ligne ; à la lecture et à l'impression, elle se lit en entier.
-      const c = lireCitationDuCoffre(m[4]);
+      const c = lireCitationDuCoffre(cite);
       const source = c && (c.source || c.page) ? `${echapper(c.source)}${c.page ? `${c.source ? ", " : ""}p. ${echapper(c.page)}` : ""}` : "";
       if (edition) {
         const vu = c ? `« ${echapper(c.texte.length > 80 ? `${c.texte.slice(0, 77)}…` : c.texte)} »${source ? ` — ${source}` : ""}` : "« citation »";
-        out += `<span class="doc-citation" contenteditable="false" data-brut="${echapper(m[0])}">${vu}</span>`;
+        html = `<span class="doc-citation" contenteditable="false" data-brut="${echapper(tout)}">${vu}</span>`;
       } else if (c) {
-        out += `<span class="doc-citation">« ${echapper(c.texte)} »${source ? ` <span class="doc-source">— ${source}</span>` : ""}</span>`;
+        html = `<span class="doc-citation">« ${echapper(c.texte)} »${source ? ` <span class="doc-source">— ${source}</span>` : ""}</span>`;
       }
     } else {
-      const genre = (GENRES as readonly string[]).includes(m[1]) ? m[1] as GenreCite : "materiel";
-      const vu = `${ICONE_CITE[genre]} ${echapper(m[3])}`;
-      out += edition
-        ? `<span class="cite cite-${genre}" contenteditable="false" data-cite="${genre}:${echapper(m[2])}" data-titre="${echapper(m[3])}">${vu}</span>`
+      const genre = (GENRES as readonly string[]).includes(g) ? g as GenreCite : "materiel";
+      const vu = `${ICONE_CITE[genre]} ${echapper(titre)}`;
+      html = edition
+        ? `<span class="cite cite-${genre}" contenteditable="false" data-cite="${genre}:${echapper(id)}" data-titre="${echapper(titre)}">${vu}</span>`
         : `<span class="cite cite-${genre}">${vu}</span>`;
     }
-    dernier = m.index + m[0].length;
-  }
-  return out + texte(ligne.slice(dernier));
+    pastilles.push(html);
+    return `\uE000${pastilles.length - 1}\uE001`;
+  });
+  const marquee = echapper(reperee)
+    .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+    .replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\w)/g, "$1<i>$2</i>");
+  const coloree = sansCouleurs(marquee, (nom, dedans) => {
+    const fond = SURLIGNAGES.find((c) => c.nom === nom);
+    if (!edition) return `<span class="doc-${fond ? nom : `c-${nom}`}">${dedans}</span>`;
+    return fond ? `<span style="background-color: ${fond.valeur};">${dedans}</span>`
+      : `<font color="${COULEURS_DU_TEXTE.find((c) => c.nom === nom)!.valeur}">${dedans}</font>`;
+  });
+  return coloree.replace(/\uE000(\d+)\uE001/g, (_m, i: string) => pastilles[Number(i)]);
 }
 
 /**
@@ -445,9 +553,21 @@ export function documentEnHtml(markup: string, options: { edition?: boolean; ima
         : src ? `<figure class="doc-image"><img src="${src}" alt=""></figure>` : "";
     }
     if (b.t === "liste") return `<ul>${b.items.map((x) => `<li>${ligneEnHtml(x, edition) || "<br>"}</li>`).join("")}</ul>`;
+    if (b.t === "tableau") return tableauEnHtml(b, edition);
     return `<p>${ligneEnHtml(b.texte, edition) || "<br>"}</p>`;
   }).join("");
+  // Dans l'éditeur, un tableau en fin de case garde un paragraphe après lui : on y écrit la suite.
+  if (edition && html.endsWith("</table>")) return `${html}<p><br></p>`;
   return html || (edition ? "<p><br></p>" : "");
+}
+
+/** Un tableau en HTML : la ligne d'en-tête en `thead`, chaque rangée aussi longue que la plus longue. */
+function tableauEnHtml(b: Extract<Bloc, { t: "tableau" }>, edition: boolean): string {
+  const colonnes = Math.max(1, ...b.lignes.map((l) => l.length));
+  const rangee = (l: string[], balise: "th" | "td") =>
+    `<tr>${Array.from({ length: colonnes }, (_, i) => `<${balise}>${ligneEnHtml(l[i] ?? "", edition) || (edition ? "<br>" : "")}</${balise}>`).join("")}</tr>`;
+  const corps = (b.entete ? b.lignes.slice(1) : b.lignes).map((l) => rangee(l, "td")).join("");
+  return `<table class="doc-grille">${b.entete ? `<thead>${rangee(b.lignes[0], "th")}</thead>` : ""}${corps ? `<tbody>${corps}</tbody>` : ""}</table>`;
 }
 
 /**

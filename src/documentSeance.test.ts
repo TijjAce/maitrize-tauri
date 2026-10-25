@@ -3,7 +3,7 @@ import { ENTETE_TABLEAU, demarchesParFamille, tableauDesPhases } from "./demarch
 import {
   aDesPhases, ajouterChamp, champsDesPhases, citationsDuDocument, documentDeLaSeance, documentEnHtml, ecrireDocument, ecrireSeance,
   imagesDuDocument, lireDocument, lireSeance, ligneEnHtml, marqueDeCitation, phasesOuLeChampEstRempli, retirerChamp, seanceEnCartes,
-  tableauDuDocument, texteDuDeroulement,
+  tableauDuDocument, texteDuDeroulement, casesDeLaLigne, ligneDeTableau, nomDeLaCouleur, COULEURS_DU_TEXTE, SURLIGNAGES, texteSansMarques,
 } from "./documentSeance";
 
 const DOC = [
@@ -227,5 +227,77 @@ describe("les phases en cartes", () => {
       "Posture de l'enseignant : Questionne.",
       "2. Phase — 10 min",
     ].join("\n"));
+  });
+});
+
+describe("les couleurs et les tableaux", () => {
+  const TABLEAU = [
+    "| Groupe | Activité | Support |",
+    "| --- | --- | --- |",
+    "| A | Lire **seul** | [@feuille:f1|Le bon résumé] |",
+    "| B | 3 \\| 4 |  |",
+  ].join("\n");
+
+  it("lit un tableau, sa ligne d'en-tête, et le réécrit à l'identique", () => {
+    const blocs = lireDocument(`Avant.\n${TABLEAU}\nAprès.`);
+    expect(blocs).toEqual([
+      { t: "texte", texte: "Avant." },
+      { t: "tableau", entete: true, lignes: [["Groupe", "Activité", "Support"], ["A", "Lire **seul**", "[@feuille:f1|Le bon résumé]"], ["B", "3 | 4", ""]] },
+      { t: "texte", texte: "Après." },
+    ]);
+    expect(ecrireDocument(blocs)).toBe(`Avant.\n${TABLEAU}\nAprès.`);
+    expect(lireDocument("| a | b |\n| c | d |")).toEqual([{ t: "tableau", entete: false, lignes: [["a", "b"], ["c", "d"]] }]);
+  });
+
+  it("garde dans sa case le « | » d'un support cité, protège celui qu'on a tapé", () => {
+    expect(casesDeLaLigne("| [@outil:o1|Réglette] | x |")).toEqual(["[@outil:o1|Réglette]", "x"]);
+    expect(ligneDeTableau(["a | b", "[@outil:o1|Réglette]"])).toBe("| a \\| b | [@outil:o1|Réglette] |");
+    expect(ligneDeTableau(["{orange|B}", "{fond-jaune|x | y}"])).toBe("| {orange|B} | {fond-jaune|x \\| y} |");
+    expect(casesDeLaLigne("| {orange|B} | {fond-jaune|x \\| y} |")).toEqual(["{orange|B}", "{fond-jaune|x | y}"]);
+    // Écrite protégée par une version d'avant, elle se relit pareil.
+    expect(casesDeLaLigne("| {orange\\|B} |")).toEqual(["{orange|B}"]);
+  });
+
+  it("protège une ligne de texte qui commence par « | » : elle ne devient pas un tableau", () => {
+    const ecrit = ecrireDocument([{ t: "texte", texte: "| pas un tableau |" }]);
+    expect(ecrit).toBe("\\| pas un tableau |");
+    expect(lireDocument(ecrit)).toEqual([{ t: "texte", texte: "| pas un tableau |" }]);
+  });
+
+  it("montre le tableau en HTML, à la lecture comme dans l'éditeur", () => {
+    const lu = documentEnHtml(TABLEAU);
+    expect(lu).toContain('<table class="doc-grille"><thead><tr><th>Groupe</th><th>Activité</th><th>Support</th></tr></thead><tbody>');
+    expect(lu).toContain("<td>Lire <b>seul</b></td>");
+    expect(lu).toContain('<td><span class="cite cite-feuille">📄 Le bon résumé</span></td>');
+    expect(lu).toContain("<td>3 | 4</td><td></td>");
+    const edite = documentEnHtml(TABLEAU, { edition: true });
+    expect(edite).toContain("<td><br></td>");
+    expect(edite.endsWith("</table><p><br></p>")).toBe(true);
+  });
+
+  it("colore le texte et le surligne, à la lecture comme dans l'éditeur, gras et pastilles compris", () => {
+    expect(ligneEnHtml("Un {rouge|mot} et {fond-jaune|un **passage**}")).toBe(
+      'Un <span class="doc-c-rouge">mot</span> et <span class="doc-fond-jaune">un <b>passage</b></span>');
+    expect(ligneEnHtml("{bleu|voir [@outil:o1|Réglette]}", true)).toBe(
+      '<font color="#2563eb">voir <span class="cite cite-outil" contenteditable="false" data-cite="outil:o1" data-titre="Réglette">📏 Réglette</span></font>');
+    expect(ligneEnHtml("{fond-vert|{violet|deux}}", true)).toBe(
+      '<span style="background-color: rgba(34, 197, 94, 0.3);"><font color="#9333ea">deux</font></span>');
+    expect(ligneEnHtml("**gras [@jeu:j1|Halli Galli] gras**")).toBe('<b>gras <span class="cite cite-jeu">🎲 Halli Galli</span> gras</b>');
+    // Une couleur que la palette ne connaît pas reste du texte.
+    expect(ligneEnHtml("{noir|x}")).toBe("{noir|x}");
+  });
+
+  it("retrouve le nom d'une couleur posée par la vue web, et s'efface du texte simple", () => {
+    expect(nomDeLaCouleur("rgb(220, 38, 38)", COULEURS_DU_TEXTE)).toBe("rouge");
+    expect(nomDeLaCouleur("#2563EB", COULEURS_DU_TEXTE)).toBe("bleu");
+    expect(nomDeLaCouleur("rgba(250, 204, 21, 0.4)", SURLIGNAGES)).toBe("fond-jaune");
+    expect(nomDeLaCouleur("rgb(1, 2, 3)", COULEURS_DU_TEXTE)).toBeNull();
+    expect(texteSansMarques("{rouge|Un} {fond-jaune|**mot**}")).toBe("Un mot");
+  });
+
+  it("donne aux tablettes et au PDF du jour le tableau rangée par rangée", () => {
+    const doc = `## Ateliers (20 min)\n${TABLEAU}`;
+    expect(tableauDuDocument(doc)![1][2]).toBe("Groupe · Activité · Support\nA · Lire seul · Le bon résumé\nB · 3 | 4");
+    expect(texteDuDeroulement(doc)).toBe("1. Ateliers — 20 min\nGroupe · Activité · Support\nA · Lire seul · Le bon résumé\nB · 3 | 4");
   });
 });

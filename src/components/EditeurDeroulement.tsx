@@ -2,15 +2,15 @@ import React from "react";
 import { api, raccourci, texteErreur } from "../api";
 import { toast } from "./Toaster";
 import { confirmer } from "./confirmer";
-import { openCtx } from "./ctxmenu";
+import { openCtx, type CtxItem } from "./ctxmenu";
 import { MenuStyles } from "./EditeurRiche";
 import { PhotoTelephone } from "./PhotoTelephone";
 import { chargerImage, imagesDuHtmlColle, preparerImage } from "./imagesTexte";
 import { reformuler, type Style } from "../reformulation";
 import {
-  CHAMP_ORGANISATION, CHAMP_POSTURE, ORGANISATIONS, champDe, champsDesPhases, documentDeLaSeance, documentEnHtml, echapper, ecrireSeance,
-  ICONE_CITE, iconeOrganisation, imagesDuDocument, ligneEnHtml, ligneProtegee, lireSeance, marqueDeCitation, memeNom, seanceEnCartes,
-  type GenreCite, type PhaseDeSeance, type SeanceEnPhases,
+  CHAMP_ORGANISATION, CHAMP_POSTURE, COULEURS_DU_TEXTE, ORGANISATIONS, SURLIGNAGES, champDe, champsDesPhases, composantes, documentDeLaSeance,
+  documentEnHtml, echapper, ecrireSeance, ICONE_CITE, iconeOrganisation, imagesDuDocument, ligneDeTableau, ligneEnHtml, ligneProtegee, lireSeance,
+  marqueDeCitation, memeNom, nomDeLaCouleur, seanceEnCartes, separateurDeTableau, type GenreCite, type PhaseDeSeance, type SeanceEnPhases,
 } from "../documentSeance";
 import { tableauDesPhases, type Demarche } from "../demarches";
 import { BibliothequeDesDemarches } from "./BibliothequeDesDemarches";
@@ -21,8 +21,8 @@ import { inscrireAnnulable } from "../annulation";
 // texte libre, puis des phases en cartes — chacune son titre, sa durée, son
 // organisation, son déroulement, la posture de l'enseignant et les champs
 // ajoutés à toute la séance. Dans chaque case, on écrit comme dans un
-// traitement de texte : gras, italique, listes, images collées, glissées ou
-// prises au téléphone, supports cités d'un « @ ».
+// traitement de texte : gras, italique, couleurs, listes, tableaux, images
+// collées, glissées ou prises au téléphone, supports cités d'un « @ ».
 //
 // Chaque case est un `contentEditable` à elle ; ce qu'on y écrit se relit en
 // texte balisé (voir documentSeance.ts) à chaque frappe, et la séance entière
@@ -51,11 +51,16 @@ const DUREES_DE_PHASE = ["5 min", "10 min", "15 min", "20 min", "25 min", "30 mi
 
 const plat = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-/** La largeur qu'il faut à la barre d'outils pour tout dire sur une ligne. */
-const LARGEUR_BARRE_PLEINE = 740;
+/** La largeur qu'il faut à la barre d'outils pour tout dire sur une ligne ; plus le bouton « 🧭 Démarche… », tant qu'il n'y a pas de phase. */
+const LARGEUR_BARRE_PLEINE = 810;
+const LARGEUR_DEMARCHE = 120;
 
 /** Les éléments qui font une ligne à eux seuls. */
 const BLOCS = /^(P|DIV|H[1-6]|UL|OL|LI|FIGURE|BLOCKQUOTE|PRE|TABLE|SECTION|ARTICLE)$/;
+
+/** Un texte marqué ligne à ligne : une marque ne passe jamais d'une ligne à l'autre, ni n'entoure une image. */
+const marquer = (t: string, avant: string, apres: string) =>
+  t.split("\n").map((l) => (l.trim() && !/^\[img:[^\]]+\]$/.test(l.trim()) ? `${avant}${l}${apres}` : l)).join("\n");
 
 /** Ce qu'une case dit, relu en texte balisé : un bloc par ligne (voir documentSeance.ts). */
 export function versDocument(racine: HTMLElement): string {
@@ -71,11 +76,17 @@ export function versDocument(racine: HTMLElement): string {
     if (n.dataset.brut) return n.dataset.brut;
     if (n.tagName === "BR") return "\n";
     if (n.dataset.img) return `\n[img:${n.dataset.img}]\n`;
-    const dedans = Array.from(n.childNodes).map(enLigne).join("");
+    let t = Array.from(n.childNodes).map(enLigne).join("");
+    if (!t.trim()) return t;
+    // Les couleurs telles que les pose la vue web : <font color>, ou un style ; celles hors de la palette s'oublient.
+    const couleur = nomDeLaCouleur(n.tagName === "FONT" ? n.getAttribute("color") ?? "" : n.style.color, COULEURS_DU_TEXTE);
+    if (couleur) t = marquer(t, `{${couleur}|`, "}");
+    const fond = nomDeLaCouleur(n.style.backgroundColor, SURLIGNAGES);
+    if (fond) t = marquer(t, `{${fond}|`, "}");
     const poids = n.style.fontWeight;
-    if (n.tagName === "B" || n.tagName === "STRONG" || poids === "bold" || Number(poids) >= 600) return dedans.trim() ? `**${dedans}**` : dedans;
-    if (n.tagName === "I" || n.tagName === "EM" || n.style.fontStyle === "italic") return dedans.trim() ? `*${dedans}*` : dedans;
-    return dedans;
+    if (n.tagName === "B" || n.tagName === "STRONG" || poids === "bold" || Number(poids) >= 600) t = marquer(t, "**", "**");
+    if (n.tagName === "I" || n.tagName === "EM" || n.style.fontStyle === "italic") t = marquer(t, "*", "*");
+    return t;
   };
   const pousser = (texte: string, prefixe = "") => {
     for (const l of texte.split("\n")) {
@@ -91,6 +102,19 @@ export function versDocument(racine: HTMLElement): string {
       pousser(Array.from(li.childNodes).filter((c) => !sous.includes(c as HTMLElement)).map(enLigne).join("").replace(/\n$/, ""), "- ");
       sous.forEach(liste);
     }
+  };
+  /** Un tableau : une ligne par rangée, ses cases sur une ligne ; sous la première, la marque de l'en-tête. */
+  const tableau = (t: HTMLTableElement) => {
+    const rangees = Array.from(t.rows);
+    if (!rangees.length) return;
+    const cases = (r: HTMLTableRowElement) => Array.from(r.cells).map((c) => Array.from(c.childNodes)
+      .map((x) => (x instanceof HTMLElement && BLOCS.test(x.tagName) ? ` ${enLigne(x)} ` : enLigne(x))).join("")
+      .replace(/\[img:[^\]]+\]/g, " ").replace(/\s+/g, " ").trim());
+    const entete = !!t.tHead?.rows.length || Array.from(rangees[0].cells).every((c) => c.tagName === "TH");
+    rangees.forEach((r, i) => {
+      lignes.push(ligneDeTableau(cases(r)));
+      if (i === 0 && entete) lignes.push(separateurDeTableau(r.cells.length));
+    });
   };
   /**
    * Les blocs, ligne à ligne. Du texte ou une pastille posés hors de tout
@@ -112,6 +136,7 @@ export function versDocument(racine: HTMLElement): string {
       finir();
       if (n.dataset.img) lignes.push(`[img:${n.dataset.img}]`);
       else if (n.tagName === "UL" || n.tagName === "OL") liste(n);
+      else if (n instanceof HTMLTableElement) tableau(n);
       else parcourir(n, true);
     }
     finir();
@@ -182,6 +207,141 @@ function toucheAutourDUneImage(racine: HTMLElement, touche: string): boolean {
     if (apres instanceof HTMLElement && apres.dataset.img) { apres.remove(); return true; }
   }
   return false;
+}
+
+/** La case de tableau où se trouve un nœud. */
+const celluleDe = (n: Node | null): HTMLTableCellElement | null =>
+  (n ? (n instanceof Element ? n : n.parentElement)?.closest<HTMLTableCellElement>("td, th") ?? null : null);
+
+const caseVide = (balise: "td" | "th") => { const c = document.createElement(balise); c.innerHTML = "<br>"; return c; };
+
+/** Un tableau neuf : une ligne d'en-tête, puis deux rangées ; trois colonnes. */
+function nouveauTableau(colonnes = 3, rangees = 3): HTMLTableElement {
+  const t = document.createElement("table");
+  t.className = "doc-grille";
+  const tete = t.createTHead().insertRow();
+  for (let i = 0; i < colonnes; i++) tete.appendChild(caseVide("th"));
+  const corps = t.createTBody();
+  for (let r = 1; r < rangees; r++) { const tr = corps.insertRow(); for (let i = 0; i < colonnes; i++) tr.appendChild(caseVide("td")); }
+  return t;
+}
+
+/** Une rangée de plus, dessous ou dessus ; sous la ligne d'en-tête, elle ouvre le corps du tableau. Rend la case où écrire. */
+function ajouterLigne(rangee: HTMLTableRowElement, ou: "avant" | "apres", colonne: number): HTMLElement {
+  const t = rangee.closest("table")!;
+  const n = Math.max(1, ...Array.from(t.rows).map((r) => r.cells.length));
+  const neuve = document.createElement("tr");
+  for (let i = 0; i < n; i++) neuve.appendChild(caseVide("td"));
+  if (rangee.parentElement?.tagName === "THEAD") { const corps = t.tBodies[0] ?? t.createTBody(); corps.insertBefore(neuve, corps.firstChild); }
+  else if (ou === "avant") rangee.before(neuve);
+  else rangee.after(neuve);
+  return neuve.cells[Math.min(colonne, n - 1)];
+}
+
+/** Une colonne de plus, à droite ou à gauche de celle-ci. Rend sa case dans la rangée où l'on était. */
+function ajouterColonne(t: HTMLTableElement, colonne: number, ou: "avant" | "apres", rangee: HTMLTableRowElement): HTMLElement | null {
+  let visee: HTMLElement | null = null;
+  for (const r of Array.from(t.rows)) {
+    const c = caseVide(r.parentElement?.tagName === "THEAD" ? "th" : "td");
+    r.insertBefore(c, r.cells[ou === "avant" ? colonne : colonne + 1] ?? null);
+    if (r === rangee) visee = c;
+  }
+  return visee;
+}
+
+function supprimerTableau(t: HTMLTableElement): HTMLElement | null {
+  const voisin = (t.nextElementSibling ?? t.previousElementSibling) as HTMLElement | null;
+  t.remove();
+  return voisin;
+}
+
+function supprimerLigne(rangee: HTMLTableRowElement): HTMLElement | null {
+  const t = rangee.closest("table")!;
+  const section = rangee.parentElement!;
+  const voisine = (rangee.nextElementSibling ?? rangee.previousElementSibling) as HTMLTableRowElement | null;
+  rangee.remove();
+  if (!section.children.length) section.remove();
+  if (!t.rows.length) return supprimerTableau(t);
+  return (voisine?.isConnected ? voisine : t.rows[0]).cells[0] ?? null;
+}
+
+function supprimerColonne(t: HTMLTableElement, colonne: number): HTMLElement | null {
+  for (const r of Array.from(t.rows)) r.cells[colonne]?.remove();
+  if (Array.from(t.rows).every((r) => !r.cells.length)) return supprimerTableau(t);
+  const r = t.rows[0];
+  return r.cells[Math.min(colonne, r.cells.length - 1)] ?? null;
+}
+
+/** La première rangée devient la ligne d'en-tête, ou le redevient d'une rangée. */
+function basculerEntete(t: HTMLTableElement): HTMLElement | null {
+  const changer = (r: HTMLTableRowElement, balise: "td" | "th", vers: HTMLTableRowElement) => {
+    for (const c of Array.from(r.cells)) { const x = document.createElement(balise); x.append(...Array.from(c.childNodes)); vers.appendChild(x); }
+    r.remove();
+    return vers;
+  };
+  if (t.tHead?.rows.length) {
+    const corps = t.tBodies[0] ?? t.createTBody();
+    const neuve = document.createElement("tr");
+    corps.insertBefore(neuve, corps.firstChild);
+    changer(t.tHead.rows[0], "td", neuve);
+    t.tHead.remove();
+    return neuve.cells[0] ?? null;
+  }
+  const corps = t.tBodies[0];
+  if (!corps?.rows.length) return null;
+  const neuve = changer(corps.rows[0], "th", t.createTHead().insertRow());
+  if (!corps.rows.length) corps.remove();
+  return neuve.cells[0] ?? null;
+}
+
+/** La case d'après (ou d'avant), dans l'ordre où l'on lit le tableau. */
+function caseVoisine(cellule: HTMLTableCellElement, sens: 1 | -1): HTMLTableCellElement | null {
+  const toutes = Array.from(cellule.closest("table")!.rows).flatMap((r) => Array.from(r.cells));
+  return toutes[toutes.indexOf(cellule) + sens] ?? null;
+}
+
+/**
+ * ⌫ au début du paragraphe qui suit un tableau, ⌦ au bout de celui qui le
+ * précède : laissés au navigateur, ils versent le paragraphe dans une case.
+ * Ici, le curseur passe dans le tableau, et un paragraphe vide s'en va s'il
+ * n'est pas le dernier. Rend vrai quand la touche est traitée.
+ */
+function toucheAutourDUnTableau(racine: HTMLElement, touche: string): boolean {
+  if (touche !== "Backspace" && touche !== "Delete") return false;
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount || !sel.isCollapsed) return false;
+  const plage = sel.getRangeAt(0);
+  const ici = blocDe(racine, plage.startContainer);
+  if (!ici || ici instanceof HTMLTableElement) return false;
+  const avant = ici.previousElementSibling, apres = ici.nextElementSibling;
+  if (touche === "Backspace" && avant instanceof HTMLTableElement && auBord(ici, plage, "debut")) {
+    if (apres && !ici.textContent?.replace(/\u200b/g, "").trim() && !ici.querySelector(CONTENU_SANS_TEXTE)) ici.remove();
+    const derniere = avant.rows[avant.rows.length - 1];
+    if (derniere?.cells.length) poserLeCurseur(derniere.cells[derniere.cells.length - 1], "fin");
+    return true;
+  }
+  if (touche === "Delete" && apres instanceof HTMLTableElement && auBord(ici, plage, "fin")) {
+    const premiere = apres.rows[0]?.cells[0];
+    if (premiere) poserLeCurseur(premiere, "debut");
+    return true;
+  }
+  return false;
+}
+
+/**
+ * La couleur qu'on retire : posée comme une autre — la vue web défait alors
+ * celles qu'elle recouvre —, puis ôtée de la case (`oterSansCouleur`).
+ */
+const SANS_COULEUR = "#010203";
+const estSansCouleur = (css: string | null) => composantes(css ?? "")?.join() === "1,2,3";
+function oterSansCouleur(z: HTMLElement) {
+  z.querySelectorAll<HTMLElement>("font[color], [style]").forEach((el) => {
+    if (el.tagName === "FONT" && estSansCouleur(el.getAttribute("color"))) el.removeAttribute("color");
+    if (estSansCouleur(el.style.color)) el.style.removeProperty("color");
+    if (estSansCouleur(el.style.backgroundColor)) el.style.removeProperty("background-color");
+    if (el.hasAttribute("style") && !el.getAttribute("style")!.trim()) el.removeAttribute("style");
+    if ((el.tagName === "FONT" || el.tagName === "SPAN") && !el.attributes.length) el.replaceWith(...Array.from(el.childNodes));
+  });
 }
 
 /** Ce que chaque case a publié : elle n'est réécrite que si son texte change d'ailleurs. */
@@ -330,13 +490,17 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
   // Une barre trop étroite pour tout dire sur une ligne ne garde, des outils secondaires, que l'icône.
   const barre = React.useRef<HTMLDivElement>(null);
   const [compacte, setCompacte] = React.useState(false);
+  const seuil = React.useRef(LARGEUR_BARRE_PLEINE);
+  seuil.current = LARGEUR_BARRE_PLEINE + (modele.phases.length ? 0 : LARGEUR_DEMARCHE);
   React.useLayoutEffect(() => {
     const el = barre.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const suivre = new ResizeObserver(() => setCompacte(el.clientWidth < LARGEUR_BARRE_PLEINE));
+    const suivre = new ResizeObserver(() => setCompacte(el.clientWidth < seuil.current));
     suivre.observe(el);
     return () => suivre.disconnect();
   }, []);
+  const sansPhase = !modele.phases.length;
+  React.useLayoutEffect(() => { if (barre.current) setCompacte(barre.current.clientWidth < seuil.current); }, [sansPhase]);
 
   React.useEffect(() => {
     try { document.execCommand("defaultParagraphSeparator", false, "p"); document.execCommand("styleWithCSS", false, "false"); } catch { /* sans effet ailleurs */ }
@@ -400,6 +564,7 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
   /** Une case vient de changer : la séance se réécrit. `frappe` : on y tape, et la frappe poursuit la précédente. */
   const publierCase = (z: HTMLElement, frappe = false) => {
     reparer(z);
+    oterSansCouleur(z);
     const texte = versDocument(z);
     publies.set(z, texte);
     z.toggleAttribute("data-vide", !texte.trim());
@@ -462,6 +627,15 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
     `<figure class="doc-image" contenteditable="false" data-img="${echapper(nom)}"><img data-fichier="${echapper(nom)}"${src ? ` src="${src}"` : ""} alt=""></figure>`;
   /** Pose des images à l'endroit du curseur ; au bout de la case, un paragraphe attend la suite. */
   const poserLesFigures = (z: HTMLElement, html: string) => {
+    // Une case de tableau tient sur une ligne : l'image va dans le paragraphe qui suit le tableau.
+    const sel = window.getSelection();
+    const cellule = sel?.rangeCount ? celluleDe(sel.getRangeAt(0).startContainer) : null;
+    if (cellule && z.contains(cellule)) {
+      const t = cellule.closest("table")!;
+      let p = t.nextElementSibling;
+      if (!(p instanceof HTMLParagraphElement)) { p = document.createElement("p"); p.innerHTML = "<br>"; t.after(p); }
+      poserLeCurseur(p, "debut");
+    }
     const avant = new Set(Array.from(z.querySelectorAll("[data-img]")));
     document.execCommand("insertHTML", false, html);
     const neuves = Array.from(z.querySelectorAll("[data-img]")).filter((f) => !avant.has(f));
@@ -486,6 +660,63 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
     }
   };
   const poserImageDuTelephone = (nom: string) => agir((z) => { poserLesFigures(z, htmlImage(nom)); afficherImages(z); });
+
+  // ── Les couleurs : celle du texte, le surligneur ──
+  const [couleurs, setCouleurs] = React.useState<{ haut: number; gauche: number } | null>(null);
+  React.useEffect(() => {
+    if (!couleurs) return;
+    const dehors = (e: Event) => { if (!(e.target instanceof Element) || !e.target.closest(".doc-couleurs, [data-outil-couleurs]")) setCouleurs(null); };
+    const echap = (e: KeyboardEvent) => { if (e.key === "Escape") setCouleurs(null); };
+    window.addEventListener("mousedown", dehors, true);
+    window.addEventListener("keydown", echap);
+    return () => { window.removeEventListener("mousedown", dehors, true); window.removeEventListener("keydown", echap); };
+  }, [couleurs]);
+  /** Colore (ou surligne) le passage choisi ; sans valeur, retire la couleur. Un curseur seul colore ce qu'on va taper. */
+  const colorer = (commande: "foreColor" | "hiliteColor", valeur: string | null) => {
+    setCouleurs(null);
+    agir(() => {
+      if (!valeur && window.getSelection()?.isCollapsed) return;
+      document.execCommand(commande, false, valeur ?? SANS_COULEUR);
+    });
+  };
+
+  // ── Les tableaux ──
+  /** Pose un tableau neuf après le bloc du curseur (à sa place, s'il est vide), le curseur dans sa première case. */
+  const insererTableau = (z: HTMLElement) => {
+    const sel = window.getSelection();
+    const plage = sel && sel.rangeCount && z.contains(sel.anchorNode) ? sel.getRangeAt(0) : null;
+    const ici = plage ? blocDe(z, plage.startContainer) : null;
+    const t = nouveauTableau();
+    if (ici instanceof HTMLParagraphElement && !ici.textContent?.trim() && !ici.querySelector(CONTENU_SANS_TEXTE)) ici.replaceWith(t);
+    else if (ici) ici.after(t);
+    else z.appendChild(t);
+    if (!t.nextElementSibling) t.insertAdjacentHTML("afterend", "<p><br></p>");
+    poserLeCurseur(t.rows[0].cells[0], "debut");
+  };
+  /** Ce qu'on fait d'un tableau depuis une de ses cases : au clic droit, ou au bouton « Tableau » quand on y écrit. */
+  const actionsDuTableau = (cellule: HTMLTableCellElement, z: HTMLElement): CtxItem[] => {
+    const t = cellule.closest("table")!;
+    const rangee = cellule.parentElement as HTMLTableRowElement;
+    const colonne = cellule.cellIndex;
+    const dansLEntete = rangee.parentElement?.tagName === "THEAD";
+    const faire = (fn: () => HTMLElement | null) => () => {
+      const ou = fn();
+      if (!z.firstElementChild) z.innerHTML = "<p><br></p>";
+      publierCase(z);
+      const vise = ou?.isConnected ? ou : z.lastElementChild;
+      if (vise instanceof HTMLElement) { z.focus(); poserLeCurseur(vise, "fin"); }
+    };
+    return [
+      { label: "Ajouter une ligne dessous", icon: "⬇️", onClick: faire(() => ajouterLigne(rangee, "apres", colonne)) },
+      ...(dansLEntete ? [] : [{ label: "Ajouter une ligne dessus", icon: "⬆️", onClick: faire(() => ajouterLigne(rangee, "avant", colonne)) }]),
+      { label: "Ajouter une colonne à droite", icon: "➡️", onClick: faire(() => ajouterColonne(t, colonne, "apres", rangee)) },
+      { label: "Ajouter une colonne à gauche", icon: "⬅️", onClick: faire(() => ajouterColonne(t, colonne, "avant", rangee)) },
+      { label: t.tHead?.rows.length ? "Sans ligne d'en-tête" : "Première ligne en en-tête", icon: "🔠", sep: true, onClick: faire(() => basculerEntete(t)) },
+      { label: "Supprimer la ligne", icon: "🗑", danger: true, sep: true, onClick: faire(() => supprimerLigne(rangee)) },
+      { label: "Supprimer la colonne", icon: "🗑", danger: true, onClick: faire(() => supprimerColonne(t, colonne)) },
+      { label: "Supprimer le tableau", icon: "🗑", danger: true, onClick: faire(() => supprimerTableau(t)) },
+    ];
+  };
 
   // ── Les phases ──
   const nouvellePhase = () => {
@@ -668,6 +899,17 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
         <button type="button" className="doc-outil" aria-pressed={!!etats.bold} title={`Gras (${raccourci("B")})`} onClick={() => cmd("bold")}><b>G</b></button>
         <button type="button" className="doc-outil" aria-pressed={!!etats.italic} title={`Italique (${raccourci("I")})`} onClick={() => cmd("italic")}><i>I</i></button>
         <button type="button" className="doc-outil" aria-pressed={!!etats.insertUnorderedList} title="Liste à puces" onClick={() => cmd("insertUnorderedList")}>•<span className="doc-libelle"> Liste</span></button>
+        <button type="button" className="doc-outil" data-outil-couleurs aria-expanded={!!couleurs} title="Couleur du texte, surligneur"
+          onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setCouleurs((c) => (c ? null : { haut: r.bottom + 6, gauche: Math.max(8, Math.min(window.innerWidth - 230, r.left)) })); }}>
+          🎨
+        </button>
+        <button type="button" className="doc-outil" title="Ajouter un tableau ; dans un tableau, ses lignes et ses colonnes (ou clic droit dans une case)"
+          onClick={(e) => {
+            const cellule = celluleDe(derniere.current?.startContainer ?? null);
+            const z = cellule && racine.current?.contains(cellule) ? caseDe(cellule) : null;
+            if (cellule && z) openCtx(e, actionsDuTableau(cellule, z));
+            else agir(insererTableau);
+          }}>▦<span className="doc-libelle"> Tableau</span></button>
         <span className="doc-sep" />
         <button type="button" className="doc-outil" title="Ajouter une image (ou collez-la, glissez-la)" onClick={() => fichiers.current?.click()}>🖼<span className="doc-libelle"> Image</span></button>
         <PhotoTelephone label={<>📱<span className="doc-libelle"> Téléphone</span></>} className="doc-outil" onPhoto={poserImageDuTelephone} />
@@ -710,8 +952,22 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
             cmd(lettre === "b" ? "bold" : "italic");
             return;
           }
+          // Dans un tableau, ⇥ passe à la case suivante (⇧⇥ : la précédente) et ↩ à celle du dessous ; au bout, une rangée s'ajoute.
+          const cellule = !mention && !e.nativeEvent.isComposing ? celluleDe(window.getSelection()?.anchorNode ?? null) : null;
+          if (cellule && z.contains(cellule) && (e.key === "Tab" || (e.key === "Enter" && !e.metaKey && !e.ctrlKey && !e.altKey))) {
+            e.preventDefault();
+            const rangee = cellule.parentElement as HTMLTableRowElement;
+            let visee: HTMLElement | null;
+            if (e.key === "Tab") visee = caseVoisine(cellule, e.shiftKey ? -1 : 1) ?? (e.shiftKey ? null : ajouterLigne(rangee, "apres", 0));
+            else {
+              const dessous = cellule.closest("table")!.rows[rangee.rowIndex + 1];
+              visee = dessous ? dessous.cells[Math.min(cellule.cellIndex, dessous.cells.length - 1)] ?? null : ajouterLigne(rangee, "apres", cellule.cellIndex);
+            }
+            if (visee) { poserLeCurseur(visee, "fin"); publierCase(z); }
+            return;
+          }
           if (!mention) {
-            if (toucheAutourDUneImage(z, e.key)) { e.preventDefault(); publierCase(z); }
+            if (toucheAutourDUneImage(z, e.key) || toucheAutourDUnTableau(z, e.key)) { e.preventDefault(); publierCase(z); }
             return;
           }
           if (e.key === "ArrowDown") { e.preventDefault(); setMention({ ...mention, index: Math.min(mention.index + 1, trouves.length) }); }
@@ -741,6 +997,11 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
           }
           const cite = (e.target as HTMLElement).closest<HTMLElement>("[data-cite]");
           if (cite?.dataset.cite) { const [g, ...id] = cite.dataset.cite.split(":"); onOuvrirCitation(g as GenreCite, id.join(":")); }
+        }}
+        onContextMenu={(e) => {
+          const z = caseDe(e.target as Node);
+          const cellule = celluleDe(e.target as Node);
+          if (z && cellule && z.contains(cellule)) openCtx(e, actionsDuTableau(cellule, z));
         }}
         onPaste={(e) => {
           const z = caseDe(e.target as Node);
@@ -865,6 +1126,28 @@ export const EditeurDeroulement = React.forwardRef<EditeurDeroulementHandle, {
           {!trouves.length && <div className="doc-mentions-vide">Rien ne s'appelle ainsi.</div>}
           <button type="button" className={`doc-mention doc-mention-creer${mention.index === trouves.length ? " on" : ""}`}
             onClick={() => { setMention(null); onAjouterSupport(); }}>＋ Ajouter ou créer un support…</button>
+        </div>
+      )}
+
+      {couleurs && (
+        <div className="doc-mentions doc-couleurs" role="dialog" aria-label="Couleurs" style={{ top: couleurs.haut, left: couleurs.gauche }}
+          onMouseDown={(e) => e.preventDefault()}>
+          <div className="doc-mentions-titre">Texte</div>
+          <div className="doc-couleurs-ligne">
+            {COULEURS_DU_TEXTE.map((c) => (
+              <button key={c.nom} type="button" className={`doc-couleur doc-c-${c.nom}`} title={c.libelle} aria-label={`Texte ${c.libelle.toLowerCase()}`}
+                onClick={() => colorer("foreColor", c.valeur)}>A</button>
+            ))}
+            <button type="button" className="doc-couleur doc-couleur-aucune" title="Sans couleur" aria-label="Texte sans couleur" onClick={() => colorer("foreColor", null)}>A</button>
+          </div>
+          <div className="doc-mentions-titre">Surligner</div>
+          <div className="doc-couleurs-ligne">
+            {SURLIGNAGES.map((c) => (
+              <button key={c.nom} type="button" className="doc-couleur doc-couleur-fond" style={{ background: c.valeur }} title={c.libelle} aria-label={`Surligner en ${c.libelle.toLowerCase()}`}
+                onClick={() => colorer("hiliteColor", c.valeur)}>A</button>
+            ))}
+            <button type="button" className="doc-couleur doc-couleur-aucune" title="Sans surligneur" aria-label="Sans surligneur" onClick={() => colorer("hiliteColor", null)}>A</button>
+          </div>
         </div>
       )}
 

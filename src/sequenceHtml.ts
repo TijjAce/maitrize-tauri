@@ -73,6 +73,14 @@ export const STYLE_DOCUMENT = `
   .doc-lu .doc-citation { display: block; border-left: 3px solid #6366f1; background: #eef0fe; margin: 6px 0; padding: 4px 10px; font-style: italic; }
   .doc-lu .doc-source { font-style: normal; font-size: 11px; color: #687087; }
   .doc-lu .doc-image { margin: 6px 0; break-inside: avoid; }
+  .doc-lu table.doc-grille { width: 100%; margin: 4px 0 6px; border-collapse: collapse; break-inside: avoid; }
+  .doc-lu table.doc-grille th, .doc-lu table.doc-grille td { padding: 3px 6px; border: 1px solid #cfd4e0; text-align: left; vertical-align: top; }
+  .doc-lu table.doc-grille th { background: #f0f2f8; }
+  .doc-lu .doc-c-rouge { color: #b91c1c; } .doc-lu .doc-c-orange { color: #c2410c; } .doc-lu .doc-c-vert { color: #15803d; }
+  .doc-lu .doc-c-bleu { color: #1d4ed8; } .doc-lu .doc-c-violet { color: #7e22ce; }
+  .doc-lu [class*="doc-fond-"], .doc-lu table.doc-grille th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .doc-lu .doc-fond-jaune { background: rgba(250, 204, 21, .45); } .doc-lu .doc-fond-vert { background: rgba(34, 197, 94, .3); }
+  .doc-lu .doc-fond-bleu { background: rgba(59, 130, 246, .3); } .doc-lu .doc-fond-rose { background: rgba(236, 72, 153, .3); }
 `;
 
 /** Le corps de la page d'une séquence. */

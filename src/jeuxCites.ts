@@ -12,6 +12,7 @@
 import type { Jeu } from "./api";
 import { escapeHtml } from "./print";
 import { sansAutresCitations } from "./lignesCitees";
+import { sansCouleurs } from "./documentSeance";
 
 /** Un mot tel qu'on le compare. */
 function forme(mot: string): string {
@@ -71,7 +72,7 @@ interface Trouve { jeu: Jeu; debut: number; fin: number; longueur: number }
  * d'un « @ » garde son nom ; les autres supports cités s'effacent — une
  * feuille « Mots mêlés d'automne » n'est pas le jeu des mots mêlés.
  */
-export const sansMarqueurs = (texte: string) => (texte ?? "")
+export const sansMarqueurs = (texte: string) => sansCouleurs(texte ?? "")
   .replace(/\[@([a-z]+):[^|\]]+\|([^\]]*)\]/g, (_m, genre: string, titre: string) => (genre === "jeu" ? ` ${titre} ` : " "))
   .replace(/\[(img|cite):[^\]]+\]/g, " ");
 
