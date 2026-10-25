@@ -10,7 +10,12 @@
 //
 // Deux écrans peuvent le commander : celui de la barre et celui des Réglages.
 // Un événement de fenêtre les tient d'accord, sans état global à porter.
+//
+// Depuis octobre 2026, le partage se ferme aussi tout seul — deux heures sans
+// visite du téléphone, dix heures au plus — et chaque ouverture donne un code
+// neuf : le backend le dit par l'événement « portable:ferme ».
 
+import { listen } from "@tauri-apps/api/event";
 import { api, type PortableInfo } from "./api";
 
 /** Émis quand le partage s'ouvre ou se ferme, avec son état. */
@@ -39,9 +44,28 @@ export async function lirePartage(): Promise<PortableInfo | null> {
   try { return await api.portableEtat(); } catch { return null; }
 }
 
+/**
+ * Suit l'état du partage, quel que soit celui qui le change : un écran qui l'ouvre ou le ferme, ou le backend qui
+ * le ferme tout seul. Rend de quoi arrêter de suivre.
+ */
+export function suivrePartage(rappel: (info: PortableInfo | null) => void): () => void {
+  const ecouter = (e: Event) => rappel((e as CustomEvent<PortableInfo | null>).detail);
+  window.addEventListener(EVT_PARTAGE, ecouter);
+  let fini = false;
+  let oublier: (() => void) | null = null;
+  listen("portable:ferme", () => rappel(null))
+    .then((f) => { if (fini) f(); else oublier = f; })
+    .catch(() => { /* hors de l'application */ });
+  return () => {
+    fini = true;
+    window.removeEventListener(EVT_PARTAGE, ecouter);
+    oublier?.();
+  };
+}
+
 /** Ce que l'infobulle de l'interrupteur raconte. */
 export function titreDuPartage(info: PortableInfo | null): string {
   return info
     ? `Partage ouvert sur ${info.ip}:${info.port} — cliquez pour le fermer`
-    : "Partage fermé — cliquez pour l'ouvrir : le planning et les observations dans le navigateur du téléphone";
+    : "Partage fermé — cliquez pour l'ouvrir : le planning dans le navigateur du téléphone";
 }
