@@ -472,6 +472,18 @@ export interface RapportCourriel { sujet: string; corps: string; ouvert: boolean
 
 /** Ce qu'un retour a fait ; revenir à `copie` l'annule. */
 export interface BilanRetour { copie: string; ecarts: Ecart[]; fichiers: number }
+/** Une ligne d'une table. */
+export interface Cible { table: string; id: string }
+/** Un élément d'un état passé, à reprendre seul (voir retour.rs). */
+export interface ElementPasse {
+  table: string; id: string; libelle: string;
+  /** Supprimé depuis : il reviendrait. Sinon, modifié depuis : il reprendrait ses valeurs d'alors. */
+  supprime: boolean;
+  /** Ce qui reviendrait avec lui : [table, nombre]. */
+  avec: [string, number][];
+}
+/** Ce qu'une reprise a fait ; reprendre `lignes` depuis `copie`, sans leurs liens, l'annule. */
+export interface BilanReprise { copie: string; lignes: Cible[]; fichiers: number }
 
 // ============================================================
 // FABRIQUES (valeurs par défaut)
@@ -796,6 +808,9 @@ export const api = {
   retourEtats: () => invoke<EtatPasse[]>("retour_etats"),
   retourEcarts: (nom: string) => invoke<Ecart[]>("retour_ecarts", { nom }),
   retourRevenir: (nom: string) => invoke<BilanRetour>("retour_revenir", { nom }),
+  retourElements: (nom: string) => invoke<ElementPasse[]>("retour_elements", { nom }),
+  retourReprendre: (nom: string, cibles: Cible[], avecLesLiens: boolean) =>
+    invoke<BilanReprise>("retour_reprendre", { nom, cibles, avecLesLiens }),
   /** Ouvre la messagerie sur le rapport d'erreur, adressé à l'éditeur ; `motif` : ce qui vient d'arriver. */
   diagCourriel: (motif?: string) => invoke<RapportCourriel>("diag_courriel", { motif: motif ?? null }),
   /** Ce que la session d'avant a laissé de grave : [phrase, clé], ou rien. */

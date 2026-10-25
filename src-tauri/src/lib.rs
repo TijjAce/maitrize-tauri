@@ -208,7 +208,7 @@ pub fn run() {
             // Copie du bureau dans un vrai dossier de l'ordinateur
             copie_bureau::copie_bureau_info, copie_bureau::copie_bureau_regler,
             copie_bureau::copie_bureau_preparer, copie_bureau::copie_bureau_appliquer, copie_bureau::copie_bureau_ouvrir,
-            retour::retour_etats, retour::retour_ecarts, retour::retour_revenir,
+            retour::retour_etats, retour::retour_ecarts, retour::retour_revenir, retour::retour_elements, retour::retour_reprendre,
             commands::textes_list, commands::texte_save, commands::texte_delete,
             // Amis (appariement chiffré)
             amis::identite_get, amis::identite_set_nom,

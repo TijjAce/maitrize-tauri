@@ -15,8 +15,8 @@
 use crate::db::{sauvegardes_dir, Db};
 use crate::instantanes::BaseOuverte;
 use rusqlite::{params, Connection};
-use serde::Serialize;
-use std::collections::BTreeSet;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use tauri::State;
 
@@ -100,6 +100,8 @@ struct Colonne {
     nom: String,
     /// Valeur neutre exigée (NOT NULL sans défaut), sinon rien : la valeur par défaut s'applique.
     neutre: Option<&'static str>,
+    /// NOT NULL : la colonne ne peut pas rester vide.
+    obligatoire: bool,
 }
 
 fn colonnes(c: &Connection, schema: &str, table: &str) -> Vec<Colonne> {
@@ -110,7 +112,7 @@ fn colonnes(c: &Connection, schema: &str, table: &str) -> Vec<Colonne> {
         let obligatoire = r.get::<_, i64>(3).unwrap_or(0) != 0;
         let defaut = r.get::<_, Option<String>>(4).unwrap_or(None).is_some();
         let neutre = (obligatoire && !defaut).then_some(if declare.contains("INT") || declare.contains("REAL") { "0" } else { "''" });
-        Ok(Colonne { nom, neutre })
+        Ok(Colonne { nom, neutre, obligatoire })
     })
     .map(|it| it.flatten().collect())
     .unwrap_or_default()
@@ -171,6 +173,31 @@ fn exemples(c: &Connection, sql: &str) -> Vec<String> {
     st.query_map([], |r| r.get::<_, Option<String>>(0))
         .map(|it| it.flatten().flatten().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).take(3).collect())
         .unwrap_or_default()
+}
+
+/// Pour recopier ici une ligne d'alors (`i`) : les colonnes d'ici, et ce qu'elles reçoivent. Une colonne apparue
+/// depuis prend sa valeur neutre si elle en exige une, sinon sa valeur par défaut.
+fn recopie(c: &Connection, t: &str) -> (String, String) {
+    let alors: BTreeSet<String> = colonnes(c, "instantane", t).into_iter().map(|x| x.nom).collect();
+    let gardees: Vec<Colonne> = colonnes(c, "main", t).into_iter().filter(|x| alors.contains(&x.nom) || x.neutre.is_some()).collect();
+    let noms = gardees.iter().map(|x| format!("\"{}\"", x.nom)).collect::<Vec<_>>().join(", ");
+    let valeurs = gardees.iter()
+        .map(|x| if alors.contains(&x.nom) { format!("i.\"{}\"", x.nom) } else { x.neutre.unwrap_or("''").to_string() })
+        .collect::<Vec<_>>().join(", ");
+    (noms, valeurs)
+}
+
+/// Les colonnes communes à ici et alors, et pour remettre une ligne d'ici à ses valeurs d'alors (`i`) : les
+/// colonnes à écrire et leurs sources — rien si la table n'a que son identifiant.
+fn remise(c: &Connection, t: &str) -> (Vec<String>, Option<(String, String)>) {
+    let alors: BTreeSet<String> = colonnes(c, "instantane", t).into_iter().map(|x| x.nom).collect();
+    let communes: Vec<String> = colonnes(c, "main", t).into_iter().map(|x| x.nom).filter(|n| alors.contains(n)).collect();
+    let autres: Vec<&String> = communes.iter().filter(|x| *x != "id").collect();
+    let ecrire = (!autres.is_empty()).then(|| (
+        autres.iter().map(|x| format!("\"{x}\"")).collect::<Vec<_>>().join(", "),
+        autres.iter().map(|x| format!("i.\"{x}\"")).collect::<Vec<_>>().join(", "),
+    ));
+    (communes, ecrire)
 }
 
 /// L'égalité des colonnes communes d'une ligne d'ici (`m`) et d'alors (`i`).
@@ -286,27 +313,19 @@ pub fn revenir(c: &Connection) -> rusqlite::Result<Vec<Ecart>> {
             c.execute(&format!("DELETE FROM main.\"{t}\" WHERE {p}"), [])?;
             continue;
         }
-        let alors: BTreeSet<String> = colonnes(c, "instantane", t).into_iter().map(|x| x.nom).collect();
-        let ici = colonnes(c, "main", t);
-        let communes: Vec<String> = ici.iter().map(|x| x.nom.clone()).filter(|n| alors.contains(n)).collect();
         // Ce qui n'existait pas alors s'en va.
         c.execute(&format!("DELETE FROM main.\"{t}\" WHERE {p} AND id NOT IN (SELECT id FROM instantane.\"{t}\")"), [])?;
         // Ce qui a été changé depuis reprend ses valeurs d'alors.
-        let autres: Vec<&String> = communes.iter().filter(|x| *x != "id").collect();
-        if !autres.is_empty() {
-            let cibles = autres.iter().map(|x| format!("\"{x}\"")).collect::<Vec<_>>().join(", ");
-            let sources = autres.iter().map(|x| format!("i.\"{x}\"")).collect::<Vec<_>>().join(", ");
+        let (communes, ecrire) = remise(c, t);
+        if let Some((cibles, sources)) = ecrire {
             c.execute(&format!(
                 "UPDATE main.\"{t}\" AS m SET ({cibles}) = (SELECT {sources} FROM instantane.\"{t}\" i WHERE i.id = m.id)
                   WHERE {pm} AND EXISTS (SELECT 1 FROM instantane.\"{t}\" i WHERE i.id = m.id AND ({}))", differe(&communes)), [])?;
         }
-        // Ce qui a été supprimé depuis revient ; une colonne apparue depuis prend sa valeur neutre.
-        let noms: Vec<String> = ici.iter().filter(|x| alors.contains(&x.nom) || x.neutre.is_some()).map(|x| format!("\"{}\"", x.nom)).collect();
-        let valeurs: Vec<String> = ici.iter().filter(|x| alors.contains(&x.nom) || x.neutre.is_some())
-            .map(|x| if alors.contains(&x.nom) { format!("i.\"{}\"", x.nom) } else { x.neutre.unwrap_or("''").to_string() }).collect();
+        // Ce qui a été supprimé depuis revient.
+        let (noms, valeurs) = recopie(c, t);
         c.execute(&format!(
-            "INSERT INTO main.\"{t}\" ({}) SELECT {} FROM instantane.\"{t}\" i WHERE {pi} AND i.id NOT IN (SELECT id FROM main.\"{t}\")",
-            noms.join(", "), valeurs.join(", ")), [])?;
+            "INSERT INTO main.\"{t}\" ({noms}) SELECT {valeurs} FROM instantane.\"{t}\" i WHERE {pi} AND i.id NOT IN (SELECT id FROM main.\"{t}\")"), [])?;
     }
     // Les liaisons (un atelier dans un espace) : elles existent ou non.
     for (t, a, b) in LIAISONS {
@@ -358,10 +377,266 @@ fn ramener_les_fichiers(c: &Connection, corbeille: &Path, fichiers: &Path) -> us
 
 /// Revient à l'état contenu dans le fichier `copie` : attache, reprend, détache.
 pub(crate) fn revenir_a(c: &Connection, copie: &Path, corbeille: &Path, fichiers: &Path) -> Result<(Vec<Ecart>, usize), String> {
+    let ecarts = dans_une_transaction(c, copie, "Retour", revenir)?;
+    Ok((ecarts, ramener_les_fichiers(c, corbeille, fichiers)))
+}
+
+/// Ce qui changerait, sans rien changer.
+pub(crate) fn ecarts_avec(c: &Connection, copie: &Path) -> Result<Vec<Ecart>, String> {
     c.execute("ATTACH DATABASE ?1 AS instantane", params![copie.to_string_lossy()]).map_err(|e| format!("État illisible : {e}"))?;
-    let fait = (|| -> rusqlite::Result<Vec<Ecart>> {
+    let v = ecarts(c).map_err(|e| e.to_string());
+    c.execute("DETACH DATABASE instantane", []).ok();
+    v
+}
+
+// ── Reprendre un seul élément ─────────────────────────────────────────────
+//
+// Revenir à un état défait tout ce qui a été fait depuis. Souvent, on ne veut
+// qu'une chose d'alors : la séquence supprimée la veille, l'ancienne version
+// d'une séance. On la reprend seule, avec ce qui en dépend — les séances d'une
+// séquence, les observations d'un élève —, et le reste du travail fait depuis
+// demeure. Ces écritures passent par le journal : l'autre ordinateur les reçoit.
+
+/// Une ligne d'une table.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Cible {
+    pub table: String,
+    pub id: String,
+}
+
+/// Un élément d'un état passé, à reprendre seul.
+#[derive(Serialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ElementPasse {
+    pub table: String,
+    pub id: String,
+    pub libelle: String,
+    /// Supprimé depuis : il reviendrait. Sinon, modifié depuis : il reprendrait ses valeurs d'alors.
+    pub supprime: bool,
+    /// Ce qui reviendrait avec lui, table par table : ses séances, les observations d'un élève…
+    pub avec: Vec<(String, usize)>,
+}
+
+/// Ce qu'une reprise a fait ; reprendre les mêmes lignes depuis `copie`, sans leurs liens, l'annule.
+#[derive(Serialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct BilanReprise {
+    pub copie: String,
+    /// Toutes les lignes écrites : l'élément, et ce qui est venu avec.
+    pub lignes: Vec<Cible>,
+    pub fichiers: usize,
+}
+
+/// La colonne de `enfant` qui porte l'identifiant d'une ligne de `parent` : `seances.sequence_id`.
+struct Lien {
+    enfant: String,
+    colonne: String,
+    parent: String,
+    /// Une clé étrangère : la base refuse un lien vers une ligne qui n'existe pas.
+    contrainte: bool,
+    /// La colonne peut rester vide.
+    facultatif: bool,
+}
+
+/// Les liens entre les tables reprises : les colonnes nommées d'après une table (`eleve_id` → `eleves`,
+/// `creneau_id` → `creneaux`) — les clés étrangères de la base le sont toutes ; d'autres liens ne sont pas déclarés.
+fn liens(c: &Connection, tables: &[Reprise]) -> Vec<Lien> {
+    let noms: BTreeSet<&str> = tables.iter().map(|r| r.table.as_str()).collect();
+    let mut v = Vec::new();
+    for r in tables {
+        let contraintes: BTreeSet<String> = c
+            .prepare(&format!("SELECT \"from\" FROM pragma_foreign_key_list('{}')", r.table))
+            .and_then(|mut st| st.query_map([], |x| x.get::<_, String>(0)).map(|it| it.flatten().collect()))
+            .unwrap_or_default();
+        for col in colonnes(c, "main", &r.table) {
+            let Some(racine) = col.nom.strip_suffix("_id") else { continue };
+            let Some(parent) = [format!("{racine}s"), format!("{racine}x")].into_iter().find(|p| noms.contains(p.as_str())) else { continue };
+            v.push(Lien {
+                enfant: r.table.clone(), contrainte: contraintes.contains(&col.nom), facultatif: !col.obligatoire, colonne: col.nom, parent,
+            });
+        }
+    }
+    v
+}
+
+fn ligne_existe(c: &Connection, schema: &str, table: &str, id: &str) -> bool {
+    c.query_row(&format!("SELECT 1 FROM {schema}.\"{table}\" WHERE id = ?1"), [id], |_| Ok(())).is_ok()
+}
+
+/// La valeur d'une colonne d'une ligne, en texte ; rien si elle est vide.
+fn valeur(c: &Connection, schema: &str, table: &str, id: &str, colonne: &str) -> Option<String> {
+    c.query_row(&format!("SELECT CAST(\"{colonne}\" AS TEXT) FROM {schema}.\"{table}\" WHERE id = ?1"), [id], |r| r.get::<_, Option<String>>(0))
+        .ok().flatten().filter(|v| !v.is_empty())
+}
+
+fn identifiants(c: &Connection, sql: &str, valeur: &str) -> Vec<String> {
+    c.prepare(sql)
+        .and_then(|mut st| st.query_map([valeur], |r| r.get::<_, String>(0)).map(|it| it.flatten().collect()))
+        .unwrap_or_default()
+}
+
+/// Une écriture d'une reprise.
+#[derive(Debug, Clone, PartialEq)]
+enum Ecriture {
+    /// La ligne d'ici redevient celle d'alors : recréée, remise à ses valeurs, ou effacée si elle n'existait pas.
+    Accorder(Cible),
+    /// Le lien qu'une suppression avait vidé (un créneau qui menait à la séance) se renoue.
+    Renouer(Cible, String, String),
+}
+
+/// Ce qu'une reprise écrit pour `depart` : la ligne ; si elle revient, ses enfants partis avec elle et les liens
+/// qu'on avait vidés vers elle ; pour toute ligne qui revient, ses parents disparus depuis — une séance ne revient
+/// pas sans sa séquence.
+fn plan(c: &Connection, liens: &[Lien], depart: &Cible) -> Vec<Ecriture> {
+    let mut vues = BTreeSet::new();
+    let mut sortie = Vec::new();
+    let mut pile = vec![(depart.clone(), true)];
+    while let Some((cible, avec_les_enfants)) = pile.pop() {
+        if !vues.insert(cible.clone()) {
+            continue;
+        }
+        sortie.push(Ecriture::Accorder(cible.clone()));
+        if !ligne_existe(c, "instantane", &cible.table, &cible.id) {
+            continue; // elle n'existait pas alors : elle s'efface, rien d'autre
+        }
+        for l in liens.iter().filter(|l| l.enfant == cible.table) {
+            if let Some(p) = valeur(c, "instantane", &cible.table, &cible.id, &l.colonne) {
+                if !ligne_existe(c, "main", &l.parent, &p) && ligne_existe(c, "instantane", &l.parent, &p) {
+                    pile.push((Cible { table: l.parent.clone(), id: p }, false));
+                }
+            }
+        }
+        if !avec_les_enfants || ligne_existe(c, "main", &cible.table, &cible.id) {
+            continue;
+        }
+        for l in liens.iter().filter(|l| l.parent == cible.table) {
+            let sql = format!("SELECT id FROM instantane.\"{}\" WHERE CAST(\"{}\" AS TEXT) = ?1", l.enfant, l.colonne);
+            for id in identifiants(c, &sql, &cible.id) {
+                let enfant = Cible { table: l.enfant.clone(), id };
+                if !ligne_existe(c, "main", &enfant.table, &enfant.id) {
+                    pile.push((enfant, true));
+                } else if valeur(c, "main", &enfant.table, &enfant.id, &l.colonne).is_none() {
+                    sortie.push(Ecriture::Renouer(enfant, l.colonne.clone(), cible.id.clone()));
+                }
+            }
+        }
+    }
+    sortie
+}
+
+/// Remet la ligne d'ici à celle d'alors : recréée, remise à ses valeurs, ou effacée si elle n'existait pas alors.
+fn accorder(c: &Connection, cible: &Cible) -> rusqlite::Result<()> {
+    let t = &cible.table;
+    match (ligne_existe(c, "instantane", t, &cible.id), ligne_existe(c, "main", t, &cible.id)) {
+        (true, true) => {
+            if let (_, Some((cibles, sources))) = remise(c, t) {
+                c.execute(&format!(
+                    "UPDATE main.\"{t}\" SET ({cibles}) = (SELECT {sources} FROM instantane.\"{t}\" i WHERE i.id = ?1) WHERE id = ?1"),
+                    [&cible.id])?;
+            }
+        }
+        (true, false) => {
+            let (noms, valeurs) = recopie(c, t);
+            c.execute(&format!("INSERT INTO main.\"{t}\" ({noms}) SELECT {valeurs} FROM instantane.\"{t}\" i WHERE i.id = ?1"), [&cible.id])?;
+        }
+        (false, true) => {
+            c.execute(&format!("DELETE FROM main.\"{t}\" WHERE id = ?1"), [&cible.id])?;
+        }
+        (false, false) => {}
+    }
+    Ok(())
+}
+
+/// Reprend des lignes de l'état attaché sous le nom `instantane` — avec ce qui en dépend si `avec_les_liens`, telles
+/// quelles sinon (une annulation) — et rend toutes celles qu'elle a écrites. Dans une transaction, clés étrangères
+/// différées.
+pub fn reprendre(c: &Connection, cibles: &[Cible], avec_les_liens: bool) -> rusqlite::Result<Vec<Cible>> {
+    let tables = tables(c);
+    let liens = liens(c, &tables);
+    let connues: BTreeSet<&str> = tables.iter().map(|r| r.table.as_str()).collect();
+    let mut lignes: Vec<Cible> = Vec::new();
+    for cible in cibles.iter().filter(|x| connues.contains(x.table.as_str())) {
+        let ecritures = if avec_les_liens { plan(c, &liens, cible) } else { vec![Ecriture::Accorder(cible.clone())] };
+        for e in ecritures {
+            let ligne = match &e {
+                Ecriture::Accorder(x) | Ecriture::Renouer(x, _, _) => x.clone(),
+            };
+            if lignes.contains(&ligne) {
+                continue;
+            }
+            match &e {
+                Ecriture::Accorder(x) => accorder(c, x)?,
+                Ecriture::Renouer(x, colonne, valeur) => {
+                    c.execute(&format!("UPDATE main.\"{}\" SET \"{colonne}\" = ?1 WHERE id = ?2", x.table), params![valeur, x.id])?;
+                }
+            }
+            lignes.push(ligne);
+        }
+    }
+    // Un lien vers une ligne qui n'existe plus nulle part se vide, là où la base l'exige et le permet.
+    for x in &lignes {
+        for l in liens.iter().filter(|l| l.enfant == x.table && l.contrainte && l.facultatif) {
+            if valeur(c, "main", &x.table, &x.id, &l.colonne).is_some_and(|p| !ligne_existe(c, "main", &l.parent, &p)) {
+                c.execute(&format!("UPDATE main.\"{}\" SET \"{}\" = NULL WHERE id = ?1", x.table, l.colonne), [&x.id])?;
+            }
+        }
+    }
+    Ok(lignes)
+}
+
+/// Ce que l'on peut reprendre seul de l'état attaché sous le nom `instantane` : ce qui a été supprimé depuis — sauf
+/// ce qui reviendrait de toute façon avec son parent, supprimé lui aussi —, puis ce qui a été modifié depuis.
+pub fn elements(c: &Connection) -> rusqlite::Result<Vec<ElementPasse>> {
+    let tables = tables(c);
+    let liens = liens(c, &tables);
+    let mut supprimes = Vec::new();
+    let mut modifies = Vec::new();
+    let nom = |s: Option<String>| s.map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).unwrap_or_else(|| "Sans titre".into());
+    for r in &tables {
+        let t = &r.table;
+        if !existe(c, "instantane", t) {
+            continue;
+        }
+        let (Some(d_alors), Some(d_ici)) = (libelle(c, "instantane", t, "i"), libelle(c, "main", t, "m")) else { continue };
+        let (pm, pi) = (r.part("m"), r.part("i"));
+        let mut st = c.prepare(&format!(
+            "SELECT i.id, {d_alors} FROM instantane.\"{t}\" i WHERE {pi} AND i.id NOT IN (SELECT id FROM main.\"{t}\")"))?;
+        let partis: Vec<(String, Option<String>)> = st.query_map([], |x| Ok((x.get(0)?, x.get(1)?)))?.flatten().collect();
+        for (id, libelle) in partis {
+            let avec_son_parent = liens.iter().filter(|l| &l.enfant == t).any(|l| {
+                valeur(c, "instantane", t, &id, &l.colonne)
+                    .is_some_and(|p| !ligne_existe(c, "main", &l.parent, &p) && ligne_existe(c, "instantane", &l.parent, &p))
+            });
+            if avec_son_parent {
+                continue;
+            }
+            let mut avec: BTreeMap<String, usize> = BTreeMap::new();
+            for e in plan(c, &liens, &Cible { table: t.clone(), id: id.clone() }).into_iter().skip(1) {
+                if let Ecriture::Accorder(x) = e {
+                    *avec.entry(x.table).or_default() += 1;
+                }
+            }
+            supprimes.push(ElementPasse { table: t.clone(), id, libelle: nom(libelle), supprime: true, avec: avec.into_iter().collect() });
+        }
+        let (communes, _) = remise(c, t);
+        let mut st = c.prepare(&format!(
+            "SELECT m.id, {d_ici} FROM main.\"{t}\" m JOIN instantane.\"{t}\" i ON i.id = m.id WHERE {pm} AND ({})", differe(&communes)))?;
+        let changes: Vec<(String, Option<String>)> = st.query_map([], |x| Ok((x.get(0)?, x.get(1)?)))?.flatten().collect();
+        for (id, libelle) in changes {
+            modifies.push(ElementPasse { table: t.clone(), id, libelle: nom(libelle), supprime: false, avec: vec![] });
+        }
+    }
+    supprimes.extend(modifies);
+    Ok(supprimes)
+}
+
+/// Attache l'état `copie` sous le nom `instantane`, y fait `f` dans une transaction — tout ou rien —, et le détache.
+/// `quoi` nomme l'opération dans le message d'échec : « Retour », « Reprise ».
+fn dans_une_transaction<T>(c: &Connection, copie: &Path, quoi: &str, f: impl FnOnce(&Connection) -> rusqlite::Result<T>) -> Result<T, String> {
+    c.execute("ATTACH DATABASE ?1 AS instantane", params![copie.to_string_lossy()]).map_err(|e| format!("État illisible : {e}"))?;
+    let fait = (|| -> rusqlite::Result<T> {
         c.execute_batch("BEGIN IMMEDIATE; PRAGMA defer_foreign_keys = ON;")?;
-        let fait = revenir(c).and_then(|e| c.execute_batch("COMMIT").map(|_| e));
+        let fait = f(c).and_then(|v| c.execute_batch("COMMIT").map(|_| v));
         if fait.is_err() {
             // Un COMMIT refusé — une clé étrangère différée qui manque — laisse la transaction ouverte : toutes les
             // écritures suivantes y seraient restées, perdues en quittant.
@@ -370,14 +645,20 @@ pub(crate) fn revenir_a(c: &Connection, copie: &Path, corbeille: &Path, fichiers
         fait
     })();
     c.execute("DETACH DATABASE instantane", []).ok();
-    let ecarts = fait.map_err(|e| format!("Retour impossible, rien n'a changé : {e}"))?;
-    Ok((ecarts, ramener_les_fichiers(c, corbeille, fichiers)))
+    fait.map_err(|e| format!("{quoi} impossible, rien n'a changé : {e}"))
 }
 
-/// Ce qui changerait, sans rien changer.
-pub(crate) fn ecarts_avec(c: &Connection, copie: &Path) -> Result<Vec<Ecart>, String> {
+/// Reprend des lignes de l'état contenu dans le fichier `copie` (voir `reprendre`) ; rend les lignes écrites et le
+/// nombre de fichiers joints revenus de la corbeille.
+pub(crate) fn reprendre_de(c: &Connection, copie: &Path, cibles: &[Cible], avec_les_liens: bool, corbeille: &Path, fichiers: &Path) -> Result<(Vec<Cible>, usize), String> {
+    let lignes = dans_une_transaction(c, copie, "Reprise", |c| reprendre(c, cibles, avec_les_liens))?;
+    Ok((lignes, ramener_les_fichiers(c, corbeille, fichiers)))
+}
+
+/// Ce que l'on peut reprendre seul de l'état contenu dans le fichier `copie`.
+pub(crate) fn elements_de(c: &Connection, copie: &Path) -> Result<Vec<ElementPasse>, String> {
     c.execute("ATTACH DATABASE ?1 AS instantane", params![copie.to_string_lossy()]).map_err(|e| format!("État illisible : {e}"))?;
-    let v = ecarts(c).map_err(|e| e.to_string());
+    let v = elements(c).map_err(|e| e.to_string());
     c.execute("DETACH DATABASE instantane", []).ok();
     v
 }
@@ -415,6 +696,23 @@ pub fn retour_revenir(db: State<Db>, nom: String) -> R<BilanRetour> {
     let (ecarts, fichiers) = revenir_a(&c, &copie, &crate::db::corbeille_dir(), &crate::db::fichiers_dir())?;
     crate::commands::diag_ecrire(format!("RETOUR à {nom} : {} table(s) reprise(s), {fichiers} fichier(s) revenu(s) ; annulable par {avant}", ecarts.len()));
     Ok(BilanRetour { copie: avant, ecarts, fichiers })
+}
+
+#[tauri::command(async)]
+pub fn retour_elements(db: State<Db>, nom: String) -> R<Vec<ElementPasse>> {
+    let etat = etat_nomme(&nom)?;
+    elements_de(&db.lock(), &etat.chemin)
+}
+
+#[tauri::command(async)]
+pub fn retour_reprendre(db: State<Db>, nom: String, cibles: Vec<Cible>, avec_les_liens: bool) -> R<BilanReprise> {
+    let etat = etat_nomme(&nom)?;
+    let c = db.lock();
+    // L'état présent d'abord : y reprendre les mêmes lignes annule la reprise.
+    let copie = crate::db::copie_de_securite(&c, "avant-reprise")?;
+    let (lignes, fichiers) = reprendre_de(&c, &etat.chemin, &cibles, avec_les_liens, &crate::db::corbeille_dir(), &crate::db::fichiers_dir())?;
+    crate::commands::diag_ecrire(format!("REPRISE depuis {nom} : {} ligne(s), {fichiers} fichier(s) revenu(s) ; annulable par {copie}", lignes.len()));
+    Ok(BilanReprise { copie, lignes, fichiers })
 }
 
 #[cfg(test)]
@@ -639,6 +937,138 @@ mod tests {
         assert_eq!(titres(&c, "projets"), vec!["Le potager"]);
         c.execute("INSERT INTO projets (id, titre, date_creation) VALUES ('p2', 'Le cirque', '2026-10-02')", []).unwrap();
         assert!(c.is_autocommit());
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    fn cible(table: &str, id: &str) -> Cible {
+        Cible { table: table.into(), id: id.into() }
+    }
+
+    /// Le cas du 20 octobre : une séquence supprimée la veille revient seule, avec ses séances et le créneau qui y
+    /// menait ; le travail fait depuis demeure. L'annulation la retire de nouveau.
+    #[test]
+    fn une_sequence_supprimee_revient_seule_avec_ses_seances() {
+        let d = dossier();
+        let c = base(&d.join("ici.sqlite3"), "A");
+        c.execute_batch(
+            "INSERT INTO projets (id, titre, date_creation) VALUES ('p1', 'Le potager', '2026-10-01');
+             INSERT INTO sequences (id, titre, date_creation) VALUES ('s1', 'Les nombres', '2026-10-01');
+             INSERT INTO seances (id, titre, sequence_id) VALUES ('se1', 'Compter jusqu''à 5', 's1');
+             INSERT INTO seances (id, titre, sequence_id) VALUES ('se2', 'Compter jusqu''à 10', 's1');
+             INSERT INTO creneaux (id, date, matiere, seance_id) VALUES ('cr1', '2026-10-20T09:00', 'Mathématiques', 'se1');",
+        ).unwrap();
+        c.execute("VACUUM INTO ?1", params![d.join("alors.sqlite3").to_string_lossy()]).unwrap();
+        // Depuis : la séquence supprimée (ses séances avec, le créneau perd son lien), le projet renommé, un autre créé.
+        c.execute_batch(
+            "DELETE FROM sequences WHERE id = 's1';
+             UPDATE projets SET titre = 'Le grand potager' WHERE id = 'p1';
+             INSERT INTO projets (id, titre, date_creation) VALUES ('p2', 'Le cirque', '2026-10-21');",
+        ).unwrap();
+        assert_eq!(c.query_row("SELECT seance_id FROM creneaux WHERE id = 'cr1'", [], |r| r.get::<_, Option<String>>(0)).unwrap(), None);
+
+        let elements = elements_de(&c, &d.join("alors.sqlite3")).unwrap();
+        let s1 = elements.iter().find(|e| e.id == "s1").expect("la séquence se propose");
+        assert!(s1.supprime);
+        assert_eq!(s1.libelle, "Les nombres");
+        assert_eq!(s1.avec, vec![("seances".to_string(), 2)]);
+        assert!(!elements.iter().any(|e| e.table == "seances"), "ses séances reviennent avec elle : {elements:?}");
+        assert!(elements.iter().any(|e| e.id == "p1" && !e.supprime && e.libelle == "Le grand potager"));
+
+        c.execute("VACUUM INTO ?1", params![d.join("avant.sqlite3").to_string_lossy()]).unwrap();
+        let (lignes, _) = reprendre_de(&c, &d.join("alors.sqlite3"), &[cible("sequences", "s1")], true, &d.join("Corbeille"), &d.join("Fichiers")).unwrap();
+        assert_eq!(titres(&c, "sequences"), vec!["Les nombres"]);
+        assert_eq!(titres(&c, "seances"), vec!["Compter jusqu'à 10", "Compter jusqu'à 5"]);
+        assert_eq!(c.query_row("SELECT seance_id FROM creneaux WHERE id = 'cr1'", [], |r| r.get::<_, String>(0)).unwrap(), "se1", "le créneau mène de nouveau à sa séance");
+        assert_eq!(titres(&c, "projets"), vec!["Le cirque", "Le grand potager"], "le reste ne bouge pas");
+        assert_eq!(lignes.len(), 4);
+        let journal: i64 = c.query_row("SELECT COUNT(*) FROM changements WHERE ligne_id IN ('s1', 'se1', 'se2', 'cr1') AND operation = 'maj'", [], |r| r.get(0)).unwrap();
+        assert!(journal >= 4, "l'autre ordinateur le recevra");
+
+        // Annuler : les mêmes lignes, telles qu'avant la reprise.
+        reprendre_de(&c, &d.join("avant.sqlite3"), &lignes, false, &d.join("Corbeille"), &d.join("Fichiers")).unwrap();
+        assert!(titres(&c, "sequences").is_empty());
+        assert!(titres(&c, "seances").is_empty());
+        assert_eq!(c.query_row("SELECT seance_id FROM creneaux WHERE id = 'cr1'", [], |r| r.get::<_, Option<String>>(0)).unwrap(), None);
+        assert_eq!(titres(&c, "projets"), vec!["Le cirque", "Le grand potager"]);
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// Une séance ne revient pas sans sa séquence ; la reprendre ramène la séquence, mais pas ses autres séances.
+    #[test]
+    fn une_seance_reprise_ramene_sa_sequence_disparue() {
+        let d = dossier();
+        let c = base(&d.join("ici.sqlite3"), "A");
+        c.execute_batch(
+            "INSERT INTO sequences (id, titre, date_creation) VALUES ('s1', 'Les nombres', '2026-10-01');
+             INSERT INTO seances (id, titre, sequence_id) VALUES ('se1', 'Compter jusqu''à 5', 's1');
+             INSERT INTO seances (id, titre, sequence_id) VALUES ('se2', 'Compter jusqu''à 10', 's1');",
+        ).unwrap();
+        c.execute("VACUUM INTO ?1", params![d.join("alors.sqlite3").to_string_lossy()]).unwrap();
+        c.execute("DELETE FROM sequences WHERE id = 's1'", []).unwrap();
+        reprendre_de(&c, &d.join("alors.sqlite3"), &[cible("seances", "se2")], true, &d.join("Corbeille"), &d.join("Fichiers")).unwrap();
+        assert_eq!(titres(&c, "sequences"), vec!["Les nombres"]);
+        assert_eq!(titres(&c, "seances"), vec!["Compter jusqu'à 10"]);
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// L'ancienne version d'une séance : elle reprend ses valeurs d'alors, les autres modifications restent.
+    #[test]
+    fn une_seance_modifiee_reprend_sa_version_d_alors() {
+        let d = dossier();
+        let c = base(&d.join("ici.sqlite3"), "A");
+        c.execute_batch(
+            "INSERT INTO sequences (id, titre, date_creation) VALUES ('s1', 'Les nombres', '2026-10-01');
+             INSERT INTO seances (id, titre, sequence_id, deroulement) VALUES ('se1', 'Compter', 's1', 'Phase 1.');
+             INSERT INTO seances (id, titre, sequence_id) VALUES ('se2', 'Ranger', 's1');",
+        ).unwrap();
+        c.execute("VACUUM INTO ?1", params![d.join("alors.sqlite3").to_string_lossy()]).unwrap();
+        c.execute_batch(
+            "UPDATE seances SET titre = 'Compter vite', deroulement = 'Tout réécrit.' WHERE id = 'se1';
+             UPDATE seances SET titre = 'Ranger les cubes' WHERE id = 'se2';",
+        ).unwrap();
+        let elements = elements_de(&c, &d.join("alors.sqlite3")).unwrap();
+        assert!(elements.iter().any(|e| e.id == "se1" && !e.supprime && e.libelle == "Compter vite"), "{elements:?}");
+        reprendre_de(&c, &d.join("alors.sqlite3"), &[cible("seances", "se1")], true, &d.join("Corbeille"), &d.join("Fichiers")).unwrap();
+        let (titre, deroulement): (String, String) = c.query_row("SELECT titre, deroulement FROM seances WHERE id = 'se1'", [], |r| Ok((r.get(0)?, r.get(1)?))).unwrap();
+        assert_eq!((titre.as_str(), deroulement.as_str()), ("Compter", "Phase 1."));
+        assert_eq!(titres(&c, "seances"), vec!["Compter", "Ranger les cubes"]);
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// Un élève revient avec ses observations et ses documents, que la base ne relie pas toujours par une clé.
+    #[test]
+    fn un_eleve_revient_avec_ses_observations_et_ses_documents() {
+        let d = dossier();
+        let c = base(&d.join("ici.sqlite3"), "A");
+        c.execute_batch(
+            "INSERT INTO eleves (id, nom) VALUES ('e1', 'Élève Un');
+             INSERT INTO eleves (id, nom) VALUES ('e2', 'Élève Deux');
+             INSERT INTO commentaires_eleve (id, eleve_id, texte, date) VALUES ('k1', 'e1', 'Lit seul', '2026-10-01');
+             INSERT INTO commentaires_eleve (id, eleve_id, texte, date) VALUES ('k2', 'e1', 'Compte jusqu''à 20', '2026-10-02');
+             INSERT INTO commentaires_eleve (id, eleve_id, texte, date) VALUES ('k3', 'e2', 'Écrit son prénom', '2026-10-02');
+             INSERT INTO documents_eleve (id, eleve_id, type, donnees) VALUES ('e1:ppi', 'e1', 'ppi', '{}');",
+        ).unwrap();
+        c.execute("VACUUM INTO ?1", params![d.join("alors.sqlite3").to_string_lossy()]).unwrap();
+        c.execute_batch("DELETE FROM commentaires_eleve WHERE eleve_id = 'e1'; DELETE FROM eleves WHERE id = 'e1';").unwrap();
+        let elements = elements_de(&c, &d.join("alors.sqlite3")).unwrap();
+        let e1 = elements.iter().find(|e| e.id == "e1").expect("l'élève se propose");
+        assert_eq!(e1.avec, vec![("commentaires_eleve".to_string(), 2), ("documents_eleve".to_string(), 1)]);
+        reprendre_de(&c, &d.join("alors.sqlite3"), &[cible("eleves", "e1")], true, &d.join("Corbeille"), &d.join("Fichiers")).unwrap();
+        let n = |sql: &str| -> i64 { c.query_row(sql, [], |r| r.get(0)).unwrap() };
+        assert_eq!(n("SELECT COUNT(*) FROM commentaires_eleve WHERE eleve_id = 'e1'"), 2);
+        assert_eq!(n("SELECT COUNT(*) FROM documents_eleve WHERE eleve_id = 'e1'"), 1);
+        assert_eq!(n("SELECT COUNT(*) FROM commentaires_eleve"), 3);
+        std::fs::remove_dir_all(&d).ok();
+    }
+
+    /// Une table inconnue ne s'écrit pas : le nom vient de la fenêtre.
+    #[test]
+    fn une_table_hors_des_tables_reprises_est_ignoree() {
+        let d = dossier();
+        let c = base(&d.join("ici.sqlite3"), "A");
+        c.execute("VACUUM INTO ?1", params![d.join("alors.sqlite3").to_string_lossy()]).unwrap();
+        let (lignes, _) = reprendre_de(&c, &d.join("alors.sqlite3"), &[cible("settings\" --", "x"), cible("changements", "1")], true, &d.join("Corbeille"), &d.join("Fichiers")).unwrap();
+        assert!(lignes.is_empty());
         std::fs::remove_dir_all(&d).ok();
     }
 }

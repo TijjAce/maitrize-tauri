@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { Ecart, EtatPasse } from "./api";
-import { bilanDesEcarts, deQuand, etiquette, motifEnClair, quandEnClair, rangerLesEtats } from "./revenirEnArriere";
+import type { Ecart, ElementPasse, EtatPasse } from "./api";
+import {
+  avecEnClair, bilanDesEcarts, deQuand, elementsRanges, etiquette, libelleEnClair, motifEnClair, nomDeLaChose, quandEnClair, rangerLesEtats,
+} from "./revenirEnArriere";
 
 const etat = (nom: string, date: string, motif = "auto"): EtatPasse => ({ nom, date, motif, octets: 1 });
 const maintenant = new Date(2026, 9, 20, 15, 0, 0); // mardi 20 octobre 2026, 15 h
@@ -48,5 +50,26 @@ describe("revenir en arrière", () => {
     expect(bilan.revenues).toEqual(["1 séquence (Les nombres)"]);
     expect(bilan.parties).toEqual(["1 projet (Le cirque)"]);
     expect(bilan.changees).toEqual(["14 créneaux (19/10 · Lecture…)", "2 séquences (Lire, Écrire)"]);
+  });
+
+  it("dit ce qu'on peut reprendre seul, les éléments supprimés d'abord", () => {
+    const el = (table: string, libelle: string, supprime: boolean, avec: [string, number][] = []): ElementPasse => ({ table, id: libelle, libelle, supprime, avec });
+    const { supprimes, modifies } = elementsRanges([
+      el("seances", "Compter", false),
+      el("sequences", "Les nombres", true, [["seances", 8]]),
+      el("projets", "Le potager", true),
+      el("sequences", "Les fractions", false),
+      el("creneaux", "2026-10-19 · Lecture", false),
+    ]);
+    expect(supprimes.map((e) => e.libelle)).toEqual(["Le potager", "Les nombres"]);
+    expect(modifies.map((e) => e.libelle)).toEqual(["Les fractions", "Compter", "2026-10-19 · Lecture"]);
+    expect(nomDeLaChose("sequences")).toBe("séquence");
+    expect(nomDeLaChose("inconnue")).toBe("élément");
+    expect(libelleEnClair(modifies[2])).toBe("19/10 · Lecture");
+    expect(avecEnClair([["seances", 8]])).toBe("8 séances");
+    expect(avecEnClair([["commentaires_eleve", 2], ["documents_eleve", 1]])).toBe("2 observations et 1 dossier d'élève");
+    expect(avecEnClair([])).toBe("");
+    expect(motifEnClair("avant-reprise")).toBe("avant la reprise d'un élément");
+    expect(motifEnClair("avant-synchro")).toBe("avant un gros envoi de l'autre ordinateur");
   });
 });

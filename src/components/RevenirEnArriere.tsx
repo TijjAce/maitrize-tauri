@@ -1,10 +1,11 @@
 import React from "react";
-import { api, texteErreur, type Ecart, type EtatPasse } from "../api";
+import { api, texteErreur, type Ecart, type ElementPasse, type EtatPasse } from "../api";
 import { Aide } from "./Aide";
 import { confirmer } from "./confirmer";
 import { toast } from "./Toaster";
 import {
-  bilanDesEcarts, deQuand, etiquette, motifEnClair, noterLeRetour, quandEnClair, rangerLesEtats, retourQuiVientDAvoirLieu, signeDuMotif,
+  avecEnClair, bilanDesEcarts, deQuand, elementsRanges, etiquette, libelleEnClair, motifEnClair, nomDeLaChose, noterLeRetour, quandEnClair,
+  rangerLesEtats, retourQuiVientDAvoirLieu, signeDuMotif,
 } from "../revenirEnArriere";
 
 // ── Revenir en arrière ───────────────────────────────────────────────────
@@ -14,12 +15,15 @@ import {
 // qui changerait, on revient ; « Annuler » ramène à l'état d'avant.
 
 type Apercu = { ecarts: Ecart[] } | { erreur: string } | "lecture";
+type Elements = { elements: ElementPasse[] } | { erreur: string } | "lecture";
 
 export function RevenirEnArriere() {
   const [etats, setEtats] = React.useState<EtatPasse[] | null>(null);
   const [choisi, setChoisi] = React.useState<string | null>(null);
   const [apercus, setApercus] = React.useState<Record<string, Apercu>>({});
   const [toutVoir, setToutVoir] = React.useState(false);
+  const [elements, setElements] = React.useState<Record<string, Elements>>({});
+  const [reprendreSeul, setReprendreSeul] = React.useState(false);
   const [occupe, setOccupe] = React.useState(false);
   const [msg, setMsg] = React.useState("");
   const maintenant = new Date();
@@ -28,6 +32,7 @@ export function RevenirEnArriere() {
 
   const choisir = (nom: string) => {
     setMsg("");
+    setReprendreSeul(false);
     setChoisi((c) => (c === nom ? null : nom));
     if (apercus[nom] && apercus[nom] !== "lecture") return;
     setApercus((a) => ({ ...a, [nom]: "lecture" }));
@@ -55,6 +60,40 @@ export function RevenirEnArriere() {
     }
   };
 
+  const ouvrirLaReprise = (nom: string) => {
+    setReprendreSeul((o) => !o);
+    if (elements[nom] && elements[nom] !== "lecture") return;
+    setElements((x) => ({ ...x, [nom]: "lecture" }));
+    api.retourElements(nom)
+      .then((v) => setElements((x) => ({ ...x, [nom]: { elements: v } })))
+      .catch((e) => setElements((x) => ({ ...x, [nom]: { erreur: texteErreur(e) } })));
+  };
+
+  const reprendre = async (e: EtatPasse, el: ElementPasse) => {
+    const vers = deQuand(e, new Date());
+    const nom = `«\u00a0${libelleEnClair(el)}\u00a0» (${nomDeLaChose(el.table)})`;
+    const avec = avecEnClair(el.avec);
+    if (!(await confirmer(
+      el.supprime
+        ? `Faire revenir ${nom} de l'état ${vers} ?\n\n${avec ? `Avec : ${avec}. ` : ""}`
+          + "Le reste de votre travail ne change pas, ici comme sur l'autre ordinateur. « Annuler » le défait."
+        : `Remettre ${nom} comme dans l'état ${vers} ?\n\nCe qui y a été changé depuis est défait ; `
+          + "le reste de votre travail ne change pas. « Annuler » le défait.",
+      { oui: el.supprime ? "Faire revenir" : "Remettre comme alors" },
+    ))) return;
+    setOccupe(true); setMsg("");
+    try {
+      const bilan = await api.retourReprendre(e.nom, [{ table: el.table, id: el.id }], true);
+      const quoi = `«\u00a0${libelleEnClair(el)}\u00a0»${avec ? `, avec ${avec}` : ""}`;
+      noterLeRetour({ copie: bilan.copie, vers, fichiers: bilan.fichiers, reprise: { quoi, lignes: bilan.lignes } });
+      // Tous les écrans relisent leurs données.
+      window.location.reload();
+    } catch (err) {
+      setMsg("❌ " + texteErreur(err));
+      setOccupe(false);
+    }
+  };
+
   if (!etats) return null;
   const rangees = rangerLesEtats(etats, maintenant);
   // Aujourd'hui et hier en vue ; le reste se déplie.
@@ -62,6 +101,8 @@ export function RevenirEnArriere() {
   const cachees = rangees.filter((r) => !visibles.includes(r)).reduce((n, r) => n + r.etats.length, 0);
   const etatChoisi = etats.find((e) => e.nom === choisi) ?? null;
   const apercu = choisi ? apercus[choisi] : undefined;
+  // Quelque chose à reprendre seul : une ligne supprimée ou modifiée depuis.
+  const aReprendre = !!apercu && apercu !== "lecture" && "ecarts" in apercu && apercu.ecarts.some((x) => x.table !== "settings" && x.revenues + x.changees > 0);
 
   return (
     <div className="card" style={{ marginBottom: 18, maxWidth: 620 }}>
@@ -69,13 +110,17 @@ export function RevenirEnArriere() {
         <h3 style={{ margin: 0 }}>🕓 Revenir en arrière</h3>
         <Aide titre="Revenir en arrière" vers="droite">
           <p>Maitrize garde l'état de toute l'application : un par heure d'utilisation quand quelque chose a changé, et
-            un juste avant chaque mise à jour ou chaque retour en arrière. Elle les garde tous pendant deux jours, puis un par
-            jour sur un mois, un par semaine sur six mois, un par mois sur un an.</p>
+            un juste avant chaque mise à jour, chaque retour en arrière ou chaque gros envoi de l'autre ordinateur. Elle
+            les garde tous pendant deux jours, puis un par jour sur un mois, un par semaine sur six mois, un par mois sur
+            un an.</p>
           <p>Revenir à un état reprend tout ce qui existait alors : élèves, séquences, cahier journal, organisation,
             réglages de la classe, et les documents joints, qui reviennent de la corbeille. Les réglages propres à cet
             ordinateur et vos clés restent.</p>
           <p>L'autre ordinateur suit le même retour. L'état d'avant est gardé : « Annuler » y ramène, tout de suite ou plus
             tard depuis cette liste. Ce que vous supprimez reste donc un an dans ces états, sur cet ordinateur seulement.</p>
+          <p>« Ne reprendre qu'un élément » fait revenir une seule chose de l'état choisi — une séquence supprimée avec ses
+            séances, un élève avec ses observations, l'ancienne version d'une séance — sans défaire le reste du travail fait
+            depuis.</p>
         </Aide>
       </div>
 
@@ -120,6 +165,15 @@ export function RevenirEnArriere() {
             </button>
             {msg && <span>{msg}</span>}
           </div>
+          {aReprendre && (
+            <button type="button" className="btn ghost sm" style={{ marginTop: 8 }} aria-expanded={reprendreSeul}
+              onClick={() => ouvrirLaReprise(etatChoisi.nom)}>
+              {reprendreSeul ? "▾" : "▸"} Ne reprendre qu'un élément
+            </button>
+          )}
+          {aReprendre && reprendreSeul && (
+            <ElementsAReprendre key={etatChoisi.nom} lus={elements[etatChoisi.nom]} occupe={occupe} onReprendre={(el) => reprendre(etatChoisi, el)} />
+          )}
         </div>
       )}
     </div>
@@ -142,6 +196,44 @@ function Changements({ ecarts }: { ecarts: Ecart[] }) {
   );
 }
 
+/** Combien d'éléments de chaque liste se montrent d'abord. */
+const PREMIERS = 8;
+
+const majuscule = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** Ce que l'on peut reprendre seul d'un état : ce qui a été supprimé depuis, puis ce qui a été modifié depuis. */
+function ElementsAReprendre({ lus, occupe, onReprendre }: { lus: Elements | undefined; occupe: boolean; onReprendre: (el: ElementPasse) => void }) {
+  const [tout, setTout] = React.useState(false);
+  if (!lus || lus === "lecture") return <div className="meta" style={{ marginTop: 6 }}>Lecture de l'état…</div>;
+  if ("erreur" in lus) return <div style={{ marginTop: 6, color: "var(--danger, #ef4444)" }}>{lus.erreur}</div>;
+  const { supprimes, modifies } = elementsRanges(lus.elements);
+  if (!supprimes.length && !modifies.length) return <div className="meta" style={{ marginTop: 6 }}>Rien à reprendre seul.</div>;
+  const caches = Math.max(0, supprimes.length - PREMIERS) + Math.max(0, modifies.length - PREMIERS);
+  const liste = (titre: string, items: ElementPasse[], verbe: string) => items.length > 0 && (
+    <div style={{ marginTop: 8 }}>
+      <div className="meta" style={{ fontSize: 12, marginBottom: 2 }}>{titre}</div>
+      {(tout ? items : items.slice(0, PREMIERS)).map((el) => (
+        <div key={`${el.table}:${el.id}`} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0" }}>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span className="meta">{majuscule(nomDeLaChose(el.table))} · </span>{libelleEnClair(el)}
+            {el.avec.length > 0 && <span className="meta"> · avec {avecEnClair(el.avec)}</span>}
+          </span>
+          <button type="button" className="btn sm" disabled={occupe} onClick={() => onReprendre(el)}>{verbe}</button>
+        </div>
+      ))}
+    </div>
+  );
+  return (
+    <div>
+      {liste("Supprimés depuis", supprimes, "Faire revenir")}
+      {liste("Modifiés depuis", modifies, "Remettre comme alors")}
+      {!tout && caches > 0 && (
+        <button type="button" className="btn ghost sm" style={{ marginTop: 4 }} onClick={() => setTout(true)}>▸ Tout montrer ({caches} de plus)</button>
+      )}
+    </div>
+  );
+}
+
 /**
  * Après le rechargement qui suit un retour : le dire, et offrir de l'annuler.
  * Monté une fois dans l'application.
@@ -153,6 +245,30 @@ export function useAnnonceDuRetour() {
     // Le temps que l'hôte des notifications écoute. Pas d'arrêt au démontage :
     // l'annonce n'est lue qu'une fois, un double montage la perdrait.
     window.setTimeout(() => {
+      if (r.reprise) {
+        const { quoi, lignes } = r.reprise;
+        if (!r.copie) {
+          toast(`Reprise de ${quoi.replace(/, avec .*$/, "")} annulée.`, { icone: "↶" });
+          return;
+        }
+        const fichiers = r.fichiers > 0 ? ` ${r.fichiers} document${r.fichiers > 1 ? "s" : ""} revenu${r.fichiers > 1 ? "s" : ""} de la corbeille.` : "";
+        toast(`Repris de l'état ${r.vers} : ${quoi}.${fichiers}`, {
+          icone: "🕓", duree: 30000,
+          action: {
+            label: "Annuler",
+            faire: async () => {
+              try {
+                await api.retourReprendre(r.copie, lignes, false);
+                noterLeRetour({ copie: "", vers: r.vers, fichiers: 0, reprise: { quoi, lignes: [] } });
+                window.location.reload();
+              } catch (e) {
+                toast("Annulation impossible : " + texteErreur(e), { icone: "⚠️" });
+              }
+            },
+          },
+        });
+        return;
+      }
       if (!r.copie) {
         toast("Retour annulé : tout est revenu comme avant.", { icone: "↶" });
         return;
