@@ -217,7 +217,7 @@ export function MotsEnGestesTab({ banque }: { banque: boolean }) {
         <Boutons atelier="motsGestes" titre="Les mots en gestes" html={html} style={STYLE_GESTES} peut={peut} onTirage={() => setGraine(graineAuHasard())} />
       </>}
       droite={!mots.length && utiles.length
-        ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_GESTES} /></ApercuExemple>
+        ? <ApercuExemple onPrendre={() => setMots(montres)} departs={{ onMots: setMots, banque }}><ApercuFeuille html={html} style={STYLE_GESTES} /></ApercuExemple>
         : <ApercuFeuille html={html} style={STYLE_GESTES} />}
     />
   );

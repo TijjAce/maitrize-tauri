@@ -329,7 +329,7 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
             onTirage={() => setGraine(graineAuHasard())} />
         </>}
         droite={!mots.length && prets.length
-          ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_GESTES + STYLE_SYLLABES} /></ApercuExemple>
+          ? <ApercuExemple onPrendre={() => setMots(montres)} departs={{ onMots: setMots, banque }}><ApercuFeuille html={html} style={STYLE_GESTES + STYLE_SYLLABES} /></ApercuExemple>
           : <ApercuFeuille html={html} style={STYLE_GESTES + STYLE_SYLLABES} />}
       />
       {recherche && <MotsDeLaBanque cibles={cibles} deja={deja} onClose={() => setRecherche(false)} onAjouter={ajouterDeLaBanque} />}

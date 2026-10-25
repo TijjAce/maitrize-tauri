@@ -122,7 +122,7 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
           onBureau={() => bureau("lotoSyllabes", "Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)} />
       </>}
       droite={planches.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
-        : planches.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
+        : planches.length ? <ApercuExemple onPrendre={() => setMots(montres)} departs={{ onMots: setMots, banque }}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
         : <Vide quoi="Ajoutez des mots : le loto se fabrique avec les mots de la classe et leurs images." />}
     />
   );
