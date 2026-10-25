@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "./loto";
+import { ajouter, completerAuHasard, imagesConseillees, lireOptionsJeu, lireSelection, motsDeLaListe, remplacer, uneImageParMot } from "./loto";
 
 const p = (id: number, mot: string) => ({ id, mot });
 const ids = (l: { id: number }[]) => l.map((x) => x.id);
@@ -36,6 +36,16 @@ describe("loto", () => {
     expect(new Set(sel.map((x) => x.mot)).size).toBe(4);
     // Le thème est épuisé : on rend ce qu'on a.
     expect(completerAuHasard([], theme, new Set([1, 2, 3, 4]), 10)).toHaveLength(2);
+  });
+
+  it("relit la sélection et les réglages gardés de la dernière fois, sans ce qui n'en est pas", () => {
+    expect(lireSelection([{ id: 4, mot: "vache", fichier: "4.png" }, { id: "x", mot: "chat" }, null, { id: 7, mot: "coq", nature: "nom" }]))
+      .toEqual([{ id: 4, mot: "vache", fichier: "4.png" }, { id: 7, mot: "coq", fichier: "", nature: "nom" }]);
+    expect(lireSelection("n'importe quoi")).toEqual([]);
+    const defauts = { libelles: false, cartes: true, colonnes: 3, lignes: 2, planches: 6, graine: 0 };
+    expect(lireOptionsJeu(undefined, defauts)).toEqual(defauts);
+    expect(lireOptionsJeu({ libelles: true, colonnes: 4, lignes: 99, planches: "six" }, defauts))
+      .toEqual({ ...defauts, libelles: true, colonnes: 4, lignes: 8 });
   });
 
   it("conseille assez d'images pour des planches différentes", () => {

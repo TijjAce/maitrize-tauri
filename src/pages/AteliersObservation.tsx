@@ -2,14 +2,13 @@ import React from "react";
 import { Aide } from "../components/Aide";
 import { api, type CategorieArasaac, type PictoArasaac } from "../api";
 import { Field, Input, Select, useAsync } from "../components/ui";
-import { useReglages } from "../components/useMemoire";
+import { useMotsGardes, useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { chargerImages } from "../components/ChoixPicto";
 import { peindre } from "../components/MesImages";
 import { libelleCategorie } from "../data/categoriesArasaac";
 import { uneImageParMot } from "../loto";
-import type { MotImage } from "../jeuxSons";
 import { graineAuHasard } from "../hasard";
 import { useGraine } from "../modifierFeuille";
 import { Boutons, Coche, Colonnes } from "./AteliersLangage";
@@ -92,7 +91,7 @@ function useDessinsLynx(ids: number[], trait: boolean): { dessins: Record<number
 const borne = (v: string, min: number, max: number, defaut: number) => Math.max(min, Math.min(max, Math.round(Number(v)) || defaut));
 
 export function OeilDeLynxTab({ banque }: { banque: boolean }) {
-  const [mots, setMots] = React.useState<MotImage[]>([]);
+  const [mots, setMots] = useMotsGardes("oeilDeLynx:mots");
   const [brut, maj] = useReglages("oeilDeLynx", REGLAGES_LYNX);
   const r = React.useMemo(() => reglagesLynxSurs(brut), [brut]);
   const [graine, setGraine] = useGraine();

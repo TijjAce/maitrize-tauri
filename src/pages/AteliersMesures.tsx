@@ -6,7 +6,7 @@ import { ApercuFeuille } from "../components/ApercuFeuille";
 import { graineAuHasard } from "../hasard";
 import { useGraine } from "../modifierFeuille";
 import { Boutons, Coche, Colonnes, bureau, imprimer } from "./AteliersMaths";
-import { EXERCICES_MONNAIE, PLAFONDS_MONNAIE, REGLAGES_MONNAIE, STYLE_MONNAIE, htmlMonnaie, type ExerciceMonnaie } from "../monnaie";
+import { CONTRAINTES_UN_EURO, EXERCICES_MONNAIE, PLAFONDS_MONNAIE, REGLAGES_MONNAIE, STYLE_MONNAIE, htmlMonnaie, type ExerciceMonnaie } from "../monnaie";
 import { EXERCICES_MESURES, REGLAGES_MESURES, STYLE_MESURES, exerciceDisponible, htmlMesures, type Classe, type ExerciceMesures, type Grandeur } from "../mesures";
 import { EXERCICES_DONNEES, REGLAGES_DONNEES, STYLE_DONNEES, htmlDonnees, type ExerciceDonnees } from "../donnees";
 
@@ -19,6 +19,9 @@ export function MonnaieTab() {
   const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlMonnaie(r, graine), [r, graine]);
   const titre = EXERCICES_MONNAIE.find((e) => e.id === r.exercice)?.libelle.split(" — ")[0] ?? "La monnaie";
+  // « 1 € de plusieurs façons » : toujours 1 €, en centimes, sans virgule ; seul compte le nombre de cases.
+  const unEuro = r.exercice === "unEuro";
+  const combienMax = unEuro ? CONTRAINTES_UN_EURO.length : 12;
   return (
     <Colonnes
       gauche={<>
@@ -32,19 +35,24 @@ export function MonnaieTab() {
           </Select>
         </Field>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <Field label="Jusqu'à">
-            <Select value={r.jusqua} onChange={(e) => maj({ jusqua: Number(e.target.value) })}>
-              {PLAFONDS_MONNAIE.map((p) => <option key={p} value={p}>{p.toLocaleString("fr-FR")} €</option>)}
-            </Select>
-          </Field>
-          {r.exercice !== "planche" && r.exercice !== "unEuro" && (
+          {!unEuro && (
+            <Field label="Jusqu'à">
+              <Select value={r.jusqua} onChange={(e) => maj({ jusqua: Number(e.target.value) })}>
+                {PLAFONDS_MONNAIE.map((p) => <option key={p} value={p}>{p.toLocaleString("fr-FR")} €</option>)}
+              </Select>
+            </Field>
+          )}
+          {r.exercice !== "planche" && (
             <Field label="Combien">
-              <Input type="number" min={1} max={12} value={r.combien} onChange={(e) => maj({ combien: borne(e.target.value, 1, 12, 6) })} style={{ width: 80 }} />
+              <Input type="number" min={unEuro ? 2 : 1} max={combienMax} value={Math.min(r.combien, combienMax)}
+                onChange={(e) => maj({ combien: borne(e.target.value, unEuro ? 2 : 1, combienMax, 6) })} style={{ width: 80 }} />
             </Field>
           )}
         </div>
-        <Coche on={r.centimes} libelle="Les centimes aussi (CE1)" onChange={(v) => maj({ centimes: v })} />
-        <Coche on={r.virgule} libelle="L'écriture à virgule : 3,50 € (CE1 dès la période 3, CE2)" onChange={(v) => maj({ virgule: v })} />
+        {!unEuro && <>
+          <Coche on={r.centimes} libelle="Les centimes aussi (CE1)" onChange={(v) => maj({ centimes: v })} />
+          <Coche on={r.virgule} libelle="L'écriture à virgule : 3,50 € (CE1 dès la période 3, CE2)" onChange={(v) => maj({ virgule: v })} />
+        </>}
         {r.exercice === "constituer" && <>
           <Coche on={r.moinsDePieces} libelle="Avec le moins de pièces et de billets possible" onChange={(v) => maj({ moinsDePieces: v })} />
           <Coche on={r.sansPiecesDe1} libelle="Sans pièce de 1 €" onChange={(v) => maj({ sansPiecesDe1: v })} />
