@@ -1936,6 +1936,8 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 /* L'exemple d'un générateur vide : un bandeau au-dessus de la feuille, et de quoi en partir (voir components/Exemple.tsx). */
 .apercu-exemple-bandeau { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; margin: 0 0 8px; border: 1px dashed var(--accent); border-radius: 10px; background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .apercu-exemple-titre { font-weight: 700; font-size: 13px; color: var(--accent); }
+.apercu-exemple-departs { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: -2px 0 10px; }
+.apercu-exemple-departs .meta { font-size: 12.5px; margin-right: 2px; }
 
 /* ── Progression annuelle (Organisation › Progression) ───────────────────
    Une grille de semaines : la colonne prend la couleur de sa matière, en

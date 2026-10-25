@@ -98,7 +98,7 @@ export function EtiquettesTab({ banque }: { banque: boolean }) {
       </div>
       <div style={{ minWidth: 0 }}>
         {mots.length ? <ApercuFeuille html={html} style={STYLE_ETIQUETTES} />
-          : montres.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_ETIQUETTES} /></ApercuExemple>
+          : montres.length ? <ApercuExemple onPrendre={() => setMots(montres)} departs={{ onMots: setMots, banque }}><ApercuFeuille html={html} style={STYLE_ETIQUETTES} /></ApercuExemple>
           : <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>Ajoutez les mots de la séquence : ils s'afficheront tels qu'ils s'imprimeront.</div>}
       </div>
     </div>
@@ -626,7 +626,7 @@ export function OmbresTab({ banque }: { banque: boolean }) {
         <Boutons atelier="ombres" titre="Le jeu des ombres" html={html} style={STYLE_OMBRES} peut={peut} onTirage={() => setGraine(graineAuHasard())} />
       </>}
       droite={items.length && mots.length ? <ApercuFeuille html={html} style={STYLE_OMBRES} />
-        : items.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_OMBRES} /></ApercuExemple>
+        : items.length ? <ApercuExemple onPrendre={() => setMots(montres)} departs={{ onMots: setMots, banque }}><ApercuFeuille html={html} style={STYLE_OMBRES} /></ApercuExemple>
         : <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>Ajoutez au moins deux images — des mots de la banque, un thème, ou vos propres images : chacune aura son ombre.</div>}
     />
   );
