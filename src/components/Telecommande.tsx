@@ -9,9 +9,10 @@ import { ouvrirOnglet } from "./ui";
 import { demanderMinuteur, EVT_FERMER_AFFICHAGE } from "../demandeMinuteur";
 import { etatDuMinuteur, piloterLeMinuteur, preparerSon } from "../pages/SupportsVisuels";
 import { zoomerDeLoin } from "../theme";
+import { EVT_CHERCHER_BUREAU } from "../bureauAteliers";
 import {
   CLE_SECOURS, CLE_TEMPS_REEL, MODELE_DE_SECOURS, catalogue, ceQuIlComprend, comprendre, consigneDeMistral, destinationsDe,
-  dureeEnClair, estComplexe, inviteDeLaVoix, lireLesActions, nomDeLaPage, TROUVAILLES_DE_LA_CLASSE, type Compris,
+  dureeEnClair, estComplexe, inviteDeLaVoix, lireLesActions, nomDeLaPage, pageAConfirmer, trouvailleAConfirmer, type Compris,
   type ContexteTelecommande, type Destination,
 } from "../telecommande";
 
@@ -28,8 +29,22 @@ const destinations = (): Destination[] => destinationsDe(NAV, SOUS_ONGLETS);
 const QUE_DIRE_EN_BREF =
   "Par exemple : « minuteur cinq minutes », « affiche les supports visuels », « plein écran », « ferme », « note pour [prénom] : … ».";
 
-/** Les notes qui attendent le « oui » du téléphone, par question. */
-const notesEnAttente = new Map<string, { eleveId: string; prenom: string; texte: string }>();
+/**
+ * Ce qui attend le « oui » du téléphone, par question : une note à écrire, ou une page qui montre les élèves. `suite` :
+ * les actions de la même phrase venues après — elles se font après le « oui », et tombent avec le « non ».
+ */
+type EnAttente = (
+  | { genre: "note"; eleveId: string; prenom: string; texte: string }
+  | { genre: "afficher"; faire: () => ReponseTelecommande }
+) & { suite?: Compris[] };
+const enAttente = new Map<string, EnAttente>();
+
+/** Au tableau, une page qui montre les élèves ne s'affiche qu'après un « oui » sur le téléphone. */
+function apresUnOui(nom: string, faire: () => ReponseTelecommande): ReponseTelecommande {
+  const id = newId();
+  enAttente.set(id, { genre: "afficher", faire });
+  return { ok: true, aConfirmer: `Afficher « ${nom} » au tableau ?`, id };
+}
 
 async function pleinEcran(actif: boolean) {
   try {
@@ -55,13 +70,13 @@ function ceQuiEstEnCours(): string {
   return `${minuteur} ; page affichée : ${window.location.hash.replace(/^#/, "") || "/"} ; taille ${Math.round(ZOOMS[zoom] * 100)} %.`;
 }
 
-/** Ce que la voix peut ouvrir — séquences, séances, jeux, outils, textes —, lu à chaque phrase : il change. */
+/** Ce que la voix peut ouvrir — séquences, séances, jeux, outils, textes, dossiers —, lu à chaque phrase : il change. */
 async function ceQuOnPeutOuvrir(eleves: { nom: string }[]) {
-  const [sequences, seances, jeux, outils, textes] = await Promise.all([
+  const [sequences, seances, jeux, outils, textes, dossiers] = await Promise.all([
     api.sequencesList().catch(() => []), api.seancesList().catch(() => []), api.jeuxList().catch(() => []),
-    api.outilsClasseList().catch(() => []), api.textesList().catch(() => []),
+    api.outilsClasseList().catch(() => []), api.textesList().catch(() => []), api.dossiersBureau().catch(() => []),
   ]);
-  return catalogue({ sequences, seances, jeux, outils, textes }, eleves, nowIso().slice(0, 10));
+  return catalogue({ sequences, seances, jeux, outils, textes, dossiers }, eleves, nowIso().slice(0, 10));
 }
 
 /**
@@ -85,15 +100,33 @@ async function parMistral(texte: string, ctx: ContexteTelecommande, nav: (to: st
     return null;
   }
   if (!actions) return null;
+  const r = await enSuite(actions, nav);
+  return r.ok ? { ...r, fait: `${r.fait ?? ""} (Mistral)`.trim() } : null;
+}
+
+/**
+ * Des actions, l'une après l'autre, le temps que chaque page s'ouvre. Une question — une note, une page des élèves —
+ * arrête la suite : elle attend le « oui » avec la question.
+ */
+async function enSuite(actions: Compris[], nav: (to: string) => void): Promise<ReponseTelecommande> {
   const faits: ReponseTelecommande[] = [];
   for (const [i, a] of actions.entries()) {
     if (i > 0) await new Promise((r) => setTimeout(r, ENTRE_DEUX_ACTIONS));
-    faits.push(await agir(a, nav));
+    const f = await agir(a, nav);
+    faits.push(f);
+    const q = f.id ? enAttente.get(f.id) : undefined;
+    if (f.aConfirmer && q) {
+      q.suite = actions.slice(i + 1);
+      break;
+    }
   }
-  if (!faits.some((f) => f.ok)) return null;
   const question = faits.find((f) => f.aConfirmer);
-  const dit = faits.map((f) => f.fait).filter(Boolean).join(" ");
-  return { ...question, ok: true, fait: `${dit} (Mistral)`.trim(), comprend: faits.find((f) => f.comprend)?.comprend };
+  return {
+    ...question,
+    ok: faits.some((f) => f.ok),
+    fait: faits.map((f) => f.fait).filter(Boolean).join(" "),
+    comprend: faits.find((f) => f.comprend)?.comprend,
+  };
 }
 
 /**
@@ -101,7 +134,7 @@ async function parMistral(texte: string, ctx: ContexteTelecommande, nav: (to: st
  * dit le plus — se comprend ici, sans attendre. Une phrase complexe, ou incomprise, va à Mistral si l'enseignant
  * l'a voulu (Réglages › Téléphone).
  */
-async function executer(texte: string, nav: (to: string) => void): Promise<ReponseTelecommande> {
+export async function executer(texte: string, nav: (to: string) => void): Promise<ReponseTelecommande> {
   const eleves = (await api.elevesList().catch(() => [])).map((e) => ({ id: e.id, nom: e.nom }));
   const ctx = { destinations: destinations(), eleves };
   const mistral = texte.trim() !== "" && (await api.settingGet(CLE_SECOURS).catch(() => null)) === "oui";
@@ -165,26 +198,38 @@ async function agir(c: Compris, nav: (to: string) => void): Promise<ReponseTelec
       return { ok: true, fait: "Page d'avant." };
     case "aller": {
       const d = c.destination;
-      nav(d.to);
-      if (d.page && d.onglet) setTimeout(() => ouvrirOnglet(d.page!, d.onglet!), 140);
-      return { ok: true, fait: `${nomDeLaPage(d.label)} : affiché.` };
+      const montrer = (): ReponseTelecommande => {
+        nav(d.to);
+        if (d.page && d.onglet) setTimeout(() => ouvrirOnglet(d.page!, d.onglet!), 140);
+        return { ok: true, fait: `${nomDeLaPage(d.label)} : affiché.` };
+      };
+      return pageAConfirmer(d) ? apresUnOui(nomDeLaPage(d.label), montrer) : montrer();
     }
     case "ouvrir": {
       const e = c.element;
+      if (e.sorte === "dossier") {
+        // Un dossier du bureau : comme ⌘K, le plan de travail, le dossier surligné.
+        nav("/plan");
+        setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_CHERCHER_BUREAU, { detail: { dossier: e.id, titre: e.id } })), 140);
+        return { ok: true, fait: `Dossier « ${e.titre.split("/").join(" › ")} » : affiché.` };
+      }
       allerVers({ kind: e.sorte, id: e.id, titre: e.titre, sousTitre: "", extrait: "", date: "", parent: "" }, nav);
       return { ok: true, fait: `« ${e.titre} » : affiché.` };
     }
     case "chercher": {
-      const trouves = (await api.recherche(c.quoi).catch(() => [])).filter((r) => TROUVAILLES_DE_LA_CLASSE.has(r.kind));
+      const trouves = await api.recherche(c.quoi).catch(() => []);
       const r = (c.sorte ? trouves.find((x) => x.kind === c.sorte) : undefined) ?? trouves[0];
       if (!r) return { ok: false, fait: `Rien à montrer pour « ${c.quoi} ».` };
-      allerVers(r, nav);
-      return { ok: true, fait: `« ${r.titre} » : affiché.` };
+      const montrer = (): ReponseTelecommande => {
+        allerVers(r, nav);
+        return { ok: true, fait: `« ${r.titre} » : affiché.` };
+      };
+      return trouvailleAConfirmer(r.kind) ? apresUnOui(r.titre, montrer) : montrer();
     }
     case "note": {
       const id = newId();
       const prenom = c.eleve.nom.split(" ")[0];
-      notesEnAttente.set(id, { eleveId: c.eleve.id, prenom, texte: c.texte });
+      enAttente.set(id, { genre: "note", eleveId: c.eleve.id, prenom, texte: c.texte });
       return { ok: true, aConfirmer: `Noter pour ${prenom} : « ${c.texte} » ?`, id };
     }
     case "aide":
@@ -195,14 +240,25 @@ async function agir(c: Compris, nav: (to: string) => void): Promise<ReponseTelec
   }
 }
 
-/** Le « oui » ou le « non » du téléphone à une note. */
-async function decider(id: string, oui: boolean): Promise<ReponseTelecommande> {
-  const note = notesEnAttente.get(id);
-  notesEnAttente.delete(id);
-  if (!note) return { ok: false, fait: "Cette question n'attend plus de réponse." };
-  if (!oui) return { ok: true, fait: "Rien n'est noté." };
-  await api.commentaireSave({ id: newId(), date: nowIso(), texte: note.texte, type: "divers", eleveId: note.eleveId });
-  return { ok: true, fait: `Noté pour ${note.prenom}.` };
+/**
+ * Le « oui » ou le « non » du téléphone à une question : une note, ou une page qui montre les élèves. Après le
+ * « oui », la suite de la phrase se fait — jusqu'à la question suivante, s'il y en a une.
+ */
+export async function decider(id: string, oui: boolean, nav: (to: string) => void): Promise<ReponseTelecommande> {
+  const q = enAttente.get(id);
+  enAttente.delete(id);
+  if (!q) return { ok: false, fait: "Cette question n'attend plus de réponse." };
+  if (!oui) return { ok: true, fait: q.genre === "note" ? "Rien n'est noté." : "Rien n'est affiché." };
+  let fait: ReponseTelecommande;
+  if (q.genre === "afficher") fait = q.faire();
+  else {
+    await api.commentaireSave({ id: newId(), date: nowIso(), texte: q.texte, type: "divers", eleveId: q.eleveId });
+    fait = { ok: true, fait: `Noté pour ${q.prenom}.` };
+  }
+  if (!q.suite?.length) return fait;
+  await new Promise((r) => setTimeout(r, ENTRE_DEUX_ACTIONS));
+  const suite = await enSuite(q.suite, nav);
+  return { ...suite, ok: true, fait: [fait.fait, suite.fait].filter(Boolean).join(" ") };
 }
 
 /** Écoute ce que la télécommande transmet, et répond. Monté une fois dans l'application. */
@@ -220,7 +276,7 @@ export function useTelecommande() {
       void repondre(e.payload.attente, () => executer(e.payload.texte, (to) => nav.current(to)));
     });
     const decision = listen<{ attente: string; id: string; oui: boolean }>("telecommande:decision", (e) => {
-      void repondre(e.payload.attente, () => decider(e.payload.id, e.payload.oui));
+      void repondre(e.payload.attente, () => decider(e.payload.id, e.payload.oui, (to) => nav.current(to)));
     });
     // « Que dire ? » sur le téléphone : ce que cette fenêtre comprend, du même vocabulaire que ce qu'elle exécute.
     const aide = listen<{ attente: string }>("telecommande:aide", (e) => {
@@ -311,9 +367,9 @@ export function CarteTelecommande() {
             (en ligne, le texte seul), tout ce que la télécommande sait faire, les pages de la classe et les titres de
             vos séquences, séances, jeux, outils et textes — les prénoms masqués. Il rend une liste d'actions, que
             Maitrize vérifie une à une avant de les faire dans l'ordre. Le téléphone le signale par « (Mistral) ».</p>
-          <p>La voix ne montre que ce qu'on peut montrer à la classe : ni les élèves, ni le cahier journal, ni les
-            réglages. Elle est transcrite sur ce Mac, comme les dictées ; chaque phrase arrive scellée, même sur le WiFi
-            de l'école.</p>
+          <p>La voix va dans tous les menus. Ce Mac étant projeté, les pages qui montrent les élèves — Élèves, Tableau
+            de bord, Planning, Organisation, Assistant IA, Réglages — ne s'affichent qu'après un « oui » sur le
+            téléphone. Chaque phrase arrive scellée, même sur le WiFi de l'école.</p>
           <p>Le téléphone trouve le Mac par Nuage, sans QR code. Ils doivent ensuite se joindre sur le même réseau :
             le WiFi de la classe, ou le partage de connexion de l'iPhone. La télécommande se ferme toute seule deux
             heures après la dernière phrase.</p>
