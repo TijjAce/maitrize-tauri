@@ -1149,13 +1149,33 @@ function journalDuCreneau(c) {
     + (bilan ? '<div class="sd-l"><b>Fait · bilan</b>' + nl(bilan) + '</div>' : '');
 }
 
+/** Les cases d'une rangée de tableau « | a | b | » : un « \| » reste dans sa case, comme le « | » d'un support cité ou d'une couleur. */
+function casesDeLaLigne(l) {
+  const t = l.trim(), cases = [];
+  let ici = '';
+  for (let i = 1; i < t.length; i++) {
+    if (t.startsWith('[@', i) || t.startsWith('[cite:', i)) {
+      const fin = t.indexOf(']', i);
+      if (fin > 0) { ici += t.slice(i, fin + 1); i = fin; continue; }
+    }
+    const couleur = t[i] === '{' ? /^\{(?:rouge|orange|vert|bleu|violet|fond-jaune|fond-vert|fond-bleu|fond-rose)\|/.exec(t.slice(i)) : null;
+    if (couleur) { ici += couleur[0]; i += couleur[0].length - 1; continue; }
+    if (t[i] === '\\' && t[i + 1] === '|') { ici += '|'; i++; continue; }
+    if (t[i] === '|') { cases.push(ici); ici = ''; continue; }
+    ici += t[i];
+  }
+  return cases;
+}
+
 /** Le déroulement d'une séance en texte simple, comme l'imprime l'ordinateur (voir documentSeance.ts) :
     les phases numérotées, leur durée et leur organisation ; leurs champs nommés ; les supports cités par
-    leur titre, sans images ni mise en forme. */
+    leur titre, sans images, couleurs ni mise en forme ; un tableau rangée par rangée. */
 function deroulementLisible(t) {
   const sortie = [];
   let n = 0, titre = -1, champ = '', aNommer = false;
-  const propre = l => l.replace(/^(\s*)\\(?=#)/, '$1').replace(/^\s*(?:[-•]|\*(?=\s))\s+/, '• ')
+  const couleur = /\{(rouge|orange|vert|bleu|violet|fond-jaune|fond-vert|fond-bleu|fond-rose)\|([^{}]*)\}/g;
+  const sansCouleurs = l => { let avant; do { avant = l; l = l.replace(couleur, '$2'); } while (l !== avant); return l; };
+  const propre = l => sansCouleurs(l).replace(/^(\s*)\\(?=[#|])/, '$1').replace(/^\s*(?:[-•]|\*(?=\s))\s+/, '• ')
     .replace(/\[@[a-z]+:[^|\]]+\|([^\]]*)\]/g, '$1')
     .replace(/\[(img|cite):[^\]]+\]/g, '')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
@@ -1172,7 +1192,10 @@ function deroulementLisible(t) {
       titre = sortie.length - 1;
       continue;
     }
-    const x = propre(l);
+    // Une rangée de tableau : ses cases remplies, séparées d'un point ; la ligne sous l'en-tête ne se lit pas.
+    const rangee = /^\s*\|.*\|\s*$/.test(l) ? casesDeLaLigne(l).map(c => propre(c).trim()) : null;
+    if (rangee && rangee.length && rangee.every(c => /^:?-+:?$/.test(c))) continue;
+    const x = rangee ? rangee.filter(Boolean).join(' · ') : propre(l);
     if (/^organisation$/i.test(champ)) { if (x.trim() && titre >= 0) sortie[titre] += ' · ' + x.trim(); continue; }
     if (aNommer) { if (x.trim()) { sortie.push(champ + ' : ' + x); aNommer = false; } continue; }
     sortie.push(x);

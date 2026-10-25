@@ -2248,3 +2248,26 @@ button.ph-chip:hover, button.ph-orga:hover { color: var(--accent); }
 .doc-mention-creer { margin-top: 4px; border-top: 1px solid var(--border); border-radius: 0 0 9px 9px; color: var(--text-2); }
 .doc-mentions-vide { padding: 8px 10px; font-size: 12.5px; font-style: italic; color: var(--text-2); }
 .doc-durees { width: 170px; }
+/* Les couleurs du déroulement : le texte tire un peu vers la couleur du thème, lisible sur un fond clair comme sombre ;
+   dans l'éditeur, telles que les pose la vue web (<font color>), à la lecture en classes. Les surligneurs sont transparents. */
+.doc font[color="#dc2626"], .doc-c-rouge { color: color-mix(in srgb, #dc2626 80%, var(--text)); }
+.doc font[color="#ea580c"], .doc-c-orange { color: color-mix(in srgb, #ea580c 80%, var(--text)); }
+.doc font[color="#16a34a"], .doc-c-vert { color: color-mix(in srgb, #16a34a 80%, var(--text)); }
+.doc font[color="#2563eb"], .doc-c-bleu { color: color-mix(in srgb, #2563eb 72%, var(--text)); }
+.doc font[color="#9333ea"], .doc-c-violet { color: color-mix(in srgb, #9333ea 72%, var(--text)); }
+.doc font[color="#010203"] { color: inherit; }
+.doc-fond-jaune { background: rgba(250, 204, 21, .4); }
+.doc-fond-vert { background: rgba(34, 197, 94, .3); }
+.doc-fond-bleu { background: rgba(59, 130, 246, .3); }
+.doc-fond-rose { background: rgba(236, 72, 153, .3); }
+.doc-couleurs { width: 230px; }
+.doc-couleurs-ligne { display: flex; gap: 6px; padding: 2px 8px 8px; }
+.doc-couleur { width: 30px; height: 30px; flex: none; border: 1px solid var(--border); border-radius: 8px; background: var(--panel);
+  font: inherit; font-size: 15px; font-weight: 800; line-height: 1; cursor: pointer; }
+.doc-couleur:hover { border-color: var(--accent); }
+.doc-couleur-fond { color: var(--text); }
+.doc-couleur-aucune { color: var(--text-2); text-decoration: line-through; text-decoration-thickness: 2px; }
+/* Les tableaux écrits dans le déroulement. */
+table.doc-grille { width: 100%; margin: 6px 0 8px; border-collapse: collapse; font-size: inherit; }
+table.doc-grille th, table.doc-grille td { min-width: 3em; padding: 5px 8px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+table.doc-grille th { background: var(--panel-2); font-weight: 700; }
