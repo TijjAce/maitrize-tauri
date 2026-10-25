@@ -1,7 +1,7 @@
 import React from "react";
 import { Aide, LibelleAvecAide } from "../components/Aide";
 import { Field, Input, Select, Textarea } from "../components/ui";
-import { useReglages } from "../components/useMemoire";
+import { useMotsGardes, useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
 import { chargerImages, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
@@ -84,7 +84,7 @@ const Vide = ({ quoi }: { quoi: string }) => (
 // ── Loto des syllabes ──
 
 export function LotoSyllabesTab({ banque }: { banque: boolean }) {
-  const [mots, setMots] = React.useState<MotImage[]>([]);
+  const [mots, setMots] = useMotsGardes("lotoSyllabes:mots");
   const [r, maj] = useReglages("lotoSyllabes", REGLAGES_LOTO_SYLLABES);
   const [graine, setGraine] = useGraine();
   // Sans mots, les planches d'un exemple : ce que donnera votre loto.
@@ -131,8 +131,9 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
 // ── Dominos des syllabes ──
 
 export function DominosTab({ banque }: { banque: boolean }) {
-  const [mots, setMots] = React.useState<MotImage[]>([]);
-  const [legendes, setLegendes] = React.useState(false);
+  const [mots, setMots] = useMotsGardes("dominos:mots");
+  const [{ legendes }, majDominos] = useReglages("dominos", { legendes: false });
+  const setLegendes = (v: boolean) => majDominos({ legendes: v });
   const [graine, setGraine] = useGraine();
   // Sans mots, les dominos d'un exemple : des mots qui s'enchaînent.
   const exemple = useMotsExemple(MOTS_EXEMPLE.dominos, !mots.length);
@@ -168,7 +169,7 @@ export function DominosTab({ banque }: { banque: boolean }) {
 // ── Chasse à l'intrus ──
 
 export function IntrusTab({ banque }: { banque: boolean }) {
-  const [mots, setMots] = React.useState<MotImage[]>([]);
+  const [mots, setMots] = useMotsGardes("intrus:mots");
   const [r, maj] = useReglages("intrus", { mode: "attaque" as ModeIntrus, combien: 6, legendes: false });
   const [graine, setGraine] = useGraine();
   // Sans mots, les lignes d'un exemple : des mots qui commencent pareil, et leur intrus.

@@ -12,7 +12,7 @@ import { LectureSonsTab } from "./LectureSons";
 import { FeuilleDeLAtelier } from "../components/FeuilleDeLAtelier";
 import { ProjetDuMomentBandeau, ProjetDuMomentProvider, useProjetDuMoment } from "../components/ProjetDuMoment";
 import { useUsagesDesAteliers } from "../components/UsageAtelier";
-import { useMemoire } from "../components/useMemoire";
+import { useEtatGarde, useMemoire } from "../components/useMemoire";
 import { openCtx } from "../components/ctxmenu";
 import { USAGES, descriptionDe, rangerParUsage, type Usage } from "../usageAtelier";
 import { AtelierContext } from "../components/AtelierContext";
@@ -55,7 +55,7 @@ import { SyllabeManquanteTab } from "./AtelierSyllabes";
 import { CartesATachesTab } from "./AteliersCartes";
 import { CodeLectureTab, CodePhraseTab, FonctionTab, ModelisationTab, PriseDeParoleTab, ResolutionTab, SequentielTab } from "./AteliersAides";
 import { FriseTab, PaysageTab, PlanClasseTab } from "./AteliersHistoireGeo";
-import { ajouter, completerAuHasard, imagesConseillees, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
+import { ajouter, completerAuHasard, imagesConseillees, lireOptionsJeu, lireSelection, motsDeLaListe, remplacer, uneImageParMot } from "../loto";
 import { chargerPicto, usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { ApercuExemple, useMotsExemple } from "../components/Exemple";
@@ -621,8 +621,8 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
   const [mode, setMode] = React.useState<Mode>("theme");
   const { projet: projetDuMoment, corpus: corpusDuProjet } = useProjetDuMoment();
 
-  // ── La sélection ──
-  const [selection, setSelection] = React.useState<PictoArasaac[]>([]);
+  // ── La sélection, gardée d'une visite à l'autre : quitter l'atelier ne la perd plus ──
+  const [selection, setSelection] = useEtatGarde<PictoArasaac[]>(`${atelier}:selection`, lireSelection);
   // Retirées : le hasard ne les ramène plus (on peut toujours les recocher).
   const [retires, setRetires] = React.useState<Set<number>>(new Set());
   const choisis = React.useMemo(() => new Set(selection.map((p) => p.id)), [selection]);
@@ -648,10 +648,11 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
     } catch (e) { toast(String(e), { icone: "⚠️" }); }
     finally { setLectureDesGestes(false); }
   };
-  // Venu de l'atelier des gestes par « En faire un loto » : le jeu s'ouvre avec eux.
+  // Venu de l'atelier des gestes par « En faire un loto » : le jeu s'ouvre avec eux seuls, à la place de la
+  // sélection gardée de la dernière fois.
   React.useEffect(() => {
     const sons = gestesDemandes();
-    if (sons) { setMode("images"); void ajouterMesGestes(sons); }
+    if (sons) { setMode("images"); setSelection([]); void ajouterMesGestes(sons); }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Écrire une liste de mots ou choisir ses images mène droit au loto : pas d'étape « choisir ».
   const sansChoix = mode === "mots" || mode === "images";
@@ -739,15 +740,11 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
   }, [recherche]);
   const chercher = (mot: string) => { setMode("recherche"); setRecherche(mot); };
 
-  // ── Impression ──
-  const [options, setOptions] = React.useState<OptionsJeu>({
+  // ── Impression ── Chaque jeu a ses réglages, gardés comme sa sélection : un imagier n'est pas un loto.
+  const [options, setOptions] = useEtatGarde<OptionsJeu>(`${atelier}:options`, (brut) => lireOptionsJeu(brut, {
     libelles: false, cartes: true, colonnes: 3, lignes: 2, planches: 6, graine: 0, ...gen.defauts,
-  });
-  // Changer de générateur remet ses réglages : un imagier n'est pas un loto.
-  React.useEffect(() => {
-    setOptions((o) => ({ ...o, libelles: false, cartes: true, ...gen.defauts }));
-  }, [gen]);
-  const [titre, setTitre] = React.useState("");
+  }));
+  const [titre, setTitre] = useEtatGarde<string>(`${atelier}:titre`, (brut) => (typeof brut === "string" ? brut : ""));
   const [occupe, setOccupe] = React.useState(false);
   const minimum = gen.minimum(options);
   const parPlanche = options.colonnes * options.lignes;

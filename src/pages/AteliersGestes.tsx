@@ -1,13 +1,12 @@
 import React from "react";
 import { Field, Input, Select, ouvrirOnglet } from "../components/ui";
-import { useReglages } from "../components/useMemoire";
+import { useMotsGardes, useReglages } from "../components/useMemoire";
 import { usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { ApercuExemple, useMotsExemple } from "../components/Exemple";
 import { MOTS_EXEMPLE } from "../exemplesDesAteliers";
 import { BanqueDeGestes, demanderLesGestesAuJeu, useBanqueDeGestes } from "../components/BanqueDeGestes";
-import type { MotImage } from "../jeuxSons";
 import { graineAuHasard } from "../hasard";
 import { useGraine } from "../modifierFeuille";
 import { SONS } from "../lectureSons";
@@ -121,7 +120,7 @@ function CodageDuMot({ mot, pas, corrige, onChange, onRetablir }: {
 /** Les mots codés en gestes : à relier au mot, à reconnaître par son dessin, ou à écrire. */
 export function MotsEnGestesTab({ banque }: { banque: boolean }) {
   const gestes = useBanqueDeGestes();
-  const [mots, setMots] = React.useState<MotImage[]>([]);
+  const [mots, setMots] = useMotsGardes("motsGestes:mots");
   const [r, maj] = useReglages("motsGestes", REGLAGES_MOTS_CODES);
   // Les corrections se gardent : « ville » ne se corrige qu'une fois.
   const [gardees, majGardees] = useReglages("gestesCorrections", { mots: {} as Record<string, string[]> });

@@ -3,6 +3,7 @@ import { AtelierContext } from "./AtelierContext";
 import { noterMemoire } from "../modifierFeuille";
 import { champDe, inscrireAnnulable } from "../annulation";
 import { PageVisibleContext } from "./ui";
+import { lireMotsImages, type MotImage } from "../jeuxSons";
 
 /**
  * Un réglage de Fabriquer gardé d'une visite à l'autre sur cet ordinateur.
@@ -63,6 +64,27 @@ export function useMemoire<T>(cle: string, lire: (brut: unknown) => T): [T, (v: 
     });
   }, [poser]);
   return [valeur, ecrire];
+}
+
+/**
+ * Les mots d'un atelier — ses dessins et leurs mots —, gardés d'une visite à l'autre comme ses réglages : quitter
+ * l'atelier ne perd plus la liste, il fallait la refaire à chaque fois. Se modifie comme un état de React.
+ */
+export function useMotsGardes(cle: string): [MotImage[], React.Dispatch<React.SetStateAction<MotImage[]>>] {
+  return useEtatGarde<MotImage[]>(cle, lireMotsImages);
+}
+
+/** `useMemoire`, qui se modifie comme un état de React : une valeur, ou ce qu'en fait une fonction. */
+export function useEtatGarde<T>(cle: string, lire: (brut: unknown) => T): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [valeur, ecrire] = useMemoire<T>(cle, lire);
+  const actuelle = React.useRef(valeur);
+  actuelle.current = valeur;
+  const poser = React.useCallback((v: React.SetStateAction<T>) => {
+    const suite = typeof v === "function" ? (v as (avant: T) => T)(actuelle.current) : v;
+    actuelle.current = suite;
+    ecrire(suite);
+  }, [ecrire]);
+  return [valeur, poser];
 }
 
 /** Des réglages en objet, complétés par leurs valeurs par défaut, modifiés par morceaux. */

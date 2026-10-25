@@ -3,7 +3,7 @@ import { Aide, AideEnLigne } from "../components/Aide";
 import { api, type PictoArasaac } from "../api";
 import { Field, Input, Modal, Select } from "../components/ui";
 import { toast } from "../components/Toaster";
-import { useReglages } from "../components/useMemoire";
+import { useMotsGardes, useReglages } from "../components/useMemoire";
 import { usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
@@ -166,7 +166,7 @@ const borne = (v: string, min: number, max: number) => Math.max(min, Math.min(ma
 /** La syllabe qui manque : les dessins et leurs mots à trou, puis les mots à écrire. */
 export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
   const gestes = useBanqueDeGestes();
-  const [mots, setMots] = React.useState<MotImage[]>([]);
+  const [mots, setMots] = useMotsGardes("syllabeManquante:mots");
   const [r, maj] = useReglages("syllabeManquante", REGLAGES_SYLLABES);
   // « Un » ou « une » : ce que l'enseignant a corrigé se garde, d'une fiche à l'autre.
   const [gardes, majGardes] = useReglages("articles", { mots: {} as Record<string, string> });

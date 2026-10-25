@@ -6,7 +6,32 @@
 // coche celles qu'on veut, on écrit une liste de mots, on cherche ; le hasard
 // ne sert plus qu'à compléter.
 
+import type { OptionsJeu } from "./api";
+
 export interface PictoLoto { id: number; mot: string }
+
+/** Une sélection relue de ce que l'atelier a gardé : ce qui n'est pas une image s'écarte. */
+export function lireSelection(brut: unknown): (PictoLoto & { fichier: string; nature?: string })[] {
+  if (!Array.isArray(brut)) return [];
+  return brut.flatMap((x) => {
+    if (!x || typeof x !== "object") return [];
+    const o = x as Record<string, unknown>;
+    if (typeof o.id !== "number" || !Number.isFinite(o.id) || typeof o.mot !== "string") return [];
+    return [{ id: o.id, mot: o.mot, fichier: typeof o.fichier === "string" ? o.fichier : "", ...(typeof o.nature === "string" ? { nature: o.nature } : {}) }];
+  });
+}
+
+/** Les réglages d'un jeu relus de ce que l'atelier a gardé, sur ceux de son générateur. */
+export function lireOptionsJeu(brut: unknown, defauts: OptionsJeu): OptionsJeu {
+  if (!brut || typeof brut !== "object") return defauts;
+  const o = brut as Record<string, unknown>;
+  const oui = (k: "libelles" | "cartes") => (typeof o[k] === "boolean" ? o[k] as boolean : defauts[k]);
+  const nombre = (k: "colonnes" | "lignes" | "planches", max: number) => {
+    const v = o[k];
+    return typeof v === "number" && Number.isFinite(v) ? Math.max(1, Math.min(max, Math.round(v))) : defauts[k];
+  };
+  return { ...defauts, libelles: oui("libelles"), cartes: oui("cartes"), colonnes: nombre("colonnes", 8), lignes: nombre("lignes", 8), planches: nombre("planches", 20) };
+}
 
 const cleMot = (mot: string) => (mot ?? "").trim().toLowerCase();
 

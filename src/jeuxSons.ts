@@ -23,6 +23,20 @@ export interface MotImage {
   seul?: "image" | "mot";
 }
 
+/** Une liste de mots relue de ce qu'un atelier a gardé : ce qui n'est pas un mot s'écarte. */
+export function lireMotsImages(brut: unknown): MotImage[] {
+  if (!Array.isArray(brut)) return [];
+  return brut.flatMap((x): MotImage[] => {
+    if (!x || typeof x !== "object") return [];
+    const o = x as Record<string, unknown>;
+    if (typeof o.mot !== "string") return [];
+    const m: MotImage = { id: typeof o.id === "number" && Number.isFinite(o.id) ? o.id : null, mot: o.mot };
+    if (typeof o.syllabes === "number" && o.syllabes > 0) m.syllabes = o.syllabes;
+    if (o.seul === "image" || o.seul === "mot") m.seul = o.seul;
+    return [m];
+  });
+}
+
 /** Le mot, avec ce qu'il montre ; les deux, c'est sans réglage. */
 export function avecSeul(m: MotImage, seul: MotImage["seul"]): MotImage {
   const { seul: _avant, ...reste } = m;

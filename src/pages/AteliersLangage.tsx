@@ -3,7 +3,7 @@ import { Aide, LibelleAvecAide } from "../components/Aide";
 import { Field, Input, Select, Textarea } from "../components/ui";
 import { Pastilles } from "../components/Pastilles";
 import { api, journal, MODELE_TACHES } from "../api";
-import { useReglages } from "../components/useMemoire";
+import { useMotsGardes, useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
 import { chargerImages, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
@@ -15,7 +15,6 @@ import { BoutonBureau } from "../components/BoutonBureau";
 import { CasesFeuille } from "../components/OptionsFeuille";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { REGLAGES_ETIQUETTES, STYLE_ETIQUETTES, htmlEtiquettes } from "../etiquettes";
-import type { MotImage } from "../jeuxSons";
 import { graineAuHasard } from "../hasard";
 import { useGraine } from "../modifierFeuille";
 import { REGLAGES_MOTS_MELES, STYLE_MOTS_MELES, grilleMotsMeles, htmlMotsMeles, motsSaisis } from "../motsMeles";
@@ -53,7 +52,7 @@ export const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string;
 );
 
 export function EtiquettesTab({ banque }: { banque: boolean }) {
-  const [mots, setMots] = React.useState<MotImage[]>([]);
+  const [mots, setMots] = useMotsGardes("etiquettes:mots");
   const [r, maj] = useReglages("etiquettes", REGLAGES_ETIQUETTES);
   // Sans mots, la feuille d'un exemple : ce que donnera la vôtre.
   const exemple = useMotsExemple(MOTS_EXEMPLE.etiquettes, !mots.length);
@@ -579,7 +578,7 @@ export function TriTab() {
 // ── Le jeu des ombres ──
 
 export function OmbresTab({ banque }: { banque: boolean }) {
-  const [mots, setMots] = React.useState<MotImage[]>([]);
+  const [mots, setMots] = useMotsGardes("ombres:mots");
   const [r, maj] = useReglages("ombres", REGLAGES_OMBRES);
   const [graine, setGraine] = useGraine();
   // Sans images, la feuille d'un exemple : ce que donnera la vôtre.

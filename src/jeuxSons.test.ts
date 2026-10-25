@@ -3,7 +3,7 @@ import { hasard } from "./hasard";
 import {
   PAIRES_DISTINCTIVES, comptesDisponibles, dominos, htmlDominos, htmlIntrus, htmlLettres, htmlLotoSyllabes, htmlPaires,
   lettresChoisies, lignesIntrus, motsDesPaires, motsSimples, nbSyllabes, pairesQuiSenchainent, planchesLettres, planchesLotoSyllabes,
-  REGLAGES_LETTRES, REGLAGES_LOTO_SYLLABES, type MotImage,
+  REGLAGES_LETTRES, REGLAGES_LOTO_SYLLABES, lireMotsImages, type MotImage,
 } from "./jeuxSons";
 import { grilleFluence, htmlFluence, htmlSyllabaire, REGLAGES_FLUENCE, REGLAGES_SYLLABAIRE } from "./fluence";
 import { dechiffrable, etapeDe, syllabesDe, vuesJusqua } from "./progressionCgp";
@@ -11,6 +11,19 @@ import { decouper } from "./decoupageCgp";
 
 const mots = (liste: string[]): MotImage[] => liste.map((mot, i) => ({ id: i + 1, mot }));
 const BANQUE = mots(["bateau", "banane", "ballon", "tapis", "micro", "crocodile", "château", "tomate", "lapin", "pinceau", "sapin", "chat", "chapeau", "pomme de terre", "vélo", "lit"]);
+
+describe("les mots gardés d'un atelier", () => {
+  it("se relisent tels qu'ils ont été laissés, sans ce qui n'est pas un mot", () => {
+    expect(lireMotsImages([
+      { id: 12, mot: "lapin", syllabes: 2 },
+      { id: null, mot: "Mamie", seul: "mot" },
+      { id: "3", mot: "chat", seul: "dessin" },
+      { mot: 4 },
+      "vache",
+    ])).toEqual([{ id: 12, mot: "lapin", syllabes: 2 }, { id: null, mot: "Mamie", seul: "mot" }, { id: null, mot: "chat" }]);
+    expect(lireMotsImages(undefined)).toEqual([]);
+  });
+});
 
 describe("le loto des syllabes", () => {
   it("ne met sur une planche que des comptes qu'un mot peut remplir", () => {
