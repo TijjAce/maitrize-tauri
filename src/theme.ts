@@ -54,6 +54,22 @@ export const TAILLES = [
   { id: "tresgrand", label: "Très grande", zoom: 1.3 },
 ];
 
+/** La taille choisie dans les réglages, et ce que la télécommande y ajoute (« plus grand », au tableau). */
+let zoomDeBase = 1;
+let zoomDuTableau = 1;
+
+/** La taille des réglages ; ce que la télécommande a ajouté reste par-dessus. */
+function appliquerZoom(facteur: number) {
+  zoomDeBase = facteur;
+  poserLeZoom(facteur * zoomDuTableau);
+}
+
+/** La télécommande agrandit ou réduit tout, par-dessus la taille des réglages ; 1 y revient. */
+export function zoomerDeLoin(facteur: number) {
+  zoomDuTableau = facteur;
+  poserLeZoom(zoomDeBase * facteur);
+}
+
 /**
  * Agrandit la fenêtre entière, comme ⌘+ dans un navigateur.
  *
@@ -62,7 +78,7 @@ export const TAILLES = [
  * fenêtres modales, impression). Hors de l'application — tests, maquettes —
  * on retombe sur le zoom CSS, qui suffit à vérifier le reste.
  */
-function appliquerZoom(facteur: number) {
+function poserLeZoom(facteur: number) {
   const parLeCss = () =>
     document.documentElement.style.setProperty("zoom", facteur === 1 ? "" : String(facteur));
   import("@tauri-apps/api/webview")

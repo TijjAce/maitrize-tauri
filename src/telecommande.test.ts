@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { NAV, SOUS_ONGLETS } from "./components/CommandPalette";
 import {
-  ceQuIlComprend, comprendre, consigneDuSecours, destinationsDe, dureeDite, dureeEnClair, enChiffres, epurer, inviteDeLaVoix,
-  lireLeSecours, nomDeLaPage, plat, pourLaClasse,
-  type ContexteTelecommande, type Destination,
+  catalogue, ceQuIlComprend, comprendre, consigneDeMistral, destinationsDe, dureeDite, dureeEnClair, enChiffres, epurer,
+  estComplexe, inviteDeLaVoix, lireLesActions, masquerLesPrenoms, nomDeLaPage, plat, pourLaClasse,
+  type ContexteTelecommande, type Destination, type ListesDeLaClasse,
 } from "./telecommande";
 
 const D = (label: string, to: string, onglet?: string): Destination => ({ label, to, page: to.slice(1), onglet });
@@ -163,37 +163,112 @@ describe("la télécommande, comme on parle en classe", () => {
   });
 });
 
-describe("Mistral en secours", () => {
+describe("les commandes brèves, comprises sans attendre", () => {
   const vraies = destinationsDe(NAV, SOUS_ONGLETS);
   const classe: ContexteTelecommande = { destinations: vraies, eleves: ctx.eleves };
+  it.each([
+    ["Pause", { genre: "minuteurPause" }],
+    ["Mets en pause", { genre: "minuteurPause" }],
+    ["Reprends.", { genre: "minuteurReprendre" }],
+    ["Arrête le minuteur", { genre: "minuteurArreter" }],
+    ["Ajoute deux minutes", { genre: "minuteurAjouter", secondes: 120 }],
+    ["Encore cinq minutes", { genre: "minuteurAjouter", secondes: 300 }],
+    ["Deux minutes de plus", { genre: "minuteurAjouter", secondes: 120 }],
+    ["Enlève une minute", { genre: "minuteurAjouter", secondes: -60 }],
+    ["Plus grand", { genre: "zoom", sens: "plus" }],
+    ["Affiche plus grand, s'il te plaît", { genre: "zoom", sens: "plus" }],
+    ["Plus petit", { genre: "zoom", sens: "moins" }],
+    ["Taille normale", { genre: "zoom", sens: "normal" }],
+    ["Descends", { genre: "defiler", sens: "bas" }],
+    ["Remonte", { genre: "defiler", sens: "haut" }],
+    ["Retour", { genre: "retour" }],
+    // Ce qui se disait déjà ne change pas.
+    ["Remets cinq minutes", { genre: "minuteur", secondes: 300 }],
+    ["Stop.", { genre: "fermer" }],
+  ])("« %s »", (phrase, attendu) => {
+    expect(comprendre(phrase, classe)).toEqual(attendu);
+  });
+});
 
-  it("ne lui dit que les actions et les pages de la classe : ni les élèves, ni les pages cachées", () => {
-    const consigne = consigneDuSecours(vraies);
-    for (const nom of new Set(vraies.filter(pourLaClasse).map((d) => nomDeLaPage(d.label)))) expect(consigne).toContain(nom);
-    for (const tu of ["Barnabé", "Isidore", "Observations", "Emploi du temps", "Synthèse d'un élève"]) expect(consigne).not.toContain(tu);
+describe("Mistral, pour les phrases complexes", () => {
+  const vraies = destinationsDe(NAV, SOUS_ONGLETS);
+  const classe: ContexteTelecommande = { destinations: vraies, eleves: ctx.eleves };
+  const listes: ListesDeLaClasse = {
+    sequences: [{ id: "q-a", titre: "Les fractions" }],
+    seances: [
+      { id: "s-a", titre: "Partager une bande", numero: 2, date: "2026-10-25T09:00:00", sequenceId: "q-a" },
+      { id: "s-b", titre: "Lecture avec Barnabé", numero: 1, date: "2026-10-26", sequenceId: null },
+    ],
+    jeux: [{ id: "j-a", titre: "Loto des animaux" }],
+    outils: [], textes: [{ id: "t-a", titre: "Le Petit Chaperon rouge" }],
+  };
+  const elements = catalogue(listes, ctx.eleves, "2026-10-25");
+
+  it("le catalogue : un nom court par élément, la séquence d'une séance, « aujourd'hui », et pas un prénom", () => {
+    expect(elements.map((e) => `${e.ref} ${e.libelle}`)).toEqual([
+      "q1 séquence « Les fractions »",
+      "s1 séance 2 « Partager une bande » (séquence « Les fractions ») — aujourd'hui",
+      "s2 séance 1 « Lecture avec [élève] »",
+      "j1 jeu « Loto des animaux »",
+      "t1 texte « Le Petit Chaperon rouge »",
+    ]);
+    expect(masquerLesPrenoms("Isidore et Pomme lisent", ctx.eleves)).toBe("[élève] et [élève] lisent");
   });
 
-  it("ne fait de sa réponse que ce qui est permis, et relu", () => {
-    const lu = (j: unknown) => lireLeSecours(typeof j === "string" ? j : JSON.stringify(j), classe);
-    expect(lu({ action: "page", page: "Loto" })).toMatchObject({ genre: "aller", destination: { onglet: "jeux" } });
-    expect(lu("```json\n{\"action\":\"page\",\"page\":\"D'abord / ensuite\"}\n```")).toMatchObject({ genre: "aller", destination: { onglet: "dabord" } });
-    // Une page cachée à la voix, ou inventée : rien.
-    for (const page of ["Élèves", "Observations", "Emploi du temps", "La page des notes"]) expect(lu({ action: "page", page }), page).toBeNull();
-    expect(lu({ action: "minuteur", secondes: 150 })).toEqual({ genre: "minuteur", secondes: 150 });
-    expect(lu({ action: "minuteur", secondes: 2 })).toBeNull();
-    expect(lu({ action: "minuteur", secondes: 99999 })).toBeNull();
-    expect(lu({ action: "plein_ecran", actif: false })).toEqual({ genre: "pleinEcran", actif: false });
-    expect(lu({ action: "fermer" })).toEqual({ genre: "fermer" });
-    expect(lu({ action: "chercher", quoi: "la séquence sur les fractions" })).toEqual({ genre: "chercher", quoi: "fractions", sorte: "sequence" });
-    // Une note : un élève de la classe, un seul.
-    expect(lu({ action: "note", eleve: "Barnabé", texte: "a lu seul" })).toEqual({ genre: "note", eleve: ctx.eleves[0], texte: "A lu seul" });
-    expect(lu({ action: "note", eleve: "Isidore Ciel", texte: "a fini" })).toMatchObject({ genre: "note", eleve: { id: "e3" } });
-    expect(lu({ action: "note", eleve: "Isidore", texte: "a fini" })).toBeNull();
-    expect(lu({ action: "note", eleve: "Zoé", texte: "bravo" })).toBeNull();
-    expect(lu({ action: "aide" })).toEqual({ genre: "aide" });
-    expect(lu({ action: "rien", pourquoi: "?" })).toBeNull();
+  it("une phrase qui demande plusieurs choses va à Mistral ; « et demie » ou un nom de page, non", () => {
+    expect(estComplexe("Lance dix minutes et affiche la carte mentale", vraies)).toBe(true);
+    expect(estComplexe("Ouvre la séance d'aujourd'hui puis mets-la en plein écran", vraies)).toBe(true);
+    expect(estComplexe("Minuteur une minute et demie", vraies)).toBe(false);
+    expect(estComplexe("Affiche Frises et calendriers", vraies)).toBe(false);
+    expect(estComplexe("Affiche la carte mentale", vraies)).toBe(false);
+  });
+
+  it("la consigne : toutes les actions, les pages et le catalogue ; ni prénom, ni page cachée", () => {
+    const consigne = consigneDeMistral(vraies, elements, "aucun minuteur ; page affichée : /caa.");
+    for (const nom of new Set(vraies.filter(pourLaClasse).map((d) => nomDeLaPage(d.label)))) expect(consigne).toContain(nom);
+    for (const a of ["minuteur_ajouter", "ouvrir", "zoom", "defiler", "retour", "note"]) expect(consigne).toContain(`"action":"${a}"`);
+    expect(consigne).toContain("s1 : séance 2 « Partager une bande » (séquence « Les fractions ») — aujourd'hui");
+    expect(consigne).toContain("En ce moment : aucun minuteur");
+    // Une séance est prévue aujourd'hui : rien à dire. Aucune : on le lui dit, pour qu'il n'en invente pas.
+    expect(consigne).not.toContain("aucune séance n'est prévue");
+    expect(consigneDeMistral(vraies, catalogue(listes, ctx.eleves, "2026-11-02"), "")).toContain("aucune séance n'est prévue");
+    for (const tu of ["Barnabé", "Isidore", "Observations", "Emploi du temps"]) expect(consigne).not.toContain(tu);
+  });
+
+  it("ses actions, relues, dans l'ordre : ce qui sort de la liste tombe", () => {
+    const lu = (j: unknown, phrase = "les fractions et le loto des animaux") =>
+      lireLesActions(typeof j === "string" ? j : JSON.stringify(j), classe, elements, phrase);
+    expect(lu({ actions: [
+      { action: "minuteur", secondes: 600 },
+      { action: "page", page: "Carte mentale" },
+      { action: "ouvrir", ref: "s1" },
+      { action: "zoom", sens: "plus" },
+    ] })).toMatchObject([
+      { genre: "minuteur", secondes: 600 },
+      { genre: "aller", destination: { onglet: "carteMentale" } },
+      { genre: "ouvrir", element: { id: "s-a", sorte: "seance" } },
+      { genre: "zoom", sens: "plus" },
+    ]);
+    // Une action seule, sans liste, et en bloc de code : lue aussi.
+    expect(lu("```json\n{\"action\":\"minuteur_ajouter\",\"secondes\":-60}\n```")).toEqual([{ genre: "minuteurAjouter", secondes: -60 }]);
+    // Une page cachée, une référence inventée, un élève inconnu, une action qui n'existe pas : elles tombent.
+    expect(lu({ actions: [{ action: "page", page: "Élèves" }, { action: "ouvrir", ref: "s99" }, { action: "fermer" }] }))
+      .toEqual([{ genre: "fermer" }]);
+    expect(lu({ actions: [{ action: "note", eleve: "Zoé", texte: "bravo" }, { action: "supprimer_tout" }] })).toBeNull();
+    expect(lu({ actions: [{ action: "note", eleve: "Barnabé", texte: "a lu seul" }] }))
+      .toEqual([{ genre: "note", eleve: ctx.eleves[0], texte: "A lu seul" }]);
+    expect(lu({ actions: [{ action: "minuteur", secondes: 2 }, { action: "zoom", sens: "énorme" }] })).toBeNull();
+    // Un élément que la phrase ne nomme pas — la séance 2 d'une autre séquence — ne s'ouvre pas.
+    expect(lu({ actions: [{ action: "ouvrir", ref: "j1" }] }, "ouvre le jeu du loto")).toMatchObject([{ genre: "ouvrir" }]);
+    expect(lu({ actions: [{ action: "ouvrir", ref: "j1" }] }, "ouvre le jeu des volcans")).toBeNull();
+    expect(lu({ actions: [{ action: "ouvrir", ref: "s1" }] }, "la deuxième séance d'aujourd'hui")).toMatchObject([{ genre: "ouvrir" }]);
+    // « Chercher » des mots qui nomment une page de la classe : la page s'ouvre.
+    expect(lu({ actions: [{ action: "chercher", quoi: "frise" }] })).toMatchObject([{ genre: "aller", destination: { onglet: "frise" } }]);
+    // Rien à faire, ou pas du JSON : rien.
+    expect(lu({ actions: [] })).toBeNull();
     expect(lu("pas du JSON")).toBeNull();
-    expect(lu({ action: "supprimer_tout" })).toBeNull();
+    // Au plus quatre actions.
+    expect(lu({ actions: Array.from({ length: 7 }, () => ({ action: "defiler", sens: "bas" })) })).toHaveLength(4);
   });
 });
 
@@ -219,7 +294,8 @@ describe("ce que la télécommande comprend, montré sur le téléphone", () => 
     for (const g of groupes.filter((g) => g.aToucher)) {
       for (const exemple of g.exemples) {
         const c = comprendre(exemple, classe);
-        expect(["minuteur", "pleinEcran", "fermer", "aller"], `${g.titre} › ${exemple}`).toContain(c.genre);
+        expect(["minuteur", "minuteurPause", "minuteurReprendre", "minuteurArreter", "minuteurAjouter", "pleinEcran", "fermer",
+          "zoom", "defiler", "retour", "aller"], `${g.titre} › ${exemple}`).toContain(c.genre);
         if (c.genre === "aller") expect(nomDeLaPage(c.destination.label), `${g.titre} › ${exemple}`).toBe(exemple);
       }
     }
@@ -233,6 +309,6 @@ describe("ce que la télécommande comprend, montré sur le téléphone", () => 
     for (const cachee of ["Élèves", "Observations", "Planning", "Organisation", "Emploi du temps"]) expect(pages).not.toContain(cachee);
     // Ce qu'on affiche le plus d'abord ; les phrases sans exemple à toucher, à la fin.
     expect(groupes.slice(0, 4).map((g) => g.titre)).toEqual(["Minuteur", "Écran", "CAA", "Fabriquer"]);
-    expect(groupes[groupes.length - 1]).toMatchObject({ titre: "Noter, sans rien afficher", aToucher: false });
+    expect(groupes.slice(-2).map((g) => g.aToucher)).toEqual([false, false]);
   });
 });

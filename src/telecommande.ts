@@ -29,6 +29,17 @@ export type Compris =
   | { genre: "note"; eleve: { id: string; nom: string }; texte: string }
   /** « Que dire ? », « aide » : ce que la télécommande comprend, en réponse. */
   | { genre: "aide" }
+  /** Le minuteur en cours : en pause, repris, arrêté (remis à sa durée, l'affichage fermé), allongé ou raccourci. */
+  | { genre: "minuteurPause" }
+  | { genre: "minuteurReprendre" }
+  | { genre: "minuteurArreter" }
+  | { genre: "minuteurAjouter"; secondes: number }
+  /** Ce qui est affiché : plus grand ou plus petit, plus bas ou plus haut ; et la page d'avant. */
+  | { genre: "zoom"; sens: "plus" | "moins" | "normal" }
+  | { genre: "defiler"; sens: "bas" | "haut" }
+  | { genre: "retour" }
+  /** Un élément de la classe — séquence, séance, jeu, outil, texte —, choisi par Mistral dans le catalogue. */
+  | { genre: "ouvrir"; element: ElementDeLaClasse }
   | { genre: "rien"; pourquoi: string };
 
 /**
@@ -273,7 +284,18 @@ function noteDite(phrase: string, eleves: ContexteTelecommande["eleves"]): Compr
 const QUE_DIRE = new RegExp("^(aide|aide moi|que dire|quoi dire|je dis quoi|qu est ce que (je|on) (peux|peut) dire|"
   + "qu est ce que je dis|qu est ce que tu (comprends|sais faire)|que sais tu faire|commandes|les commandes|liste|"
   + "la liste|liste des commandes)$");
-const FERMER = /^(ferme|fermer|fermez|stop|stoppe|arrete|arreter|arretez|quitte|quitter|quittez|sors|sortir|sortez|enleve|enlever|enlevez|cache|cacher|termine|terminer|fini|c est fini|ca suffit|retour)\b/;
+const FERMER = /^(ferme|fermer|fermez|stop|stoppe|arrete|arreter|arretez|quitte|quitter|quittez|sors|sortir|sortez|enleve|enlever|enlevez|cache|cacher|termine|terminer|fini|c est fini|ca suffit)\b/;
+const PAUSE = /^(pause|mets? (le minuteur |le chrono )?en pause|pause (le |du )?(minuteur|chrono))$|^(le )?(minuteur|chrono) en pause$/;
+const REPRENDRE = /^(reprends?|reprendre|reprenez|continue|continuer|relance|relancer)( (le )?(minuteur|chrono))?$/;
+const ARRETER = /^(arrete|arreter|arretez|stop|stoppe) (le |du )?(minuteur|chrono)$|^remets? (le )?(minuteur|chrono) a zero$/;
+const PLUS = /^(ajoute|ajouter|rajoute|rajouter|encore|plus|prolonge|prolonger)\b|\bde plus$/;
+const MOINS = /^(enleve|enlever|retire|retirer|moins|raccourcis|raccourcir)\b|\bde moins$/;
+const ZOOM_PLUS = /^(zoom|zoome|zoomer|agrandis|agrandir|grossis|grossir|plus grand|en plus grand|en grand)$/;
+const ZOOM_MOINS = /^(dezoom|dezoome|dezoomer|reduis|reduire|retrecis|plus petit|en plus petit|en petit)$/;
+const ZOOM_NORMAL = /^(taille normale|zoom normal|taille reelle|(a la )?taille normale)$/;
+const DESCENDRE = /^(descends|descend|descendre|descendez|defile|defiler|plus bas|vers le bas|en bas|page suivante|suivant)$/;
+const MONTER = /^(monte|monter|remonte|remonter|montez|plus haut|vers le haut|en haut|page precedente)$/;
+const RETOUR = /^(retour|reviens|revenir|reviens en arriere|retourne en arriere|en arriere|precedent|page d avant)$/;
 const MINUTEUR = /\b(minuteur|chrono|chronometre|sablier|timer|compte a rebours|decompte)\b/;
 
 /** Ce que la phrase demande. */
@@ -285,8 +307,22 @@ export function comprendre(phrase: string, ctx: ContexteTelecommande): Compris {
   if (QUE_DIRE.test(p)) return { genre: "aide" };
   // Une note d'abord : son texte peut dire une durée (« a travaillé dix minutes seul »).
   if (MOTS_DE_NOTE.has(p.split(" ")[0])) return noteDite(phrase, ctx.eleves);
+  // Le minuteur en cours, ce qui est affiché, la page d'avant : des commandes brèves, comprises ici, sans attendre.
+  if (PAUSE.test(p)) return { genre: "minuteurPause" };
+  if (REPRENDRE.test(p)) return { genre: "minuteurReprendre" };
+  if (ARRETER.test(p)) return { genre: "minuteurArreter" };
+  const apresLeVerbe = sansVerbe(p).reste || p;
+  if (ZOOM_PLUS.test(p) || ZOOM_PLUS.test(apresLeVerbe)) return { genre: "zoom", sens: "plus" };
+  if (ZOOM_MOINS.test(p) || ZOOM_MOINS.test(apresLeVerbe)) return { genre: "zoom", sens: "moins" };
+  if (ZOOM_NORMAL.test(p) || ZOOM_NORMAL.test(apresLeVerbe)) return { genre: "zoom", sens: "normal" };
+  if (DESCENDRE.test(p)) return { genre: "defiler", sens: "bas" };
+  if (MONTER.test(p)) return { genre: "defiler", sens: "haut" };
+  if (RETOUR.test(p)) return { genre: "retour" };
   const minuteur = MINUTEUR.test(p);
   let duree = dureeDite(p);
+  // « Ajoute deux minutes », « deux minutes de moins » : le minuteur en cours.
+  if (duree !== null && PLUS.test(p)) return { genre: "minuteurAjouter", secondes: duree };
+  if (duree !== null && MOINS.test(p)) return { genre: "minuteurAjouter", secondes: -duree };
   // « Minuteur dix » : des minutes.
   const nombre = minuteur && duree === null ? /\b(\d+)\b/.exec(enChiffres(p)) : null;
   if (nombre && Number(nombre[1]) >= 1 && Number(nombre[1]) <= 180) duree = Number(nombre[1]) * 60;
@@ -310,33 +346,113 @@ export function comprendre(phrase: string, ctx: ContexteTelecommande): Compris {
 /** Le réglage : « oui », le téléphone écoute d'abord en direct chez Mistral (Voxtral Realtime), puis sur le Mac. */
 export const CLE_TEMPS_REEL = "telecommande:realtime";
 
-/** Le modèle qui lit, en secours, une phrase que la télécommande n'a pas comprise (essai du 25 octobre : le plus juste). */
+/** Le modèle qui lit les phrases complexes et celles que la télécommande n'a pas comprises (essai du 25 octobre). */
 export const MODELE_DE_SECOURS = "ministral-14b-latest";
 
-/** Le réglage : « oui », Mistral lit les phrases incomprises. */
+/** Le réglage : « oui », Mistral lit les phrases complexes et celles qui ne sont pas comprises. */
 export const CLE_SECOURS = "telecommande:mistral";
 
+/** Ce que la voix peut ouvrir par son titre ; `ref` : son nom court (« s12 »), que Mistral rend au lieu du titre. */
+export interface ElementDeLaClasse {
+  ref: string;
+  sorte: "sequence" | "seance" | "jeu" | "outil" | "texte";
+  id: string;
+  titre: string;
+  /** Ce que Mistral en lit : sa sorte, son titre — prénoms masqués —, sa séquence, « aujourd'hui ». */
+  libelle: string;
+}
+
+export interface ListesDeLaClasse {
+  sequences: { id: string; titre: string }[];
+  seances: { id: string; titre: string; numero: number; date: string | null; sequenceId: string | null }[];
+  jeux: { id: string; titre: string }[];
+  outils: { id: string; titre: string }[];
+  textes: { id: string; titre: string }[];
+}
+
+/** Les prénoms de la classe, masqués : un titre qui en porte un ne le donne pas à Mistral. */
+export function masquerLesPrenoms(texte: string, eleves: { nom: string }[]): string {
+  const prenoms = new Set(eleves.flatMap((e) => plat(e.nom).split(" ")).filter((m) => m.length >= 2));
+  return texte.replace(/[\p{L}][\p{L}'’-]*/gu, (mot) => (prenoms.has(plat(mot)) ? "[élève]" : mot));
+}
+
 /**
- * Ce qu'on dit à Mistral quand la télécommande n'a pas compris : les actions possibles et les pages de la classe,
- * par leur nom — ni les élèves, ni rien d'autre de la classe. Sa réponse ne vaut qu'une fois relue par `lireLeSecours`.
+ * Ce que la voix peut ouvrir, pour Mistral : les séquences, leurs séances (« aujourd'hui » pour celles du jour), les
+ * jeux, les outils et les textes de la classe, chacun avec un nom court. Ni élève, ni cahier journal : rien de ce
+ * qu'on ne montre pas au tableau.
  */
-export function consigneDuSecours(destinations: Destination[]): string {
+export function catalogue(listes: ListesDeLaClasse, eleves: { nom: string }[], aujourdhui: string): ElementDeLaClasse[] {
+  const m = (t: string) => masquerLesPrenoms(t.trim() || "sans titre", eleves);
+  const sequences = new Map(listes.sequences.map((q) => [q.id, q.titre]));
+  const elements: ElementDeLaClasse[] = [];
+  listes.sequences.forEach((q, i) => elements.push({ ref: `q${i + 1}`, sorte: "sequence", id: q.id, titre: q.titre, libelle: `séquence « ${m(q.titre)} »` }));
+  listes.seances.forEach((s, i) => {
+    const seq = s.sequenceId ? sequences.get(s.sequenceId) : undefined;
+    const libelle = `séance ${s.numero || ""} « ${m(s.titre)} »${seq ? ` (séquence « ${m(seq)} »)` : ""}${s.date?.startsWith(aujourdhui) ? " — aujourd'hui" : ""}`;
+    elements.push({ ref: `s${i + 1}`, sorte: "seance", id: s.id, titre: s.titre, libelle: libelle.replace("séance  ", "séance ") });
+  });
+  listes.jeux.forEach((j, i) => elements.push({ ref: `j${i + 1}`, sorte: "jeu", id: j.id, titre: j.titre, libelle: `jeu « ${m(j.titre)} »` }));
+  listes.outils.forEach((o, i) => elements.push({ ref: `o${i + 1}`, sorte: "outil", id: o.id, titre: o.titre, libelle: `outil « ${m(o.titre)} »` }));
+  listes.textes.forEach((t, i) => elements.push({ ref: `t${i + 1}`, sorte: "texte", id: t.id, titre: t.titre, libelle: `texte « ${m(t.titre)} »` }));
+  return elements;
+}
+
+/**
+ * Une phrase qui demande plusieurs choses ou les relie (« lance dix minutes et affiche la carte mentale ») : Mistral la
+ * lit d'abord, avec le catalogue entier. Le « et » d'une durée (« et demie ») ou d'un nom de page ne compte pas.
+ */
+export function estComplexe(phrase: string, destinations: Destination[]): boolean {
+  let p = ` ${epurer(plat(phrase))} `;
+  for (const d of destinations) for (const n of nomsDeLaPage(d.label)) p = p.replace(` ${plat(n)} `, " page ");
+  p = p.replace(/ et (demie?|quart|un|une) /g, " ");
+  return / (et|puis|ensuite|apres|avant|pendant|en meme temps|aussi) /.test(p) && p.trim().split(" ").length >= 4;
+}
+
+/**
+ * Ce qu'on dit à Mistral : toutes les actions possibles, chacune avec sa forme exacte ; les pages de la classe ; ce
+ * que la voix peut ouvrir (`catalogue`) ; et ce qui est en cours. Rien d'autre de la classe. Sa réponse ne vaut
+ * qu'une fois relue par `lireLesActions`.
+ */
+export function consigneDeMistral(destinations: Destination[], elements: ElementDeLaClasse[], etat: string): string {
   const pages = [...new Set(destinations.filter(pourLaClasse).map((d) => nomDeLaPage(d.label)))];
-  return `Tu es la télécommande vocale d'une classe : l'enseignant parle à son téléphone, et le Mac, projeté au tableau, affiche. Tu reçois la transcription de ce qu'il a dit ; elle peut contenir des fautes d'écoute. Choisis l'action demandée et réponds uniquement par un objet JSON, sans texte autour.
+  return `Tu es la télécommande vocale d'une classe : l'enseignant parle à son téléphone, et le Mac, projeté au tableau, affiche. Tu reçois la transcription de ce qu'il a dit ; elle peut contenir des fautes d'écoute. Réponds uniquement par un objet JSON {"actions":[…]} : les actions demandées, dans l'ordre où les faire — une seule, le plus souvent.
 
-Actions :
-- {"action":"minuteur","secondes":N} — lancer un minuteur. « deux minutes trente » = 150 ; « un quart d'heure » = 900.
-- {"action":"page","page":"NOM"} — afficher une page ; NOM est exactement un nom de la liste ci-dessous.
+Actions possibles, et aucune autre :
+- {"action":"minuteur","secondes":N} — lancer un minuteur et l'afficher en grand. « deux minutes trente » = 150 ; « un quart d'heure » = 900.
+- {"action":"minuteur_pause"}, {"action":"minuteur_reprendre"}, {"action":"minuteur_arreter"} — le minuteur en cours.
+- {"action":"minuteur_ajouter","secondes":N} — du temps en plus au minuteur en cours ; N négatif pour en enlever.
+- {"action":"page","page":"NOM"} — afficher une page de la liste PAGES, par son nom exact.
+- {"action":"ouvrir","ref":"RÉF"} — afficher un élément de la liste ÉLÉMENTS, par sa référence.
+- {"action":"chercher","quoi":"MOTS"} — afficher ce qui n'est dans aucune des deux listes, par les mots qui le nomment.
 - {"action":"plein_ecran","actif":true} ou {"action":"plein_ecran","actif":false}
-- {"action":"fermer"} — fermer ce qui est affiché.
-- {"action":"chercher","quoi":"MOTS"} — afficher une séquence, une séance, un jeu, un atelier ou un texte nommés dans la phrase et absents de la liste ; MOTS : les mots qui le nomment.
-- {"action":"note","eleve":"PRÉNOM","texte":"TEXTE"} — noter une observation sur un élève, sans rien afficher.
+- {"action":"fermer"} — fermer ce qui est affiché en grand.
+- {"action":"zoom","sens":"plus"}, {"action":"zoom","sens":"moins"}, {"action":"zoom","sens":"normal"} — tout afficher plus grand, plus petit, ou à la taille normale.
+- {"action":"defiler","sens":"bas"} ou {"action":"defiler","sens":"haut"} — faire défiler la page affichée.
+- {"action":"retour"} — revenir à la page d'avant.
+- {"action":"note","eleve":"PRÉNOM","texte":"TEXTE"} — noter une observation sur un élève ; rien ne s'affiche.
 - {"action":"aide"} — l'enseignant demande ce qu'il peut dire.
-- {"action":"rien","pourquoi":"…"} — la phrase ne demande rien de tout cela.
+Si la phrase ne demande rien de tout cela : {"actions":[]}.
 
-Pages : ${pages.join(" ; ")}.
+En ce moment : ${etat}
 
-Si un mot ressemble à l'oreille au nom d'une page (« la prise » pour « la frise »), choisis cette page. N'invente jamais une page hors de la liste.`;
+PAGES : ${pages.join(" ; ")}.
+
+ÉLÉMENTS :
+${elements.map((e) => `${e.ref} : ${e.libelle}`).join("\n") || "(aucun)"}
+
+Règles :
+- Fais les actions dans l'ordre de la phrase.
+- « Minuteur N minutes », « lance N minutes », « un sablier de N minutes » : un nouveau minuteur, qui remplace celui en cours (pas de minuteur_arreter avant). minuteur_ajouter seulement si l'enseignant dit d'ajouter ou d'enlever du temps : « ajoute », « rajoute », « encore », « de plus », « enlève », « de moins ».
+- « Zoome », « agrandis », « plus grand », « en grand » : zoom plus ; « plus petit », « réduis » : zoom moins ; « taille normale » : zoom normal.
+- Un mot peut être mal entendu : « Calfiche » pour « Affiche », « la prise » pour « la frise ». Choisis ce qui ressemble à l'oreille à un nom des listes.
+- N'ouvre un élément que si son titre correspond vraiment à ce qui est dit ; sinon, « chercher » avec les mots dits. N'invente jamais une page ni une référence absente des listes.
+- « La séance d'aujourd'hui » : celle marquée « aujourd'hui ». ${elements.some((e) => e.libelle.endsWith("aujourd'hui")) ? "" : "Aujourd'hui, aucune séance n'est prévue : n'en choisis aucune pour elle."}
+
+Exemples :
+- « Lance dix minutes et affiche la carte mentale » → {"actions":[{"action":"minuteur","secondes":600},{"action":"page","page":"Carte mentale"}]}
+- « Reviens en arrière et zoome » → {"actions":[{"action":"retour"},{"action":"zoom","sens":"plus"}]}
+- « Encore deux minutes » → {"actions":[{"action":"minuteur_ajouter","secondes":120}]}
+- « Ouvre la séquence sur les volcans », absente des ÉLÉMENTS → {"actions":[{"action":"chercher","quoi":"volcans"}]}`;
 }
 
 /** L'élève que Mistral a nommé : son nom entier ou son prénom, et un seul élève de la classe. */
@@ -348,32 +464,41 @@ function eleveNomme(nom: string, eleves: ContexteTelecommande["eleves"]): Contex
   return retenus.length === 1 ? retenus[0] : null;
 }
 
-/**
- * La réponse de Mistral, relue : une action connue, une page de la classe — jamais une autre —, un élève de la
- * classe, une durée possible ; sinon rien. La règle du tableau se tient ici, et non dans la consigne.
- */
-export function lireLeSecours(reponse: string, ctx: ContexteTelecommande): Compris | null {
-  let j: { action?: string; secondes?: unknown; page?: unknown; actif?: unknown; quoi?: unknown; eleve?: unknown; texte?: unknown };
-  try {
-    j = JSON.parse(reponse.trim().replace(/^```(?:json)?\s*|\s*```$/g, ""));
-  } catch {
-    return null;
-  }
+/** Une action de Mistral, relue ; rien si elle sort de ce qui est permis. */
+function lireUneAction(j: Record<string, unknown>, ctx: ContexteTelecommande, elements: ElementDeLaClasse[]): Compris | null {
+  const secondes = Math.round(Number(j.secondes));
   switch (j?.action) {
-    case "minuteur": {
-      const secondes = Math.round(Number(j.secondes));
+    case "minuteur":
       return secondes >= 5 && secondes <= 3 * 3600 ? { genre: "minuteur", secondes } : null;
-    }
+    case "minuteur_pause": return { genre: "minuteurPause" };
+    case "minuteur_reprendre": return { genre: "minuteurReprendre" };
+    case "minuteur_arreter": return { genre: "minuteurArreter" };
+    case "minuteur_ajouter":
+      return secondes !== 0 && Math.abs(secondes) <= 3 * 3600 ? { genre: "minuteurAjouter", secondes } : null;
     case "page": {
       const d = ctx.destinations.filter(pourLaClasse).find((x) => nomDeLaPage(x.label) === j.page);
       return d ? { genre: "aller", destination: d } : null;
+    }
+    case "ouvrir": {
+      const e = elements.find((x) => x.ref === j.ref);
+      return e ? { genre: "ouvrir", element: e } : null;
     }
     case "plein_ecran":
       return { genre: "pleinEcran", actif: j.actif !== false };
     case "fermer":
       return { genre: "fermer" };
+    case "zoom":
+      return j.sens === "plus" || j.sens === "moins" || j.sens === "normal" ? { genre: "zoom", sens: j.sens } : null;
+    case "defiler":
+      return j.sens === "bas" || j.sens === "haut" ? { genre: "defiler", sens: j.sens } : null;
+    case "retour":
+      return { genre: "retour" };
     case "chercher": {
-      const c = aChercher(plat(String(j.quoi ?? "")));
+      // Des mots qui nomment une page de la classe — « frise » — l'ouvrent, comme dits à la télécommande.
+      const quoi = plat(String(j.quoi ?? ""));
+      const d = quoi ? destinationDite(quoi, ctx.destinations.filter(pourLaClasse)) : null;
+      if (d) return { genre: "aller", destination: d };
+      const c = aChercher(quoi);
       return c.quoi ? { genre: "chercher", ...c } : null;
     }
     case "note": {
@@ -386,6 +511,46 @@ export function lireLeSecours(reponse: string, ctx: ContexteTelecommande): Compr
     default:
       return null;
   }
+}
+
+/** Les mots qui ne nomment rien : la sorte, les verbes, les rangs. Un élément ne s'ouvre pas sur eux seuls. */
+const MOTS_QUI_NE_NOMMENT_RIEN = new Set([
+  "sequence", "seance", "seances", "sequences", "jeu", "jeux", "outil", "outils", "texte", "textes", "fiche", "page",
+  "ouvre", "ouvrir", "affiche", "afficher", "montre", "montrer", "lance", "mets", "premiere", "premier", "deuxieme",
+  "second", "seconde", "troisieme", "quatrieme", "cinquieme", "derniere", "dernier", "suivante", "classe", "ecran", "plein",
+]);
+
+/**
+ * La phrase nomme-t-elle bien cet élément ? Un de ses mots pleins — à une lettre près — est dans ce que Mistral en a
+ * lu. Sans cela, Mistral aurait pris ce qui ressemblait le moins mal : mieux vaut ne rien ouvrir.
+ */
+function phraseNomme(phrase: string, e: ElementDeLaClasse): boolean {
+  const dits = plat(phrase).split(" ").filter((m) => m.length >= 4 && !MOTS_QUI_NE_NOMMENT_RIEN.has(m)).map((m) => m.replace(/[sx]$/, ""));
+  const libelle = plat(e.libelle).split(" ").map((m) => m.replace(/[sx]$/, ""));
+  return dits.some((d) => libelle.some((l) => d === l || memeMot(d, l)));
+}
+
+/** Au plus quatre actions d'une phrase : au-delà, ce n'est plus une commande. */
+const ACTIONS_MAX = 4;
+
+/**
+ * La réponse de Mistral, relue : des actions connues, des pages de la classe — jamais une autre —, des éléments du
+ * catalogue, un élève de la classe, des durées possibles. Ce qui sort de là tombe ; rien de valable, rien du tout.
+ * La règle du tableau se tient ici, et non dans la consigne.
+ */
+export function lireLesActions(reponse: string, ctx: ContexteTelecommande, elements: ElementDeLaClasse[], phrase: string): Compris[] | null {
+  let j: unknown;
+  try {
+    j = JSON.parse(reponse.trim().replace(/^```(?:json)?\s*|\s*```$/g, ""));
+  } catch {
+    return null;
+  }
+  const brutes = Array.isArray((j as { actions?: unknown })?.actions) ? (j as { actions: unknown[] }).actions
+    : (j as { action?: unknown })?.action ? [j] : [];
+  const lues = brutes.slice(0, ACTIONS_MAX)
+    .map((a) => (a && typeof a === "object" ? lireUneAction(a as Record<string, unknown>, ctx, elements) : null))
+    .filter((c): c is Compris => c !== null && (c.genre !== "ouvrir" || phraseNomme(phrase, c.element)));
+  return lues.length ? lues : null;
 }
 
 /**
@@ -429,10 +594,15 @@ export function ceQuIlComprend(destinations: Destination[]): Groupe[] {
     rayons.set(rayon, noms);
   }
   return [
-    { titre: "Minuteur", exemples: ["Minuteur cinq minutes", "Minuteur deux minutes trente", "Un quart d'heure"], aToucher: true },
-    { titre: "Écran", exemples: ["Plein écran", "Quitte le plein écran", "Ferme"], aToucher: true },
+    { titre: "Minuteur", exemples: ["Minuteur cinq minutes", "Un quart d'heure", "Pause", "Reprends", "Ajoute deux minutes", "Enlève une minute", "Arrête le minuteur"], aToucher: true },
+    { titre: "Écran", exemples: ["Plein écran", "Quitte le plein écran", "Ferme", "Plus grand", "Plus petit", "Taille normale", "Descends", "Remonte", "Retour"], aToucher: true },
     ...[...rayons.keys()].sort((a, b) => rang(a) - rang(b)).map((titre) => ({ titre, exemples: rayons.get(titre)!, aToucher: true })),
     { titre: "Chercher par son nom", exemples: ["Affiche la séquence sur les fractions", "Montre le jeu des animaux de la ferme"], aToucher: false },
     { titre: "Noter, sans rien afficher", exemples: ["Note pour [prénom] : a lu douze mots seul"], aToucher: false },
+    {
+      titre: "Plusieurs choses à la fois (avec Mistral)",
+      exemples: ["Lance dix minutes et affiche la carte mentale", "Ouvre la séance d'aujourd'hui en plein écran", "Montre la frise, puis plus grand"],
+      aToucher: false,
+    },
   ];
 }
