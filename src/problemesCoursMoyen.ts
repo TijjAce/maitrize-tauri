@@ -19,7 +19,7 @@ import { escapeHtml } from "./print";
 import { STYLE_CLASSE, schemaSvg, type Schema } from "./problemesBarres";
 
 export type SorteProblemeCM =
-  | "partie-tout" | "comparaison" | "deux-etapes" | "comparaison-deux-etapes" | "decimaux" | "parts-egales" | "partage-reste" | "comparaison-multiplicative"
+  | "partie-tout" | "comparaison" | "deux-etapes" | "comparaison-deux-etapes" | "decimaux" | "fractions" | "parts-egales" | "partage-reste" | "comparaison-multiplicative"
   | "mixte" | "denombrement" | "optimisation" | "algorithme"
   | "proportionnalite" | "proportionnalite-deux-etapes" | "proportionnalite-additive" | "proportionnalite-combinee" | "identifier-proportionnalite"
   | "tableau-proportionnalite";
@@ -31,6 +31,7 @@ export const SORTES_PROBLEMES_CM: { id: SorteProblemeCM; libelle: string; cm2?: 
   { id: "deux-etapes", libelle: "En deux étapes" },
   { id: "comparaison-deux-etapes", libelle: "Comparer, en deux étapes" },
   { id: "decimaux", libelle: "Des longueurs, des prix, des masses à virgule" },
+  { id: "fractions", libelle: "Des fractions : partager, une fraction d'une quantité" },
   { id: "parts-egales", libelle: "Des parts égales" },
   { id: "partage-reste", libelle: "Partager, avec un reste" },
   { id: "comparaison-multiplicative", libelle: "Fois plus, fois moins" },
@@ -112,7 +113,7 @@ const e2 = (c: number) => n(c / 100, c % 100 === 0 ? 0 : 2);
 const eu = (c: number) => `${e2(c)} €`;
 
 /** Une fraction dite en mots : « cinq douzièmes », « un quart ». */
-const PARTS: Record<number, string> = { 3: "tiers", 4: "quart", 5: "cinquième", 6: "sixième", 8: "huitième", 10: "dixième", 12: "douzième" };
+const PARTS: Record<number, string> = { 2: "demi", 3: "tiers", 4: "quart", 5: "cinquième", 6: "sixième", 8: "huitième", 10: "dixième", 12: "douzième" };
 const enMots = (num: number, den: number) => `${nombreEnLettres(num)} ${num > 1 && den !== 3 ? `${PARTS[den]}s` : PARTS[den]}`;
 
 function partieTout(alea: () => number, r: ReglagesProblemesCM): ProblemeCM {
@@ -830,8 +831,80 @@ function decimaux(alea: () => number, r: ReglagesProblemesCM): ProblemeCM {
   }
 }
 
+/**
+ * Des fractions, comme la séance de découverte de la séquence des fractions du
+ * manuel du CRPE de l'enseignant : un partage dont le reste se partage — trois
+ * baguettes pour quatre, c'est 3/4 de baguette chacun ; cinq, c'est 1 + 1/4 — ;
+ * une fraction d'une quantité — les 3/4 d'une tablette de 24 carrés, 18 carrés.
+ */
+function fractions(alea: () => number): ProblemeCM {
+  if (alea() < 0.5) {
+    const amis = choisir(alea, [2, 3, 4, 5, 8]);
+    const [pluriel, singulier, coupe, le] = choisir(alea, [
+      ["baguettes", "baguette", "coupée", "la"], ["pizzas", "pizza", "coupée", "la"], ["gâteaux", "gâteau", "coupé", "le"], ["galettes", "galette", "coupée", "la"],
+    ] as const);
+    let nombre = entier(alea, 1, 2 * amis + 1);
+    if (nombre % amis === 0) nombre += 1;
+    const entiers = Math.floor(nombre / amis), reste = nombre % amis;
+    const objets = nombre > 1 ? pluriel : singulier;
+    return {
+      enonce: `${amis} amis se partagent ${nombre} ${objets} à parts égales. Quelle est la part de chacun ?`,
+      calcul: nombre === 1
+        ? `${le.charAt(0).toUpperCase()}${le.slice(1)} ${singulier} est ${coupe} en ${amis} parts égales ; chacun en reçoit une : 1/${amis} de ${singulier}`
+        : entiers === 0
+        ? `Chaque ${singulier} est ${coupe} en ${amis} parts égales ; chacun reçoit une part de chaque ${singulier} : ${nombre}/${amis} de ${singulier}`
+        : `Chacun reçoit d'abord ${entiers} ${entiers > 1 ? pluriel : singulier} ; ${reste > 1 ? `les ${reste} ${pluriel} qui restent se coupent` : `${le} ${singulier} qui reste se coupe`} en ${amis} parts : ${nombre}/${amis} = ${entiers} + ${reste}/${amis}`,
+      phrase: `Chacun a ${nombre}/${amis} de ${singulier}${entiers ? `, soit ${entiers} ${entiers > 1 ? pluriel : singulier} et ${reste}/${amis}` : ""}.`,
+      contexte: `partage ${singulier}`,
+    };
+  }
+  const [num, den] = choisir(alea, [[3, 4], [1, 4], [1, 2], [2, 3], [1, 3], [3, 5], [2, 5], [3, 8]] as const);
+  const p = quelquun(alea);
+  const unite = (q: number) => q / den;
+  // « la moitié », « le quart » ; « les 3/4 ».
+  const les = (n: number, d: number) => (n === 1 ? (d === 2 ? "la moitié" : `le ${PARTS[d]}`) : `les ${n}/${d}`);
+  const Les = (n: number, d: number) => les(n, d).charAt(0).toUpperCase() + les(n, d).slice(1);
+  // Une part, puis autant de parts que le numérateur.
+  const etapes = (q: number, n: number, d: number) => `1/${d} de ${q}, c'est ${q} ÷ ${d} = ${q / d}${n > 1 ? ` ; ${n}/${d}, c'est ${n} × ${q / d} = ${n * (q / d)}` : ""}`;
+  switch (entier(alea, 0, 3)) {
+    case 0: {
+      const q = den * entier(alea, 3, 8);
+      return {
+        enonce: `Une tablette de chocolat a ${q} carrés. Combien de carrés font ${les(num, den)} de la tablette ?`,
+        calcul: etapes(q, num, den), phrase: `${Les(num, den)} de la tablette ${num > 1 ? "font" : "fait"} ${num * unite(q)} carrés.`, contexte: "chocolat",
+      };
+    }
+    case 1: {
+      const q = den * entier(alea, 4, 12);
+      return {
+        enonce: `${p.nom} a ${q} billes. ${p.Il} en donne ${les(num, den)} à sa cousine. Combien de billes donne-t-${p.il} ?`,
+        calcul: etapes(q, num, den),
+        phrase: `${p.nom} donne ${num * unite(q)} billes.`, contexte: "billes",
+      };
+    }
+    case 2: {
+      // Une heure, ce sont 60 minutes : des dénominateurs qui divisent 60.
+      const [n2, d2] = 60 % den === 0 ? [num, den] : choisir(alea, [[3, 4], [1, 4], [2, 3], [1, 3]] as const);
+      return {
+        enonce: `Pour aller à l'école, ${p.nom} met ${les(n2, d2)} d'une heure. Combien de minutes met-${p.il} ?`,
+        calcul: `Une heure, c'est 60 minutes ; ${etapes(60, n2, d2)}`,
+        phrase: `${p.nom} met ${n2 * (60 / d2)} minutes.`, contexte: "minutes",
+      };
+    }
+    default: {
+      // Une classe de vingt à trente élèves.
+      const q = den * entier(alea, Math.ceil(20 / den), Math.floor(30 / den));
+      return {
+        enonce: `Une classe compte ${q} élèves. ${Les(num, den)} des élèves ${num > 1 ? "mangent" : "mange"} à la cantine. Combien d'élèves mangent à la cantine ?`,
+        calcul: etapes(q, num, den),
+        phrase: `${num * unite(q)} élèves mangent à la cantine.`, contexte: "cantine",
+      };
+    }
+  }
+}
+
 const FABRIQUES: Record<SorteProblemeCM, (alea: () => number, r: ReglagesProblemesCM) => ProblemeCM> = {
-  "partie-tout": partieTout, comparaison, "deux-etapes": deuxEtapes, "comparaison-deux-etapes": comparaisonDeuxEtapes, decimaux,
+  "partie-tout": partieTout, comparaison, "deux-etapes": deuxEtapes, "comparaison-deux-etapes": comparaisonDeuxEtapes, decimaux, fractions,
   "parts-egales": partsEgales, "partage-reste": partageReste, "comparaison-multiplicative": comparaisonMultiplicative, mixte, denombrement, optimisation, algorithme,
   proportionnalite, "proportionnalite-deux-etapes": proportionnaliteDeuxEtapes, "proportionnalite-additive": proportionnaliteAdditive,
   "proportionnalite-combinee": proportionnaliteCombinee, "identifier-proportionnalite": identifierProportionnalite,

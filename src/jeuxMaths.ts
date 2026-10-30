@@ -177,7 +177,7 @@ export function htmlArbreCalcul(liste: Addition[], r: ReglagesArbre, entete?: { 
 // ── Les fractions : cartes, bandes, règle, nageurs ────────────────────────
 
 export type RepresentationFraction = "chiffres" | "lettres" | "bande" | "disque";
-export type MaterielFraction = "cartes" | "bandes" | "regle" | "nageurs" | "mesurer" | "tracer" | "comparer" | "operations";
+export type MaterielFraction = "cartes" | "colorier" | "bandes" | "regle" | "nageurs" | "mesurer" | "tracer" | "comparer" | "operations";
 /** Ce qu'on compare ou calcule : même dénominateur, numérateur 1 (comparer), ou un dénominateur multiple de l'autre (CE2). */
 export type CasFractions = "denominateur" | "unitaires" | "multiple";
 export type Graduation = 4 | 8 | 10;
@@ -465,6 +465,68 @@ export function htmlOperationsSurFractions(r: ReglagesFractions, graine: number)
     <div class="page corrige"><div class="titre">Ajouter et retrancher des fractions — corrigé</div>${ops.map((o) => ligne(o, true)).join("")}</div>`;
 }
 
+// ── Colorier une fraction de formes non partagées ─────────────────────────
+//
+// La séance « Partager soi-même : coder et décoder » de la séquence des
+// fractions du manuel du CRPE de l'enseignant : aucune forme n'est partagée
+// d'avance ; on la partage soi-même en parts égales — en pliant, en traçant —,
+// puis on colorie. Pour 3/2 ou 5/4, une forme ne suffit pas.
+
+type FormeAPartager = "disque" | "carre" | "rectangle" | "triangle";
+const FORMES_A_PARTAGER: FormeAPartager[] = ["disque", "carre", "rectangle", "triangle"];
+const VIOLET = "#6366f1";
+
+/** Une forme, l'unité : son contour seul, ou partagée en `d` parts égales dont `k` coloriées. */
+function formeAPartagerSvg(forme: FormeAPartager, d: number, k: number, partagee: boolean): string {
+  const trait = (x1: number, y1: number, x2: number, y2: number) => `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="#1c2233" stroke-width="0.35"/>`;
+  const remplir = (chemin: string, i: number) => `<path d="${chemin}" fill="${partagee && i < k ? VIOLET : "#fff"}" stroke="none"/>`;
+  if (forme === "disque") {
+    const c = 14, R = 13;
+    const parts = Array.from({ length: d }, (_, i) => {
+      const a0 = (i / d) * Math.PI * 2 - Math.PI / 2, a1 = ((i + 1) / d) * Math.PI * 2 - Math.PI / 2;
+      return remplir(d === 1 ? `M${c - R} ${c} a${R} ${R} 0 1 0 ${2 * R} 0 a${R} ${R} 0 1 0 ${-2 * R} 0`
+        : `M${c} ${c} L${(c + Math.cos(a0) * R).toFixed(2)} ${(c + Math.sin(a0) * R).toFixed(2)} A${R} ${R} 0 ${1 / d > 0.5 ? 1 : 0} 1 ${(c + Math.cos(a1) * R).toFixed(2)} ${(c + Math.sin(a1) * R).toFixed(2)} Z`, i);
+    }).join("");
+    const rayons = partagee && d > 1 ? Array.from({ length: d }, (_, i) => { const a = (i / d) * Math.PI * 2 - Math.PI / 2; return trait(c, c, c + Math.cos(a) * R, c + Math.sin(a) * R); }).join("") : "";
+    return `<svg viewBox="0 0 28 28" width="28mm" height="28mm">${parts}${rayons}<circle cx="${c}" cy="${c}" r="${R}" fill="none" stroke="#1c2233" stroke-width="0.5"/></svg>`;
+  }
+  if (forme === "triangle") {
+    // Des parts égales : la base coupée en d segments égaux, chacun relié au sommet.
+    const sommet = [14, 1], g = 1, dr = 27, bas = 26;
+    const x = (i: number) => g + ((dr - g) * i) / d;
+    const parts = Array.from({ length: d }, (_, i) => remplir(`M${sommet[0]} ${sommet[1]} L${x(i).toFixed(2)} ${bas} L${x(i + 1).toFixed(2)} ${bas} Z`, i)).join("");
+    const lignes = partagee ? Array.from({ length: d - 1 }, (_, i) => trait(sommet[0], sommet[1], x(i + 1), bas)).join("") : "";
+    return `<svg viewBox="0 0 28 28" width="28mm" height="28mm">${parts}${lignes}<path d="M${sommet[0]} ${sommet[1]} L${dr} ${bas} L${g} ${bas} Z" fill="none" stroke="#1c2233" stroke-width="0.5"/></svg>`;
+  }
+  // Le carré et le rectangle : des bandes égales, côte à côte.
+  const w = forme === "carre" ? 26 : 38, h = forme === "carre" ? 26 : 16;
+  const parts = Array.from({ length: d }, (_, i) => remplir(`M${(1 + (w * i) / d).toFixed(2)} 1 h${(w / d).toFixed(2)} v${h} h${(-w / d).toFixed(2)} Z`, i)).join("");
+  const lignes = partagee ? Array.from({ length: d - 1 }, (_, i) => trait(1 + (w * (i + 1)) / d, 1, 1 + (w * (i + 1)) / d, 1 + h)).join("") : "";
+  return `<svg viewBox="0 0 ${w + 2} ${h + 2}" width="${w + 2}mm" height="${h + 2}mm">${parts}${lignes}<rect x="1" y="1" width="${w}" height="${h}" fill="none" stroke="#1c2233" stroke-width="0.5"/></svg>`;
+}
+
+/** Six fractions à colorier, dont certaines plus grandes que 1, chacune sur des formes que rien ne partage. */
+export function htmlColorierFractions(r: ReglagesFractions, graine: number): string {
+  const alea = hasard(graine);
+  const dens = r.denominateurs.length ? r.denominateurs : [2, 3, 4];
+  const items: { k: number; d: number; forme: FormeAPartager }[] = [];
+  for (let garde = 0; items.length < 6 && garde < 300; garde++) {
+    const d = dens[Math.floor(alea() * dens.length)];
+    // Une fois sur trois, plus grande que l'unité : 3/2, 5/4 ; sinon, entre 0 et 1.
+    const k = r.unitaires ? 1 : alea() < 1 / 3 ? d + 1 + Math.floor(alea() * Math.max(1, d - 1)) : 1 + Math.floor(alea() * (d - 1));
+    if (k === d || k < 1 || items.some((x) => x.k === k && x.d === d)) continue;
+    items.push({ k, d, forme: FORMES_A_PARTAGER[Math.floor(alea() * FORMES_A_PARTAGER.length)] });
+  }
+  const formes = (x: (typeof items)[number], corrige: boolean) => Array.from({ length: Math.ceil(x.k / x.d) }, (_, u) =>
+    formeAPartagerSvg(x.forme, x.d, Math.min(x.d, x.k - u * x.d), corrige)).join("");
+  const cas = (x: (typeof items)[number], corrige: boolean) => `<div class="fr-colorier"><div class="fr-colorier-quoi">Je colorie ${fractionHtml(x.k, x.d)}</div><div class="fr-formes">${formes(x, corrige)}</div></div>`;
+  return `<div class="page"><div class="titre">Colorier une fraction</div>
+    <div class="sous">Prénom : ........................................ Date : ........................</div>
+    <div class="regle"><b>Partage, puis colorie</b>Je partage chaque forme en parts égales, en pliant ou en traçant. Puis je colorie la fraction demandée. Quand elle dépasse 1, je prends une autre forme entière.</div>
+    <div class="fr-colorier-liste">${items.map((x) => cas(x, false)).join("")}</div></div>
+    <div class="page corrige"><div class="titre">Colorier une fraction — corrigé</div><div class="fr-colorier-liste">${items.map((x) => cas(x, true)).join("")}</div></div>`;
+}
+
 export function htmlFractions(r: ReglagesFractions, graine: number): string {
   const parties: string[] = [];
   if (r.materiel.includes("cartes")) {
@@ -475,6 +537,7 @@ export function htmlFractions(r: ReglagesFractions, graine: number): string {
         <span class="reference">Livret Mathématiques CE1, Éduscol 2025.</span></div>`;
     parties.push(pagesDeCartes(cartes.map((c) => carte(c.html)), { colonnes: 4, lignes: 5 }, regle));
   }
+  if (r.materiel.includes("colorier")) parties.push(htmlColorierFractions(r, graine));
   if (r.materiel.includes("bandes")) {
     const bande = (repere: string) => `<div class="fr-bande">${repere}</div>`;
     parties.push(`<div class="page"><div class="titre">Bandes unités à plier</div>
@@ -634,6 +697,11 @@ export const STYLE_JEUX_MATHS = `
   .feuille.fr .fr-unite { width: 50mm; height: 9mm; border: 1.5px dashed #1c2233; display: flex; align-items: center; justify-content: center; margin: 2mm 0 5mm; font-weight: 700; }
   .feuille.fr .fr-segment { display: flex; align-items: center; gap: 4mm; margin: 5mm 0 1mm; }
   .feuille.fr .fr-segment b { width: 6mm; font-size: 16px; }
+  .feuille.fr .fr-colorier-liste { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm 8mm; margin-top: 4mm; }
+  .feuille.fr .fr-colorier { break-inside: avoid; page-break-inside: avoid; }
+  .feuille.fr .fr-colorier-quoi { display: flex; align-items: center; gap: 3mm; font-size: 15px; font-weight: 600; margin-bottom: 2mm; }
+  .feuille.fr .fr-colorier-quoi .fr-chiffres { font-size: 20px; }
+  .feuille.fr .fr-formes { display: flex; flex-wrap: wrap; gap: 3mm; align-items: flex-end; }
   .feuille.fr .fr-mesure { font-size: 13px; color: #3b4256; margin: 0 0 3mm 10mm; }
   .feuille.fr .fr-corrige-ligne { display: flex; align-items: center; gap: 4mm; margin: 3mm 0; }
   .feuille.fr .fr-trace { margin: 0 0 6mm; page-break-inside: avoid; }

@@ -25,17 +25,19 @@
 // jusqu'à la demi-droite graduée, celle-ci fait découvrir la fraction
 // elle-même.
 //
-// Ses feuilles viennent toutes de l'atelier « Fractions » — les segments à
-// mesurer et à tracer, la bande unité, la règle graduée en quarts, les cartes,
-// la course des nageurs —, à ses réglages : chacune se rouvre dans le sien.
-// Les images de la première séance — bouteilles, minuteurs, verres — et ses
-// problèmes de baguettes et de chocolat ne viennent d'aucun atelier : on les
-// montre, ou on les écrit au tableau.
+// Ses feuilles viennent de l'atelier « Fractions » — les segments à mesurer
+// et à tracer, la bande unité, la règle graduée en quarts, les cartes, des
+// formes que rien ne partage à colorier, la course des nageurs — et de
+// l'atelier « Les problèmes — CM1, CM2 » — les baguettes à partager, une
+// fraction d'une quantité —, à leurs réglages : chacune se rouvre dans le
+// sien. Les images de la première séance — bouteilles, minuteurs, verres — se
+// montrent.
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 import type { FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
 import { STYLE_FEUILLE } from "./cartesImprimables";
 import { REGLAGES_FRACTIONS, STYLE_JEUX_MATHS, htmlFractions, type ReglagesFractions } from "./jeuxMaths";
+import { REGLAGES_PROBLEMES_CM, STYLE_PROBLEMES_CM, htmlProblemesCM, type ReglagesProblemesCM } from "./problemesCoursMoyen";
 
 export const ID_FRACTIONS_SIMPLES_CM1 = "fractions-simples-cm1";
 
@@ -76,7 +78,7 @@ export const DEMARCHE_FRACTIONS_SIMPLES_CM1: Demarche = {
           "Choisit pour le tableau un élève en réussite. Erreurs attendues : 5/4 dessiné dans une seule pizza ; trois moitiés prises sur deux pizzas et lues 3/4 — l'élève prend tout le dessin pour l'unité, et croit qu'une fraction est toujours plus petite que 1. On revient à l'unité, une pizza : pour 5/4, il en faut une deuxième. Aide : plier un disque de papier en deux, en quatre, en huit."),
         ph("Phase 4 – Binômes", "5 min", "On mesure avec une bande unité : la feuille « Mesurer des segments en quarts d'unité ». On découpe la bande unité, on la plie en deux puis en quatre, on la reporte sur chaque segment, et l'on écrit sa longueur en fraction de l'unité, comme 3/4 u ou 3/2 u.",
           "Les binômes confrontent leurs mesures et leurs façons de faire. Fait dire les deux écritures d'une longueur plus grande que l'unité : 1 u + 2/4 u, ce sont six quarts d'unité, ou trois demis — deux quarts font un demi — : 3/2 u. Pour tenir les cinq minutes, la bande unité peut être découpée d'avance ; qui n'a pas fini achève la feuille plus tard."),
-        ph("Phase 5 – Binômes", "10 min", "Cinq minutes de recherche, cinq de correction. Quatre amis se partagent trois baguettes, à parts égales : quelle est la part de chacun ? Même question avec cinq baguettes.",
+        ph("Phase 5 – Binômes", "10 min", "Cinq minutes de recherche, cinq de correction. Quatre amis se partagent trois baguettes, à parts égales : quelle est la part de chacun ? Même question avec cinq baguettes. La feuille « Problèmes de fractions » en donne d'autres, et la tablette de la phase suivante, pour les jours qui viennent.",
           "Laisse dessiner les baguettes ; des bandes de papier les figurent pour qui veut couper. On coupe chacune en quatre : chacun a trois quarts de baguette, 3/4. Avec cinq : une baguette entière chacun, puis la dernière se coupe en quatre — le reste se partage — : 5/4 = 1 + 1/4."),
         ph("Phase 6 – Binômes", "10 min", "Cinq minutes de recherche, cinq de correction. Une tablette de chocolat a 24 carrés : combien de carrés en font les trois quarts ?",
           "Pour qui en a besoin, une tablette dessinée — quatre rangées de six carrés — à partager. Un quart de la tablette, c'est 24 partagé en 4 : 6 carrés ; trois quarts, trois fois plus : 18 carrés."),
@@ -85,7 +87,7 @@ export const DEMARCHE_FRACTIONS_SIMPLES_CM1: Demarche = {
       sauront("partager eux-mêmes en parts égales des surfaces de formes variées — disque, carré, rectangle, triangle —, écrire la fraction d'une part coloriée et représenter une fraction donnée, plus petite ou plus grande que l'unité ; nommer le numérateur et le dénominateur."), 45, [
         ph(T1, "10 min", "Au tableau, trois quarts en lettres, en chiffres — 3/4 — et en dessin. On nomme : le dénominateur, 4, dit en combien de parts égales on a partagé l'unité ; le numérateur, 3, combien de parts on prend. Puis un rectangle coupé en trois parts de tailles différentes, l'une coloriée, marquée 1/3 : est-ce un tiers ?",
           "Fait lire 3/4 « trois quarts », jamais « trois sur quatre » : longtemps, l'élève voit dans 3/4 deux nombres, et non un seul. Un tiers, c'est l'une de trois parts égales : le rectangle du tableau n'en montre pas."),
-        ph(T2, "20 min", "Par deux, des formes de papier — disques, carrés, rectangles, triangles — qu'on partage soi-même, en pliant ou en traçant. Coder : l'un partage et colorie, l'autre écrit la fraction coloriée. Décoder : on tire une fraction — 1/2, 1/4, 3/4, 2/3, 5/8, 3/2, 5/4 — et on la représente sur la forme de son choix ; pour 3/2 et 5/4, une forme ne suffit pas.",
+        ph(T2, "20 min", "Par deux, des formes de papier — disques, carrés, rectangles, triangles — qu'on partage soi-même, en pliant ou en traçant. Coder : l'un partage et colorie, l'autre écrit la fraction coloriée. Décoder : on tire une fraction — 1/2, 1/4, 3/4, 2/3, 5/8, 3/2, 5/4 — et on la représente sur la forme de son choix ; pour 3/2 et 5/4, une forme ne suffit pas. Puis, seul, la feuille « Colorier une fraction » : des formes que rien ne partage d'avance.",
           "Varie les formes : qui n'a partagé que des disques ne sait pas forcément partager un carré ou un triangle. Les pliages en deux successifs donnent les demis, les quarts, les huitièmes ; pour les tiers, un gabarit ou un tracé mesuré. Fait vérifier dans le binôme : les parts sont-elles égales ?"),
         ph(T3, "10 min", "Ce qu'on retient, dans le cahier : une fraction s'écrit en lettres, en chiffres, en dessin ; 3/4 = 1/4 + 1/4 + 1/4. Une fraction peut dépasser l'unité : 3/2, ce sont trois demis, une unité et demie. Au tableau, deux disques coupés en deux, trois moitiés coloriées : on écrit 3/2 de disque, et non 3/4 — l'unité, c'est un disque.",
           "Le piège des deux disques : qui prend tout le dessin pour l'unité croit qu'une fraction est toujours plus petite que 1."),
@@ -124,11 +126,21 @@ const fractions = (seance: number, titre: string, r: Partial<ReglagesFractions>)
   };
 };
 
+/** Les baguettes à partager et les fractions d'une quantité, dans l'atelier « Les problèmes — CM1, CM2 » : il les refait, avec les mêmes réglages et le même tirage. */
+const PROBLEMES_DE_FRACTIONS: ReglagesProblemesCM = { ...REGLAGES_PROBLEMES_CM, classe: "CM1", sortes: ["fractions"], combien: 3, titre: "Problèmes de fractions" };
+const problemesDeFractions = (seance: number): FeuilleAFabriquer => ({
+  seance, atelier: "problemesCM", titre: PROBLEMES_DE_FRACTIONS.titre!,
+  fabriquer: (g) => ({ html: htmlProblemesCM(PROBLEMES_DE_FRACTIONS, g), style: STYLE_FEUILLE + STYLE_PROBLEMES_CM, refaire: { problemesCM: PROBLEMES_DE_FRACTIONS } }),
+});
+
 const FEUILLES: FeuilleAFabriquer[] = [
   // La séance du manuel : des segments à mesurer avec la bande unité, pliée en quatre, qui est sur la feuille.
   fractions(0, "Mesurer des segments en quarts d'unité", { materiel: ["mesurer"], graduation: 4 }),
+  problemesDeFractions(0),
   // Quatre formes de chaque fraction — en chiffres, en lettres, un disque, une bande — : deux paires par fraction.
   fractions(1, "Cartes des fractions — en chiffres, en lettres, en images", { materiel: ["cartes"], denominateurs: [2, 3, 4], representations: ["chiffres", "lettres", "disque", "bande"] }),
+  // Les fractions que les élèves tirent : 1/2, 1/4, 3/4, 2/3, 5/8, 3/2, 5/4.
+  fractions(1, "Colorier une fraction", { materiel: ["colorier"], denominateurs: [2, 3, 4, 8] }),
   fractions(2, "Bandes unités à plier", { materiel: ["bandes"] }),
   fractions(2, "Règle graduée en quarts d'unité", { materiel: ["regle"], graduation: 4 }),
   fractions(2, "Mesurer des segments avec la règle", { materiel: ["mesurer"], graduation: 4 }),
