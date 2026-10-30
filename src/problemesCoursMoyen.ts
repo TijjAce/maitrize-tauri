@@ -873,10 +873,10 @@ export function htmlProblemesCM(r: ReglagesProblemesCM, graine: number): string 
   const titre = r.titre?.trim() || "Résoudre des problèmes";
   // Un tableau se complète dans ses cases : pas de cadre de recherche, une ligne pour dire comment on a trouvé.
   const travail = (pb: ProblemeCM) => (pb.tableau
-    ? `${tableauHtml(pb.tableau, false)}<div class="pc-reponse"><div>J'explique une case : <span class="pc-ligne"></span></div></div>`
+    ? `${tableauHtml(pb.tableau, false)}<div class="pc-reponse"><div>J'explique une case : <span class="pc-trait"></span></div></div>`
     : pb.ouiNon
-      ? `<div class="pc-reponse"><div>Je réponds : <span class="pc-choix">oui</span> <span class="pc-choix">non</span></div><div>Parce que : <span class="pc-ligne"></span></div><div><span class="pc-ligne"></span></div></div>`
-      : `<div class="pc-cadre"></div><div class="pc-reponse"><div>Calcul : <span class="pc-ligne"></span></div><div>Réponse : <span class="pc-ligne"></span></div></div>`);
+      ? `<div class="pc-reponse"><div>Je réponds : <span class="pc-oui-non">oui</span> <span class="pc-oui-non">non</span></div><div>Parce que : <span class="pc-trait"></span></div><div><span class="pc-trait"></span></div></div>`
+      : `<div class="pc-cadre"></div><div class="pc-reponse"><div>Calcul : <span class="pc-trait"></span></div><div>Réponse : <span class="pc-trait"></span></div></div>`);
   const bloc = (pb: ProblemeCM, i: number) => `<section class="pc-probleme"><div class="pc-numero">${i + 1}</div><div class="pc-contenu">`
     + `<p class="pc-enonce">${escapeHtml(pb.enonce)}</p>${travail(pb)}</div></section>`;
   const corrige = (pb: ProblemeCM, i: number) => `<section class="pc-probleme"><div class="pc-numero">${i + 1}</div><div class="pc-contenu">`
@@ -898,11 +898,11 @@ export const STYLE_PROBLEMES_CM = `
   .feuille.pc .pc-rappel { font-size: 13px; color: #4b5266; }
   .feuille.pc .pc-cadre { height: 34mm; border: 1.2px dashed #9aa0b4; border-radius: 2mm; margin: 0 0 2.5mm; }
   .feuille.pc .pc-reponse > div { font-size: 14px; margin: 0 0 2.5mm; display: flex; gap: 2mm; align-items: flex-end; }
-  .feuille.pc .pc-ligne { flex: 1; border-bottom: 1px dotted #9aa0b4; height: 5mm; }
+  .feuille.pc .pc-trait { flex: 1; border-bottom: 1px dotted #9aa0b4; height: 5mm; }
   .feuille.pc .pc-schema { margin: 0 0 2mm; }
   .feuille.pc .pc-schema svg { max-width: 120mm; height: auto; }
   .feuille.pc .pc-solution { font-size: 13.5px; line-height: 1.5; margin: 0; }
-  .feuille.pc .pc-choix { display: inline-block; padding: 0.3mm 3mm; margin: 0 1mm; border: 1.2px solid #9aa0b4; border-radius: 3mm; }
+  .feuille.pc .pc-oui-non { display: inline-block; padding: 0.3mm 3mm; margin: 0 1mm; border: 1.2px solid #9aa0b4; border-radius: 3mm; }
   .feuille.pc .pc-tableau { width: auto; margin: 0 0 2.5mm; border-collapse: collapse; font-size: 14px; }
   .feuille.pc .pc-tableau th, .feuille.pc .pc-tableau td { border: 1px solid #9aa0b4; padding: 1.5mm 2.5mm; text-align: center; }
   .feuille.pc .pc-tableau th { background: #f0f2f8; font-size: 12.5px; font-weight: 600; text-align: left; }

@@ -533,7 +533,7 @@ export function htmlCalculCM(r: ReglagesCalculCM, graine: number): string {
   } else if (r.exercice === "estimer") {
     const items = Array.from({ length: combien }, () => estimation(r, alea));
     corps = `<div class="regle"><b>Estime</b>Arrondis chaque nombre, calcule de tête, puis entoure le résultat le plus proche — sans poser l'opération.</div>`
-      + `<div class="cm-lignes">${items.map((x) => `<div>${escapeHtml(x.calcul)} ≈ ${x.proposees.map((p) => `<span class="cm-choix">${escapeHtml(p)}</span>`).join(" ")}</div>`).join("")}</div>`;
+      + `<div class="cm-lignes">${items.map((x) => `<div>${escapeHtml(x.calcul)} ≈ ${x.proposees.map((p) => `<span class="cm-propose">${escapeHtml(p)}</span>`).join(" ")}</div>`).join("")}</div>`;
     corrige = `<div class="cm-lignes">${items.map((x) => `<div>${escapeHtml(x.calcul)} ≈ <b>${escapeHtml(x.proposees[x.bonne])}</b> <span class="cm-aussi">(${escapeHtml(x.explication)})</span></div>`).join("")}</div>`;
   } else {
     const ops: Operation[] = [];
@@ -562,7 +562,7 @@ export const STYLE_CALCUL_CM = `
   .feuille.cm .cm-liste.cm-deux { grid-template-columns: repeat(2, 1fr); }
   .feuille.cm .cm-bloc { page-break-inside: avoid; break-inside: avoid; }
   .feuille.cm .cm-enligne { font-size: 15px; font-weight: 600; margin: 0 0 2mm; }
-  .feuille.cm .cm-grille { border-collapse: collapse; font-size: 18px; font-weight: 600; }
+  .feuille.cm .cm-grille { margin: 0; border-collapse: collapse; font-size: 18px; font-weight: 600; }
   .feuille.cm .cm-grille td { position: relative; width: 7mm; height: 8mm; text-align: center; border: 0.6px solid #c4c9d6; }
   .feuille.cm .cm-grille td.cm-signe { border-color: transparent; font-weight: 700; }
   .feuille.cm .cm-grille td.cm-zero { color: #9aa0b4; }
@@ -575,7 +575,7 @@ export const STYLE_CALCUL_CM = `
   .feuille.cm .cm-division tr:first-child td.cm-diviseur { border-bottom: 2.5px solid #1c2233; }
   .feuille.cm .cm-lignes > div { font-size: 16px; margin: 0 0 5mm; line-height: 1.6; }
   .feuille.cm .cm-trait { display: inline-block; min-width: 70mm; border-bottom: 1px dotted #9aa0b4; vertical-align: bottom; height: 6mm; }
-  .feuille.cm .cm-choix { display: inline-block; margin: 0 3mm; padding: 0.5mm 3mm; border: 1.2px solid #9aa0b4; border-radius: 4mm; }
+  .feuille.cm .cm-propose { display: inline-block; margin: 0 3mm; padding: 0.5mm 3mm; border: 1.2px solid #9aa0b4; border-radius: 4mm; }
   .feuille.cm .cm-aussi { color: #687087; font-size: 12.5px; }
   .feuille.cm .cm-lignes.cm-deux-colonnes { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 10mm; }
   .feuille.cm .cm-partage { page-break-inside: avoid; break-inside: avoid; margin: 0 0 7mm; }
