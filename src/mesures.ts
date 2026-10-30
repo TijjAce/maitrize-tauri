@@ -21,12 +21,17 @@ import { hasard, melanger } from "./hasard";
 export type Classe = "CP" | "CE1" | "CE2";
 export type Grandeur = "longueur" | "masse" | "contenance";
 export type ExerciceMesures =
-  | "mesurer" | "tracer" | "comparerSegments" | "comparerObjets" | "unites" | "estimer" | "convertir" | "comparerMesures"
+  | "mesurer" | "tracer" | "comparerSegments" | "comparerObjets" | "mesurerU" | "bienMesurer" | "plusLongCourt" | "regleU"
+  | "unites" | "estimer" | "convertir" | "comparerMesures"
   | "perimetre" | "perimetreCompas" | "balances" | "pesees" | "ordonner" | "verres";
 
 export const EXERCICES_MESURES: { id: ExerciceMesures; libelle: string; grandeurs: Grandeur[] }[] = [
   { id: "comparerObjets", libelle: "Comparer des objets : les crayons", grandeurs: ["longueur"] },
   { id: "comparerSegments", libelle: "Comparer des segments, sans règle", grandeurs: ["longueur"] },
+  { id: "plusLongCourt", libelle: "Tracer plus long, plus court (CP, CE1)", grandeurs: ["longueur"] },
+  { id: "bienMesurer", libelle: "Qui a bien mesuré ? Crayons et gommes (CP, CE1)", grandeurs: ["longueur"] },
+  { id: "mesurerU", libelle: "Mesurer avec une unité U (CP, CE1)", grandeurs: ["longueur"] },
+  { id: "regleU", libelle: "Graduer sa règle en U (CP, CE1)", grandeurs: ["longueur"] },
   { id: "mesurer", libelle: "Mesurer des segments avec la règle", grandeurs: ["longueur"] },
   { id: "tracer", libelle: "Tracer des segments", grandeurs: ["longueur"] },
   { id: "perimetre", libelle: "Le périmètre, avec la règle (CE2)", grandeurs: ["longueur"] },
@@ -188,6 +193,138 @@ function feuilleComparerObjets(r: ReglagesMesures, graine: number): string {
   const reponse = `<div class="me-ranger">Du plus court au plus long : ${liste.map(() => `<span class="me-blanc me-blanc-court"></span>`).join(" &lt; ")}</div>`;
   const corrige = `<div class="page corrige"><div class="titre">Le plus long crayon — corrigé</div><div class="me-corrige"><div><b>${ordre.map((c) => c.l).join(" &lt; ")}</b></div>${ordre.map((c) => `<div>${c.l} : ${enCm(c.mm, true)}</div>`).join("")}</div></div>`;
   return `<div class="page">${tete}<div class="me-crayons">${lignes}</div>${reponse}</div>${corrige}`;
+}
+
+// ── Avant la règle : une unité choisie (CP, CE1) ──────────────────────────
+//
+// La séquence des longueurs du manuel du CRPE de l'enseignant (« Réussir mon
+// CRPE », Nathan, sujet n° 9) ne montre pas la règle graduée : elle naît de ce
+// qu'il faut pour bien mesurer — une même unité, partir de l'origine, des
+// unités bout à bout, sans trou. On trace plus long ou plus court, on voit
+// pourquoi des mesures ne s'accordent pas, on mesure avec une unité U, puis on
+// gradue sa propre règle en U.
+
+/** L'unité U, en millimètres : la même sur toutes les feuilles, pour que celle de carton serve partout. */
+export const UNITE_U = 15;
+
+/** Une rangée d'unités U à découper. */
+const unitesADecouper = (combien: number) => `<div class="me-unites"><span class="me-rep">L'unité U, à découper :</span>${Array.from({ length: combien }, () =>
+  `<svg viewBox="0 0 ${UNITE_U + 1} 7" width="${UNITE_U + 1}mm" height="7mm"><rect x="0.5" y="0.5" width="${UNITE_U}" height="6" fill="#fde68a" stroke="${NOIR}" stroke-width="0.35" stroke-dasharray="1.2 0.8"/>`
+  + `<text x="${(UNITE_U + 1) / 2}" y="5" font-size="4" font-weight="700" text-anchor="middle" fill="${NOIR}">U</text></svg>`).join("")}</div>`;
+
+/** Un segment de `n` unités U, incliné de `angle` degrés ; au corrigé, un petit trait bleu à chaque report. */
+function segmentEnUnitesSvg(n: number, angle: number, reports: boolean): string {
+  const a = (angle * Math.PI) / 180, mm = n * UNITE_U;
+  const ux = Math.cos(a), uy = -Math.sin(a), px = -Math.sin(a) * 1.8, py = -Math.cos(a) * 1.8;
+  const marge = 4, dx = mm * ux, dy = mm * uy;
+  const w = Math.abs(dx) + 2 * marge, h = Math.abs(dy) + 2 * marge;
+  const x0 = marge + (dx < 0 ? -dx : 0), y0 = marge + (dy < 0 ? -dy : 0);
+  const trait = (x: number, y: number, couleur: string, e: number) =>
+    `<line x1="${(x - px).toFixed(2)}" y1="${(y - py).toFixed(2)}" x2="${(x + px).toFixed(2)}" y2="${(y + py).toFixed(2)}" stroke="${couleur}" stroke-width="${e}"/>`;
+  const marques = reports ? Array.from({ length: n - 1 }, (_, k) => trait(x0 + (k + 1) * UNITE_U * ux, y0 + (k + 1) * UNITE_U * uy, "#2454e6", 0.4)).join("") : "";
+  return `<svg class="me-seg" viewBox="0 0 ${w.toFixed(2)} ${h.toFixed(2)}" width="${w.toFixed(2)}mm" height="${h.toFixed(2)}mm">`
+    + `<line x1="${x0.toFixed(2)}" y1="${y0.toFixed(2)}" x2="${(x0 + dx).toFixed(2)}" y2="${(y0 + dy).toFixed(2)}" stroke="${ROUGE}" stroke-width="0.45"/>`
+    + `${trait(x0, y0, NOIR, 0.35)}${trait(x0 + dx, y0 + dy, NOIR, 0.35)}${marques}</svg>`;
+}
+
+const BIEN_MESURER = "Pour bien mesurer : la même unité pour tous ; partir du bout ; les unités bout à bout, sans trou ni chevauchement.";
+
+/** Mesurer des segments avec l'unité U — de deux à sept unités au CP, à neuf au CE1, dans tous les sens au CE1 —, puis les ranger. */
+function feuilleMesurerU(r: ReglagesMesures, graine: number): string {
+  const alea = hasard(graine);
+  const max = r.classe === "CP" ? 7 : 9;
+  const combien = Math.max(3, Math.min(6, r.combien));
+  const nombres: number[] = [];
+  for (let garde = 0; nombres.length < combien && garde < 300; garde++) { const n = entre(alea, 2, max); if (!nombres.includes(n)) nombres.push(n); }
+  const segments = nombres.map((n) => ({ n, angle: r.classe === "CP" ? 0 : [0, 0, 15, 25, -15, -25][Math.floor(alea() * 6)] }));
+  const ligne = (s: { n: number; angle: number }, i: number, corrige: boolean) => `<div class="me-ligne"><b class="me-lettre">${LETTRES[i]}</b>${segmentEnUnitesSvg(s.n, s.angle, corrige)}`
+    + `<span class="me-rep">${corrige ? `<b>${s.n} U</b>` : `${LETTRES[i]} mesure <span class="me-blanc me-blanc-court"></span> U`}</span></div>`;
+  const ordre = segments.map((s, i) => ({ ...s, l: LETTRES[i] })).sort((a, b) => a.n - b.n);
+  const tete = entete("Mesurer avec l'unité U", "Je mesure chaque segment avec l'unité U : je la reporte bout à bout depuis une extrémité, je marque chaque report d'un petit trait, et je compte. J'écris la mesure. Puis je range les segments du plus court au plus long.", BIEN_MESURER);
+  const reponse = `<div class="me-ranger">Du plus court au plus long : ${segments.map(() => `<span class="me-blanc me-blanc-court"></span>`).join(" &lt; ")}</div>`;
+  const corrige = `<div class="page corrige"><div class="titre">Mesurer avec l'unité U — corrigé</div><div class="me-liste">${segments.map((s, i) => ligne(s, i, true)).join("")}</div>`
+    + `<div class="me-corrige"><b>${ordre.map((s) => s.l).join(" &lt; ")}</b></div></div>`;
+  return `<div class="page">${tete}${unitesADecouper(6)}<div class="me-liste">${segments.map((s, i) => ligne(s, i, false)).join("")}</div>${reponse}</div>${corrige}`;
+}
+
+/** Ce qu'un enfant a fait en mesurant le bureau. */
+type FaconDeMesurer = "juste" | "decale" | "trous";
+const POURQUOI: Record<FaconDeMesurer, (unite: string) => string> = {
+  juste: (u) => `Oui : il part du bord du bureau, et ses ${u}s sont bout à bout, sans trou.`,
+  decale: (u) => `Non : il ne part pas du bord du bureau, et il le dépasse ; il compte un ${u} de trop.`,
+  trous: (u) => `Non : il laisse des trous entre ses ${u}s ; il en compte trop peu.`,
+};
+
+/** Une gomme ou un crayon, couché, de `l` millimètres, à partir de `x`. */
+const uniteSvg = (unite: "crayon" | "gomme", x: number, l: number) => (unite === "crayon"
+  ? `<rect x="${x.toFixed(2)}" y="1" width="${(l - 4).toFixed(2)}" height="4" fill="#f0c24b" stroke="${NOIR}" stroke-width="0.3"/><path d="M${(x + l - 4).toFixed(2)} 1 L${(x + l).toFixed(2)} 3 L${(x + l - 4).toFixed(2)} 5 Z" fill="#f4dcb5" stroke="${NOIR}" stroke-width="0.3"/>`
+  : `<rect x="${(x + 0.3).toFixed(2)}" y="1" width="${(l - 0.6).toFixed(2)}" height="4" rx="0.8" fill="#f2a7b8" stroke="${NOIR}" stroke-width="0.3"/><rect x="${(x + l * 0.55).toFixed(2)}" y="1" width="${(l * 0.3).toFixed(2)}" height="4" fill="#7fb2e5" stroke="${NOIR}" stroke-width="0.3"/>`);
+
+/**
+ * Quatre bureaux pareils, mesurés par quatre enfants : deux avec des crayons,
+ * deux avec des gommes. L'un part à côté du bord et dépasse, l'autre laisse des
+ * trous ; on compte ce que chacun a trouvé, et l'on dit pourquoi les mesures ne
+ * s'accordent pas — la séance 2 du manuel.
+ */
+function feuilleBienMesurer(_r: ReglagesMesures, graine: number): string {
+  const alea = hasard(graine);
+  const crayon = 20, gomme = 10, n = entre(alea, 6, 8), L = n * crayon;
+  const enfants = melanger(alea, [
+    { unite: "crayon" as const, facon: "juste" as FaconDeMesurer }, { unite: "crayon" as const, facon: "decale" as FaconDeMesurer },
+    { unite: "gomme" as const, facon: "juste" as FaconDeMesurer }, { unite: "gomme" as const, facon: "trous" as FaconDeMesurer },
+  ]);
+  const x0 = 4;
+  const dessin = (e: (typeof enfants)[number]) => {
+    const l = e.unite === "crayon" ? crayon : gomme;
+    // Juste : bout à bout depuis le bord ; à côté du bord : un de plus, qui dépasse ; avec des trous : plus espacés, moins nombreux.
+    const pas = e.facon === "trous" ? l * 1.6 : l;
+    const depart = e.facon === "decale" ? x0 + l * 0.4 : x0;
+    const combien = e.facon === "juste" ? L / l : e.facon === "decale" ? L / l + 1 : Math.floor((L - l) / pas) + 1;
+    const unites = Array.from({ length: combien }, (_, k) => uniteSvg(e.unite, depart + k * pas, l)).join("");
+    const w = x0 + L + l * 1.6 + 4;
+    return { combien, svg: `<svg viewBox="0 0 ${w.toFixed(2)} 16" width="${w.toFixed(2)}mm" height="16mm"><g transform="translate(0 0)">${unites}</g>`
+      + `<rect x="${x0}" y="7" width="${L}" height="8" fill="#c8a27a" stroke="${NOIR}" stroke-width="0.35"/></svg>` };
+  };
+  const dessins = enfants.map(dessin);
+  const bloc = (e: (typeof enfants)[number], i: number, corrige: boolean) => `<div class="me-serie"><div class="me-serie-titre">Enfant ${LETTRES[i]} — avec des ${e.unite}s</div>${dessins[i].svg}`
+    + (corrige ? `<div class="me-rep">Il trouve <b>${dessins[i].combien} ${e.unite}s</b>. ${POURQUOI[e.facon](e.unite)}</div>`
+      : `<div class="me-rep">Il trouve <span class="me-blanc"></span> ${e.unite}s. A-t-il bien mesuré ? <b>oui</b> / <b>non</b>. Pourquoi : <span class="me-blanc me-blanc-large"></span><span class="me-blanc me-blanc-large"></span></div>`) + "</div>";
+  const fin = (corrige: boolean) => `<div class="me-phrase">Le même bureau mesure ${corrige ? `<b>${n} crayons</b>` : '<span class="me-blanc"></span> crayons'} ou ${corrige ? `<b>${2 * n} gommes</b>` : '<span class="me-blanc"></span> gommes'} : `
+    + `${corrige ? "une autre unité donne un autre nombre ; plus l'unité est petite, plus on en compte." : "pourquoi deux nombres ? <span class=\"me-blanc me-blanc-large\"></span>"}</div>`;
+  const tete = entete("Qui a bien mesuré ?", "Quatre enfants ont mesuré le même bureau. Pour chacun, je compte ce qu'il a trouvé. Je dis s'il a bien mesuré, et pourquoi.", BIEN_MESURER);
+  return `<div class="page">${tete}${enfants.map((e, i) => bloc(e, i, false)).join("")}${fin(false)}</div>`
+    + `<div class="page corrige"><div class="titre">Qui a bien mesuré ? — corrigé</div>${enfants.map((e, i) => bloc(e, i, true)).join("")}${fin(true)}</div>`;
+}
+
+/** Un segment tracé, et, à partir d'un point, un segment plus long, puis un plus court, à tracer ; au corrigé, un exemple de chacun. */
+function feuillePlusLongCourt(r: ReglagesMesures, graine: number): string {
+  const alea = hasard(graine);
+  const combien = Math.max(2, Math.min(4, r.combien));
+  const liste: number[] = [];
+  for (let garde = 0; liste.length < combien && garde < 300; garde++) { const mm = entre(alea, 35, 90); if (liste.every((x) => Math.abs(x - mm) >= 8)) liste.push(mm); }
+  const bloc = (mm: number, i: number, corrige: boolean) => `<div class="me-serie"><div class="me-serie-titre">Le segment ${LETTRES[i]}</div>${segmentSvg(mm, 0, ROUGE)}`
+    + `<div class="me-rep">Je trace un segment plus long que ${LETTRES[i]} :</div>${corrige ? segmentSvg(Math.min(150, mm + 25), 0, "#2454e6") : segmentSvg(150, 0, NOIR, true)}`
+    + `<div class="me-rep">Je trace un segment plus court que ${LETTRES[i]} :</div>${corrige ? segmentSvg(mm - 20, 0, "#2454e6") : segmentSvg(150, 0, NOIR, true)}</div>`;
+  const tete = entete("Plus long, plus court", "Pour chaque segment rouge, je trace à la règle, à partir du point, un segment plus long, puis un segment plus court. Je vérifie avec une bande de papier.", "La bande transporte la longueur : on y marque les deux bouts du segment, en partant du bout de la bande.");
+  return `<div class="page">${tete}${liste.map((mm, i) => bloc(mm, i, false)).join("")}</div>`
+    + `<div class="page corrige"><div class="titre">Plus long, plus court — corrigé, par exemple</div>${liste.map((mm, i) => bloc(mm, i, true)).join("")}</div>`;
+}
+
+/** Une bande de 180 mm : son 0 près du bout ; graduée en U, les nombres d'unités depuis le 0. */
+function bandeSvg(graduee: boolean): string {
+  const debut = 8, fin = 176, n = Math.floor((fin - debut) / UNITE_U);
+  const traits = graduee
+    ? Array.from({ length: n + 1 }, (_, k) => `<line x1="${debut + k * UNITE_U}" y1="1" x2="${debut + k * UNITE_U}" y2="6" stroke="${NOIR}" stroke-width="0.4"/>`
+      + `<text x="${debut + k * UNITE_U}" y="11" font-size="4" font-weight="700" text-anchor="middle" fill="${k ? NOIR : ROUGE}">${k}</text>`).join("")
+    : `<line x1="${debut}" y1="1" x2="${debut}" y2="6" stroke="${ROUGE}" stroke-width="0.5"/><text x="${debut}" y="11" font-size="4" font-weight="700" text-anchor="middle" fill="${ROUGE}">0</text>`;
+  return `<svg class="me-bande" viewBox="0 0 182 14" width="182mm" height="14mm"><rect x="1" y="0.5" width="180" height="13" fill="#fff" stroke="${NOIR}" stroke-width="0.35" stroke-dasharray="1.6 1"/>${traits}</svg>`;
+}
+
+/** Graduer sa règle en U : des bandes au 0 marqué, l'unité à découper ; la règle graduée en U au corrigé, pour vérifier à la fin. */
+function feuilleRegleU(_r: ReglagesMesures, _graine: number): string {
+  const tete = entete("Graduer sa règle en U", "Je découpe une bande. Le trait du 0 est l'origine. Je reporte l'unité U depuis ce trait, bout à bout, et je marque chaque report d'un trait. Sous chaque trait, j'écris le nombre d'unités depuis le 0 : 1, 2, 3…", "Sur la règle, on ne compte plus les unités : on lit le nombre.");
+  return `<div class="page">${tete}${unitesADecouper(8)}<div class="me-bandes">${bandeSvg(false)}${bandeSvg(false)}${bandeSvg(false)}${bandeSvg(false)}</div></div>`
+    + `<div class="page corrige"><div class="titre">Graduer sa règle en U — la règle graduée, pour vérifier</div><div class="me-bandes">${bandeSvg(true)}${bandeSvg(true)}</div></div>`;
 }
 
 // ── Le périmètre (CE2) ────────────────────────────────────────────────────
@@ -728,6 +865,7 @@ function feuilleVerres(r: ReglagesMesures, graine: number): string {
 export function htmlMesures(r: ReglagesMesures, graine: number): string {
   const f: Record<ExerciceMesures, (r: ReglagesMesures, g: number) => string> = {
     mesurer: feuilleMesurer, tracer: feuilleTracer, comparerSegments: feuilleComparerSegments, comparerObjets: feuilleComparerObjets,
+    mesurerU: feuilleMesurerU, bienMesurer: feuilleBienMesurer, plusLongCourt: feuillePlusLongCourt, regleU: feuilleRegleU,
     perimetre: feuillePerimetre, perimetreCompas: feuillePerimetreCompas, balances: feuilleBalances, pesees: feuillePesees,
     unites: feuilleUnites, estimer: feuilleEstimer, convertir: feuilleConvertir, comparerMesures: feuilleComparerMesures,
     ordonner: feuilleOrdonner, verres: feuilleVerres,
@@ -776,5 +914,8 @@ export const STYLE_MESURES = `
   .feuille.me .me-recipient { display: flex; align-items: center; gap: 3mm; margin: 2mm 0; }
   .feuille.me .me-nom { font-size: 14px; font-weight: 600; }
   .feuille.me .me-verres { display: flex; flex-wrap: wrap; gap: 1mm; margin-top: 1mm; }
+  .feuille.me .me-unites { display: flex; flex-wrap: wrap; align-items: center; gap: 3mm; margin: 0 0 5mm; }
+  .feuille.me .me-bandes { display: block; margin-top: 4mm; }
+  .feuille.me .me-bande { display: block; margin: 0 0 6mm; }
   .feuille.me .me-controle { display: flex; flex-direction: column; gap: 0.5mm; margin-top: 6mm; font-size: 9px; color: #9aa0b4; }
 `;
