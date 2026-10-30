@@ -25,10 +25,14 @@
 // variables qui différencient sont celles du manuel : le nombre de pièces,
 // les contours intérieurs dessinés ou non, des pièces en couleur ou toutes
 // noires, un modèle à la même taille ou non. Comme toute séquence de
-// maternelle, elle n'a pas de feuilles : Fabriquer n'a pas d'atelier du
-// tangram, et les modèles se préparent à la main, plastifiés (voir
-// MATERIEL). Seul l'atelier « Jeu des ombres » sert, à la séance 5 : il fait
-// l'ombre des créations de la classe, photographiées à la séance 3.
+// maternelle, elle n'a pas de feuilles : ses phases nomment les ateliers de
+// Fabriquer où se fait le matériel. L'atelier « Le tangram » fait le grand
+// carré à découper et les modèles, à la taille des pièces de la classe —
+// chaque pièce dessinée, en couleur, quelques pièces noires, en silhouette,
+// plus petits, en petit livre —, la fiche des sept pièces en désordre et
+// celle des parallélogrammes ; ses figures sont de Maitrize, pas celles du
+// manuel. L'atelier « Jeu des ombres » fait, à la séance 5, l'ombre des
+// créations de la classe photographiées à la séance 3.
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 import type { PlanDesFeuilles } from "./feuillesDesSequences";
@@ -52,7 +56,8 @@ export const DEMARCHE_FORMES_GRANDEURS_GS: Demarche = {
     + "ajoutées par Maitrize, d'après la progression du tangram de la PS à la GS (p. 102), les activités de la séquence et les compétences qu'elles "
     + "visent (p. 103), le choix du matériel (p. 104), les connaissances didactiques (p. 97-100) et l'analyse des documents du corpus — dont "
     + "l'article de M.-J. Perrin-Glorian, « Jouer avec des formes en maternelle » (2015) — (p. 96 et 100-102) ; l'atelier « Jeu des ombres » "
-    + "de la séance 5 ajouté par Maitrize ; programme de l'école maternelle (2025)",
+    + "de la séance 5 ajouté par Maitrize ; les figures des modèles — la fusée, les voiliers, la maison… — dessinées par Maitrize pour l'atelier "
+    + "« Le tangram » ; programme de l'école maternelle (2025)",
   resume: "En grande section, en période 3 : reconnaître les formes planes et reproduire des figures avec les sept pièces du tangram. On trie "
     + "d'abord des formes plates de toutes sortes, posées dans tous les sens — un carré tourné reste un carré. Chacun découpe son tangram dans le "
     + "grand carré, nomme et compare ses pièces, puis joue avec elles : des créations libres, des défis. On recouvre ensuite des modèles où chaque "
@@ -76,7 +81,7 @@ export const DEMARCHE_FORMES_GRANDEURS_GS: Demarche = {
       sauront("découper les sept pièces d'un tangram dans le grand carré, les compter et les nommer — deux grands triangles, un triangle moyen, deux petits triangles, un carré, un parallélogramme —, et trouver, en les posant l'une sur l'autre, celles qui sont pareilles."), 20, [
         ph("Regroupement – Le grand carré", "5 min", "Un grand carré de carton, le tangram tracé dessus : quelles formes voit-on dans ce carré ? On les montre du doigt, on les compte, on les nomme : des triangles, un carré, et une drôle de pièce, ni carré ni triangle — le parallélogramme.",
           "Accepte d'abord les mots des élèves, puis donne le mot juste. Repère qui voit le carré au milieu des triangles, qui voit des triangles de trois tailles."),
-        ph("Atelier dirigé – Découper et comparer", "10 min", "Chacun a son grand carré imprimé sur du papier épais, les traits bien marqués, et découpe les sept pièces en suivant les traits. Puis on compare en posant une pièce sur l'autre : les deux petits triangles sont pareils, les deux grands aussi ; le moyen est entre les deux.",
+        ph("Atelier dirigé – Découper et comparer", "10 min", "Chacun a son grand carré imprimé sur du papier épais, les traits bien marqués — l'atelier « Le tangram » de Fabriquer, à la taille des pièces de la classe —, et découpe les sept pièces en suivant les traits. Puis on compare en posant une pièce sur l'autre : les deux petits triangles sont pareils, les deux grands aussi ; le moyen est entre les deux.",
           "Aide au découpage : on tourne la feuille, pas les ciseaux. Le découpage exerce la main, et les formes s'apprennent en passant. Erreurs attendues : un trait coupé de travers, une pièce coupée en deux, le triangle moyen confondu avec un grand. Les pièces découpées ne sont jamais parfaites : pour reproduire des figures, on prendra des pièces prédécoupées."),
         ph(RETOUR, "5 min", "Chacun range ses pièces dans une enveloppe à son nom en les comptant et en les nommant : ce tangram est à lui, pour jouer. On montre un tangram prédécoupé, en carton plastifié ou du commerce : les mêmes pièces, plus solides — on s'en servira aux séances suivantes.",
           "Fait dire le grand triangle, le triangle moyen, le petit triangle, le carré, le parallélogramme ; accepte encore une description à la place du mot."),
@@ -96,7 +101,7 @@ export const DEMARCHE_FORMES_GRANDEURS_GS: Demarche = {
       sauront("recouvrir un modèle dont les contours des pièces sont dessinés : choisir chaque pièce d'après sa forme et sa taille, la tourner jusqu'à ce qu'elle tombe juste, de trois pièces jusqu'aux sept, et dire comment ils ont trouvé."), 20, [
         ph("Regroupement – Un modèle à recouvrir", "5 min", "Un modèle simple de quatre pièces, chaque pièce dessinée, au milieu du cercle : quelles pièces faut-il ? On les nomme, on les compte, puis un élève les pose dessus. Chaque pièce doit cacher sa forme exactement : rien ne dépasse, aucun blanc ne reste.",
           "Montre comment vérifier, en suivant du doigt le bord de chaque pièce."),
-        ph("Atelier dirigé – Recouvrir les modèles", "10 min", "Chacun a sa boîte de sept pièces et des modèles plastifiés, à la taille des pièces, de plus en plus difficiles : trois pièces, puis cinq, puis les sept. On cherche la pièce, on la tourne, on la pose sur sa forme. Pour aider : les pièces en couleur et le modèle aux mêmes couleurs ; ou un modèle en petit livre, une pièce de plus à chaque page.",
+        ph("Atelier dirigé – Recouvrir les modèles", "10 min", "Chacun a sa boîte de sept pièces et des modèles plastifiés, à la taille des pièces, de plus en plus difficiles : trois pièces, puis cinq, puis les sept — la petite maison, le bateau à deux voiles, la maison ou la fusée de l'atelier « Le tangram » de Fabriquer, chaque pièce dessinée. On cherche la pièce, on la tourne, on la pose sur sa forme. Pour aider : les pièces en couleur et le modèle aux mêmes couleurs ; ou un modèle en petit livre, une pièce de plus à chaque page.",
           "Observe par quelle pièce chacun commence — les grandes d'abord ? — et les erreurs : le triangle moyen à la place d'un grand, une pièce mal tournée, le parallélogramme qu'il faut retourner. Une aide à la fois : nommer la pièce, la montrer, la poser avec l'élève. Les pièces dont les côtés suivent les bords de la feuille se reconnaissent mieux : commencer par elles. Donne la couleur à qui en a besoin, et la retire dès que possible."),
         ph(RETOUR, "5 min", "Chacun dit comment il a fait : par quelle pièce il a commencé, comment il a su où la mettre. Ce qu'on retient : on commence par les grandes pièces ; on tourne la pièce jusqu'à ce qu'elle tombe juste ; le parallélogramme, parfois, se retourne.",
           "Reprend les mots justes — côté, sommet, tourner, retourner — et les fait redire."),
@@ -105,7 +110,7 @@ export const DEMARCHE_FORMES_GRANDEURS_GS: Demarche = {
       sauront("recouvrir une silhouette sans contours intérieurs : imaginer où vont les pièces qu'ils connaissent, essayer, corriger, puis vérifier avec le même modèle, les contours des pièces dessinés."), 20, [
         ph("Regroupement – Les ombres de nos créations", "5 min", "Les photos des créations de la séance 3 sont passées dans l'atelier « Jeu des ombres » de Fabriquer, qui fait de chacune une ombre noire. Chaque photo retrouve son ombre. Dans l'ombre, voit-on encore les pièces ?",
           "Fait dire ce que l'ombre cache — les traits entre les pièces, les couleurs — et ce qu'elle garde : le tour de la figure, ses pointes, ses bords droits."),
-        ph("Atelier dirigé – La silhouette", "10 min", "Chacun a une silhouette noire plastifiée, à la taille des pièces, et juste les pièces qu'il faut : quatre d'abord, puis les sept. On cherche où chaque pièce peut aller — une pointe de la silhouette appelle souvent un triangle —, on essaie, on corrige.",
+        ph("Atelier dirigé – La silhouette", "10 min", "Chacun a une silhouette noire plastifiée, à la taille des pièces, et juste les pièces qu'il faut : quatre d'abord, puis les sept — le poisson ou le bateau, puis la maison, en silhouette, dans l'atelier « Le tangram » de Fabriquer. On cherche où chaque pièce peut aller — une pointe de la silhouette appelle souvent un triangle —, on essaie, on corrige.",
           "Observe comment chacun cherche : il voit les pièces dans la silhouette avant de les poser ; il essaie et corrige ; ou il place une ou deux pièces en tâtonnant, puis voit où vont les autres. Erreurs attendues : une pièce qui dépasse, un blanc qui reste, un grand triangle là où il fallait deux petits. Aide : moins de pièces ; montrer un instant le modèle aux contours dessinés ; poser la première pièce avec l'élève."),
         ph(RETOUR, "5 min", "On compare les façons de chercher. Puis chacun vérifie avec le même modèle, les contours des pièces dessinés : chaque pièce est-elle à sa place ? Une autre solution qui couvre tout, sans rien dépasser, est juste aussi.",
           "Fait dire comment on a trouvé ; met en valeur celui qui a d'abord vu les pièces dans sa tête."),
@@ -116,7 +121,7 @@ export const DEMARCHE_FORMES_GRANDEURS_GS: Demarche = {
           "Met des mots sur ce qui change : le modèle ne tient plus les pièces ; il faut voir soi-même quels côtés sont alignés, quels sommets se touchent."),
         ph("Atelier dirigé – À côté du modèle", "10 min", "Chacun reproduit, à côté de son modèle — à la même taille, chaque pièce dessinée —, une figure de quatre pièces, puis de sept. On peut toujours poser une pièce sur le modèle pour la vérifier, avant de la mettre à côté.",
           "Erreurs attendues : une pièce qui tourne pendant qu'on la déplace, des pièces décalées, un trou entre deux pièces. Aide : revenir au modèle, une pièce à la fois ; moins de pièces."),
-        ph("Atelier dirigé – Un modèle plus petit", "5 min", "Pour qui a réussi : une figure dessinée plus petite que les pièces, chaque pièce visible. On reconnaît chaque pièce à sa forme et à sa taille par rapport aux autres — le grand triangle reste le plus grand —, puis on la place comme sur le dessin.",
+        ph("Atelier dirigé – Un modèle plus petit", "5 min", "Pour qui a réussi : une figure dessinée plus petite que les pièces, chaque pièce visible — l'atelier « Le tangram » de Fabriquer, le modèle « plus petit ». On reconnaît chaque pièce à sa forme et à sa taille par rapport aux autres — le grand triangle reste le plus grand —, puis on la place comme sur le dessin.",
           "Sans les contours des pièces, ce serait trop difficile en maternelle : le modèle les montre toutes. Les autres continuent à côté du modèle, avec moins de pièces."),
         ph(RETOUR, "5 min", "Un élève fait une figure de trois ou quatre pièces ; un camarade la reproduit à côté, devant le groupe, en disant ce qu'il fait : je mets le carré contre le grand triangle, à côté de sa pointe.",
           "Fait employer les mots des positions — à côté, contre, au-dessus, en dessous — et ceux des gestes."),
@@ -124,13 +129,13 @@ export const DEMARCHE_FORMES_GRANDEURS_GS: Demarche = {
     // La séance détaillée du manuel : ses cinq phases, leur organisation et leur durée.
     seance("Recouvrir des modèles de plus en plus difficiles : le bilan",
       sauront("reproduire une figure en posant les pièces d'un tangram sur son modèle : reconnaître chaque pièce, la prendre à la bonne taille, la tourner dans le bon sens, et recouvrir des figures entières, avec puis sans les contours des pièces."), 25, [
-        ph("Phase 1 – Individuel", "5 min", "Recherche. Les sept pièces d'un tangram, étalées sur la table : « Ce jeu, vous le connaissez ? Montrez-moi un carré. Et un triangle ? » L'enseignant montre un triangle : comment s'appelle cette forme, à quoi la reconnaît-on ? Puis le parallélogramme : et celle-ci ? Ensuite, les pièces de six tangrams noirs, étalées ; chacun a une boîte devant lui et y met un carré, puis un grand triangle, un petit, un moyen, et enfin le parallélogramme, ni carré ni triangle, jusqu'à avoir les sept. Dernière tâche : sur sa fiche, les sept pièces sont dessinées en désordre, tournées dans tous les sens ; chacun pose chaque pièce sur la forme qui est la même.",
+        ph("Phase 1 – Individuel", "5 min", "Recherche. Les sept pièces d'un tangram, étalées sur la table : « Ce jeu, vous le connaissez ? Montrez-moi un carré. Et un triangle ? » L'enseignant montre un triangle : comment s'appelle cette forme, à quoi la reconnaît-on ? Puis le parallélogramme : et celle-ci ? Ensuite, les pièces de six tangrams noirs, étalées ; chacun a une boîte devant lui et y met un carré, puis un grand triangle, un petit, un moyen, et enfin le parallélogramme, ni carré ni triangle, jusqu'à avoir les sept. Dernière tâche : sur sa fiche, les sept pièces sont dessinées en désordre, tournées dans tous les sens ; chacun pose chaque pièce sur la forme qui est la même. Les fiches de la séance : l'atelier « Le tangram » de Fabriquer — les sept pièces en désordre, la fusée, les deux voiliers, le parallélogramme.",
           "Recueille les réponses et les rectifie si besoin. Erreurs attendues : une forme mal reconnue ; la bonne forme, mais pas la bonne taille ; une pièce mal orientée ; le parallélogramme ; du mal à dire comment on a fait."),
         ph("Phase 2 – Collectif", "2 min", "Validation. L'enseignant montre les fiches l'une après l'autre ; chacun dit comment il a fait. Puis le groupe regarde la fiche d'un élève qui s'est trompé : qu'en pense-t-on ? Chacun donne son avis sur les erreurs, et leur auteur les corrige.",
           "Choisit une fiche qui a une ou plusieurs erreurs ; fait expliquer l'erreur par les autres, puis corriger par celui qui l'a faite."),
-        ph("Phase 3 – Individuel", "3 min", "Recherche. Sur une nouvelle fiche, une fusée faite des sept pièces : quatre sont en couleur, trois en noir. « Trouvez dans votre boîte les trois pièces noires du dessin, et posez-les à leur place. » Il faut à la fois la bonne forme, la bonne taille et le bon sens. L'enseignant valide ; on reparle des façons de faire.",
+        ph("Phase 3 – Individuel", "3 min", "Recherche. Sur une nouvelle fiche, une fusée faite des sept pièces : quatre sont en couleur, trois en noir — dans l'atelier, « des pièces noires », trois. « Trouvez dans votre boîte les trois pièces noires du dessin, et posez-les à leur place. » Il faut à la fois la bonne forme, la bonne taille et le bon sens. L'enseignant valide ; on reparle des façons de faire.",
           "Erreurs attendues : la tâche laissée en route, un triangle trop grand ou trop petit, des pièces mal tournées."),
-        ph("Phase 4 – Individuel", "5 min", "Nouvelle recherche : recouvrir deux figures entières avec toutes les pièces du tangram. D'abord un voilier dont les contours intérieurs sont dessinés, puis un autre voilier, en silhouette, sans contours intérieurs.",
+        ph("Phase 4 – Individuel", "5 min", "Nouvelle recherche : recouvrir deux figures entières avec toutes les pièces du tangram. D'abord un voilier dont les contours intérieurs sont dessinés, puis un autre voilier, en silhouette, sans contours intérieurs : le voilier et l'autre voilier de l'atelier.",
           "Erreurs attendues, sans doute celles des travaux d'élèves du corpus : les pièces dont on voit le tour bien reconnues, mais plus ou moins bien tournées ; une partie de la figure à couvrir de deux triangles qu'on ne sait pas décomposer ; dans la silhouette, des essais au hasard, des pièces qui dépassent, des blancs qui restent."),
         ph("Phase 5 – Individuel", "10 min", "Jeux et remédiation. Qui a réussi reçoit d'autres figures à finir de recouvrir, ou invente une figure qu'un camarade devra reproduire : on les montrera au groupe, puis on les affichera dans la classe. Qui a eu du mal reçoit une tâche plus simple : une fiche de deux ou trois pièces au lieu de sept, avec des pièces en couleur pour les plus en difficulté ; pour qui bute sur le parallélogramme, un parallélogramme plastifié et une fiche où il est dessiné plusieurs fois, tourné ou retourné : « Pose ta pièce sur chaque forme du dessin, pour la cacher tout entière. » Pour finir, l'enseignant montre au groupe les productions de la phase, et l'on range le matériel.",
           "Étaye chacun selon ses erreurs. Après les erreurs de la phase 3 : moins de pièces à placer, une ou deux ; des pièces en couleur, retrouvées sur le modèle complet en couleur ; une pièce à la fois. Les jours suivants, l'accueil laisse quelques minutes pour reprendre avec un élève ce qui résiste."),
@@ -140,23 +145,27 @@ export const DEMARCHE_FORMES_GRANDEURS_GS: Demarche = {
 
 // ── Le matériel des séances ───────────────────────────────────────────────
 
-/** Ce qu'il faut préparer, séance par séance ; en maternelle, la séquence n'a pas de feuilles : les modèles se font à la main. */
+/** Ce qu'il faut préparer, séance par séance ; en maternelle, la séquence n'a pas de feuilles : les modèles se font dans l'atelier « Le tangram ». */
 const MATERIEL = [
   "Un sac opaque ; une corbeille de formes plates mêlées — blocs logiques, formes en carton, pièces de tangram —, de toutes les couleurs et de "
     + "toutes les tailles ; quatre barquettes ; une grande feuille pour l'affiche des formes, et de la colle",
   "Un grand carré de carton, le tangram tracé dessus ; pour chacun, un grand carré de tangram imprimé sur du papier épais, les traits bien "
-    + "marqués, des ciseaux et une enveloppe à son nom ; un tangram prédécoupé — en carton plastifié ou du commerce — à montrer",
+    + "marqués (atelier « Le tangram » de Fabriquer, le grand carré, à la taille des pièces de la classe), des ciseaux et une enveloppe à son "
+    + "nom ; un tangram prédécoupé — en carton plastifié ou du commerce — à montrer",
   "Un tangram prédécoupé par élève ; des feuilles blanches et l'appareil photo de la classe, pour photographier les créations",
   "Les tangrams prédécoupés, en noir et en couleur ; des modèles plastifiés à la taille des pièces, chaque pièce dessinée, de trois, de cinq et "
-    + "de sept pièces ; les mêmes modèles en couleur ; un modèle en petit livre, une pièce de plus à chaque page",
+    + "de sept pièces ; les mêmes modèles en couleur ; un modèle en petit livre, une pièce de plus à chaque page (atelier « Le tangram » de "
+    + "Fabriquer)",
   "Les photos des créations de la séance 3 et leurs ombres, faites dans l'atelier « Jeu des ombres » ; les tangrams prédécoupés ; des "
-    + "silhouettes noires plastifiées, à la taille des pièces, de quatre et de sept pièces, et les mêmes modèles aux contours dessinés",
+    + "silhouettes noires plastifiées, à la taille des pièces, de quatre et de sept pièces, et les mêmes modèles aux contours dessinés (atelier "
+    + "« Le tangram » de Fabriquer)",
   "Les tangrams prédécoupés ; des modèles à la taille des pièces, chaque pièce dessinée, de quatre et de sept pièces ; des modèles dessinés plus "
-    + "petits, chaque pièce visible ; une feuille blanche par élève, pour construire à côté",
+    + "petits, chaque pièce visible (atelier « Le tangram » de Fabriquer, à la taille des pièces puis plus petits) ; une feuille blanche par "
+    + "élève, pour construire à côté",
   "Six tangrams noirs et des pièces en couleur ; six boîtes ; pour chacun, la fiche des sept pièces dessinées en désordre, la fusée aux trois "
     + "pièces noires, le voilier aux contours dessinés et le voilier en silhouette ; pour la remédiation, des fiches de deux ou trois pièces, un "
     + "parallélogramme plastifié et sa fiche de parallélogrammes tournés ou retournés, la fusée toute en couleur ; d'autres figures à finir de "
-    + "recouvrir, pour qui a réussi",
+    + "recouvrir, pour qui a réussi — toutes ces fiches dans l'atelier « Le tangram » de Fabriquer",
 ];
 
 /** Le matériel de la séquence, une ligne par séance ; pas de feuilles, comme toute séquence de maternelle. */

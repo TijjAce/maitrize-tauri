@@ -27,12 +27,14 @@
 //
 // En maternelle, Maitrize ne fabrique pas de feuilles pour une séquence : le
 // matériel de chaque séance est dans ses phases, et la note du matériel le
-// reprend. Trois ateliers de Fabriquer y servent, nommés dans leur phase :
-// « Cartes des nombres » pour le jeu des paires de la séance 1, « Construire
-// des collections » pour les cartes que l'on tire à la séance 2, « Le
-// problème du jour » pour continuer, chaque jour, après la séance 4. La page
-// vierge de l'album — quatre cases, trois fils, deux traits de pliage —,
-// aucun atelier ne la fait : elle se trace à la main.
+// reprend. Quatre ateliers de Fabriquer y servent, nommés dans leur phase :
+// « Cartes des nombres » pour le jeu des paires de la séance 1 ; « L'album à
+// calculer » pour l'image des oiseaux sur les fils, les deux pages du 3
+// faites d'avance et les pages vierges de la séance 2 — quatre cases, trois
+// fils, deux traits de pliage, d'après la page du manuel (p. 118) —, et des
+// oiseaux à découper pour qui n'a pas de gommettes ; « Construire des
+// collections » pour les cartes que l'on tire à la séance 2 ; « Le problème
+// du jour » pour continuer, chaque jour, après la séance 4.
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 import type { PlanDesFeuilles } from "./feuillesDesSequences";
@@ -54,7 +56,8 @@ export const DEMARCHE_DECOMPOSITION_GS: Demarche = {
   famille: "Maternelle",
   source: `D'après ${MANUEL}, sujet n° 6, « Décomposition additive GS », p. 108-119 : l'atelier de la séance 2, détaillé (p. 116-119), `
     + "sa période (p. 108), ce qui le précède et ce qui le suit (p. 108, 115 et 119) ; les séances 1, 3 et 4 et leurs phases ajoutées par Maitrize, "
-    + "d'après les prérequis, les choix pédagogiques, la conclusion et la question du jury (p. 115-119) ; programme de l'école maternelle (2025)",
+    + "d'après les prérequis, les choix pédagogiques, la conclusion et la question du jury (p. 115-119) ; la page de l'album dessinée par "
+    + "Maitrize pour l'atelier « L'album à calculer », d'après celle du manuel (p. 118), et son oiseau ; programme de l'école maternelle (2025)",
   resume: "En grande section, en période 4 : un atelier dirigé de douze élèves fabrique un album à calculer. Chaque page montre un nombre — son "
     + "chiffre, le dé, les doigts — et des oiseaux perchés sur trois fils ; le dernier quart de la feuille se replie, comme une porte, et cache "
     + "une partie des oiseaux : combien en voit-on, combien se cachent ? En faisant les pages eux-mêmes, par deux, les élèves mémorisent les "
@@ -77,11 +80,11 @@ export const DEMARCHE_DECOMPOSITION_GS: Demarche = {
     // La séance détaillée du manuel : ses six phases, leur organisation et leur durée.
     seance("Fabriquer l'album à calculer : les oiseaux sur les fils",
       sauront("trouver combien d'oiseaux la porte cache quand on en voit une partie, pour un nombre de 3 à 9, et dire la décomposition — sept oiseaux, c'est cinq oiseaux et deux oiseaux — ; chaque binôme a fait deux pages de l'album à calculer de la classe, pour mémoriser les décompositions des nombres de 2 à 9."), 30, [
-        ph("Phase 1 – Collectif", "5 min", "Au tableau, projetée ou affichée, une image : six oiseaux perchés sur trois fils. « Il y a combien d'oiseaux sur les fils ? » Chacun compte dans sa tête. Puis l'adulte montre un album à compter jusqu'à 6, avec des oiseaux sur un fil, comme ceux de la bibliothèque de la classe. Il le feuillette ; à chaque page, les élèves disent combien il y a d'oiseaux : ils lisent le chiffre, reconnaissent le dé, ou comptent.",
+        ph("Phase 1 – Collectif", "5 min", "Au tableau, projetée ou affichée, une image : six oiseaux perchés sur trois fils — l'atelier « L'album à calculer » de Fabriquer, « Des oiseaux sur les fils ». « Il y a combien d'oiseaux sur les fils ? » Chacun compte dans sa tête. Puis l'adulte montre un album à compter jusqu'à 6, avec des oiseaux sur un fil, comme ceux de la bibliothèque de la classe. Il le feuillette ; à chaque page, les élèves disent combien il y a d'oiseaux : ils lisent le chiffre, reconnaissent le dé, ou comptent.",
           "Fait dire comment on a trouvé. Observe qui reconnaît le nombre d'un coup d'œil, qui compte un à un."),
-        ph("Phase 2 – Collectif", "5 min", "L'adulte annonce le projet : la classe va fabriquer un album à calculer. Il montre la page du 3, faite d'avance : le chiffre, le dé, les doigts, trois oiseaux sur les fils. Il replie la porte — le dernier quart de la feuille — : un oiseau disparaît. « Trois oiseaux, c'est deux oiseaux et un oiseau » ; au tableau : 2 et 1, ou 2 + 1. Puis une autre page du 3, porte fermée : on n'y voit qu'un oiseau. « Derrière la porte, il y en a combien ? » Les élèves répondent ; il ouvre : un oiseau et deux oiseaux, 1 et 2, 1 + 2.",
+        ph("Phase 2 – Collectif", "5 min", "L'adulte annonce le projet : la classe va fabriquer un album à calculer. Il montre la page du 3, faite d'avance dans le même atelier : le chiffre, le dé, les doigts, trois oiseaux sur les fils. Il replie la porte — le dernier quart de la feuille — : un oiseau disparaît. « Trois oiseaux, c'est deux oiseaux et un oiseau » ; au tableau : 2 et 1, ou 2 + 1. Puis une autre page du 3, porte fermée : on n'y voit qu'un oiseau. « Derrière la porte, il y en a combien ? » Les élèves répondent ; il ouvre : un oiseau et deux oiseaux, 1 et 2, 1 + 2.",
           "Décrit la page case par case : le chiffre, le dé, les doigts, les oiseaux, la case du bas. Laisse répondre avant d'ouvrir. Lit 2 + 1 « deux et un » : le signe + ne s'étudie qu'au CP."),
-        ph("Phase 3 – Binômes", "5 min", "Six binômes. Chacun reçoit une page vierge — les quatre cases, les trois fils, les traits de pliage — et tire une carte parmi celles que l'adulte tend : 4, 5, 6, 7, 8 ou 9. Il fait la page de son nombre : d'abord les cases bleues — le chiffre, le dé, les doigts. Puis il va chercher les gommettes d'oiseaux sur la table du fond, en un seul trajet, juste ce qu'il faut, et les colle sur les fils où il veut, les deux élèves d'accord ; mais, porte fermée, des oiseaux doivent rester cachés. Les cartes : l'atelier « Construire des collections » de Fabriquer, les cartes-nombres de 4 à 9, le chiffre seul.",
+        ph("Phase 3 – Binômes", "5 min", "Six binômes. Chacun reçoit une page vierge — les quatre cases, les trois fils, les traits de pliage ; l'atelier « L'album à calculer » de Fabriquer — et tire une carte parmi celles que l'adulte tend : 4, 5, 6, 7, 8 ou 9. Il fait la page de son nombre : d'abord les cases bleues — le chiffre, le dé, les doigts. Puis il va chercher les gommettes d'oiseaux sur la table du fond, en un seul trajet, juste ce qu'il faut, et les colle sur les fils où il veut, les deux élèves d'accord ; mais, porte fermée, des oiseaux doivent rester cachés. Les cartes : l'atelier « Construire des collections » de Fabriquer, les cartes-nombres de 4 à 9, le chiffre seul.",
           "Forme les binômes d'avance : un élève plus sûr avec un autre, pour l'entraide. Vérifie les cases avant le départ vers les oiseaux ; au-delà de six, deux dés. Erreurs attendues : trop ou trop peu d'oiseaux rapportés — on compare avec la carte ; tous les oiseaux du côté qu'on voit — on ferme la porte pour s'en apercevoir. Aide : la carte du même nombre avec les points et les doigts."),
         ph("Phase 4 – Binômes", "5 min", "Quand le binôme est d'accord, il ferme la porte. Sur l'ardoise, il écrit le nombre d'oiseaux qu'il voit, puis le nombre d'oiseaux cachés. Il remplit enfin la case vide du bas : pour sept, par exemple, 5 + 2. La page finie, on l'échange avec un autre binôme, qui dit s'il est d'accord.",
           "Passe d'un binôme à l'autre ; fait dire la phrase entière : « sept oiseaux, c'est cinq oiseaux et deux oiseaux ». Erreur attendue : rouvrir la porte pour compter les oiseaux cachés — on écrit d'abord, on vérifie après. La case du bas est la plus difficile : on dit la décomposition avant de l'écrire ; la page du 3 sert de modèle."),
@@ -123,14 +126,17 @@ const MATERIEL = [
     + "les cartes-chiffres, et les cartes du jeu des paires, de 1 à 9, en chiffres et en points du dé (atelier « Cartes des nombres » de Fabriquer) ; "
     + "l'affiche des nombres de 1 à 9",
   "Pour l'atelier de douze : une image de six oiseaux sur trois fils, à projeter ou à afficher ; un album à compter jusqu'à 6, avec des oiseaux "
-    + "sur un fil ; deux pages du 3, faites d'avance ; douze pages vierges, tracées à la main — une feuille carrée, quatre cases aux coins dont "
-    + "trois bleues, trois fils, le pli de la porte au dernier quart et le trait de ce qu'elle cache ; les cartes 4 à 9, le chiffre seul, et les "
-    + "mêmes avec les points et les doigts, pour aider (atelier « Construire des collections » de Fabriquer, les cartes-nombres) ; une boîte de "
-    + "gommettes d'oiseaux sur une table au fond de la classe ; les ardoises ; une agrafeuse",
+    + "sur un fil ; les deux pages du 3, faites d'avance — deux oiseaux vus et un caché, puis un vu et deux cachés — ; douze pages vierges — une "
+    + "feuille carrée, quatre cases aux coins dont trois bleues, trois fils, le pli de la porte au dernier quart et le trait de ce qu'elle "
+    + "cache — (l'image, les pages du 3 et les pages vierges : atelier « L'album à calculer » de Fabriquer) ; les cartes 4 à 9, le chiffre seul, "
+    + "et les mêmes avec les points et les doigts, pour aider (atelier « Construire des collections » de Fabriquer, les cartes-nombres) ; une "
+    + "boîte de gommettes d'oiseaux — ou les oiseaux à découper de « L'album à calculer » — sur une table au fond de la classe ; les ardoises ; "
+    + "une agrafeuse",
   "L'album à calculer de la veille ; un imagier ou un documentaire sur les oiseaux ; une grande feuille pour la couverture, de la peinture, "
     + "des pinceaux, des feutres ; le modèle des chiffres de 1 à 9 ; une agrafeuse",
   "Sept jetons et un gobelet pour le regroupement ; par binôme, neuf jetons, un gobelet et une carte de 2 à 9 ; l'album à calculer ; "
-    + "des pages vierges et les gommettes d'oiseaux pour les pages qui manquent ; une grande feuille pour l'affiche des façons de faire chaque nombre",
+    + "des pages vierges et les gommettes d'oiseaux pour les pages qui manquent (atelier « L'album à calculer » de Fabriquer) ; une grande feuille "
+    + "pour l'affiche des façons de faire chaque nombre",
 ];
 
 /** Le plan de la séquence : en maternelle, aucune feuille ; une ligne de matériel par séance. */
