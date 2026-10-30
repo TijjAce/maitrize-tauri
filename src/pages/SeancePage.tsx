@@ -251,7 +251,8 @@ function PastillesDeLaSeance({ s, up, nbCompetences, nbConsignes, sequence, cycl
       <label className="seance-pastille">
         ⏱
         <select value={s.duree} aria-label="Durée de la séance" onChange={(e) => up({ duree: +e.target.value })}>
-          {DUREES.map((d) => <option key={d} value={d}>{formatDuree(d)}</option>)}
+          {/* Une durée hors de la liste — 65 min, le calcul mental ajouté à une séance de 55 — se montre telle qu'elle est. */}
+          {(DUREES.includes(s.duree) ? DUREES : [...DUREES, s.duree].sort((a, b) => a - b)).map((d) => <option key={d} value={d}>{formatDuree(d)}</option>)}
         </select>
       </label>
       <button type="button" className="seance-pastille" onClick={() => setOuvert(ouvert === "date" ? "" : "date")}>
