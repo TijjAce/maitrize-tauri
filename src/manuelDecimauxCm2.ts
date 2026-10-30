@@ -46,6 +46,7 @@ import { REGLAGES_POSEES, STYLE_POSEES, htmlOperationsPosees, type ReglagesPosee
 import { REGLAGES_CALCUL_CM, STYLE_CALCUL_CM, htmlCalculCM, type ReglagesCalculCM } from "./calculCoursMoyen";
 import { REGLAGES_PROBLEMES_CM, STYLE_PROBLEMES_CM, htmlProblemesCM, type ReglagesProblemesCM } from "./problemesCoursMoyen";
 import { STYLE_AIDES, htmlResolution, reglagesResolutionSurs } from "./aidesALaTache";
+import { REGLAGES_GRANDEURS_CM, STYLE_GRANDEURS_CM, htmlGrandeursCM, type ExerciceGrandeurs, type ReglagesGrandeursCM } from "./grandeursCoursMoyen";
 
 export const ID_DECIMAUX_CM2 = "addition-decimaux-cm2";
 
@@ -80,7 +81,7 @@ export const DEMARCHE_DECIMAUX_CM2: Demarche = {
       sauront("lire un décimal en disant ce que vaut chaque chiffre — 35,48, c'est 35 unités et 48 centièmes, ou 35 unités, 4 dixièmes et 8 centièmes —, l'écrire sous la dictée, le placer dans le tableau de numération et l'écrire avec des fractions décimales : 2,47 = 2 + 4/10 + 7/100."), 45, [
         ph(T1, "10 min", "Un mètre ruban déroulé au tableau. On y montre 2 m et 5 cm : comment l'écrire en mètres ? 2,05 m — 2 mètres et 5 centièmes de mètre. D'autres longueurs prises sur le ruban — 1,5 m ; 1,25 m ; 0,75 m — se lisent avec leurs unités.",
           "Dit les nombres avec leurs unités — « 2 mètres et 5 centièmes de mètre » — plutôt que « deux virgule zéro cinq », qui laisse croire à deux entiers séparés par une virgule."),
-        ph(T2, "20 min", "Dictée sur l'ardoise de décimaux dits par leurs unités : « 7 unités et 4 dixièmes », « 12 unités et 9 centièmes », « 6 dixièmes »… Chaque nombre va ensuite dans le tableau de numération, un chiffre par colonne, puis s'écrit en fractions : 12,09 = 12 + 9/100. Le carré de cent fait voir qu'une colonne est un dixième, un petit carré un centième : la feuille « Le carré de cent et les bandes unités ». Seul, la feuille « Lire, écrire, décomposer les décimaux ».",
+        ph(T2, "20 min", "Dictée sur l'ardoise de décimaux dits par leurs unités : « 7 unités et 4 dixièmes », « 12 unités et 9 centièmes », « 6 dixièmes »… Chaque nombre va ensuite dans le tableau de numération, un chiffre par colonne, puis s'écrit en fractions : 12,09 = 12 + 9/100. Le carré de cent fait voir qu'une colonne est un dixième, un petit carré un centième : la feuille « Le carré de cent et les bandes unités ». Seul, la feuille « Lire, écrire, décomposer les décimaux », puis la feuille « Des longueurs à virgule ».",
           "Erreurs attendues : « six dixièmes » écrit 6,10 ; 45/100 lu 45,100 ; le dixième pris pour la dizaine, le centième pour la centaine ; dans 3,284, le 2 appelé chiffre des centaines, comme dans 284. Aide : revenir au ruban, au carré de cent, au tableau."),
         ph(T3, "10 min", "Ce qu'on retient : la virgule sépare les unités des dixièmes ; chaque chiffre vaut selon sa colonne ; 1 unité = 10 dixièmes, 1 dixième = 10 centièmes. Un même nombre s'écrit de plusieurs façons : 2,47 = 247/100 = 2 + 47/100 = 2 + 4/10 + 7/100.",
           "Écrit la trace avec les élèves ; chacun lit un nombre de deux façons qui ont du sens."),
@@ -117,7 +118,7 @@ export const DEMARCHE_DECIMAUX_CM2: Demarche = {
           "Chaque résultat faux vient d'une erreur relevée : 20,85, les parties entière et décimale ajoutées chacune à part ; 13,65, les nombres alignés à droite comme des entiers ; 20,166, les 16 dixièmes laissés dans leur colonne. Fait dire par les élèves qui ont réussi qu'une colonne ne peut pas garder deux chiffres ; envoie au tableau un élève qui a fait la troisième erreur. Aides : la mesure, le tableau, l'écriture en fractions."),
         ph("Phase 5 – Individuel", "5 min", "21,66 + 21,66, en ligne : chacun montre son résultat sur l'ardoise. Puis quelques minutes pour finir le problème. L'enseignant conclut avec la classe : le périmètre mesure 43,32 m ; il faut acheter 44 m de grillage ; 44 × 4,50 € = 198 €.",
           "Termine les derniers calculs devant la classe : le grillage se vend au mètre entier, d'où 44 m."),
-        ph("Phase 6 – Individuel", "10 min", "Seul : deux additions à poser en colonnes, 13,25 + 4,72 et 7,46 + 3,1, puis quatre en ligne : 4,36 + 2,21 ; 3,75 + 1,2 ; 2,8 + 4,35 ; 3,52 + 2,5. Qui a fini prend la feuille « Additions de décimaux à poser », la feuille « Additions posées — des prix » ou la feuille « Calcul en ligne — des décimaux ».",
+        ph("Phase 6 – Individuel", "10 min", "Seul : deux additions à poser en colonnes, 13,25 + 4,72 et 7,46 + 3,1, puis quatre en ligne : 4,36 + 2,21 ; 3,75 + 1,2 ; 2,8 + 4,35 ; 3,52 + 2,5. Qui se trompe encore reprend avec l'enseignant la feuille « Le tableau des longueurs ». Qui a fini prend la feuille « Additions de décimaux à poser », la feuille « Additions posées — des prix » ou la feuille « Calcul en ligne — des décimaux ».",
           "Différencie selon les erreurs de chacun : qui en fait encore une reprend avec l'enseignant le tableau des longueurs et les fractions décimales ; les autres avancent seuls."),
       ]),
     seance("Quand le zéro compte : des prix et des masses",
@@ -200,6 +201,15 @@ const problemesDecimaux = (seance: number): FeuilleAFabriquer => ({
   fabriquer: (g) => ({ html: htmlProblemesCM(PROBLEMES_DECIMAUX, g), style: STYLE_FEUILLE + STYLE_PROBLEMES_CM, refaire: { problemesCM: PROBLEMES_DECIMAUX } }),
 });
 
+/** Des longueurs, dans l'atelier « Grandeurs et mesures — CM1, CM2 », au CM2 : il les refait, avec les mêmes réglages et le même tirage. */
+const longueurs = (seance: number, titre: string, exercices: ExerciceGrandeurs[], combien: number): FeuilleAFabriquer => {
+  const r: ReglagesGrandeursCM = { ...REGLAGES_GRANDEURS_CM, classe: "CM2", grandeur: "longueur", exercices, combien, titre };
+  return {
+    seance, atelier: "grandeursCM", titre,
+    fabriquer: (g) => ({ html: htmlGrandeursCM(r, g), style: STYLE_FEUILLE + STYLE_GRANDEURS_CM, refaire: { grandeursCM: r } }),
+  };
+};
+
 /** Une feuille de l'atelier « La monnaie ». */
 const monnaie = (seance: number, titre: string, r: Partial<ReglagesMonnaie>): FeuilleAFabriquer => {
   const reglages: ReglagesMonnaie = { ...REGLAGES_MONNAIE, ...r };
@@ -215,12 +225,14 @@ const EN_LIGNE = ["cm2-somme-decimaux", "cm2-entier-decimal-retenue"];
 const FEUILLES: FeuilleAFabriquer[] = [
   calculMental(0, "Le carré de cent et les bandes unités", ["cm2-ecritures-decimales"], "materiel"),
   numeration(0, "Lire, écrire, décomposer les décimaux", { decimaux: true, jusqua: 100, decimales: 2, exercices: ["tableau", "lettres", "decomposition"], combien: 5 }),
+  longueurs(0, "Des longueurs à virgule", ["convertir"], 6),
   cartesDecimaux(0, "La bataille des décimaux", ["virgule", "fraction", "fractions", "unitesDec", "lettres"]),
   calculMental(1, "Ajouter deux décimaux — chercher, expliquer", ["cm2-somme-decimaux"], "decouverte"),
   calculMental(2, "Calcul en ligne — évaluation", EN_LIGNE, "evaluation"),
   // La séance du manuel : l'énoncé du grillage, pour chaque groupe ; ses calculs s'écrivent au tableau ; trois feuilles pour qui a fini,
   // dont les parties décimales n'ont jamais la même longueur.
   grillage(3),
+  longueurs(3, "Le tableau des longueurs", ["tableau-unites"], 6),
   calcul(3, "Additions de décimaux à poser", { exercice: "addition-decimaux", decimales: "differentes", combien: 6, posees: false }),
   additionsDePrix(3, "Additions posées — des prix", { chiffres: 4, retenue: "melange", combien: 6, posees: true }),
   calculMental(3, "Calcul en ligne — des décimaux", EN_LIGNE, "ecrit"),

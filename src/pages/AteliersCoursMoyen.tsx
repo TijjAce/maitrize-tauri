@@ -15,6 +15,10 @@ import {
   PROBLEMES_CM_MAX, REGLAGES_PROBLEMES_CM, SORTES_PROBLEMES_CM, STYLE_PROBLEMES_CM, htmlProblemesCM, reglagesProblemesCMSurs,
   type ReglagesProblemesCM, type SorteProblemeCM,
 } from "../problemesCoursMoyen";
+import {
+  AVEC_GRANDEUR, EXERCICES_GRANDEURS, REGLAGES_GRANDEURS_CM, STYLE_GRANDEURS_CM, SURFACES_DE_REFERENCE, htmlGrandeursCM, reglagesGrandeursCMSurs,
+  type ExerciceGrandeurs, type GrandeurCM, type ReglagesGrandeursCM, type SurfaceDeReference,
+} from "../grandeursCoursMoyen";
 
 // ── Fabriquer › le cours moyen ─────────────────────────────────────────────
 //
@@ -159,6 +163,57 @@ export function ProblemesCMTab() {
         {EN_FAIRE_UNE_SEQUENCE}
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_PROBLEMES_CM} />}
+    />
+  );
+}
+
+// ── Les grandeurs ──
+
+const GRANDEURS: { id: GrandeurCM; libelle: string }[] = [{ id: "longueur", libelle: "Longueurs" }, { id: "masse", libelle: "Masses" }, { id: "contenance", libelle: "Contenances" }];
+
+export function GrandeursCMTab() {
+  const [brut, maj] = useReglages<ReglagesGrandeursCM>("grandeursCM", REGLAGES_GRANDEURS_CM);
+  const r = React.useMemo(() => reglagesGrandeursCMSurs(brut), [brut]);
+  const [graine, setGraine] = useGraine();
+  const html = React.useMemo(() => htmlGrandeursCM(r, graine), [r, graine]);
+  const titre = r.titre?.trim() || "Grandeurs et mesures";
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Grandeurs et mesures — CM1, CM2
+          <Aide titre="Les grandeurs au cours moyen" vers="droite"><p>Les longueurs, les masses et les contenances avec toutes leurs unités, le périmètre, les aires, les angles
+            et les durées, d'après le programme du cycle 3 (2025) et ses exemples de réussite. Pour les aires, ce que la séquence du manuel « Réussir mon CRPE » (Nathan)
+            fait faire avant de mesurer : comparer sans mesurer, puis paver avec une surface de référence. Les figures à comparer et à paver sont en vraie grandeur :
+            on peut les découper.</p></Aide>
+        </h3>
+        <ChoixDeLaClasse classe={r.classe} onChange={(classe) => maj({ classe })} />
+        <Field label="Les exercices">
+          <Choix<ExerciceGrandeurs> liste={EXERCICES_GRANDEURS} choisis={r.exercices} onChange={(exercices) => maj({ exercices })} />
+        </Field>
+        {r.exercices.some((e) => AVEC_GRANDEUR.includes(e)) && (
+          <Field label="La grandeur">
+            <div className="seg">
+              {GRANDEURS.map((g) => <button key={g.id} type="button" className={r.grandeur === g.id ? "active" : ""} onClick={() => maj({ grandeur: g.id })}>{g.libelle}</button>)}
+            </div>
+          </Field>
+        )}
+        {r.exercices.includes("aire-reference") && (
+          <Field label="La surface de référence">
+            <Select value={r.reference ?? ""} onChange={(e) => maj({ reference: (e.target.value || undefined) as SurfaceDeReference | undefined })}>
+              <option value="">au hasard</option>
+              {SURFACES_DE_REFERENCE.map((x) => <option key={x.id} value={x.id}>{x.libelle}</option>)}
+            </Select>
+          </Field>
+        )}
+        <Combien libelle="Combien d'items par exercice" valeur={r.combien} max={10} onChange={(combien) => maj({ combien })} />
+        <Field label="Le titre">
+          <Input value={r.titre ?? ""} placeholder="Grandeurs et mesures" onChange={(e) => maj({ titre: e.target.value })} />
+        </Field>
+        <Boutons atelier="grandeursCM" titre={titre} html={html} style={STYLE_GRANDEURS_CM} peut onTirage={() => setGraine(graineAuHasard())} />
+        {EN_FAIRE_UNE_SEQUENCE}
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_GRANDEURS_CM} />}
     />
   );
 }
