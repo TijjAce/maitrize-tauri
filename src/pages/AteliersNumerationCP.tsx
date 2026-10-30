@@ -33,7 +33,7 @@ function Bornes({ de, a, min, max, onChange }: { de: number; a: number; min: num
 }
 
 /** Des boutons qu'on coche et décoche : les exercices de la feuille, au moins un. */
-function Choix<T extends string>({ liste, choisis, onChange }: { liste: { id: T; libelle: string }[]; choisis: T[]; onChange: (v: T[]) => void }) {
+export function Choix<T extends string>({ liste, choisis, onChange }: { liste: { id: T; libelle: string }[]; choisis: T[]; onChange: (v: T[]) => void }) {
   const basculer = (id: T) => {
     const suivant = choisis.includes(id) ? choisis.filter((x) => x !== id) : [...choisis, id];
     if (suivant.length) onChange(liste.map((x) => x.id).filter((x) => suivant.includes(x)));

@@ -19,9 +19,32 @@ import { escapeHtml } from "./print";
 import { STYLE_CLASSE, schemaSvg, type Schema } from "./problemesBarres";
 
 export type SorteProblemeCM =
-  | "partie-tout" | "comparaison" | "deux-etapes" | "comparaison-deux-etapes" | "parts-egales" | "comparaison-multiplicative"
+  | "partie-tout" | "comparaison" | "deux-etapes" | "comparaison-deux-etapes" | "decimaux" | "parts-egales" | "partage-reste" | "comparaison-multiplicative"
   | "mixte" | "denombrement" | "optimisation" | "algorithme"
-  | "proportionnalite" | "proportionnalite-deux-etapes" | "proportionnalite-additive" | "proportionnalite-combinee" | "identifier-proportionnalite";
+  | "proportionnalite" | "proportionnalite-deux-etapes" | "proportionnalite-additive" | "proportionnalite-combinee" | "identifier-proportionnalite"
+  | "tableau-proportionnalite";
+
+/** Les sortes de problèmes, dans l'ordre de l'atelier ; `cm2` : celles du seul CM2. */
+export const SORTES_PROBLEMES_CM: { id: SorteProblemeCM; libelle: string; cm2?: true }[] = [
+  { id: "partie-tout", libelle: "Des parties et le tout" },
+  { id: "comparaison", libelle: "Comparer : de plus, de moins" },
+  { id: "deux-etapes", libelle: "En deux étapes" },
+  { id: "comparaison-deux-etapes", libelle: "Comparer, en deux étapes" },
+  { id: "decimaux", libelle: "Des longueurs, des prix, des masses à virgule" },
+  { id: "parts-egales", libelle: "Des parts égales" },
+  { id: "partage-reste", libelle: "Partager, avec un reste" },
+  { id: "comparaison-multiplicative", libelle: "Fois plus, fois moins" },
+  { id: "mixte", libelle: "Des problèmes mixtes" },
+  { id: "denombrement", libelle: "Dénombrer" },
+  { id: "optimisation", libelle: "Le plus possible, le moins possible" },
+  { id: "algorithme", libelle: "Chercher toutes les solutions", cm2: true },
+  { id: "identifier-proportionnalite", libelle: "Proportionnel ou pas ?" },
+  { id: "proportionnalite", libelle: "Proportionnalité : multiplier, diviser" },
+  { id: "proportionnalite-additive", libelle: "Proportionnalité : ajouter deux colonnes" },
+  { id: "proportionnalite-deux-etapes", libelle: "Proportionnalité, en deux étapes" },
+  { id: "proportionnalite-combinee", libelle: "Proportionnalité : deux procédures, ou une seule unité" },
+  { id: "tableau-proportionnalite", libelle: "Compléter un tableau de proportionnalité" },
+];
 
 export interface ReglagesProblemesCM {
   classe: "CM1" | "CM2";
@@ -32,7 +55,31 @@ export interface ReglagesProblemesCM {
 
 export const REGLAGES_PROBLEMES_CM: ReglagesProblemesCM = { classe: "CM1", sortes: ["partie-tout"], combien: 4 };
 
-export interface ProblemeCM { enonce: string; calcul: string; phrase: string; schema?: Schema }
+/** Le plus de problèmes sur une feuille. */
+export const PROBLEMES_CM_MAX = 8;
+
+/** Les réglages tels que l'atelier les relit : des sortes connues — une au moins —, de 1 à 8 problèmes. */
+export function reglagesProblemesCMSurs(brut: Partial<ReglagesProblemesCM> | null | undefined): ReglagesProblemesCM {
+  const b = brut ?? {};
+  const sortes = Array.isArray(b.sortes) ? b.sortes.filter((x) => SORTES_PROBLEMES_CM.some((s) => s.id === x)) : [];
+  return {
+    ...b,
+    classe: b.classe === "CM2" ? "CM2" : "CM1",
+    sortes: sortes.length ? sortes : REGLAGES_PROBLEMES_CM.sortes,
+    combien: Math.max(1, Math.min(PROBLEMES_CM_MAX, Math.round(Number(b.combien)) || REGLAGES_PROBLEMES_CM.combien)),
+  };
+}
+
+/** Un tableau de proportionnalité à compléter : deux lignes, et les cases que l'élève remplit. */
+export interface TableauProportion { lignes: [string, string]; colonnes: { haut: number; bas: number; cache?: "haut" | "bas" }[] }
+
+export interface ProblemeCM {
+  enonce: string; calcul: string; phrase: string; schema?: Schema; tableau?: TableauProportion;
+  /** Une question qui se répond par oui ou non, puis par une raison : pas de cadre de recherche ni de calcul. */
+  ouiNon?: true;
+  /** L'histoire qu'il raconte — des billes, un trésor, des rubans — : une même feuille évite de la répéter. */
+  contexte?: string;
+}
 
 // ── Les mots ─────────────────────────────────────────────────────────────
 
@@ -644,26 +691,164 @@ function identifierProportionnalite(alea: () => number): ProblemeCM {
   const [quoi, oui, raison] = choisir(alea, melanger(alea, situations));
   return {
     enonce: `Ces deux grandeurs sont-elles proportionnelles ? Explique pourquoi. ${quoi}`,
-    calcul: raison, phrase: oui ? "Oui, elles sont proportionnelles." : "Non, elles ne sont pas proportionnelles.",
+    calcul: raison, phrase: oui ? "Oui, elles sont proportionnelles." : "Non, elles ne sont pas proportionnelles.", ouiNon: true,
   };
 }
 
+/**
+ * Compléter un tableau de proportionnalité, comme l'évaluation de la
+ * séquence de la proportionnalité du manuel du CRPE de l'enseignant : le prix
+ * d'un objet est donné, on cherche celui de 2, 5, 10, 20 objets — et, une
+ * fois, combien d'objets pour un prix. Ou, sans le prix d'un seul, deux
+ * colonnes connues — 3 kg pour 6 €, 5 kg pour 10 € — d'où l'on tire les
+ * autres en ajoutant ou en multipliant.
+ */
+function tableauProportionnalite(alea: () => number, r: ReglagesProblemesCM): ProblemeCM {
+  const situations: { lignes: [string, string]; une: (u: number) => string; deux: (a: number, va: number, b: number, vb: number) => string; u: number[] }[] = [
+    { lignes: ["Nombre de cahiers", "Prix (en €)"], u: [2, 3, 4, 5],
+      une: (u) => `Un cahier coûte ${u} €.`, deux: (a, va, b, vb) => `${a} cahiers identiques coûtent ${va} € ; ${b} de ces cahiers coûtent ${vb} €.` },
+    { lignes: ["Nombre de bouteilles", "Prix (en €)"], u: [2, 3, 4],
+      une: (u) => `Une bouteille de jus de fruits coûte ${u} €.`, deux: (a, va, b, vb) => `${a} bouteilles de jus de fruits coûtent ${va} € ; ${b} bouteilles coûtent ${vb} €.` },
+    { lignes: ["Nombre de briques", "Masse (en kg)"], u: [2, 3, 4, 5],
+      une: (u) => `Des briques identiques pèsent chacune ${u} kg.`, deux: (a, va, b, vb) => `${a} briques identiques pèsent ${va} kg ; ${b} de ces briques pèsent ${vb} kg.` },
+    { lignes: ["Nombre de personnes", "Farine (en g)"], u: [50, 75, 100, 125],
+      une: (u) => `Pour des crêpes, il faut ${u} g de farine par personne.`, deux: (a, va, b, vb) => `Pour des crêpes, il faut ${n(va)} g de farine pour ${a} personnes, et ${n(vb)} g pour ${b} personnes.` },
+    { lignes: ["Nombre de tours de piste", "Distance (en m)"], u: [200, 250, 300, 400],
+      une: (u) => `Un tour de la piste du stade mesure ${u} m.`, deux: (a, va, b, vb) => `${a} tours de la piste du stade font ${n(va)} m ; ${b} tours font ${n(vb)} m.` },
+  ];
+  const s = choisir(alea, situations), u = choisir(alea, s.u);
+  if (alea() < 0.5) {
+    // Le prix d'un seul : chaque case se trouve en multipliant ; une fois, la quantité qui correspond à un prix.
+    const voulus = melanger(alea, [2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 50]).slice(0, r.classe === "CM2" ? 5 : 4).sort((x, y) => x - y);
+    const inverse = r.classe === "CM2" || alea() < 0.5 ? entier(alea, 0, voulus.length - 1) : -1;
+    const colonnes = [{ haut: 1, bas: u }, ...voulus.map((q, i) => ({ haut: q, bas: q * u, cache: (i === inverse ? "haut" : "bas") as "haut" | "bas" }))];
+    return {
+      enonce: `${s.une(u)} Complète le tableau.`, tableau: { lignes: s.lignes, colonnes }, contexte: s.lignes[0],
+      calcul: `Pour 1, c'est ${n(u)} : on multiplie le nombre du haut par ${n(u)} pour trouver celui du bas${inverse >= 0 ? ` ; pour ${n(voulus[inverse] * u)}, on cherche combien de fois ${n(u)} : ${n(voulus[inverse] * u)} ÷ ${n(u)} = ${voulus[inverse]}` : ""}.`,
+      phrase: "Le tableau est complet.",
+    };
+  }
+  // Deux colonnes connues, sans le prix d'un seul : ajouter, multiplier.
+  const [a, b] = choisir(alea, [[2, 3], [3, 5], [2, 5], [4, 6], [3, 4], [5, 6]] as const);
+  const voulus = melanger(alea, [a + b, 2 * a, 10 * a, 2 * b, 10 * b, 3 * a, a + 2 * b].filter((x, i, t) => x !== a && x !== b && t.indexOf(x) === i)).slice(0, 4).sort((x, y) => x - y);
+  const pourquoi = (x: number) => {
+    if (x === a + b) return `${x} = ${a} + ${b} : ${n(a * u)} + ${n(b * u)} = ${n(x * u)}`;
+    if (x % a === 0) return `${x}, c'est ${x / a} fois ${a} : ${x / a} × ${n(a * u)} = ${n(x * u)}`;
+    if (x % b === 0) return `${x}, c'est ${x / b} fois ${b} : ${x / b} × ${n(b * u)} = ${n(x * u)}`;
+    return `${x} = ${a} + ${b} + ${b} : ${n(a * u)} + ${n(b * u)} + ${n(b * u)} = ${n(x * u)}`;
+  };
+  return {
+    enonce: `${s.deux(a, a * u, b, b * u)} Complète le tableau.`, contexte: s.lignes[0],
+    tableau: { lignes: s.lignes, colonnes: [{ haut: a, bas: a * u }, { haut: b, bas: b * u }, ...voulus.map((x) => ({ haut: x, bas: x * u, cache: "bas" as const }))] },
+    calcul: voulus.map(pourquoi).join(" ; "), phrase: "Le tableau est complet.",
+  };
+}
+
+/**
+ * Partager quand ça ne tombe pas juste : la valeur d'une part, ou le nombre
+ * de parts, et ce qui reste — 75 = 4 × 18 + 3. La séquence de la division
+ * du manuel du CRPE de l'enseignant y conduit, avant la potence.
+ */
+function partageReste(alea: () => number, r: ReglagesProblemesCM): ProblemeCM {
+  const cm2 = r.classe === "CM2";
+  const k = entier(alea, 3, 9), q = entier(alea, cm2 ? 12 : 8, cm2 ? 150 : 45), reste = entier(alea, 1, k - 1), t = k * q + reste;
+  const egalite = `${n(t)} = ${k} × ${q} + ${reste}`;
+  switch (entier(alea, 0, 3)) {
+    case 0:
+      return {
+        enonce: `${k} enfants se partagent équitablement ${n(t)} billes. Combien de billes chacun reçoit-il ? Combien en reste-t-il ?`,
+        calcul: egalite, phrase: `Chacun reçoit ${q} billes ; il en reste ${reste}.`, contexte: "billes",
+      };
+    case 1:
+      return {
+        enonce: `Un pâtissier range ${n(t)} macarons dans des boîtes de ${k}. Combien de boîtes remplit-il ? Combien de macarons restent hors des boîtes ?`,
+        calcul: egalite, phrase: `Il remplit ${q} boîtes ; ${reste} macaron${reste > 1 ? "s restent" : " reste"} hors des boîtes.`, contexte: "macarons",
+      };
+    case 2:
+      return {
+        enonce: `${k} pirates se partagent à parts égales un trésor de ${n(t)} pièces d'or. Combien de pièces chaque pirate reçoit-il ? Combien en reste-t-il ?`,
+        calcul: egalite, phrase: `Chaque pirate reçoit ${q} pièces d'or ; il en reste ${reste}.`, contexte: "pirates",
+      };
+    default:
+      return {
+        enonce: `Une fleuriste a ${n(t)} roses. Elle fait des bouquets de ${k} roses. Combien de bouquets peut-elle faire ? Combien de roses lui restera-t-il ?`,
+        calcul: egalite, phrase: `Elle peut faire ${q} bouquets ; il lui restera ${reste} rose${reste > 1 ? "s" : ""}.`, contexte: "roses",
+      };
+  }
+}
+
+/**
+ * Des données décimales : des longueurs mises bout à bout, des masses, des
+ * prix. Les parties décimales n'ont pas toujours la même longueur — 12,76 m
+ * et 8,9 m, comme le grillage du manuel du CRPE de l'enseignant —, et un
+ * prix a deux chiffres après la virgule, le zéro qui compte compris.
+ */
+function decimaux(alea: () => number, r: ReglagesProblemesCM): ProblemeCM {
+  const p = quelquun(alea);
+  // En centièmes ou en millièmes entiers, pour que les calculs tombent juste.
+  const centiemes = (min: number, max: number) => { const x = entier(alea, min, max); return x % 10 ? x : x + entier(alea, 1, 9); };
+  const dixiemes = (min: number, max: number) => { const x = entier(alea, min, max); return x % 10 ? x : x + 1; };
+  switch (entier(alea, 0, 4)) {
+    case 0: {
+      const a = centiemes(105, 290) / 100, b = dixiemes(3, 19) / 10;
+      const [objets, un, autre, de] = choisir(alea, [["rubans", "L'un", "l'autre", "de ruban"], ["planches", "L'une", "l'autre", "de planche"], ["tuyaux", "L'un", "l'autre", "de tuyau"]] as const);
+      return {
+        enonce: `${p.nom} met bout à bout deux ${objets}. ${un} mesure ${nd(a)} m, ${autre} ${nd(b)} m. Quelle longueur obtient-${p.il} ?`,
+        calcul: `${nd(a)} + ${nd(b)} = ${nd(a + b)}`, phrase: `${p.Il} obtient ${nd(a + b)} m ${de}.`, schema: parties(arrondi2(a + b), a, b, "tout"), contexte: "bout à bout",
+      };
+    }
+    case 1: {
+      // Des masses en kilogrammes : 1,25 kg et 0,8 kg ; au CM2, parfois des grammes à virgule près du kilogramme.
+      const a = (r.classe === "CM2" ? entier(alea, 1005, 2995) : centiemes(105, 290) * 10) / 1000, b = dixiemes(3, 9) / 10;
+      return {
+        enonce: `Sur la balance, on pose un paquet de farine de ${nd(a)} kg et un paquet de sucre de ${nd(b)} kg. Quelle est la masse des deux paquets ?`,
+        calcul: `${nd(a)} + ${nd(b)} = ${nd(a + b)}`, phrase: `Les deux paquets pèsent ${nd(a + b)} kg.`, schema: parties(Math.round((a + b) * 1000) / 1000, a, b, "tout"), contexte: "masses",
+      };
+    }
+    case 2: {
+      const livre = 100 * entier(alea, 6, 14) + choisir(alea, [5, 45, 50, 90, 95]), cahier = 100 * entier(alea, 1, 4) + choisir(alea, [5, 50, 30, 75]);
+      return {
+        enonce: `${p.nom} achète un livre à ${eu(livre)} et un cahier à ${eu(cahier)}. Combien doit-${p.il} payer ?`,
+        calcul: `${e2(livre)} + ${e2(cahier)} = ${e2(livre + cahier)}`, phrase: `${p.nom} doit payer ${eu(livre + cahier)}.`, schema: parties((livre + cahier) / 100, livre / 100, cahier / 100, "tout"), contexte: "prix",
+      };
+    }
+    case 3: {
+      const billet = choisir(alea, [20, 50]) * 100, prix = entier(alea, 405, billet / 2 + 900);
+      return {
+        enonce: `${p.nom} paie un jeu de ${eu(prix)} avec un billet de ${eu(billet)}. Combien la marchande lui rend-elle ?`,
+        calcul: `${e2(billet)} − ${e2(prix)} = ${e2(billet - prix)}`, phrase: `La marchande lui rend ${eu(billet - prix)}.`, schema: parties(billet / 100, prix / 100, (billet - prix) / 100, "b"), contexte: "rendre",
+      };
+    }
+    default: {
+      // Le tour d'un jardin rectangulaire : la longueur et la largeur n'ont pas le même nombre de décimales.
+      const L = centiemes(905, 1890) / 100, l = dixiemes(41, 89) / 10, demi = L + l;
+      return {
+        enonce: `Un jardin rectangulaire mesure ${nd(L)} m de long et ${nd(l)} m de large. Quelle longueur de grillage faut-il pour en faire tout le tour ?`,
+        calcul: `${nd(L)} + ${nd(l)} = ${nd(demi)} ; ${nd(demi)} + ${nd(demi)} = ${nd(2 * demi)}`, phrase: `Il faut ${nd(2 * demi)} m de grillage.`, contexte: "grillage",
+      };
+    }
+  }
+}
+
 const FABRIQUES: Record<SorteProblemeCM, (alea: () => number, r: ReglagesProblemesCM) => ProblemeCM> = {
-  "partie-tout": partieTout, comparaison, "deux-etapes": deuxEtapes, "comparaison-deux-etapes": comparaisonDeuxEtapes,
-  "parts-egales": partsEgales, "comparaison-multiplicative": comparaisonMultiplicative, mixte, denombrement, optimisation, algorithme,
+  "partie-tout": partieTout, comparaison, "deux-etapes": deuxEtapes, "comparaison-deux-etapes": comparaisonDeuxEtapes, decimaux,
+  "parts-egales": partsEgales, "partage-reste": partageReste, "comparaison-multiplicative": comparaisonMultiplicative, mixte, denombrement, optimisation, algorithme,
   proportionnalite, "proportionnalite-deux-etapes": proportionnaliteDeuxEtapes, "proportionnalite-additive": proportionnaliteAdditive,
   "proportionnalite-combinee": proportionnaliteCombinee, "identifier-proportionnalite": identifierProportionnalite,
+  "tableau-proportionnalite": tableauProportionnalite,
 };
 
 export function problemesCM(r: ReglagesProblemesCM, graine: number): ProblemeCM[] {
   const alea = hasard(graine);
   const sortie: ProblemeCM[] = [];
-  const vus = new Set<string>();
-  for (let garde = 0; sortie.length < Math.max(1, Math.min(8, r.combien)) && garde < 400; garde++) {
+  const vus = new Set<string>(), histoires = new Set<string>();
+  for (let garde = 0; sortie.length < Math.max(1, Math.min(PROBLEMES_CM_MAX, r.combien)) && garde < 400; garde++) {
     const sorte = r.sortes[sortie.length % r.sortes.length];
     const pb = FABRIQUES[sorte](alea, r);
-    if (vus.has(pb.enonce)) continue;
+    // Une autre histoire tant qu'il en reste à raconter.
+    if (vus.has(pb.enonce) || (pb.contexte && histoires.has(pb.contexte) && garde < 200)) continue;
     vus.add(pb.enonce);
+    if (pb.contexte) histoires.add(pb.contexte);
     sortie.push(pb);
   }
   return sortie;
@@ -676,15 +861,30 @@ const PHASES = "Je comprends : je redis l'histoire. Je modélise : un schéma, u
 /** Un nombre de parts cherché trop grand pour dessiner chaque part : le corrigé garde les deux premières et les points de suite. */
 const tropDeParts = (s: Schema) => s.forme === "parts-egales" && !s.nombre.connue && s.nombre.valeur > 12;
 
+/** Le tableau à compléter : les cases cachées vides ; au corrigé, remplies. */
+function tableauHtml(t: TableauProportion, corrige: boolean): string {
+  const cellule = (v: number, cachee: boolean) => (cachee ? `<td class="pc-vide">${corrige ? `<b>${n(v)}</b>` : ""}</td>` : `<td>${n(v)}</td>`);
+  return `<table class="pc-tableau"><tr><th>${escapeHtml(t.lignes[0])}</th>${t.colonnes.map((c) => cellule(c.haut, c.cache === "haut")).join("")}</tr>`
+    + `<tr><th>${escapeHtml(t.lignes[1])}</th>${t.colonnes.map((c) => cellule(c.bas, c.cache === "bas")).join("")}</tr></table>`;
+}
+
 export function htmlProblemesCM(r: ReglagesProblemesCM, graine: number): string {
   const problemes = problemesCM(r, graine);
-  const titre = r.titre ?? "Résoudre des problèmes";
+  const titre = r.titre?.trim() || "Résoudre des problèmes";
+  // Un tableau se complète dans ses cases : pas de cadre de recherche, une ligne pour dire comment on a trouvé.
+  const travail = (pb: ProblemeCM) => (pb.tableau
+    ? `${tableauHtml(pb.tableau, false)}<div class="pc-reponse"><div>J'explique une case : <span class="pc-ligne"></span></div></div>`
+    : pb.ouiNon
+      ? `<div class="pc-reponse"><div>Je réponds : <span class="pc-choix">oui</span> <span class="pc-choix">non</span></div><div>Parce que : <span class="pc-ligne"></span></div><div><span class="pc-ligne"></span></div></div>`
+      : `<div class="pc-cadre"></div><div class="pc-reponse"><div>Calcul : <span class="pc-ligne"></span></div><div>Réponse : <span class="pc-ligne"></span></div></div>`);
   const bloc = (pb: ProblemeCM, i: number) => `<section class="pc-probleme"><div class="pc-numero">${i + 1}</div><div class="pc-contenu">`
-    + `<p class="pc-enonce">${escapeHtml(pb.enonce)}</p><div class="pc-cadre"></div>`
-    + `<div class="pc-reponse"><div>Calcul : <span class="pc-ligne"></span></div><div>Réponse : <span class="pc-ligne"></span></div></div></div></section>`;
+    + `<p class="pc-enonce">${escapeHtml(pb.enonce)}</p>${travail(pb)}</div></section>`;
   const corrige = (pb: ProblemeCM, i: number) => `<section class="pc-probleme"><div class="pc-numero">${i + 1}</div><div class="pc-contenu">`
     + `<p class="pc-enonce pc-rappel">${escapeHtml(pb.enonce)}</p>${pb.schema ? `<div class="pc-schema">${schemaSvg(pb.schema, tropDeParts(pb.schema) ? "nombres" : "corrige", STYLE_CLASSE)}</div>` : ""}`
-    + `<p class="pc-solution"><b>Calcul :</b> ${escapeHtml(pb.calcul)} · <b>Réponse :</b> ${escapeHtml(pb.phrase)}</p></div></section>`;
+    + (pb.tableau ? `${tableauHtml(pb.tableau, true)}<p class="pc-solution">${escapeHtml(pb.calcul)}</p>`
+      : pb.ouiNon ? `<p class="pc-solution"><b>Réponse :</b> ${escapeHtml(pb.phrase)} ${escapeHtml(pb.calcul)}</p>`
+        : `<p class="pc-solution"><b>Calcul :</b> ${escapeHtml(pb.calcul)} · <b>Réponse :</b> ${escapeHtml(pb.phrase)}</p>`)
+    + `</div></section>`;
   return feuille(`<div class="page"><div class="titre">${escapeHtml(titre)}</div><div class="sous">Prénom : ........................................ Date : ........................</div>`
     + `<div class="regle"><b>Résous</b>${PHASES}</div>${problemes.map(bloc).join("")}</div>`
     + `<div class="page corrige"><div class="titre">${escapeHtml(titre)} — corrigé</div>${problemes.map(corrige).join("")}</div>`, "pc");
@@ -702,4 +902,9 @@ export const STYLE_PROBLEMES_CM = `
   .feuille.pc .pc-schema { margin: 0 0 2mm; }
   .feuille.pc .pc-schema svg { max-width: 120mm; height: auto; }
   .feuille.pc .pc-solution { font-size: 13.5px; line-height: 1.5; margin: 0; }
+  .feuille.pc .pc-choix { display: inline-block; padding: 0.3mm 3mm; margin: 0 1mm; border: 1.2px solid #9aa0b4; border-radius: 3mm; }
+  .feuille.pc .pc-tableau { width: auto; margin: 0 0 2.5mm; border-collapse: collapse; font-size: 14px; }
+  .feuille.pc .pc-tableau th, .feuille.pc .pc-tableau td { border: 1px solid #9aa0b4; padding: 1.5mm 2.5mm; text-align: center; }
+  .feuille.pc .pc-tableau th { background: #f0f2f8; font-size: 12.5px; font-weight: 600; text-align: left; }
+  .feuille.pc .pc-tableau td { min-width: 13mm; height: 8mm; }
 `;

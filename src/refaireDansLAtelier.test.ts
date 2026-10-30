@@ -50,6 +50,7 @@ const { REGLAGES_NUMERATION, htmlNumeration } = await import("./numeration");
 const { REGLAGES_RESOLUTION, htmlResolution, reglagesResolutionSurs } = await import("./aidesALaTache");
 const CT = await import("./cartesATaches");
 const CC = await import("./calculCoursMoyen");
+const PC = await import("./problemesCoursMoyen");
 const { hasard } = await import("./hasard");
 
 type Memoires = Record<string, any>;
@@ -132,6 +133,7 @@ const ATELIERS: Record<string, (m: Memoires, g: number) => string> = {
   resolution: (m) => htmlResolution(reglagesResolutionSurs(lu(REGLAGES_RESOLUTION, m.resolution))),
   taches: (m, g) => { const r = CT.reglagesSurs(lu(CT.REGLAGES_CARTES, m.cartesATaches)); return CT.htmlDeLaSerie(CT.cartesDeLaSerie(r, g), r, g); },
   calculCM: (m, g) => CC.htmlCalculCM(CC.reglagesCalculCMSurs(lu(CC.REGLAGES_CALCUL_CM, m.calculCM)), g),
+  problemesCM: (m, g) => PC.htmlProblemesCM(PC.reglagesProblemesCMSurs(lu(PC.REGLAGES_PROBLEMES_CM, m.problemesCM)), g),
 };
 
 const GRAINES = [3, 1789];
