@@ -23,12 +23,11 @@
 // Il existe déjà « La multiplication posée (CE2) » (demarchesOperations.ts),
 // bâtie sur le programme ; celle-ci est celle du manuel, pour la même
 // compétence. Ses feuilles viennent des ateliers « Calcul mental »,
-// « Opérations posées », « Problèmes multiplicatifs » et « Cartes de calcul »,
-// à ses réglages : chacune se rouvre dans le sien. L'atelier des opérations
-// posées tire le second facteur à deux chiffres entre 11 et 39 : la feuille de
-// la séance 4 ne reste pas toujours sous 20. La fiche de l'énoncé des choux,
-// dessinés en rectangle, et le quadrillage de 34 × 23 carreaux, qu'aucun
-// atelier ne dessine, sont à préparer : le matériel le dit.
+// « Opérations posées » — le second facteur entre 11 et 19 à la séance 4 —,
+// « Multiplier en rectangles » — les choux dessinés en rectangle, le
+// quadrillage de 34 × 23 carreaux, le rectangle de 54 × 36 à découper, la table
+// de Pythagore —, « Problèmes multiplicatifs » et « Cartes de calcul », à ses
+// réglages : chacune se rouvre dans le sien.
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 import type { FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
@@ -40,6 +39,7 @@ import {
   PRESENTATION_COMPLETE, STYLE_FEUILLE as STYLE_PROBLEMES, feuilleProblemes, genererMultiplicatifs, type TypeMultiplicatif,
 } from "./problemesBarres";
 import { STYLE_JEUX_MATHS, cartesCalcul, htmlCartesCalcul, type ReglagesCalcul } from "./jeuxMaths";
+import { REGLAGES_RECTANGLES, STYLE_RECTANGLES, htmlRectangles, type ReglagesRectangles } from "./multiplicationEnRectangles";
 
 export const ID_MULTIPLICATION_CE2 = "technique-multiplication-ce2";
 
@@ -115,7 +115,7 @@ export const DEMARCHE_MULTIPLICATION_CE2: Demarche = {
       sauront("calculer le produit d'un nombre à deux chiffres par un nombre à deux chiffres inférieur à 20 en le décomposant — 26 × 15, c'est 26 × 10 plus 26 × 5 —, et le poser en colonnes : une ligne pour les unités, une pour la dizaine, puis leur somme."), 55, [
         ph(LM, "10 min", "Toute la classe, à l'oral : compter de 3 en 3 et de 5 en 5, en avançant ou en reculant — à partir de 60, par exemple ; dans des séries de cinq nombres affichées au tableau, trouver ceux qui ne sont pas dans la table de 4, de 7… Chacun écrit sa réponse sur l'ardoise et la lève au signal. Puis deux ou trois multiplications posées d'un nombre à deux chiffres par un chiffre, pour réactiver la technique.",
           "Réactive les tables dont la séance aura besoin. Aide : la table de Pythagore affichée, ou la calculatrice, pour qui ne sait pas encore ses tables."),
-        ph("Phase 2 – Individuel puis petits groupes", "10 min", "Le problème, projeté au tableau et sur une fiche pour chacun, où les choux sont dessinés en rectangle : « Un maraîcher a fait 26 rangées de choux, avec 15 choux dans chaque rangée. Combien de choux y a-t-il dans son champ ? » Chacun cherche seul, cinq minutes ; puis, par groupes de quatre, on compare ses résultats, on se met d'accord, et l'on écrit sa démarche et sa réponse sur une feuille A3.",
+        ph("Phase 2 – Individuel puis petits groupes", "10 min", "Le problème, projeté au tableau et sur la feuille « Les choux du maraîcher », où les choux sont dessinés en rectangle : « Un maraîcher a fait 26 rangées de choux, avec 15 choux dans chaque rangée. Combien de choux y a-t-il dans son champ ? » Chacun cherche seul, cinq minutes ; puis, par groupes de quatre, on compare ses résultats, on se met d'accord, et l'on écrit sa démarche et sa réponse sur une feuille A3.",
           "Lit l'énoncé, le fait lire, le reformule, questionne pour s'assurer qu'il est compris ; puis observe, commente, aide. Procédures attendues : compter un à un ; entourer des paquets de dix choux ; ajouter 26 + 26 + … ; écrire 26 × 15 ou 15 × 26, mais se tromper en calculant, en ligne ou en colonnes ; écrire 26 × 15 = (26 × 10) + (26 × 5), ou une autre décomposition."),
         ph("Phase 3 – Groupes", "10 min", "Chaque groupe présente sa réponse et sa façon de faire ; on en débat. Puis l'enseignant montre sa résolution : il coupe le rectangle de choux en deux blocs, 26 × 10 et 26 × 5, et écrit 26 × 15 = 26 × 10 + 26 × 5. On calcule 5 × 26 de plusieurs façons — de tête, en ligne, posé, à la calculatrice — et 10 × 26 : c'est 26 × 10, 26 paquets de dix ou 26 dizaines, 260. Une première disposition en colonnes : 130, puis 260, puis la somme, 390.",
           "Mène le débat : valide ou invalide les résultats, demande les avantages et les inconvénients de chaque procédure. Montre le découpage sur l'image projetée."),
@@ -124,7 +124,7 @@ export const DEMARCHE_MULTIPLICATION_CE2: Demarche = {
         // Six phases au plus dans l'éditeur : les phases 5 (binômes) et 6 (groupes) du manuel, de cinq minutes chacune, n'en font
         // qu'une ici — durées additionnées, descriptions et postures mises bout à bout.
         ph("Phases 5 et 6 – Binômes, puis groupes", "10 min", "Par deux, poser et calculer 34 × 16 dans un quadrillage : 34 × 6 = 204, 34 × 10 = 340, 544. On relève les erreurs ; on dit le rôle de la retenue, et sa place. "
-          + "Puis, en groupes, une nouvelle recherche : trouver par le calcul le nombre de carreaux d'un quadrillage de 34 × 23. Le nouvel obstacle est nommé : multiplier par 20 — on multiplie par 2, puis par 10. Un élève vient faire l'opération au tableau, avec la procédure de son choix : 34 × 3 = 102, 34 × 20 = 680, 782.",
+          + "Puis, en groupes, une nouvelle recherche : trouver par le calcul le nombre de carreaux d'un quadrillage de 34 × 23, la feuille « Un quadrillage de 34 × 23 carreaux ». Le nouvel obstacle est nommé : multiplier par 20 — on multiplie par 2, puis par 10. Un élève vient faire l'opération au tableau, avec la procédure de son choix : 34 × 3 = 102, 34 × 20 = 680, 782.",
           "Fait expliquer les erreurs : la retenue oubliée, ajoutée avant de multiplier, ou gardée pour la seconde ligne ; le zéro oublié sur la ligne de 34 × 10. "
           + "Puis nomme vite le nouvel obstacle et aide à réinvestir le produit par un multiple de 10 : 34 × 2 = 68, puis × 10, 680. Explicite ensuite l'algorithme d'un nombre à deux chiffres par un nombre à deux chiffres."),
         ph("Phase 7 – Individuel", "5 min", "Seul, sans aide : les deux multiplications de la feuille « Multiplications posées — par un nombre à deux chiffres ». Elles serviront de première évaluation.",
@@ -133,7 +133,7 @@ export const DEMARCHE_MULTIPLICATION_CE2: Demarche = {
     seance("Multiplier par un nombre plus grand que 20",
       sauront("poser et calculer la multiplication d'un nombre à deux chiffres par un nombre à deux chiffres plus grand que 20 : une ligne pour les unités, une ligne pour les dizaines, qui commence par un zéro, chacune avec ses retenues."), 50, [
         ph(LM, "10 min", `Un nombre à un chiffre fois des dizaines entières — « 4 × 30 » : 4 fois 3 dizaines, 12 dizaines, 120. ${ROUTINE}`, CHAQUE_JOUR),
-        ph(T1, "10 min", "Par groupe, un rectangle de 54 sur 36 carreaux, découpé dans du papier quadrillé : « Combien de carreaux ? » On le coupe le long des lignes en quatre morceaux — 50 × 30, 4 × 30, 50 × 6, 4 × 6 —, on calcule chacun, puis la somme : 1 500 + 120 + 300 + 24 = 1 944.",
+        ph(T1, "10 min", "Par groupe, un rectangle de 54 sur 36 carreaux, la feuille « Un rectangle de 54 × 36 carreaux, à découper » : « Combien de carreaux ? » On le coupe le long des lignes en quatre morceaux — 50 × 30, 4 × 30, 50 × 6, 4 × 6 —, on calcule chacun, puis la somme : 1 500 + 120 + 300 + 24 = 1 944.",
           "Les produits de dizaines se calculent avec les propriétés : 50 × 30, c'est 50 × 3, puis × 10 ; 4 × 30, c'est aussi 30 × 4. Le quadrillage garde le sens de chaque morceau."),
         ph(T2, "20 min", "Des morceaux à la multiplication posée : on les réunit deux à deux — 54 × 6 = 324 et 54 × 30 = 1 620 —, puis on pose 54 × 36 : une ligne pour 54 × 6, une ligne pour 54 × 30, qui commence par un zéro, et la somme, 1 944. On pose d'abord avec l'enseignant, pas à pas, puis seul : la feuille « Multiplications posées — par deux chiffres, avec retenues ».",
           "Guide pas à pas, puis de moins en moins, une fois le sens compris. Erreurs attendues : le zéro oublié au début de la seconde ligne ; une retenue de la première ligne reprise dans la seconde ; une retenue ajoutée avant de multiplier."),
@@ -157,7 +157,7 @@ export const DEMARCHE_MULTIPLICATION_CE2: Demarche = {
         ph(LM, "10 min", `Les décompositions de 60 en produits — « 60, c'est 4 fois combien ? », « 60, c'est 6 fois combien ? » ${ROUTINE}`, CHAQUE_JOUR),
         ph("Évaluation", "30 min", "Seul : les feuilles « Multiplications à poser — évaluation, par un chiffre » et « Multiplications à poser — évaluation, par deux chiffres », puis « Problèmes — évaluation » : lire, écrire la multiplication, la poser, répondre par une phrase.",
           "Observe sans aider : qui oublie une retenue ou l'ajoute avant de multiplier, qui oublie le zéro de la seconde ligne, qui se trompe dans les tables, qui additionne au lieu de multiplier."),
-        ph("Remédiations", "10 min", "Pour qui en a besoin, on revient au sens : les paquets de barres et de cubes, le quadrillage découpé, le calcul en ligne, puis le calcul posé, guidé pas à pas ; la table de Pythagore pour les tables. Les autres : de nouveaux problèmes. Ensuite, un entraînement court et régulier toute l'année : la technique sera reprise au début du cycle 3, puis avec les nombres décimaux.",
+        ph("Remédiations", "10 min", "Pour qui en a besoin, on revient au sens : les paquets de barres et de cubes, le quadrillage découpé, le calcul en ligne, puis le calcul posé, guidé pas à pas ; la table de Pythagore pour les tables, la feuille « La table de Pythagore ». Les autres : de nouveaux problèmes. Ensuite, un entraînement court et régulier toute l'année : la technique sera reprise au début du cycle 3, puis avec les nombres décimaux.",
           "Reprend avec le matériel ce que l'évaluation a montré."),
       ]),
   ],
@@ -215,14 +215,27 @@ const problemes = (seance: number, titre: string, nombre: number, parts: [number
   }),
 });
 
+/** Une feuille de l'atelier « Multiplier en rectangles » : il la refait, avec les mêmes réglages et le même tirage. */
+const rectangles = (seance: number, titre: string, r: Partial<ReglagesRectangles>): FeuilleAFabriquer => {
+  const reglages: ReglagesRectangles = { ...REGLAGES_RECTANGLES, ...r, titre };
+  return {
+    seance, atelier: "rectangles", titre,
+    fabriquer: (g) => ({ html: htmlRectangles(reglages, g), style: STYLE_FEUILLE + STYLE_RECTANGLES, refaire: { rectangles: reglages } }),
+  };
+};
+
 const FEUILLES: FeuilleAFabriquer[] = [
   ...CALCUL_MENTAL.map(([objectif, tables], s) => martiniere(s, objectif, tables)),
   // Beaucoup de petits paquets — 14 boîtes de 6 crayons — : l'ordre des facteurs compte pour calculer, pas pour le résultat.
   problemes(0, "Problèmes — des paquets égaux", 4, [11, 19], [2, 9]),
   posees(1, "Multiplications posées — deux chiffres par un chiffre", { chiffres: 2, chiffresDuSecond: 1, retenue: "melange", combien: 6 }),
   posees(2, "Multiplications posées — trois chiffres par un chiffre", { chiffres: 3, chiffresDuSecond: 1, retenue: "avec", combien: 6 }),
-  // La séance du manuel : les deux multiplications de la fin, sans aide.
-  posees(3, "Multiplications posées — par un nombre à deux chiffres", { chiffres: 2, chiffresDuSecond: 2, retenue: "avec", combien: 2 }),
+  // La séance du manuel : les choux dessinés en rectangle, le quadrillage de 34 × 23, puis les deux multiplications de la fin, sans aide —
+  // un multiplicateur inférieur à 20.
+  rectangles(3, "Les choux du maraîcher", { exercice: "objets", rangees: 26, parRangee: 15, objets: "choux" }),
+  rectangles(3, "Un quadrillage de 34 × 23 carreaux", { exercice: "quadrillage", rangees: 23, parRangee: 34, morceaux: 2 }),
+  posees(3, "Multiplications posées — par un nombre à deux chiffres", { chiffres: 2, chiffresDuSecond: 2, moinsDe20: true, retenue: "avec", combien: 2 }),
+  rectangles(4, "Un rectangle de 54 × 36 carreaux, à découper", { exercice: "quadrillage", rangees: 36, parRangee: 54, morceaux: 4, aDecouper: true }),
   posees(4, "Multiplications posées — par deux chiffres, avec retenues", { chiffres: 2, chiffresDuSecond: 2, retenue: "avec", combien: 6 }),
   posees(5, "Multiplications à poser", { chiffres: 2, chiffresDuSecond: 2, retenue: "avec", combien: 6, posees: false }),
   cartes(5, "Cartes des tables de 6 à 9", [6, 7, 8, 9]),
@@ -231,6 +244,7 @@ const FEUILLES: FeuilleAFabriquer[] = [
   posees(6, "Multiplications à poser — évaluation, par un chiffre", { chiffres: 3, chiffresDuSecond: 1, retenue: "avec", combien: 3, posees: false }),
   posees(6, "Multiplications à poser — évaluation, par deux chiffres", { chiffres: 2, chiffresDuSecond: 2, retenue: "avec", combien: 3, posees: false }),
   problemes(6, "Problèmes — évaluation", 3, [11, 39], [11, 19], 1),
+  rectangles(6, "La table de Pythagore", { exercice: "pythagore", pythagore: "remplie" }),
 ];
 
 /** Ce qu'il faut préparer, séance par séance ; les feuilles sont nommées après, sauf la fiche du calcul mental. */
@@ -238,10 +252,10 @@ const MATERIEL = [
   "Les ardoises ; des jetons, de quoi faire trois rangées de six, et six sacs de trois cubes ; la file numérique ; quelques billets factices ; une affiche pour ce qu'on retient",
   "Les ardoises ; par groupe, six paquets pareils de 3 barres de dix et 9 cubes ; les tables de multiplication affichées ; une affiche pour la technique",
   "Les ardoises ; les plaques de cent, les barres de dix et les cubes — de quoi faire quatre paquets de 136 —, à disposition",
-  "Les ardoises ; le tableau interactif, pour projeter l'énoncé, le rectangle de choux et le quadrillage de 34 × 23 carreaux ; pour chacun, la fiche de l'énoncé "
-    + "avec les 26 rangées de 15 choux dessinées, à préparer ; une feuille A3 par groupe de quatre ; du papier quadrillé pour poser 34 × 16 ; "
+  "Les ardoises ; le tableau interactif, pour projeter l'énoncé, le rectangle de choux et le quadrillage de 34 × 23 carreaux ; "
+    + "une feuille A3 par groupe de quatre ; du papier quadrillé pour poser 34 × 16 ; "
     + "la table de Pythagore affichée et des calculatrices, pour qui en a besoin",
-  "Les ardoises ; par groupe, un rectangle de 54 sur 36 carreaux découpé dans du papier quadrillé, et des ciseaux ; l'affiche de la technique",
+  "Les ardoises ; par groupe, des ciseaux ; l'affiche de la technique",
   "Les ardoises ; des multiplications fausses prises dans les cahiers, pour le visualiseur ; la table de Pythagore ; des calculatrices",
   "Les ardoises ; pour la remédiation, les barres et les cubes, du papier quadrillé, la table de Pythagore",
 ];
