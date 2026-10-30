@@ -24,10 +24,9 @@
 // gardent leur structure et leurs nombres, sans prénom.
 //
 // Ses feuilles viennent des ateliers « Calcul mental », « Problèmes
-// partie-tout », « Les maisons du tri » et « La monnaie », à leurs réglages :
-// chacune se rouvre dans le sien. La fiche des trois problèmes de la
-// rencontre, sa version A3 et les outils d'aide de la séance 4 s'écrivent à
-// la main : aucun atelier ne les fait.
+// partie-tout », « Problèmes et outils d'aide » — la fiche des trois problèmes
+// de la rencontre et ses outils d'aide —, « Les maisons du tri » et « La
+// monnaie », à leurs réglages : chacune se rouvre dans le sien.
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 import type { FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
@@ -39,6 +38,7 @@ import {
   PRESENTATION_COMPLETE, STYLE_FEUILLE as STYLE_PROBLEMES, feuilleProblemes, genererPartieTout, type ContenuSchema, type InconnuePartieTout,
 } from "./problemesBarres";
 import { REGLAGES_TRI, STYLE_TRI, htmlTri, type ReglagesTri } from "./triEtiquettes";
+import { PROBLEMES_DE_LA_RENCONTRE, STYLE_PROBLEMES_AIDES, htmlProblemesAides, type ReglagesProblemesAides } from "./problemesEtOutilsDAide";
 
 export const ID_PROBLEMES_ADDITIFS_CE1 = "compositions-etats-ce1";
 
@@ -111,9 +111,9 @@ export const DEMARCHE_PROBLEMES_ADDITIFS_CE1: Demarche = {
       sauront("résoudre des problèmes de composition d'états avec une procédure experte : une addition quand on cherche ce qu'il y a en tout, une soustraction — ou une addition à trou — quand on cherche ce qu'il manque."), 50, [
         ph(LM, "10 min", "Chacun pour soi, une scène que la classe regarde sans toucher : l'enseignant a une boîte et des jetons. Il y met 12 jetons et en ajoute 5 : combien maintenant ? Il en retire 3 et il en reste 7 : combien y en avait-il avant ? Il y en a 15, il en ajoute qu'il tient cachés dans sa main, et il y en a 20 : combien en a-t-il ajouté ? Après un court temps de réflexion, chacun écrit sa réponse sur l'ardoise ou sur une feuille ; on valide aussitôt.",
           "Fait varier ce qu'on cherche : la fin, le début, ce qu'on a ajouté. Même quand la scène se voit, des erreurs : la phrase mal comprise, une situation mal représentée, un calcul faux — le surcomptage surtout. Aide : rejouer la scène, rouvrir la boîte et compter."),
-        ph("Phase 2 – Individuel", "5 min", "Recherche. L'enseignant annonce le travail et rappelle la rencontre sportive qui se prépare avec la classe de CE1 invitée. Chacun reçoit la fiche des trois problèmes, écrits aussi au tableau : 1. Notre classe a 24 élèves, la classe invitée en a 18. Combien d'enfants seront à la rencontre ? 2. Le car de la classe invitée a 30 places. Une fois ses élèves assis, combien de places resteront libres ? 3. L'école a 15 ballons ; il en faut 25 pour les jeux. Combien de ballons faut-il demander aux invités d'apporter ? Puis chacun, seul quelques minutes, relit les problèmes et commence à chercher.",
+        ph("Phase 2 – Individuel", "5 min", "Recherche. L'enseignant annonce le travail et rappelle la rencontre sportive qui se prépare avec la classe de CE1 invitée. Chacun reçoit la feuille « La rencontre sportive : trois problèmes », écrits aussi au tableau : 1. Notre classe a 24 élèves, la classe invitée en a 18. Combien d'enfants seront à la rencontre ? 2. Le car de la classe invitée a 30 places. Une fois ses élèves assis, combien de places resteront libres ? 3. L'école a 15 ballons ; il en faut 25 pour les jeux. Combien de ballons faut-il demander aux invités d'apporter ? Puis chacun, seul quelques minutes, relit les problèmes et commence à chercher.",
           "Lit les énoncés à voix haute, puis en fait lire par quelques élèves ; explique un mot, pose des questions, répond à celles des élèves. Ensuite, observe."),
-        ph("Phase 3 – Petits groupes", "10 min", "Recherche, en groupes homogènes de quatre. La consigne, écrite au tableau : on compare ses résultats, on se met d'accord sur les réponses, on les écrit sur la fiche A3 du groupe — les trois énoncés, un cadre chacun — et, dans chaque cadre, on explique comment on a trouvé. Qui en a besoin reçoit un outil d'aide : pour le premier problème, deux ronds dans un même cadre — notre classe, 24 élèves ; nos amis, 18 élèves — et une flèche vers la case « ? élèves » ; pour les plus fragiles, les mêmes ronds remplis de croix ; pour le car, une bande de 30 places en deux parties, les places occupées et les places libres ; pour les ballons, un rond de 15 ballons dessinés et un rond vide, qui font ensemble 25 ballons. Des jetons pour qui veut manipuler.",
+        ph("Phase 3 – Petits groupes", "10 min", "Recherche, en groupes homogènes de quatre. La consigne, écrite au tableau : on compare ses résultats, on se met d'accord sur les réponses, on les écrit sur la fiche A3 du groupe — la même feuille, imprimée en A3 : les trois énoncés, un cadre chacun — et, dans chaque cadre, on explique comment on a trouvé. Qui en a besoin reçoit un outil d'aide, découpé dans la même feuille : pour le premier problème, deux ronds dans un même cadre — notre classe, 24 élèves ; nos amis, 18 élèves — et une flèche vers la case « ? élèves » ; pour les plus fragiles, les mêmes ronds remplis de croix ; pour le car, une bande de 30 places en deux parties, les places occupées et les places libres ; pour les ballons, un rond de 15 ballons dessinés et un rond vide, qui font ensemble 25 ballons. Des jetons pour qui veut manipuler.",
           "Des groupes homogènes, pour qu'aucun élève sûr de lui n'impose ses résultats ni sa façon de faire ; une attention particulière aux groupes fragiles. Procédures attendues : dessiner les 24 élèves, puis les 18, et tout compter ; pour le car et les ballons, dessiner la première partie, compléter jusqu'au tout et compter ce qu'on a ajouté — une procédure de grande section, où l'on se trompe en dessinant ou en comptant, mais un pas vers l'abstraction ; 24 + 18 ; 18 + ? = 30 et 15 + ? = 25 ; 30 – 18 et 25 – 15. Une procédure juste n'empêche pas une erreur de calcul : la retenue de 24 + 18 se reprend aussi."),
         ph("Phase 4 – Collectif", "10 min", "Mise en commun : chaque groupe présente ses réponses et sa façon de faire, par la voix d'un rapporteur. On débat des réponses et des procédures, et l'on compare : telle façon de faire va-t-elle vite ? sans erreur ? Il y aura 42 enfants, 12 places libres, et il faut 10 ballons de plus.",
           "Mène le débat. Choisit parfois le rapporteur parmi les élèves qui ont du mal à dire ce qu'ils font, ou à comprendre les procédures. Revient sans cesse à la même question : quelle façon de faire va le plus vite, et le plus sûrement ?"),
@@ -207,12 +207,20 @@ const monnaie = (seance: number, titre: string, r: Partial<ReglagesMonnaie>): Fe
   };
 };
 
+/** La fiche des trois problèmes de la rencontre et leurs outils d'aide, dans l'atelier « Problèmes et outils d'aide ». */
+const RENCONTRE: ReglagesProblemesAides = { problemes: PROBLEMES_DE_LA_RENCONTRE, aides: ["ronds", "croix", "bande"], titre: "La rencontre sportive : trois problèmes" };
+const rencontre = (seance: number): FeuilleAFabriquer => ({
+  seance, atelier: "problemesAides", titre: RENCONTRE.titre!,
+  fabriquer: () => ({ html: htmlProblemesAides(RENCONTRE), style: STYLE_FEUILLE + STYLE_PROBLEMES_AIDES, refaire: { problemesAides: RENCONTRE } }),
+});
+
 const FEUILLES: FeuilleAFabriquer[] = [
   ...CALCUL_MENTAL.map((objectif, s) => martiniere(s, objectif)),
   problemes(0, "Problèmes — combien en tout ?", "tout", 20, "sans"),
   problemes(1, "Problèmes — le tout et son schéma", "tout", 100, "vide"),
   problemes(2, "Problèmes — l'autre partie", "partie", 20, "sans"),
-  // La séance du manuel : l'entraînement de la phase 6, qui sert de première évaluation.
+  // La séance du manuel : la fiche de la rencontre et ses outils d'aide ; l'entraînement de la phase 6, qui sert de première évaluation.
+  rencontre(3),
   problemes(3, "Problèmes — en tout, ou ce qu'il manque", "melange", 100, "sans"),
   tri(4),
   monnaie(4, "Rendre la monnaie", { exercice: "rendre", jusqua: 20, combien: 4 }),
@@ -226,8 +234,8 @@ const MATERIEL = [
   "Les ardoises ; une boîte et des jetons ; deux bacs de vrais ballons, ou d'autres objets de la classe à réunir ; par binôme, deux boîtes de jetons, une rouge et une bleue",
   "Les ardoises ; une boîte et des jetons ; deux sacs de chasubles de deux couleurs, ou d'autres objets de la classe ; une affiche pour les trois façons de représenter : le dessin, le trait, le schéma",
   "Les ardoises ; une boîte et des jetons ; par binôme, vingt jetons et un gobelet pour en cacher une partie",
-  "Les ardoises ; une boîte et des jetons ; le tableau blanc interactif ; la fiche des trois problèmes de la rencontre pour chacun et, par groupe, sa version A3 avec un cadre par problème — à écrire à la main : aucun atelier ne la fait ; "
-    + "les outils d'aide préparés — les schémas des trois problèmes, avec des croix pour les plus fragiles — ; des jetons et du matériel figuratif à manipuler ; deux grandes feuilles pour les affiches de référence",
+  "Les ardoises ; une boîte et des jetons ; le tableau blanc interactif ; par groupe, la fiche de la rencontre imprimée en A3 ; "
+    + "les outils d'aide découpés ; des jetons et du matériel figuratif à manipuler ; deux grandes feuilles pour les affiches de référence",
   "Les ardoises ; une boîte et des jetons ; les affiches de référence ; des ciseaux et de la colle ; la monnaie fictive, pièces et billets",
   "Les ardoises ; une boîte et des jetons ; les affiches de référence ; pour la remédiation, les objets des problèmes, des barres de dix et des cubes",
 ];
