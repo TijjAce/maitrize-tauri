@@ -1201,6 +1201,12 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .stf-puce-suggestion { display: block; margin-bottom: 3px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); }
 .stf-puce-nom { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; font-size: 12.5px; font-weight: 600; line-height: 1.3; }
 .stf-puce-meta { display: block; margin-top: 3px; font-size: 11px; color: var(--text-2); }
+/* Une séquence travaillée en profondeur : le logo de Maitrize, en haut à droite (sequencesApprofondies.ts). */
+.stf-puce.approfondie { position: relative; }
+.stf-puce.approfondie .stf-puce-nom, .stf-puce.approfondie .stf-puce-suggestion { padding-right: 20px; }
+.stf-puce-logo { position: absolute; top: 6px; right: 6px; width: 17px; height: 17px; border-radius: 5px; box-shadow: 0 0 0 1px var(--border); }
+.stf-logo-titre { flex: none; width: 20px; height: 20px; border-radius: 6px; box-shadow: 0 0 0 1px var(--border); }
+.stf-logo-aide { width: 15px; height: 15px; border-radius: 4px; vertical-align: -3px; }
 .stf-ligne-detail > td { padding: 4px 0 18px; }
 .stf-detail { margin: 12px 0 18px; scroll-margin-top: 125px; }
 .stf-option { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 0 0 10px; cursor: pointer; }
