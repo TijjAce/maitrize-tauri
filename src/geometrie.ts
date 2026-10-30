@@ -19,7 +19,7 @@ import { hasard, melanger } from "./hasard";
 
 export type Classe = "CP" | "CE1" | "CE2";
 export type ExerciceGeometrie =
-  | "reproduire" | "completer" | "symetrie" | "axes" | "trier" | "alignements" | "anglesDroits" | "angles" | "construire" | "cercles";
+  | "reproduire" | "completer" | "symetrie" | "symetriques" | "axes" | "trier" | "alignements" | "anglesDroits" | "angles" | "construire" | "cercles";
 
 export const EXERCICES_GEOMETRIE: { id: ExerciceGeometrie; libelle: string }[] = [
   { id: "reproduire", libelle: "Reproduire sur quadrillage ou papier pointé" },
@@ -32,6 +32,7 @@ export const EXERCICES_GEOMETRIE: { id: ExerciceGeometrie; libelle: string }[] =
   { id: "construire", libelle: "Programmes de construction (CE2)" },
   { id: "axes", libelle: "Les axes de symétrie (CE2)" },
   { id: "symetrie", libelle: "Compléter par symétrie (CE2)" },
+  { id: "symetriques", libelle: "Symétriques ou non ? Des constructions justes et fausses (CE2)" },
 ];
 
 /** Le niveau des figures à reproduire : côtés sur les lignes, en diagonale des carreaux, ou d'un nœud quelconque à l'autre. */
@@ -43,8 +44,10 @@ export interface ReglagesGeometrie {
   /** Le support : papier quadrillé, ou papier pointé. */
   support: "quadrille" | "pointe";
   niveau: NiveauReproduction;
-  /** Compléter sur papier uni, la figure inclinée, plutôt que sur quadrillage. */
+  /** Compléter sur papier uni — la figure inclinée, ou la moitié de figure à compléter par symétrie — plutôt que sur quadrillage. */
   uni: boolean;
+  /** Compléter par symétrie : l'axe en diagonale des carreaux, plutôt que le long d'une ligne du quadrillage. */
+  diagonale?: boolean;
   /**
    * Reproduire avec un repère orthonormé, sur le modèle comme sur la grille de
    * l'élève : en différenciation, chaque sommet se lit sur les deux axes et se
@@ -279,23 +282,115 @@ export const MOITIES: { nom: string; traits: P[][] }[] = [
   { nom: "une étoile", traits: [[[0, 0], [1, 2], [3, 2], [2, 4], [3, 6], [0, 5]]] },
 ];
 
+/** Une feuille blanche de la taille d'un quadrillage : on y dessine pareil, sans lignes ni points — pour plier, piquer, décalquer. */
+function blancSvg(cols: number, lignes: number, pas: number): string {
+  const w = cols * pas + 2, h = lignes * pas + 2;
+  return `<svg class="ge-grille" viewBox="0 0 ${f2(w)} ${f2(h)}" width="${f2(w)}mm" height="${f2(h)}mm"><g transform="translate(1 1)"></g></svg>`;
+}
+
 function feuilleSymetrie(r: ReglagesGeometrie, graine: number): string {
   const alea = hasard(graine);
-  const pas = 6;
+  const pas = r.diagonale ? 5 : 6;
   const liste = melanger(alea, MOITIES).slice(0, Math.max(1, Math.min(4, r.combien))).map((m) => ({ ...m, horizontal: alea() < 0.35 }));
-  // L'axe au milieu d'un quadrillage de 10 × 8 carreaux (vertical) ou de 8 × 10 (horizontal) ; la moitié à gauche, ou en haut.
+  // Le support : le quadrillage ou le papier pointé ; sur papier uni, rien, et l'on plie, on pique ou l'on décalque.
+  const fond = (cols: number, lignes: number) => (r.uni ? blancSvg(cols, lignes, pas) : grilleSvg(cols, lignes, pas, r.support, ""));
   const dessin = (m: (typeof liste)[number], entiere: boolean) => {
+    if (r.diagonale) {
+      // L'axe en diagonale des carreaux, d'un coin à l'autre d'un quadrillage de 12 × 12 : chaque point est à autant de diagonales de
+      // carreau de l'axe que son symétrique, de l'autre côté. Le point (d, h) de la moitié — d diagonales de l'axe, h le long de l'axe —
+      // va en (3 + h + d, 3 + h − d) ; son symétrique, en (3 + h − d, 3 + h + d).
+      const moitie = m.traits.map((t) => ({ points: t.map(([d, h]) => [3 + h + d, 3 + h - d] as P), ferme: false }));
+      const autre = m.traits.map((t) => ({ points: t.map(([d, h]) => [3 + h - d, 3 + h + d] as P), ferme: false }));
+      const axe = `<line x1="0" y1="0" x2="${12 * pas}" y2="${12 * pas}" stroke="${ROUGE}" stroke-width="0.8" stroke-dasharray="3 2"/>`;
+      return fond(12, 12).replace("</g></svg>", `${axe}${traits(moitie, pas)}${entiere ? traits(autre, pas, BLEU) : ""}</g></svg>`);
+    }
     const vers = (d: number, h: number, cote: 1 | -1): P => (m.horizontal ? [1 + h, 5 + cote * d] : [5 + cote * d, 1 + h]);
     const moitie = m.traits.map((t) => ({ points: t.map(([d, h]) => vers(d, h, -1)), ferme: false }));
     const autre = m.traits.map((t) => ({ points: t.map(([d, h]) => vers(d, h, 1)), ferme: false }));
     const axe = m.horizontal ? `<line x1="0" y1="${5 * pas}" x2="${8 * pas}" y2="${5 * pas}" stroke="${ROUGE}" stroke-width="0.8" stroke-dasharray="3 2"/>`
       : `<line x1="${5 * pas}" y1="0" x2="${5 * pas}" y2="${8 * pas}" stroke="${ROUGE}" stroke-width="0.8" stroke-dasharray="3 2"/>`;
-    return (m.horizontal ? grilleSvg(8, 10, pas, r.support, "") : grilleSvg(10, 8, pas, r.support, "")).replace("</g></svg>", `${axe}${traits(moitie, pas)}${entiere ? traits(autre, pas, BLEU) : ""}</g></svg>`);
+    return (m.horizontal ? fond(8, 10) : fond(10, 8)).replace("</g></svg>", `${axe}${traits(moitie, pas)}${entiere ? traits(autre, pas, BLEU) : ""}</g></svg>`);
   };
   const carte = (m: (typeof liste)[number], i: number, entiere: boolean) => `<div class="ge-carte"><b class="ge-lettre">${LETTRES[i]}</b>${dessin(m, entiere)}</div>`;
-  return `<div class="page">${entete("Compléter par symétrie", "La droite rouge est l'axe de symétrie. Complète chaque figure pour qu'elle soit symétrique : chaque point a son symétrique de l'autre côté, à la même distance de l'axe. Vérifie en pliant la feuille sur l'axe.")}
+  const titre = r.uni ? "Compléter par symétrie sur papier uni" : r.diagonale ? "Compléter par symétrie, l'axe en diagonale" : "Compléter par symétrie";
+  const consigne = r.uni
+    ? "La droite rouge est l'axe de symétrie. Je complète chaque figure : je plie la feuille sur l'axe et je pique chaque sommet, ou je décalque la moitié et je retourne le calque, l'axe sur l'axe. Je relie les points à la règle. Je vérifie en pliant la feuille sur l'axe."
+    : r.diagonale
+      ? "La droite rouge est l'axe de symétrie : elle coupe les carreaux en diagonale. Je complète chaque figure : de chaque point, je compte les diagonales de carreau jusqu'à l'axe, puis j'en compte autant de l'autre côté. Je relie les points à la règle. Je vérifie avec un calque que je retourne."
+      : "La droite rouge est l'axe de symétrie. Complète chaque figure pour qu'elle soit symétrique : chaque point a son symétrique de l'autre côté, à la même distance de l'axe. Vérifie en pliant la feuille sur l'axe.";
+  return `<div class="page">${entete(titre, consigne)}
     <div class="ge-cartes">${liste.map((m, i) => carte(m, i, false)).join("")}</div></div>
-    <div class="page corrige"><div class="titre">Compléter par symétrie — corrigé</div><div class="ge-cartes">${liste.map((m, i) => carte(m, i, true)).join("")}</div></div>`;
+    <div class="page corrige"><div class="titre">${titre} — corrigé</div><div class="ge-cartes">${liste.map((m, i) => carte(m, i, true)).join("")}</div></div>`;
+}
+
+// ── Symétriques ou non ? (CE2) ────────────────────────────────────────────
+
+/**
+ * Des figures sans aucun axe, ni centre de symétrie : glissée ou tournée,
+ * leur image ne se confond jamais avec leur symétrique. Leurs sommets sont
+ * sur les nœuds, dans une boîte de 4 × 4 carreaux.
+ */
+const SANS_SYMETRIE: P[][] = [
+  [[0, 0], [1, 0], [1, 3], [3, 3], [3, 4], [0, 4]],
+  [[0, 0], [3, 1], [1, 2], [1, 4], [0, 4]],
+  [[0, 0], [2, 0], [3, 3], [0, 2]],
+  [[0, 0], [3, 1], [2, 4], [0, 2]],
+  [[0, 0], [4, 1], [1, 3]],
+  [[0, 0], [2, 0], [3, 1], [2, 2], [1, 2], [1, 4], [0, 4]],
+  [[0, 1], [2, 0], [4, 2], [3, 3], [1, 3]],
+];
+
+type PaireSymetrique = "juste" | "glissee" | "tournee" | "distance" | "sommet";
+const CE_QUI_NE_VA_PAS: Record<PaireSymetrique, string> = {
+  juste: "Symétriques : la droite est un axe de symétrie.",
+  glissee: "Non : la figure a glissé, elle n'a pas été retournée.",
+  tournee: "Non : la figure a tourné, elle n'a pas été retournée.",
+  distance: "Non : la figure n'est pas à la même distance de l'axe.",
+  sommet: "Non : un sommet n'est pas à la même distance de l'axe que le sien.",
+};
+
+/**
+ * Des paires de figures de part et d'autre d'un axe tracé, comme la séance de
+ * la symétrie du manuel du CRPE de l'enseignant : certaines symétriques,
+ * d'autres non — la figure glissée ou tournée au lieu d'être retournée, mal
+ * placée, un sommet mal reporté. Des figures loin de l'axe, et d'autres qui le
+ * touchent.
+ */
+function feuilleSymetriques(r: ReglagesGeometrie, graine: number): string {
+  const alea = hasard(graine);
+  const pas = 5, axe = 7;
+  const combien = Math.max(2, Math.min(8, r.combien));
+  // Au moins une paire juste, et au moins une fausse ; les erreurs, de toutes les sortes.
+  const fausses = melanger(alea, ["glissee", "tournee", "distance", "sommet", "glissee", "tournee"] as PaireSymetrique[]);
+  const justes = Math.max(1, Math.min(combien - 1, Math.round(combien * 0.4)));
+  const sortes = melanger(alea, [...Array.from({ length: justes }, () => "juste" as PaireSymetrique), ...fausses.slice(0, combien - justes)]);
+  const paires = sortes.map((sorte) => {
+    const forme = SANS_SYMETRIE[entre(alea, 0, SANS_SYMETRIE.length - 1)];
+    const w = Math.max(...forme.map((p) => p[0])), h = Math.max(...forme.map((p) => p[1]));
+    const d = entre(alea, 0, 2), y0 = entre(alea, 1, 7 - h);
+    const gauche: P[] = forme.map(([x, y]) => [axe - d - w + x, y0 + y]);
+    const miroir = gauche.map(([x, y]) => [2 * axe - x, y] as P);
+    const image: P[] = sorte === "juste" ? miroir
+      : sorte === "glissee" ? gauche.map(([x, y]) => [x + d * 2 + w, y] as P)
+        : sorte === "tournee" ? miroir.map(([x, y]) => [x, 2 * y0 + h - y] as P)
+          : sorte === "distance" ? miroir.map(([x, y]) => [x + 1, y] as P)
+            : miroir.map(([x, y], k) => (k === 0 ? [x + 1, y] as P : [x, y] as P));
+    // La figure d'origine à gauche, ou à droite : on retourne toute la carte.
+    const aDroite = alea() < 0.5;
+    const placer = (pts: P[]) => (aDroite ? pts.map(([x, y]) => [2 * axe - x, y] as P) : pts);
+    return { sorte, figures: [placer(gauche), placer(image)] };
+  });
+  const carte = (p: (typeof paires)[number], i: number, corrige: boolean) => {
+    const couleurAxe = corrige ? (p.sorte === "juste" ? ROUGE : GRIS) : NOIR;
+    const ligneAxe = `<line x1="${axe * pas}" y1="0" x2="${axe * pas}" y2="${8 * pas}" stroke="${couleurAxe}" stroke-width="${corrige && p.sorte === "juste" ? 0.9 : 0.6}" stroke-dasharray="3 2"/>`;
+    const dessin = grilleSvg(14, 8, pas, r.support, "").replace("</g></svg>", `${ligneAxe}${traits([poly(...p.figures[0]), poly(...p.figures[1])], pas)}</g></svg>`);
+    return `<div class="ge-carte"><b class="ge-lettre">${LETTRES[i]}</b>${dessin}`
+      + (corrige ? `<div class="ge-quoi">${CE_QUI_NE_VA_PAS[p.sorte]}</div>` : `<div class="ge-quoi">Ce qui ne va pas : ........................................</div>`) + "</div>";
+  };
+  const rappel = "Deux figures sont symétriques par rapport à une droite quand, en pliant la feuille sur cette droite, elles se superposent exactement.";
+  return `<div class="page">${entete("Symétriques ou non ?", "Pour chaque paire de figures, je regarde la droite tracée. Si les deux figures sont symétriques par rapport à elle, je la repasse en rouge : c'est un axe de symétrie. Sinon, j'écris ce qui ne va pas. Je vérifie en pliant la feuille sur la droite, ou avec un calque que je retourne.", rappel)}
+    <div class="ge-cartes">${paires.map((p, i) => carte(p, i, false)).join("")}</div></div>
+    <div class="page corrige"><div class="titre">Symétriques ou non ? — corrigé</div><div class="ge-cartes">${paires.map((p, i) => carte(p, i, true)).join("")}</div></div>`;
 }
 
 // ── Les axes de symétrie (CE2) ────────────────────────────────────────────
@@ -554,7 +649,7 @@ function feuilleCercles(r: ReglagesGeometrie, graine: number): string {
 
 export function htmlGeometrie(r: ReglagesGeometrie, graine: number): string {
   const f: Record<ExerciceGeometrie, (r: ReglagesGeometrie, g: number) => string> = {
-    reproduire: feuilleReproduire, completer: feuilleCompleter, symetrie: feuilleSymetrie, axes: feuilleAxes, trier: feuilleTrier,
+    reproduire: feuilleReproduire, completer: feuilleCompleter, symetrie: feuilleSymetrie, symetriques: feuilleSymetriques, axes: feuilleAxes, trier: feuilleTrier,
     alignements: feuilleAlignements, anglesDroits: feuilleAnglesDroits, angles: feuilleAngles, construire: feuilleConstruire, cercles: feuilleCercles,
   };
   return feuille((f[r.exercice] ?? feuilleReproduire)(r, graine), "ge");
