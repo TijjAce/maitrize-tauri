@@ -53,6 +53,7 @@ const CC = await import("./calculCoursMoyen");
 const PC = await import("./problemesCoursMoyen");
 const GC = await import("./grandeursCoursMoyen");
 const GE = await import("./geometrieCoursMoyen");
+const MR = await import("./multiplicationEnRectangles");
 const { hasard } = await import("./hasard");
 
 type Memoires = Record<string, any>;
@@ -138,6 +139,7 @@ const ATELIERS: Record<string, (m: Memoires, g: number) => string> = {
   problemesCM: (m, g) => PC.htmlProblemesCM(PC.reglagesProblemesCMSurs(lu(PC.REGLAGES_PROBLEMES_CM, m.problemesCM)), g),
   grandeursCM: (m, g) => GC.htmlGrandeursCM(GC.reglagesGrandeursCMSurs(lu(GC.REGLAGES_GRANDEURS_CM, m.grandeursCM)), g),
   geometrieCM: (m, g) => GE.htmlGeometrieCM(GE.reglagesGeometrieCMSurs(lu(GE.REGLAGES_GEOMETRIE_CM, m.geometrieCM)), g),
+  rectangles: (m, g) => MR.htmlRectangles(MR.reglagesRectanglesSurs(lu(MR.REGLAGES_RECTANGLES, m.rectangles)), g),
 };
 
 const GRAINES = [3, 1789];

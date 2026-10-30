@@ -27,6 +27,8 @@ export interface ReglagesPosees {
   chiffres: number;
   /** Le second facteur d'une multiplication : un ou deux chiffres. */
   chiffresDuSecond: 1 | 2;
+  /** Un second facteur à deux chiffres entre 11 et 19 : la multiplication par un nombre inférieur à 20, avant les autres. */
+  moinsDe20?: boolean;
   /** Des additions de trois termes, dont un nombre à un chiffre. */
   troisTermes: boolean;
   retenue: Retenue;
@@ -119,7 +121,7 @@ export function operationsPosees(r: ReglagesPosees, graine: number): Posee[] {
     let termes: number[];
     if (r.operation === "×") {
       // Un second facteur à deux chiffres qui ne soit pas une dizaine entière : chaque ligne a son produit.
-      const second = r.chiffresDuSecond === 2 ? entre(alea, 11, 39) : entre(alea, 2, 9);
+      const second = r.chiffresDuSecond === 2 ? entre(alea, 11, r.moinsDe20 ? 19 : 39) : entre(alea, 2, 9);
       if (second % 10 === 0) continue;
       termes = [entre(alea, min, Math.min(max, 999)), second];
     } else if (r.operation === "−") {

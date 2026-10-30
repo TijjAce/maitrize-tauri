@@ -304,6 +304,9 @@ export function OperationsPoseesTab() {
             </Select>
           </Field>
         )}
+        {r.operation === "×" && r.chiffresDuSecond === 2 && (
+          <Coche on={!!r.moinsDe20} libelle="Le second facteur entre 11 et 19 — la multiplication par un nombre inférieur à 20, avant celle par un nombre plus grand." onChange={(v) => maj({ moinsDe20: v })} />
+        )}
         {r.operation === "+" && <Coche on={r.troisTermes} libelle="Trois termes, dont un nombre à un chiffre" onChange={(v) => maj({ troisTermes: v })} />}
         {r.operation !== "×" && <Coche on={r.euros} libelle="Des montants en euros, avec la virgule (CE2)" onChange={(v) => maj({ euros: v })} />}
         <Coche on={!r.posees} libelle="À poser par l'élève, à partir de l'écriture en ligne" onChange={(v) => maj({ posees: !v })} />
