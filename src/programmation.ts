@@ -88,6 +88,23 @@ const PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
   "nombres-10-20-cp": { periode: 2, niveau: "CP", raison: citeLeManuel("un manuel de préparation au CRPE", "") },
   // La soustraction posée avec retenue, d'après le même manuel (voir demarcheSoustractionRetenue.ts).
   "soustraction-retenue-ce1": { periode: 3, niveau: "CE1", raison: citeLeManuel("un manuel de préparation au CRPE", "") },
+  // Les autres sujets du même manuel (voir sequencesDuManuel.ts), quand il les date.
+  "technique-multiplication-ce2": { periode: 4, niveau: "CE2", raison: citeLeManuel("un manuel de préparation au CRPE", "") },
+  "formes-tangram-gs": { periode: 3, niveau: "GS", raison: citeLeManuel("un manuel de préparation au CRPE", "") },
+  "decomposition-additive-gs": { periode: 4, niveau: "GS", raison: citeLeManuel("un manuel de préparation au CRPE", "") },
+  // Sur les périodes 3 et 4 : elle commence en période 3.
+  "division-euclidienne-cm1": { periode: 3, niveau: "CM1", raison: citeLeManuel("un manuel de préparation au CRPE", "") },
+  "fractions-simples-cm1": { periode: 1, niveau: "CM1", raison: citeLeManuel("un manuel de préparation au CRPE", "") },
+  // Un cours double : la même période au CM1 et au CM2.
+  "aires-comparer-cm1-cm2": { periode: 3, raison: citeLeManuel("un manuel de préparation au CRPE", "") },
+  "symetrie-axiale-ce2": { periode: 3, niveau: "CE2", raison: citeLeManuel("un manuel de préparation au CRPE", "") },
+  // Sur les périodes 1 et 2, dit le manuel : elle commence en période 1.
+  "linearite-cm1": { periode: 1, niveau: "CM1", raison: citeLeManuel("un manuel de préparation au CRPE", "") },
+  "programme-construction-cm1": { periode: 5, niveau: "CM1", raison: citeLeManuel("un manuel de préparation au CRPE", "") },
+  // Le sujet dit la période 2 ; le manuel, en le traitant, la période 3.
+  "singapour-multiplicatifs-ce2": { periode: 3, niveau: "CE2", raison: citeLeManuel("un manuel de préparation au CRPE", "") },
+  // Filée sur l'année ; sa séance détaillée, en période 2.
+  "compositions-etats-ce1": { periode: 2, niveau: "CE1", raison: citeLeManuel("un manuel de préparation au CRPE", "") },
   "nombres-livret-cp-100": { periode: 3, raison: cite("CP", "Au plus tard en période 3, les élèves travaillent avec des quantités et des nombres allant jusqu'à cent.") },
   // Les nombres de la séquence du guide — 71 et 68 — vont jusqu'à cent.
   "comparer-nombres-cp": { periode: 3, raison: cite("CP", "Au plus tard en période 3, les élèves travaillent avec des quantités et des nombres allant jusqu'à cent.") },

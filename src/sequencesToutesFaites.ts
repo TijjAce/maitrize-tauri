@@ -57,6 +57,7 @@ import { DEMARCHES_ECRITURE_CM } from "./cycle3Ecriture";
 import { DEMARCHES_ORAL_CM } from "./cycle3Oral";
 import { DEMARCHES_VOCABULAIRE_CM } from "./cycle3Vocabulaire";
 import { programmationProposee } from "./programmation";
+import { sequenceDuManuel } from "./sequencesDuManuel";
 import {
   DEMARCHE_SOUSTRACTION_POSEE, FEUILLES_SOUSTRACTION_POSEE, MATERIEL_SOUSTRACTION_POSEE, competenceDeLaSoustraction, graineDeLaFeuille,
 } from "./sequenceSoustractionPosee";
@@ -113,6 +114,9 @@ const HISTOIRE = new Set([
 export function domaineDeLaDemarche(d: Pick<Demarche, "id" | "famille">): Domaine | null {
   const dans = (liste: Demarche[]) => liste.some((x) => x.id === d.id);
   if (d.famille === "Mathématiques") {
+    // Les séquences d'après le manuel du CRPE de l'enseignant disent leur domaine (voir sequencesDuManuel.ts).
+    const duManuel = sequenceDuManuel(d.id)?.domaine;
+    if (duManuel) return domaine(duManuel);
     if (d.id === DEMARCHE_SOUSTRACTION_POSEE.id) return domaine("calcul");
     // Le cours moyen : les décimaux ont leur ligne, et les fractions décimales vont avec eux.
     if (dans(DEMARCHES_NOMBRES_CM)) return domaine(/decima/.test(d.id) ? "decimaux" : /fraction/.test(d.id) ? "fractions" : "nombres");

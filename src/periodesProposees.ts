@@ -32,6 +32,8 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
     ...ligne("une grandeur par période, dans l'ordre du programme : comparer des longueurs à la rentrée, puis les mesurer à la règle ; "
       + "les masses ; l'heure en fin d'année. La monnaie garde la période 2 que lui donne le programme.",
     { "longueurs-comparer-cp": 1, "longueurs-mesurer-cp": 3, "masses-cp": 4, "heure-cp": 5 }),
+    ...ligne("le manuel du CRPE dont elle vient ne la date pas non plus ; au CP, elle fait le pont entre comparer des longueurs, à la rentrée, "
+      + "et les mesurer à la règle graduée, en période 3.", { "longueurs-mesurage-cp-ce1": 2 }),
     ...ligne("de l'espace proche aux figures, dans la continuité de la maternelle : se repérer, puis se déplacer dans la classe ; "
       + "les solides et leurs assemblages ; les figures planes et les alignements ; enfin les tracés sur quadrillage.",
     { "positions-cp": 1, "deplacements-cp": 2, "solides-cp": 3, "assemblages-cp": 3, "figures-cp": 4, "alignements-cp": 4, "reproduire-cp": 5 }),
@@ -64,6 +66,8 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
     ...ligne("une grandeur à la fois, dans l'ordre du programme : mesurer des longueurs avant leurs unités (période 2), les masses, "
       + "puis l'heure et les durées. La monnaie garde les périodes du programme.",
     { "longueurs-mesurer-ce1": 1, "masses-ce1": 3, "heure-ce1": 4, "durees-ce1": 5 }),
+    ...ligne("le manuel du CRPE dont elle vient ne la date pas non plus ; au CE1, elle vient avant le centimètre, que le programme met en "
+      + "période 2 : on comprend d'abord pourquoi il faut une unité commune.", { "longueurs-mesurage-cp-ce1": 1 }),
     ...ligne("de l'espace aux figures : se repérer dans l'école et le quartier, coder des déplacements, les solides et leurs assemblages, "
       + "les figures, puis les tracés à la règle, à l'équerre et au compas.",
     { "positions-ce1": 1, "deplacements-ce1": 2, "solides-ce1": 3, "assemblages-ce1": 3, "figures-ce1": 4, "construire-ce1": 5 }),
@@ -190,6 +194,8 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
       + "puis le produit d'un entier et d'une fraction.", { "operer-fractions-cm2": 2, "produit-fraction-cm2": 3 }),
     ...ligne("après les écritures des décimaux jusqu'aux millièmes, rencontrés dès la période 1 : placer, comparer, arrondir.",
       { "comparer-decimaux-cm2": 2 }),
+    ...ligne("le manuel du CRPE dont elle vient ne la date pas non plus ; l'addition des décimaux, posée dès le CM1, se reprend à la rentrée : "
+      + "une évaluation, puis la remédiation qu'elle appelle, avant la multiplication des décimaux.", { "addition-decimaux-cm2": 1 }),
     ...ligne("dès la rentrée, des problèmes additifs dans la continuité du CM1 ; les multiplicatifs avec la multiplication des décimaux ; "
       + "puis les problèmes mixtes.", { "problemes-additifs-cm2": 1, "problemes-multiplicatifs-cm2": 2, "problemes-mixtes-cm2": 3 }),
     ...ligne("les égalités à trou et les programmes de calcul tôt dans l'année, avec le calcul mental ; les problèmes algébriques après les "

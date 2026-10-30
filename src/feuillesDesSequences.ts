@@ -29,6 +29,7 @@ import { estUneDemarcheDeDonnees, planDesDonnees } from "./demarchesDonnees";
 import { estUneDemarcheDuReperage, planDuReperage } from "./demarchesReperage";
 import { DEMARCHE_DIX_A_VINGT, estUneDemarcheDixAVingt, planDixAVingt } from "./demarcheDixAVingt";
 import { estUneDemarcheSoustractionRetenue, planSoustractionRetenue } from "./demarcheSoustractionRetenue";
+import { sequenceDuManuel } from "./sequencesDuManuel";
 import { estUneDemarcheDeFractions, planDesFractions } from "./fractionsDesLivrets";
 import { estUneDemarcheDeFrancais, planDuFrancais } from "./feuillesDuFrancais";
 import { estUneDemarcheDeLecture, planDeLaLecture } from "./demarchesLecture";
@@ -175,6 +176,9 @@ function materielDuLivret(ctx: ContexteFeuilles, feuilles: FeuilleAFabriquer[]):
  * ateliers.
  */
 export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): PlanDesFeuilles | null {
+  // Les séquences d'après le manuel du CRPE de l'enseignant : leurs feuilles, dans leur module (voir sequencesDuManuel.ts).
+  const duManuel = sequenceDuManuel(demarcheId);
+  if (duManuel) return duManuel.plan(ctx);
   // Le calcul mental : les séquences des livrets, ou le procédé La Martinière (voir feuillesDuCalcul.ts).
   if (estUneDemarcheDeCalcul(demarcheId)) return planDuCalcul(demarcheId, ctx);
   // Les problèmes et les fractions des livrets (voir problemesDesLivrets.ts et fractionsDesLivrets.ts).

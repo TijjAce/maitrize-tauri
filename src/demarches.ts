@@ -62,6 +62,8 @@ import { DEMARCHES_FRANCAIS, demarcheDuLivretDeFrancais } from "./demarchesFranc
 import { DEMARCHES_PROBLEMES_PROLONGES, demarcheProlongeeDeProblemes } from "./problemesProlonges";
 import { DEMARCHES_FRACTIONS_PROLONGEES, demarcheProlongeeDeFractions } from "./fractionsProlongees";
 import { DEMARCHES_OPERATIONS, demarcheDesOperations } from "./demarchesOperations";
+// Les séquences d'après le manuel du CRPE de l'enseignant, une par sujet (voir sequencesDuManuel.ts).
+import { DEMARCHES_DU_MANUEL } from "./sequencesDuManuel";
 import { DEMARCHES_GRANDEURS, demarcheDesGrandeurs } from "./demarchesGrandeurs";
 import { DEMARCHES_GEOMETRIE, demarcheDeLaGeometrie } from "./demarchesGeometrie";
 import { DEMARCHES_DONNEES, demarcheDesDonnees } from "./demarchesDonnees";
@@ -2169,7 +2171,7 @@ export const DEMARCHES: Demarche[] = [
   ARTS_PLASTIQUES, MUSIQUE, HISTOIRE_DES_ARTS, EPS_MODULE, LANGUES_VIVANTES,
   MATERNELLE_MODALITES, PHONOLOGIE, CATEGORISER, ...DEMARCHES_VILAIN_PETIT_CANARD, COLLECTIONS, DEMARCHE_PROBLEME_DU_JOUR, CHRONOLOGIE, COMPARER_NOMBRES, NUMERATION_DIZAINE,
   ...DEMARCHES_NUMERATION, ...DEMARCHES_CALCUL, ...DEMARCHES_PROBLEMES, ...DEMARCHES_PROBLEMES_PROLONGES, ...DEMARCHES_FRACTIONS_PROLONGEES, ...DEMARCHES_OPERATIONS, ...DEMARCHES_GRANDEURS, ...DEMARCHES_GEOMETRIE, ...DEMARCHES_DONNEES, ...DEMARCHES_REPERAGE, ...DEMARCHES_FRANCAIS, ...DEMARCHES_LECTURE, ...DEMARCHES_ORTHOGRAPHE, ...DEMARCHES_ECRITURE, ...DEMARCHES_LANGUE, ...DEMARCHES_ORAL, ...DEMARCHES_HISTOIRE_GEO,
-  ...DEMARCHES_MATHS_CM, ...DEMARCHES_FRANCAIS_CM, ...DEMARCHES_HISTOIRE_GEO_CM, ...DEMARCHES_HISTOIRE_GEO_CM_2020,
+  ...DEMARCHES_MATHS_CM, ...DEMARCHES_DU_MANUEL, ...DEMARCHES_FRANCAIS_CM, ...DEMARCHES_HISTOIRE_GEO_CM, ...DEMARCHES_HISTOIRE_GEO_CM_2020,
 ];
 
 export const demarcheDe = (id: string) => DEMARCHES.find((d) => d.id === id);

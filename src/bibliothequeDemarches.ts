@@ -10,6 +10,7 @@
 import { couleurHex, couleurPourMatiere } from "./api";
 import { DEMARCHES, FAMILLES, type Demarche, type Famille } from "./demarches";
 import type { Classe } from "./feuillesDesSequences";
+import { sequenceDuManuel } from "./sequencesDuManuel";
 import { CLASSES, DISCIPLINES, DOMAINES, classesDeLaDemarche, domaineDeLaDemarche, nomSansClasse, type Domaine } from "./sequencesToutesFaites";
 
 export type Sorte = "sequence" | "methodologie";
@@ -48,6 +49,7 @@ const ICONE_DE_LA_DEMARCHE: Record<string, string> = {
   "arts-plastiques": "🎨", musique: "🎵", "histoire-des-arts": "🖼️", "eps-module": "🏃", "langues-vivantes": "🌐",
   "maternelle-modalites": "🧸", phonologie: "👂", "categoriser-maternelle": "🗂️", "vilain-petit-canard-ms": "🦆",
   "vilain-petit-canard-gs": "🦆", "collections-maternelle": "🧺", "probleme-du-jour-maternelle": "🧩", "chronologie-maternelle": "🎞️",
+  "formes-tangram-gs": "🔷", "decomposition-additive-gs": "🐦",
 };
 
 /**
@@ -68,6 +70,8 @@ function matiereDe(d: Demarche, domaine: Domaine | null): string | null {
     case "Arts, EPS et langues":
       return d.id === "musique" ? "Éducation musicale" : d.id === "eps-module" ? "EPS" : d.id === "langues-vivantes" ? "LVE / Anglais" : "Arts plastiques";
     case "Maternelle":
+      // Les séquences du manuel du CRPE de l'enseignant disent la leur (voir sequencesDuManuel.ts).
+      if (sequenceDuManuel(d.id)?.matiere) return sequenceDuManuel(d.id)!.matiere!;
       if (/collections|probleme/.test(d.id)) return "Structurer sa pensée";
       if (/chronologie/.test(d.id)) return "Explorer le monde";
       return d.id === "maternelle-modalites" ? null : "Mobiliser le langage";
