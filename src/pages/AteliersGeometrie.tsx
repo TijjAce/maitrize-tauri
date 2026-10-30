@@ -28,7 +28,7 @@ export function GeometrieTab() {
   const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlGeometrie(r, graine), [r, graine]);
   const titre = titreDe(EXERCICES_GEOMETRIE.find((e) => e.id === r.exercice)?.libelle, "Géométrie");
-  const surGrille = r.exercice === "reproduire" || r.exercice === "symetrie" || (r.exercice === "completer" && !r.uni);
+  const surGrille = r.exercice === "reproduire" || r.exercice === "symetriques" || ((r.exercice === "symetrie" || r.exercice === "completer") && !r.uni);
   return (
     <Colonnes
       gauche={<>
@@ -58,6 +58,8 @@ export function GeometrieTab() {
         )}
         {r.exercice === "reproduire" && <Coche on={!!r.repere} libelle="Un repère orthonormé, pour différencier" onChange={(v) => maj({ repere: v })} />}
         {r.exercice === "completer" && <Coche on={r.uni} libelle="Sur papier uni, les figures inclinées (CE1, CE2)" onChange={(v) => maj({ uni: v })} />}
+        {r.exercice === "symetrie" && <Coche on={!!r.diagonale} libelle="L'axe en diagonale des carreaux — on compte les diagonales de carreau jusqu'à l'axe, puis autant de l'autre côté." onChange={(v) => maj({ diagonale: v })} />}
+        {r.exercice === "symetrie" && <Coche on={r.uni} libelle="Sur papier uni, sans quadrillage — on plie et on pique, ou l'on retourne un calque." onChange={(v) => maj({ uni: v })} />}
         {surGrille && (
           <Field label="Le support">
             <Select value={r.support} onChange={(e) => maj({ support: e.target.value as "quadrille" | "pointe" })}>
