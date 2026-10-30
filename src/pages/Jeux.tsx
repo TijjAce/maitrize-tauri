@@ -30,6 +30,7 @@ import {
 import { CursiveTab, EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { AbaqueTab, BillesTab, SuiteNombresTab } from "./AteliersNumerationCP";
 import { DemiDroiteTab, OrdinauxTab } from "./AteliersReperage";
+import { CalculCMTab } from "./AteliersCoursMoyen";
 import { GenerateurPersoTab } from "./AtelierGenerateurPerso";
 import { enregistrerGenerateur, useGenerateursPerso } from "../components/GenerateursPerso";
 import type { GenerateurPerso } from "../generateursPerso";
@@ -445,6 +446,7 @@ export default function Jeux() {
         : onglet === "calcul" ? <CartesCalculTab />
         : onglet === "arbre" ? <ArbreCalculTab />
         : onglet === "posees" ? <OperationsPoseesTab />
+        : onglet === "calculCM" ? <CalculCMTab />
         : onglet === "soustractionPosee" ? <SoustractionPoseeTab />
         : classeDuDossier(onglet) ? <SequencesToutesFaitesTab key={onglet} classe={classeDuDossier(onglet)!} />
         : onglet === "monnaie" ? <MonnaieTab />

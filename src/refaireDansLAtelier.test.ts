@@ -49,6 +49,7 @@ const { REGLAGES_PAR_DEFAUT: REGLAGES_COLORIAGE, fabriquerColoriage, feuilleDuCo
 const { REGLAGES_NUMERATION, htmlNumeration } = await import("./numeration");
 const { REGLAGES_RESOLUTION, htmlResolution, reglagesResolutionSurs } = await import("./aidesALaTache");
 const CT = await import("./cartesATaches");
+const CC = await import("./calculCoursMoyen");
 const { hasard } = await import("./hasard");
 
 type Memoires = Record<string, any>;
@@ -130,6 +131,7 @@ const ATELIERS: Record<string, (m: Memoires, g: number) => string> = {
   paysage: (m) => htmlPaysage(reglagesPaysageSurs(lu(REGLAGES_PAYSAGE, m.paysage))),
   resolution: (m) => htmlResolution(reglagesResolutionSurs(lu(REGLAGES_RESOLUTION, m.resolution))),
   taches: (m, g) => { const r = CT.reglagesSurs(lu(CT.REGLAGES_CARTES, m.cartesATaches)); return CT.htmlDeLaSerie(CT.cartesDeLaSerie(r, g), r, g); },
+  calculCM: (m, g) => CC.htmlCalculCM(CC.reglagesCalculCMSurs(lu(CC.REGLAGES_CALCUL_CM, m.calculCM)), g),
 };
 
 const GRAINES = [3, 1789];
@@ -140,7 +142,7 @@ describe("une feuille de séquence se refait dans son atelier", () => {
     let verifiees = 0;
     const ateliers = new Set<string>();
     for (const d of DEMARCHES) {
-      for (const classe of ["CP", "CE1", "CE2"] as const) {
+      for (const classe of ["CP", "CE1", "CE2", "CM1", "CM2"] as const) {
         for (const periode of [2, 4]) {
           const plan = planDesFeuilles(d.id, { classe, periode, competence: "" });
           for (const f of plan?.feuilles ?? []) {
