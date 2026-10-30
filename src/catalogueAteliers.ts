@@ -6,7 +6,7 @@ export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "vilainPetitCanard", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive",
-  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "problemesAides", "problemesCM", "coloriage", "collections", "problemeDuJour", "motifs", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "rectangles", "calculCM", "soustractionPosee", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "grandeursCM", "geometrie", "solides", "deplacements", "geometrieCM", "donnees", "numeration",
+  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "problemesAides", "problemesCM", "coloriage", "collections", "albumCalcul", "problemeDuJour", "motifs", "tangram", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "rectangles", "calculCM", "soustractionPosee", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "grandeursCM", "geometrie", "solides", "deplacements", "geometrieCM", "donnees", "numeration",
   "carteMentale", "taches",
   "sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction",
   "planClasse", "frise", "paysage",
@@ -168,10 +168,14 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "On calcule, le résultat dit la couleur, le dessin apparaît." },
       { id: "collections", nom: "Construire des collections — maternelle", icone: "🧸", pictos: true, cycles: "Cycle 1",
         quoi: "Juste ce qu'il faut : les fiches de places, les cartes-nombres, les bons de commande et le bon panier des situations Éduscol — et leur séquence." },
+      { id: "albumCalcul", nom: "L'album à calculer — maternelle", icone: "🐦", cycles: "Cycle 1",
+        quoi: "La page vierge de l'album — quatre cases, trois fils, une porte qui cache des oiseaux —, des pages faites d'avance pour les nombres de 2 à 9, des oiseaux à découper, et l'image des oiseaux sur les fils." },
       { id: "problemeDuJour", nom: "Le problème du jour — maternelle", icone: "🧳", pictos: true, cycles: "Cycle 1", sequence: true,
         quoi: "Une sorte de problème pour une période, dix minutes chaque jour : ajouter, enlever, avancer sur la piste, faire des groupes, partager — de la PS à la GS, avec les cartes du jour, l'affiche, le matériel et la grille." },
       { id: "motifs", nom: "Les motifs — maternelle", icone: "🧦", cycles: "Cycle 1",
         quoi: "Le fil à linge de la mascotte, des bandes à reproduire, compléter, prolonger, l'intrus et sa bande autocorrective, le motif qui grandit, la même règle avec d'autres dessins." },
+      { id: "tangram", nom: "Le tangram — maternelle", icone: "🔶", cycles: "Cycles 1 et 2",
+        quoi: "Le grand carré à découper, à la taille des pièces de la classe ; des modèles à recouvrir, de deux à sept pièces — chaque pièce dessinée, en couleur, quelques pièces noires, en silhouette, plus petits, en petit livre — ; les sept pièces en désordre ; le parallélogramme tourné ou retourné." },
       { id: "nombres", nom: "Cartes des nombres", icone: "🔢", cycles: "Cycles 1 et 2",
         quoi: "Chiffre, constellation, boîte de dix, mot : le même nombre sous toutes ses formes." },
       { id: "cubes", nom: "Nombres en cubes", icone: "🧱", cycles: "Cycle 2",
@@ -285,11 +289,11 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
  * avec l'espace et la géométrie.
  */
 export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[] = [
-  { id: "nombres", nom: "Les nombres", outils: ["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "oie", "fractions", "numeration"] },
+  { id: "nombres", nom: "Les nombres", outils: ["collections", "albumCalcul", "nombres", "billes", "cubes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "oie", "fractions", "numeration"] },
   { id: "calcul", nom: "Le calcul", outils: ["martiniere", "calcul", "arbre", "posees", "rectangles", "pyramides", "compteEstBon", "coloriage", "calculCM"] },
   { id: "problemes", nom: "Les problèmes", outils: ["partieTout", "multiplicatifs", "problemesAides", "problemesCM"] },
   { id: "grandeurs", nom: "Grandeurs et mesures", outils: ["heure", "monnaie", "mesures", "grandeursCM"] },
-  { id: "geometrie", nom: "Espace et géométrie", outils: ["motifs", "geometrie", "solides", "deplacements", "geometrieCM"] },
+  { id: "geometrie", nom: "Espace et géométrie", outils: ["motifs", "tangram", "geometrie", "solides", "deplacements", "geometrieCM"] },
   { id: "donnees", nom: "Données", outils: ["donnees"] },
 ];
 

@@ -55,6 +55,8 @@ const GC = await import("./grandeursCoursMoyen");
 const GE = await import("./geometrieCoursMoyen");
 const MR = await import("./multiplicationEnRectangles");
 const PA = await import("./problemesEtOutilsDAide");
+const TG = await import("./tangram");
+const AC = await import("./albumACalculer");
 const { hasard } = await import("./hasard");
 
 type Memoires = Record<string, any>;
@@ -142,6 +144,8 @@ const ATELIERS: Record<string, (m: Memoires, g: number) => string> = {
   geometrieCM: (m, g) => GE.htmlGeometrieCM(GE.reglagesGeometrieCMSurs(lu(GE.REGLAGES_GEOMETRIE_CM, m.geometrieCM)), g),
   rectangles: (m, g) => MR.htmlRectangles(MR.reglagesRectanglesSurs(lu(MR.REGLAGES_RECTANGLES, m.rectangles)), g),
   problemesAides: (m) => PA.htmlProblemesAides(PA.reglagesProblemesAidesSurs(lu(PA.REGLAGES_PROBLEMES_AIDES, m.problemesAides))),
+  tangram: (m, g) => TG.htmlTangram(TG.reglagesTangramSurs(lu(TG.REGLAGES_TANGRAM, m.tangram)), g),
+  albumCalcul: (m, g) => AC.htmlAlbum(AC.reglagesAlbumSurs(lu(AC.REGLAGES_ALBUM, m.albumCalcul)), g),
 };
 
 const GRAINES = [3, 1789];

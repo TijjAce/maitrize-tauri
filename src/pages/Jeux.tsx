@@ -33,6 +33,8 @@ import { DemiDroiteTab, OrdinauxTab } from "./AteliersReperage";
 import { CalculCMTab, GeometrieCMTab, GrandeursCMTab, ProblemesCMTab } from "./AteliersCoursMoyen";
 import { RectanglesTab } from "./AtelierRectangles";
 import { ProblemesAidesTab } from "./AtelierProblemesAides";
+import { TangramTab } from "./AtelierTangram";
+import { AlbumACalculerTab } from "./AtelierAlbumACalculer";
 import { GenerateurPersoTab } from "./AtelierGenerateurPerso";
 import { enregistrerGenerateur, useGenerateursPerso } from "../components/GenerateursPerso";
 import type { GenerateurPerso } from "../generateursPerso";
@@ -433,8 +435,10 @@ export default function Jeux() {
         : onglet === "motsGestes" ? <MotsEnGestesTab banque={Boolean(etat?.installee)} />
         : onglet === "syllabeManquante" ? <SyllabeManquanteTab banque={Boolean(etat?.installee)} />
         : onglet === "collections" ? <CollectionsTab banque={Boolean(etat?.installee)} />
+        : onglet === "albumCalcul" ? <AlbumACalculerTab />
         : onglet === "problemeDuJour" ? <ProblemeDuJourTab banque={Boolean(etat?.installee)} />
         : onglet === "motifs" ? <MotifsTab banque={Boolean(etat?.installee)} />
+        : onglet === "tangram" ? <TangramTab />
         : onglet === "suites" ? <SuitesTab banque={Boolean(etat?.installee)} />
         : onglet === "vilainPetitCanard" ? <VilainPetitCanardTab />
         : onglet === "carteMentale" ? <CarteMentaleTab banque={Boolean(etat?.installee)} />
