@@ -309,10 +309,13 @@ export function demarcheDesGrandeursCM(classe: string, cg: string, comp: string)
 
 // ── Les feuilles ──────────────────────────────────────────────────────────
 
+/** Une feuille de l'atelier « Grandeurs et mesures — CM1, CM2 », qui la refait avec les mêmes réglages et le même tirage. */
 const grandeurs = (seance: number, titre: string, classe: "CM1" | "CM2", exercices: ExerciceGrandeurs[], grandeur: GrandeurCM = "longueur", combien = 6): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_GRANDEURS_CM, classe, exercices, grandeur, combien, titre };
-  const atelier = exercices.some((e) => e.startsWith("duree") || e.startsWith("horloge")) ? "heure" : exercices.some((e) => e.startsWith("angles")) ? "geometrie" : "mesures";
-  return { seance, atelier, titre, fabriquer: (g) => ({ html: htmlGrandeursCM(reglages, g), style: STYLE_FEUILLE + STYLE_GRANDEURS_CM }) };
+  return {
+    seance, atelier: "grandeursCM", titre,
+    fabriquer: (g) => ({ html: htmlGrandeursCM(reglages, g), style: STYLE_FEUILLE + STYLE_GRANDEURS_CM, refaire: { grandeursCM: reglages } }),
+  };
 };
 
 /** Une feuille de l'atelier « Mesures » qui convient au CM1 telle quelle — le périmètre à la règle, au compas, les verres —, avec la source du cycle 3. */

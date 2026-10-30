@@ -20,20 +20,23 @@ import { escapeHtml } from "./print";
 
 export type GrandeurCM = "longueur" | "masse" | "contenance";
 export type ExerciceGrandeurs =
-  | "convertir" | "ranger" | "calculer" | "unite" | "estimer"
+  | "convertir" | "tableau-unites" | "ranger" | "calculer" | "unite" | "estimer"
   | "perimetre" | "perimetre-probleme"
-  | "aire-pavage" | "aire-cm2" | "aire-encadrer" | "aire-perimetre" | "aire-rectangle" | "aire-convertir"
+  | "aire-comparer" | "aire-reference" | "aire-pavage" | "aire-cm2" | "aire-encadrer" | "aire-perimetre" | "aire-rectangle" | "aire-convertir"
   | "angles-nature" | "angles-comparer" | "angles-nommer" | "angles-degres"
   | "durees" | "durees-problemes" | "durees-convertir" | "horloges-secondes";
 
 export const EXERCICES_GRANDEURS: { id: ExerciceGrandeurs; libelle: string }[] = [
   { id: "convertir", libelle: "Les écritures d'une même mesure" },
+  { id: "tableau-unites", libelle: "Le tableau des unités : une mesure à virgule" },
   { id: "ranger", libelle: "Ranger des mesures données dans des unités différentes" },
   { id: "calculer", libelle: "Ajouter, soustraire des mesures d'unités différentes" },
   { id: "unite", libelle: "Choisir l'unité" },
   { id: "estimer", libelle: "Estimer : la mesure vraisemblable" },
   { id: "perimetre", libelle: "Le périmètre d'un polygone" },
   { id: "perimetre-probleme", libelle: "Des problèmes de périmètre" },
+  { id: "aire-comparer", libelle: "Comparer des aires sans mesurer" },
+  { id: "aire-reference", libelle: "Paver avec une surface de référence" },
   { id: "aire-pavage", libelle: "L'aire en carreaux et demi-carreaux" },
   { id: "aire-cm2", libelle: "L'aire en centimètres carrés, sur un quadrillage de 1 cm" },
   { id: "aire-encadrer", libelle: "Encadrer une aire" },
@@ -50,8 +53,35 @@ export const EXERCICES_GRANDEURS: { id: ExerciceGrandeurs; libelle: string }[] =
   { id: "horloges-secondes", libelle: "Lire l'heure à la seconde (CM2)" },
 ];
 
-export interface ReglagesGrandeursCM { classe: "CM1" | "CM2"; exercices: ExerciceGrandeurs[]; grandeur: GrandeurCM; combien: number; titre?: string }
+/** La surface de référence qu'on reporte : un carré, un triangle moitié du carré, un rectangle de deux carrés. */
+export type SurfaceDeReference = "carre" | "triangle" | "rectangle";
+export const SURFACES_DE_REFERENCE: { id: SurfaceDeReference; libelle: string }[] = [
+  { id: "carre", libelle: "un carré" }, { id: "triangle", libelle: "un triangle, moitié du carré" }, { id: "rectangle", libelle: "un rectangle de deux carrés" },
+];
+
+export interface ReglagesGrandeursCM {
+  classe: "CM1" | "CM2"; exercices: ExerciceGrandeurs[]; grandeur: GrandeurCM; combien: number; titre?: string;
+  /** Paver : la surface de référence ; sans elle, le tirage en choisit une. */
+  reference?: SurfaceDeReference;
+}
 export const REGLAGES_GRANDEURS_CM: ReglagesGrandeursCM = { classe: "CM1", exercices: ["convertir"], grandeur: "longueur", combien: 6 };
+
+/** Les exercices où la grandeur compte : les longueurs, les masses ou les contenances. */
+export const AVEC_GRANDEUR: ExerciceGrandeurs[] = ["convertir", "tableau-unites", "ranger", "calculer", "unite", "estimer"];
+
+/** Les réglages tels que l'atelier les relit : des exercices connus — un au moins —, une grandeur, de 1 à 10 items. */
+export function reglagesGrandeursCMSurs(brut: Partial<ReglagesGrandeursCM> | null | undefined): ReglagesGrandeursCM {
+  const b = brut ?? {};
+  const exercices = Array.isArray(b.exercices) ? b.exercices.filter((x) => EXERCICES_GRANDEURS.some((e) => e.id === x)) : [];
+  return {
+    ...b,
+    classe: b.classe === "CM2" ? "CM2" : "CM1",
+    exercices: exercices.length ? exercices : REGLAGES_GRANDEURS_CM.exercices,
+    grandeur: b.grandeur === "masse" || b.grandeur === "contenance" ? b.grandeur : "longueur",
+    combien: Math.max(1, Math.min(10, Math.round(Number(b.combien)) || REGLAGES_GRANDEURS_CM.combien)),
+    reference: SURFACES_DE_REFERENCE.some((x) => x.id === b.reference) ? b.reference : undefined,
+  };
+}
 
 interface Bloc { consigne: string; corps: string; corrige: string }
 type Alea = () => number;
@@ -491,6 +521,248 @@ function aireConvertir(alea: Alea, r: ReglagesGrandeursCM): Bloc {
   };
 }
 
+// ── Comparer et paver, avant de mesurer ───────────────────────────────────
+//
+// Les séances de la séquence des aires du manuel du CRPE de l'enseignant :
+// comparer des surfaces sans les mesurer — les superposer, les découper et
+// recoller les morceaux —, puis les paver avec une surface de référence. Les
+// figures n'y montrent que leur contour ; le corrigé montre les morceaux.
+
+/** Une pièce : ses sommets, en carreaux. */
+type Piece = [number, number][];
+
+const carreau = (x: number, y: number): Piece => [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]];
+
+/** Un triangle, moitié du carreau (x, y), posé contre le carreau voisin de la figure, dans la direction (dx, dy) depuis lui. */
+function demiCarreau(x: number, y: number, dx: number, dy: number, alea: Alea): Piece {
+  const x0 = x, y0 = y, x1 = x + 1, y1 = y + 1;
+  if (dx === 1) return alea() < 0.5 ? [[x0, y0], [x0, y1], [x1, y1]] : [[x0, y0], [x0, y1], [x1, y0]];
+  if (dx === -1) return alea() < 0.5 ? [[x1, y0], [x1, y1], [x0, y1]] : [[x1, y0], [x1, y1], [x0, y0]];
+  if (dy === 1) return alea() < 0.5 ? [[x0, y0], [x1, y0], [x1, y1]] : [[x0, y0], [x1, y0], [x0, y1]];
+  return alea() < 0.5 ? [[x0, y1], [x1, y1], [x1, y0]] : [[x0, y1], [x1, y1], [x0, y0]];
+}
+
+const VOISINS = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
+
+/** Vrai si la figure enferme des carreaux vides : un trou, qu'on ne saurait ni découper d'un seul tenant ni paver. */
+function aUnTrou(pleins: Set<string>, largeur: number, hauteur: number): boolean {
+  const dehors = new Set<string>();
+  const pile: [number, number][] = [[-1, -1]];
+  while (pile.length) {
+    const [x, y] = pile.pop()!;
+    const k = `${x},${y}`;
+    if (x < -1 || y < -1 || x > largeur || y > hauteur || dehors.has(k) || pleins.has(k)) continue;
+    dehors.add(k);
+    for (const [dx, dy] of VOISINS) pile.push([x + dx, y + dy]);
+  }
+  for (let x = 0; x < largeur; x++) for (let y = 0; y < hauteur; y++) if (!pleins.has(`${x},${y}`) && !dehors.has(`${x},${y}`)) return true;
+  return false;
+}
+
+/** Une figure de `pleins` carreaux d'un seul tenant, et de `demis` demi-carreaux posés contre elle. */
+function figureDAire(alea: Alea, pleins: number, demis: number, largeur: number, hauteur: number): Piece[] {
+  const cle = (x: number, y: number) => `${x},${y}`;
+  const cases = new Set<string>([cle(Math.floor(largeur / 2), Math.floor(hauteur / 2))]);
+  for (let garde = 0; cases.size < pleins && garde < 4000; garde++) {
+    const [x, y] = choisir(alea, [...cases]).split(",").map(Number);
+    const [dx, dy] = choisir(alea, VOISINS);
+    const k = cle(x + dx, y + dy);
+    if (x + dx < 0 || y + dy < 0 || x + dx >= largeur || y + dy >= hauteur || cases.has(k)) continue;
+    cases.add(k);
+    if (aUnTrou(cases, largeur, hauteur)) cases.delete(k);
+  }
+  const pieces: Piece[] = [...cases].map((k) => { const [x, y] = k.split(",").map(Number); return carreau(x, y); });
+  const prises = new Set<string>();
+  for (let garde = 0; prises.size < demis && garde < 500; garde++) {
+    const [x, y] = choisir(alea, [...cases]).split(",").map(Number);
+    const [dx, dy] = choisir(alea, VOISINS);
+    const nx = x + dx, ny = y + dy;
+    if (cases.has(cle(nx, ny)) || prises.has(cle(nx, ny))) continue;
+    prises.add(cle(nx, ny));
+    pieces.push(demiCarreau(nx, ny, dx, dy, alea));
+  }
+  return pieces;
+}
+
+/**
+ * Les pièces d'un seul tenant : leur fond, puis le seul contour — les
+ * segments qu'une seule pièce porte, coupés au carreau pour que deux pièces
+ * qui se touchent sur un bout de côté se reconnaissent. Au corrigé, les
+ * traits entre les pièces se voient, en pointillés.
+ */
+function dessinerPieces(pieces: Piece[], mm: number, montrer: boolean, fond = "#c7d2fe"): string {
+  const xs = pieces.flat().map((p) => p[0]), ys = pieces.flat().map((p) => p[1]);
+  const x0 = Math.min(...xs), y0 = Math.min(...ys), L = Math.max(...xs) - x0, H = Math.max(...ys) - y0;
+  const P = (p: [number, number]) => `${(p[0] - x0) * mm},${(p[1] - y0) * mm}`;
+  const segments = new Map<string, { a: [number, number]; b: [number, number]; n: number }>();
+  const noter = (a: [number, number], b: [number, number]) => {
+    const k = [P(a), P(b)].sort().join(" ");
+    const s = segments.get(k);
+    if (s) s.n++; else segments.set(k, { a, b, n: 1 });
+  };
+  for (const piece of pieces) {
+    piece.forEach((a, i) => {
+      const b = piece[(i + 1) % piece.length];
+      const longueur = Math.abs(b[0] - a[0]) + Math.abs(b[1] - a[1]);
+      // Un côté droit de plusieurs carreaux se coupe en segments d'un carreau ; une diagonale reste entière.
+      if (a[0] !== b[0] && a[1] !== b[1]) { noter(a, b); return; }
+      for (let k = 0; k < longueur; k++) {
+        const t = (j: number): [number, number] => [a[0] + ((b[0] - a[0]) * j) / longueur, a[1] + ((b[1] - a[1]) * j) / longueur];
+        noter(t(k), t(k + 1));
+      }
+    });
+  }
+  const trait = (s: { a: [number, number]; b: [number, number] }, style: string) => {
+    const [ax, ay] = P(s.a).split(","), [bx, by] = P(s.b).split(",");
+    return `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" ${style}/>`;
+  };
+  const fonds = pieces.map((p) => `<polygon points="${p.map(P).join(" ")}" fill="${fond}" stroke="${fond}" stroke-width="0.3"/>`).join("");
+  const dedans = montrer ? [...segments.values()].filter((s) => s.n > 1).map((s) => trait(s, 'stroke="#4b5266" stroke-width="0.3" stroke-dasharray="1 0.8"')).join("") : "";
+  const bord = [...segments.values()].filter((s) => s.n === 1).map((s) => trait(s, 'stroke="#1c2233" stroke-width="0.5" stroke-linecap="round"')).join("");
+  return `<svg class="gr-quadrillage" viewBox="-0.5 -0.5 ${L * mm + 1} ${H * mm + 1}" width="${L * mm + 1}mm" height="${H * mm + 1}mm">${fonds}${dedans}${bord}</svg>`;
+}
+
+const LETTRES = "ABCDE";
+const enCarreaux = (aire: number) => `${aire} carreau${aire > 1 ? "x" : ""}`;
+
+/**
+ * Cinq figures à comparer sans les mesurer : la plus grande, deux de même
+ * aire et de formes différentes, puis les ranger — et vérifier en découpant
+ * ou au calque. Le corrigé montre les carreaux.
+ */
+function aireComparer(alea: Alea, _r: ReglagesGrandeursCM): Bloc {
+  const base = entier(alea, 11, 14);
+  const aires = melanger(alea, [base, base, base + 3, base - 2, base - 4]);
+  const figures = aires.map((aire) => {
+    const demis = alea() < 0.5 ? 2 : 0;
+    return { aire, pieces: figureDAire(alea, aire - demis / 2, demis, 7, 6) };
+  });
+  const lettreDe = (i: number) => LETTRES[i];
+  const grande = aires.indexOf(Math.max(...aires));
+  const memes = aires.map((_, i) => i).filter((i) => aires.filter((a) => a === aires[i]).length > 1);
+  const ordre = aires.map((_, i) => i).sort((i, j) => aires[i] - aires[j]);
+  const rang = ordre.map((i, k) => (k > 0 && aires[ordre[k - 1]] === aires[i] ? ` = ${lettreDe(i)}` : `${k > 0 ? " < " : ""}${lettreDe(i)}`)).join("");
+  const dessins = (montrer: boolean) => `<div class="gr-figures">${figures.map((f, i) => `<div class="gr-case"><b class="gr-lettre">${lettreDe(i)}</b>${dessinerPieces(f.pieces, 6, montrer)}`
+    + `${montrer ? `<div><b>${enCarreaux(f.aire)}</b></div>` : ""}</div>`).join("")}</div>`;
+  return {
+    consigne: "Sans mesurer, je compare les aires des figures. J'écris la lettre de la figure qui a la plus grande aire, puis celles des deux figures qui ont la même aire. "
+      + "Je range les figures, de la plus petite aire à la plus grande. Je vérifie en découpant les figures, ou avec du papier calque.",
+    corps: dessins(false) + lignes([`La plus grande aire : la figure ${TROU}`, `La même aire : les figures ${TROU} et ${TROU}`,
+      `De la plus petite à la plus grande : ${TROU} ${TROU} ${TROU} ${TROU} ${TROU}`]),
+    corrige: dessins(true) + lignes([`La plus grande aire : <b>${lettreDe(grande)}</b>`, `La même aire : <b>${memes.map(lettreDe).join(" et ")}</b>`,
+      `De la plus petite à la plus grande : <b>${rang}</b>`]),
+  };
+}
+
+/** Une figure faite de surfaces de référence posées bord à bord : des carrés, des triangles moitiés du carré, ou des rectangles de deux carrés. */
+function figureDeReferences(alea: Alea, reference: SurfaceDeReference, combien: number): Piece[] {
+  if (reference === "carre") return figureDAire(alea, combien, 0, 6, 5);
+  if (reference === "triangle") {
+    // Chaque carreau, coupé en deux par la même diagonale ; un triangle de plus quand le nombre est impair.
+    const carres = figureDAire(alea, Math.floor(combien / 2), combien % 2, 5, 4);
+    return carres.flatMap((p) => (p.length === 3 ? [p] : [[p[0], p[1], p[2]], [p[0], p[2], p[3]]] as Piece[]));
+  }
+  // Des rectangles de deux carrés, couchés ou debout, posés l'un contre l'autre sans se chevaucher.
+  const occupe = new Set<string>(), pieces: Piece[] = [];
+  const poser = (x: number, y: number, couche: boolean) => {
+    const cases = couche ? [[x, y], [x + 1, y]] : [[x, y], [x, y + 1]];
+    if (cases.some(([a, b]) => a < 0 || b < 0 || a >= 7 || b >= 6 || occupe.has(`${a},${b}`))) return false;
+    cases.forEach(([a, b]) => occupe.add(`${a},${b}`));
+    if (aUnTrou(occupe, 7, 6)) { cases.forEach(([a, b]) => occupe.delete(`${a},${b}`)); return false; }
+    pieces.push(couche ? [[x, y], [x + 2, y], [x + 2, y + 1], [x, y + 1]] : [[x, y], [x + 1, y], [x + 1, y + 2], [x, y + 2]]);
+    return true;
+  };
+  poser(2, 2, alea() < 0.5);
+  for (let garde = 0; pieces.length < combien && garde < 2000; garde++) {
+    const [x, y] = choisir(alea, [...occupe]).split(",").map(Number);
+    const [dx, dy] = choisir(alea, VOISINS);
+    const couche = alea() < 0.5;
+    poser(x + dx - (couche && dx === -1 ? 1 : 0), y + dy - (!couche && dy === -1 ? 1 : 0), couche);
+  }
+  return pieces;
+}
+
+const PIECE_DE_REFERENCE: Record<SurfaceDeReference, Piece> = {
+  carre: carreau(0, 0), triangle: [[0, 0], [1, 0], [1, 1]], rectangle: [[0, 0], [2, 0], [2, 1], [0, 1]],
+};
+
+/**
+ * Paver avec une surface de référence, comme les cartons de la séquence des
+ * aires du manuel du CRPE : estimer combien de fois elle tient dans chaque
+ * figure, la reporter sans trou ni chevauchement, compter, puis ranger.
+ */
+function aireReference(alea: Alea, r: ReglagesGrandeursCM): Bloc {
+  const reference = r.reference ?? choisir(alea, SURFACES_DE_REFERENCE).id;
+  const n = Math.max(2, Math.min(4, r.combien));
+  const plages: Record<SurfaceDeReference, [number, number]> = { carre: [5, 12], triangle: [7, 15], rectangle: [3, 7] };
+  const nombres: number[] = [];
+  for (let garde = 0; nombres.length < n && garde < 200; garde++) {
+    const x = entier(alea, ...plages[reference]);
+    if (!nombres.includes(x)) nombres.push(x);
+  }
+  const figures = nombres.map((x) => figureDeReferences(alea, reference, x));
+  const comptes = figures.map((f) => f.length);
+  const nom = SURFACES_DE_REFERENCE.find((x) => x.id === reference)!.libelle;
+  const ordre = comptes.map((_, i) => i).sort((i, j) => comptes[i] - comptes[j]).map((i) => LETTRES[i]).join(" < ");
+  const modele = `<div class="gr-reference"><span>La surface de référence, ${nom} :</span>${dessinerPieces([PIECE_DE_REFERENCE[reference]], 8, false, "#fde68a")}</div>`;
+  const cases = (corrige: boolean) => `<div class="gr-figures">${figures.map((f, i) => `<div class="gr-case"><b class="gr-lettre">${LETTRES[i]}</b>${dessinerPieces(f, 8, corrige)}`
+    + (corrige ? `<div><b>${comptes[i]} fois</b></div>` : `<div>J'estime : ${TROU} fois</div><div>Je compte : ${TROU} fois</div>`) + "</div>").join("")}</div>`;
+  return {
+    consigne: "J'estime combien de fois la surface de référence tient dans chaque figure. Je la reporte, sans trou ni chevauchement, en traçant son contour à chaque fois, et je compte. "
+      + "Je range les figures, de la plus petite aire à la plus grande.",
+    corps: modele + cases(false) + lignes([`De la plus petite à la plus grande : ${Array.from({ length: n }, () => TROU).join(" ")}`]),
+    corrige: modele + cases(true) + lignes([`De la plus petite à la plus grande : <b>${ordre}</b>`]),
+  };
+}
+
+// ── Le tableau des unités ─────────────────────────────────────────────────
+
+/** Les colonnes du tableau de chaque grandeur, et l'unité où l'on écrit la mesure à virgule. */
+const TABLEAUX_D_UNITES: Record<GrandeurCM, { unites: string[]; base: string }> = {
+  longueur: { unites: ["km", "hm", "dam", "m", "dm", "cm", "mm"], base: "m" },
+  masse: { unites: ["kg", "hg", "dag", "g", "dg", "cg", "mg"], base: "kg" },
+  contenance: { unites: ["hL", "daL", "L", "dL", "cL", "mL"], base: "L" },
+};
+
+/** Les mesures en deux unités, comme 12 m 76 cm : la grande, la petite ; au CM1, rien au-delà des centièmes de l'unité où l'on écrit. */
+const MESURES_EN_DEUX_UNITES: Record<GrandeurCM, { cm1: [string, string][]; cm2: [string, string][] }> = {
+  longueur: { cm1: [["m", "cm"], ["m", "dm"], ["dam", "m"], ["m", "cm"]], cm2: [["m", "cm"], ["m", "mm"], ["km", "m"], ["cm", "mm"], ["m", "dm"]] },
+  masse: { cm1: [["kg", "g"], ["kg", "hg"]], cm2: [["kg", "g"], ["kg", "g"], ["kg", "hg"]] },
+  contenance: { cm1: [["L", "cL"], ["L", "dL"]], cm2: [["L", "cL"], ["L", "mL"], ["daL", "L"]] },
+};
+
+/** Écrire une mesure donnée en deux unités dans le tableau, un chiffre par colonne, puis à virgule dans l'unité du tableau : 12 m 76 cm = 12,76 m. */
+function tableauUnites(alea: Alea, r: ReglagesGrandeursCM): Bloc {
+  const { unites, base } = TABLEAUX_D_UNITES[r.grandeur];
+  const exp = (u: string) => UNITES[r.grandeur].find((x) => x.u === u)!.e;
+  const paires = MESURES_EN_DEUX_UNITES[r.grandeur][r.classe === "CM1" ? "cm1" : "cm2"];
+  const items: { texte: string; chiffres: Map<string, string>; virgule: string }[] = [];
+  for (let garde = 0; items.length < Math.max(2, Math.min(8, r.combien)) && garde < 300; garde++) {
+    const [grande, petite] = choisir(alea, paires);
+    const facteur = 10 ** (exp(grande) - exp(petite));
+    // La grande unité de la première colonne n'a pas de dizaines à sa gauche : un seul chiffre.
+    const a = entier(alea, 1, unites.indexOf(grande) === 0 || grande === "dam" || grande === "daL" ? 9 : 19);
+    // Au CM1, les grammes vont de dix en dix : 1 kg 250 g s'écrit 1,25 kg.
+    let b = entier(alea, 1, facteur - 1);
+    if (r.classe === "CM1" && petite === "g" && grande === "kg") b = 10 * entier(alea, 1, 99);
+    const valeur = a * facteur + b;
+    const texte = `${a} ${grande} ${b} ${petite}`;
+    if (items.some((x) => x.texte === texte)) continue;
+    // Les chiffres, de droite à gauche, depuis la colonne de la petite unité.
+    const chiffres = new Map<string, string>();
+    const iPetite = unites.indexOf(petite);
+    String(valeur).split("").reverse().forEach((c, k) => { if (unites[iPetite - k]) chiffres.set(unites[iPetite - k], c); });
+    items.push({ texte, chiffres, virgule: `${decimal(valeur, exp(petite) - exp(base))} ${base}` });
+  }
+  const tableau = (corrige: boolean) => `<table class="gr-tableau-unites"><tr><th>La mesure</th>${unites.map((u) => `<th${u === base ? ' class="gr-base"' : ""}>${u}</th>`).join("")}<th>En ${base}</th></tr>`
+    + items.map((x) => `<tr><td class="gr-mesure">${x.texte}</td>${unites.map((u) => `<td${u === base ? ' class="gr-base"' : ""}>${corrige ? x.chiffres.get(u) ?? "" : ""}</td>`).join("")}`
+      + `<td class="gr-en">${corrige ? `<b>${x.virgule}</b>` : ""}</td></tr>`).join("") + "</table>";
+  return {
+    consigne: `J'écris chaque mesure dans le tableau : un chiffre par colonne, le dernier dans la colonne de la plus petite unité. Puis je l'écris en ${base}, à virgule : la virgule se place juste après la colonne des ${base === "m" ? "mètres" : base === "kg" ? "kilogrammes" : "litres"}.`,
+    corps: tableau(false), corrige: tableau(true),
+  };
+}
+
 // ── Les angles ────────────────────────────────────────────────────────────
 
 /** Un angle : son sommet, l'orientation de son premier côté, son ouverture en degrés, et la longueur de ses côtés. */
@@ -694,15 +966,15 @@ function horlogesSecondes(alea: Alea, r: ReglagesGrandeursCM): Bloc {
 }
 
 const FABRIQUES: Record<ExerciceGrandeurs, (alea: Alea, r: ReglagesGrandeursCM) => Bloc> = {
-  convertir, ranger, calculer, unite, estimer, perimetre, "perimetre-probleme": perimetreProbleme,
-  "aire-pavage": airePavage, "aire-cm2": aireCm2, "aire-encadrer": aireEncadrer, "aire-perimetre": airePerimetre, "aire-rectangle": aireRectangle, "aire-convertir": aireConvertir,
+  convertir, "tableau-unites": tableauUnites, ranger, calculer, unite, estimer, perimetre, "perimetre-probleme": perimetreProbleme,
+  "aire-comparer": aireComparer, "aire-reference": aireReference, "aire-pavage": airePavage, "aire-cm2": aireCm2, "aire-encadrer": aireEncadrer, "aire-perimetre": airePerimetre, "aire-rectangle": aireRectangle, "aire-convertir": aireConvertir,
   "angles-nature": anglesNature, "angles-comparer": anglesComparer, "angles-nommer": anglesNommer, "angles-degres": anglesDegres,
   durees, "durees-problemes": dureesProblemes, "durees-convertir": dureesConvertir, "horloges-secondes": horlogesSecondes,
 };
 
 export function htmlGrandeursCM(r: ReglagesGrandeursCM, graine: number): string {
   const alea = hasard(graine);
-  const titre = r.titre ?? "Grandeurs et mesures";
+  const titre = r.titre?.trim() || "Grandeurs et mesures";
   const exos: string[] = [], corriges: string[] = [];
   EXERCICES_GRANDEURS.map((e) => e.id).filter((e) => r.exercices.includes(e)).forEach((ex, i) => {
     const b = FABRIQUES[ex](alea, { ...r, combien: Math.max(1, Math.min(10, r.combien)) });
@@ -732,4 +1004,12 @@ export const STYLE_GRANDEURS_CM = `
   .feuille.gr .gr-chapeau { position: relative; display: inline-block; }
   .feuille.gr .gr-chapeau::before { content: "^"; position: absolute; left: 0; right: 0; top: -0.55em; text-align: center; font-weight: 400; }
   .feuille.gr svg { display: block; }
+  .feuille.gr .gr-lettre { display: block; font-size: 14px; margin-bottom: 1mm; }
+  .feuille.gr .gr-reference { display: flex; align-items: center; gap: 4mm; font-size: 13.5px; margin: 0 0 4mm; }
+  .feuille.gr .gr-tableau-unites { width: auto; border-collapse: collapse; font-size: 14px; margin: 0 0 4mm; }
+  .feuille.gr .gr-tableau-unites th, .feuille.gr .gr-tableau-unites td { border: 1px solid #9aa0b4; height: 8mm; min-width: 9mm; padding: 0 1.5mm; text-align: center; }
+  .feuille.gr .gr-tableau-unites th { background: #f0f2f8; font-size: 12.5px; }
+  .feuille.gr .gr-tableau-unites .gr-base { background: #fdecea; }
+  .feuille.gr .gr-tableau-unites td.gr-mesure { text-align: left; white-space: nowrap; }
+  .feuille.gr .gr-tableau-unites td.gr-en { min-width: 24mm; }
 `;
