@@ -18,6 +18,18 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.39",
+    titre: "Treize séquences d'après le manuel du CRPE, la télécommande du tableau, et un partage WiFi plus sûr",
+    points: [
+      { quoi: "Onze séquences toutes faites de plus, d'après « Réussir mon CRPE » (Nathan) : la multiplication posée et les problèmes en barres à la manière de Singapour (CE2), la symétrie (CE2), les problèmes de composition (CE1), les longueurs jusqu'à la règle graduée (CP-CE1), la division euclidienne, les fractions simples, la proportionnalité et les programmes de construction (CM1), les aires (CM1-CM2), l'addition des décimaux (CM2). Chacune garde la séance que le manuel détaille et cite ses pages ; ses feuilles se rouvrent dans leur atelier.", ou: "Fabriquer › 📚 Séquences toutes faites" },
+      { quoi: "En grande section, deux séquences du même manuel : le tangram, pour reconnaître les formes et reproduire des figures, et l'album à calculer, pour décomposer les nombres de 2 à 9.", ou: "Une séquence › la bibliothèque, rayon Maternelle" },
+      { quoi: "La télécommande du tableau : vous parlez à l'iPhone, le Mac projeté affiche — un minuteur, une page de la classe, une recherche, le plein écran, tous les menus. Rien qui montre les élèves ne s'ouvre sans un « oui » sur le téléphone. « Que dire ? » sur l'iPhone donne les phrases comprises. Elle demande la prochaine version du compagnon.", ou: "Réglages › Téléphone › Ouvrir la télécommande" },
+      { quoi: "Le partage WiFi tire un code neuf à chaque ouverture et se ferme tout seul deux heures après la dernière visite du téléphone. Les temps d'observation ne passent plus par le WiFi de l'école.", ou: "Réglages › Téléphone" },
+      { quoi: "Les ateliers à mots — étiquettes, ombres, mots codés en gestes, syllabe manquante, loto des syllabes — démarrent en un clic : sous l'exemple, « Ou partir de » remplit la liste d'un thème de la banque d'images, des mots du projet ou de Mes images.", ou: "Fabriquer" },
+      { quoi: "Une séance de 65 minutes — le calcul mental ajouté à une séance de 55 — montre sa vraie durée.", ou: "Une séance" },
+    ],
+  },
+  {
     version: "1.6.38",
     titre: "Reprendre une seule chose d'un état passé, des listes de mots qui se gardent, et des dizaines de corrections",
     points: [
