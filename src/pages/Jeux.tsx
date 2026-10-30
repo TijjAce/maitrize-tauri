@@ -32,6 +32,7 @@ import { AbaqueTab, BillesTab, SuiteNombresTab } from "./AteliersNumerationCP";
 import { DemiDroiteTab, OrdinauxTab } from "./AteliersReperage";
 import { CalculCMTab, GeometrieCMTab, GrandeursCMTab, ProblemesCMTab } from "./AteliersCoursMoyen";
 import { RectanglesTab } from "./AtelierRectangles";
+import { ProblemesAidesTab } from "./AtelierProblemesAides";
 import { GenerateurPersoTab } from "./AtelierGenerateurPerso";
 import { enregistrerGenerateur, useGenerateursPerso } from "../components/GenerateursPerso";
 import type { GenerateurPerso } from "../generateursPerso";
@@ -421,6 +422,7 @@ export default function Jeux() {
       <ModeImagesDeLAtelier atelier={onglet} />
       {onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
+        : onglet === "problemesAides" ? <ProblemesAidesTab />
         : onglet === "problemesCM" ? <ProblemesCMTab />
         : onglet === "coloriage" ? <ColoriageMagiqueTab />
         : onglet === "sons" ? <LectureSonsTab />
