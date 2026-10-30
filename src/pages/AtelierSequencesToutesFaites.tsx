@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { api, nowIso } from "../api";
+import logo from "../assets/logo.png";
 import { seanceDeLaParole } from "../aidesDesSequences";
 import { Aide } from "../components/Aide";
 import { ApercuFeuille } from "../components/ApercuFeuille";
@@ -17,6 +18,7 @@ import { avecLaSeanceDesMots, estLaSeanceDesMots } from "../motsDesProblemes";
 import { periodeProposee } from "../periodesProposees";
 import { lireProfils } from "../planDeLaClasse";
 import { graineDeLaFeuille } from "../sequenceSoustractionPosee";
+import { SENS_DU_LOGO, TRAVAILLEE_EN_PROFONDEUR, estApprofondie } from "../sequencesApprofondies";
 import {
   CLE_PERIODES, COLONNES_DU_TABLEAU, PERIODES_DE_L_ANNEE, competenceDeLaDemarche, creerLaSequenceToutefaite, lirePeriodes, nomSansClasse,
   ouvreSurLeCalculMental, planToutFait, repereDeLaDemarche, sequencesToutesFaites, tableauDesSequences,
@@ -40,9 +42,13 @@ const lirePlis = (brut: unknown): string[] => (Array.isArray(brut) ? brut.filter
 
 const finDePhrase = (s: string) => (/[.!?…»]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
 
-/** Au survol d'une séquence du tableau : son nom entier, et la phrase qui la place — d'un texte, ou la proposition de Maitrize. */
+/**
+ * Au survol d'une séquence du tableau : son nom entier, la phrase qui la place — d'un texte, ou la proposition de Maitrize —, et
+ * ce que dit le logo de Maitrize, quand elle est travaillée en profondeur.
+ */
 const titreDeLaPuce = (s: SequenceToutefaite, infos?: { periode: number | null; raison: string }) =>
-  (infos?.periode ? `${s.demarche.nom}\nPériode ${infos.periode} — ${infos.raison}` : s.demarche.nom);
+  [s.demarche.nom, infos?.periode ? `Période ${infos.periode} — ${infos.raison}` : "",
+    estApprofondie(s.demarche.id) ? `${TRAVAILLEE_EN_PROFONDEUR} : ${SENS_DU_LOGO}.` : ""].filter(Boolean).join("\n");
 
 /** Le type de donnée d'une séquence qu'on glisse d'une période à l'autre. */
 const TYPE_SEQUENCE = "text/x-maitrize-sequence";
@@ -135,6 +141,7 @@ export function SequencesToutesFaitesTab({ classe }: { classe: Classe }) {
                   <p>Ce sont les déroulements que propose la fiche d'une séquence : les séquences des livrets d'Éduscol, ou bâties sur le programme et sur les guides. Chacune dit sa source.</p>
                   <p>Chacune est dans la période où la placent le programme ou un texte d'Éduscol — livret, guide, repères annuels —, cité au survol. Glissez-la dans une autre période de sa ligne, ou rangez-la au clic droit : le tableau devient la programmation de la classe.</p>
                   <p>« Suggestion Maitrize » en haut d'une séquence : aucun texte ne la date. Maitrize lui suggère une période, ligne par ligne — du plus simple au plus complexe, du proche au lointain — et dit pourquoi au survol. La mention s'efface quand vous la rangez ailleurs.</p>
+                  <p><img className="stf-logo-aide" src={logo} alt="" /> Le logo de Maitrize, en haut à droite d'une séquence : elle est travaillée en profondeur — {SENS_DU_LOGO}.</p>
                   <p>Un clic l'ouvre : ses séances, et toutes les feuilles que les ateliers en fabriquent.</p>
                 </Aide>
               </th>
@@ -181,11 +188,12 @@ export function SequencesToutesFaitesTab({ classe }: { classe: Classe }) {
                             } : undefined}>
                             {ligne.cases[j].map((s) => (
                               <button key={s.cle} type="button" draggable aria-pressed={s === choisie} title={titreDeLaPuce(s, infos.get(s.cle))}
-                                className={`stf-puce${s === choisie ? " actif" : ""}${s.cle === enVol ? " en-vol" : ""}`}
+                                className={`stf-puce${s === choisie ? " actif" : ""}${s.cle === enVol ? " en-vol" : ""}${estApprofondie(s.demarche.id) ? " approfondie" : ""}`}
                                 onClick={() => setChoisieCle(s === choisie ? "" : s.cle)}
                                 onContextMenu={(e) => menu(e, s)}
                                 onDragStart={(e) => { e.dataTransfer.setData(TYPE_SEQUENCE, s.cle); e.dataTransfer.effectAllowed = "move"; setEnVol(s.cle); }}
                                 onDragEnd={() => { setEnVol(""); setSurvol(""); }}>
+                                {estApprofondie(s.demarche.id) && <img className="stf-puce-logo" src={logo} alt={TRAVAILLEE_EN_PROFONDEUR} />}
                                 {infos.get(s.cle)?.proposee && choisies[s.cle] === undefined && <span className="stf-puce-suggestion">Suggestion Maitrize</span>}
                                 <span className="stf-puce-nom">{nomSansClasse(s.demarche.nom)}</span>
                                 <span className="stf-puce-meta">{avecLaSeanceDesMots(s.demarche).seances.length} séances</span>
@@ -242,7 +250,9 @@ function DetailDeLaSequence({ s, infos, periode, onPeriode, classeDuPlan, compet
         gauche={<>
           <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <span>{nomSansClasse(s.demarche.nom)} — {s.classe}</span>
+            {estApprofondie(s.demarche.id) && <img className="stf-logo-titre" src={logo} alt={TRAVAILLEE_EN_PROFONDEUR} title={TRAVAILLEE_EN_PROFONDEUR} />}
             <Aide titre="D'où vient cette séquence" vers="droite">
+              {estApprofondie(s.demarche.id) && <p><b>{TRAVAILLEE_EN_PROFONDEUR}</b> : {SENS_DU_LOGO}.</p>}
               <p>{finDePhrase(s.demarche.source)}</p>
               <p>{s.demarche.resume}</p>
               {infos?.periode ? <p><b>Période {infos.periode}</b> — {infos.raison}</p> : null}
