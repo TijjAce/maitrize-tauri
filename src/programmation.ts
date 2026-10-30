@@ -88,6 +88,23 @@ const PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
   "nombres-10-20-cp": { periode: 2, niveau: "CP", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 43", "avec des élèves de CP en période 2") },
   // La soustraction posée avec retenue, d'après le même manuel (voir demarcheSoustractionRetenue.ts).
   "soustraction-retenue-ce1": { periode: 3, niveau: "CE1", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 56", "La séquence se situe en période 3") },
+  // Les autres sujets du même manuel (voir sequencesDuManuel.ts), quand il les date.
+  "technique-multiplication-ce2": { periode: 4, niveau: "CE2", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 63", "une classe de CE2 de 25 élèves en période 4") },
+  "formes-tangram-gs": { periode: 3, niveau: "GS", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 103", "la séance décrite se situe en période 3 de GS") },
+  "decomposition-additive-gs": { periode: 4, niveau: "GS", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 108", "un groupe de 12 élèves de GS en période 4") },
+  // Sur les périodes 3 et 4 : elle commence en période 3.
+  "division-euclidienne-cm1": { periode: 3, niveau: "CM1", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 90", "la séquence suivante pour les périodes 3 et 4") },
+  "fractions-simples-cm1": { periode: 1, niveau: "CM1", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 128", "Les fractions simples sont introduites en période 1.") },
+  // Un cours double : la même période au CM1 et au CM2.
+  "aires-comparer-cm1-cm2": { periode: 3, raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 159", "de 20 élèves (12 CM1 et 8 CM2) en période 3") },
+  "symetrie-axiale-ce2": { periode: 3, niveau: "CE2", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 175", "une classe de CE2 de 25 élèves, en période 3") },
+  // Sur les périodes 1 et 2, dit le manuel : elle commence en période 1.
+  "linearite-cm1": { periode: 1, niveau: "CM1", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 189", "qui se déroulera sur les périodes 1 et 2") },
+  "programme-construction-cm1": { periode: 5, niveau: "CM1", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 217", "Période : 5 – fin de l'année") },
+  // Le sujet dit la période 2 ; le manuel, en le traitant, la période 3.
+  "singapour-multiplicatifs-ce2": { periode: 3, niveau: "CE2", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 238", "Notre séance se situera en classe de CE2, en période 3") },
+  // Filée sur l'année ; sa séance détaillée, en période 2.
+  "compositions-etats-ce1": { periode: 2, niveau: "CE1", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 203", "relevant des structures additives (addition/soustraction) en période 2") },
   "nombres-livret-cp-100": { periode: 3, raison: cite("CP", "Au plus tard en période 3, les élèves travaillent avec des quantités et des nombres allant jusqu'à cent.") },
   // Les nombres de la séquence du guide — 71 et 68 — vont jusqu'à cent.
   "comparer-nombres-cp": { periode: 3, raison: cite("CP", "Au plus tard en période 3, les élèves travaillent avec des quantités et des nombres allant jusqu'à cent.") },

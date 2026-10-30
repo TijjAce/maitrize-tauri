@@ -228,6 +228,8 @@ export const DEMARCHES_A_PROBLEMES = new Set([
   "sens-addition-soustraction-cp", "sens-multiplication-cp", "multiplication-ce1", "division-ce2", "soustraction-retenue-ce1",
   "monnaie-cp", "monnaie-ce1", "monnaie-ce2", "durees-ce1", "durees-ce2",
   "probleme-du-jour-maternelle",
+  // Les séquences du manuel du CRPE de l'enseignant qui posent des problèmes (voir sequencesDuManuel.ts).
+  "technique-multiplication-ce2", "division-euclidienne-cm1", "linearite-cm1", "compositions-etats-ce1", "singapour-multiplicatifs-ce2",
 ]);
 
 /** La séance qui ouvre une séquence de problèmes. */

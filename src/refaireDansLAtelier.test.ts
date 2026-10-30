@@ -47,6 +47,8 @@ const { REGLAGES_CATEGORISER, htmlCategoriser, normaliserCategories } = await im
 const { REGLAGES_SUITES, htmlSuites, reglagesSurs: suitesSures } = await import("./suitesImages");
 const { REGLAGES_PAR_DEFAUT: REGLAGES_COLORIAGE, fabriquerColoriage, feuilleDuColoriage } = await import("./coloriageMagique");
 const { REGLAGES_NUMERATION, htmlNumeration } = await import("./numeration");
+const { REGLAGES_RESOLUTION, htmlResolution, reglagesResolutionSurs } = await import("./aidesALaTache");
+const CT = await import("./cartesATaches");
 const { hasard } = await import("./hasard");
 
 type Memoires = Record<string, any>;
@@ -126,6 +128,8 @@ const ATELIERS: Record<string, (m: Memoires, g: number) => string> = {
   planClasse: (m, g) => htmlPlanClasse(reglagesPlanSurs(lu(REGLAGES_PLAN_CLASSE, m.planClasse)), g),
   frise: (m) => htmlFrise(reglagesFriseSurs(lu(REGLAGES_FRISE, m.frise))),
   paysage: (m) => htmlPaysage(reglagesPaysageSurs(lu(REGLAGES_PAYSAGE, m.paysage))),
+  resolution: (m) => htmlResolution(reglagesResolutionSurs(lu(REGLAGES_RESOLUTION, m.resolution))),
+  taches: (m, g) => { const r = CT.reglagesSurs(lu(CT.REGLAGES_CARTES, m.cartesATaches)); return CT.htmlDeLaSerie(CT.cartesDeLaSerie(r, g), r, g); },
 };
 
 const GRAINES = [3, 1789];
