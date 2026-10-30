@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { NAV, SOUS_ONGLETS } from "./components/CommandPalette";
 import {
   catalogue, ceQuIlComprend, comprendre, consigneDeMistral, destinationsDe, dureeDite, dureeEnClair, enChiffres, epurer,
-  estComplexe, inviteDeLaVoix, lireLesActions, masquerLesPrenoms, nomDeLaPage, pageAConfirmer, plat,
+  estComplexe, inviteDeLaVoix, jourDit, lireLesActions, masquerLesPrenoms, nomDeLaPage, nommesParmi, pageAConfirmer, plat,
   type ContexteTelecommande, type Destination, type ListesDeLaClasse,
 } from "./telecommande";
 
@@ -326,5 +326,74 @@ describe("ce que la télécommande comprend, montré sur le téléphone", () => 
     // Ce qu'on affiche le plus d'abord ; les phrases sans exemple à toucher, à la fin.
     expect(groupes.slice(0, 4).map((g) => g.titre)).toEqual(["Minuteur", "Écran", "CAA", "Fabriquer"]);
     expect(groupes.slice(-2).map((g) => g.aToucher)).toEqual([false, false]);
+  });
+});
+
+describe("créer à la voix, après un « oui » sur le téléphone (demande de l'enseignant, 30 octobre 2026)", () => {
+  const dit = (phrase: string) => comprendre(phrase, ctx);
+
+  it("une séquence : son titre tel qu'il est dit, et ce que la phrase en précise — classe, période, matière", () => {
+    expect(dit("Crée une séquence sur les volcans au CM1 en période 2."))
+      .toEqual({ genre: "creerSequence", titre: "Les volcans", classe: "CM1", periode: 2, matiere: null, touteFaite: false });
+    expect(dit("Nouvelle séquence : le corps humain")).toMatchObject({ genre: "creerSequence", titre: "Le corps humain", classe: null, periode: null });
+    expect(dit("Fais une séquence de maths en CE deux période trois sur les fractions, s'il te plaît"))
+      .toEqual({ genre: "creerSequence", titre: "Les fractions", classe: "CE2", periode: 3, matiere: "Mathématiques", touteFaite: false });
+    expect(dit("Crée une séquence de sciences sur les volcans en grande section")).toMatchObject({ titre: "Les volcans", matiere: "Sciences et techno.", classe: "GS" });
+    expect(dit("Je voudrais créer la séquence toute faite de la symétrie au CE2"))
+      .toMatchObject({ genre: "creerSequence", titre: "La symétrie", classe: "CE2", touteFaite: true });
+    expect(dit("Crée une séquence")).toMatchObject({ genre: "rien" });
+  });
+
+  it("une séance : la séquence nommée — sinon celle qui est affichée —, son titre, son jour, sa durée", () => {
+    expect(dit("Ajoute une séance à la séquence des fractions : partager une pizza"))
+      .toEqual({ genre: "creerSeance", titre: "Partager une pizza", sequence: "des fractions", jour: null, duree: null });
+    expect(dit("Ajoute une séance dans cette séquence : les éruptions")).toMatchObject({ titre: "Les éruptions", sequence: null });
+    expect(dit("Crée une séance de lecture pour demain")).toMatchObject({ titre: "Lecture", sequence: null, jour: "demain" });
+    expect(dit("Crée-moi une séance de 45 minutes pour lundi prochain dans la séquence des volcans"))
+      .toMatchObject({ titre: "", sequence: "des volcans", jour: "lundi", duree: 45 });
+    expect(dit("Prépare une séance d'une heure et demie après-demain")).toMatchObject({ duree: 90, jour: "après-demain" });
+  });
+
+  it("ne crée que ce qu'on demande : ouvrir, chercher, le minuteur restent ce qu'ils sont ; « annule » défait", () => {
+    expect(dit("Affiche la séquence des fractions")).toMatchObject({ genre: "chercher", sorte: "sequence" });
+    expect(dit("La séance d'aujourd'hui")).toMatchObject({ genre: "chercher" });
+    expect(dit("Ajoute deux minutes")).toEqual({ genre: "minuteurAjouter", secondes: 120 });
+    expect(dit("Annule")).toEqual({ genre: "annuler" });
+    expect(dit("Annule la création")).toEqual({ genre: "annuler" });
+  });
+
+  it("le jour dit devient une date ; un titre se retrouve par ses mots", () => {
+    expect(["demain", "après-demain", "lundi", "vendredi", "aujourd'hui"].map((j) => jourDit(j, "2026-10-30")))
+      .toEqual(["2026-10-31", "2026-11-01", "2026-11-02", "2026-11-06", "2026-10-30"]);
+    const titres = [{ titre: "La symétrie axiale : reconnaître et compléter une figure (CE2)", valeur: "a" }, { titre: "Les fractions (CE2)", valeur: "b" }];
+    expect(nommesParmi("de la symétrie", titres)).toEqual(["a"]);
+    expect(nommesParmi("les fraction", titres)).toEqual(["b"]);
+    expect(nommesParmi("les volcans", titres)).toEqual([]);
+    // À égalité, le titre dit tel quel l'emporte ; sinon, tous, pour que l'enseignant choisisse.
+    const deux = [{ titre: "La symétrie axiale (CE2)", valeur: "c" }, ...titres];
+    expect(nommesParmi("La symétrie axiale", deux)).toEqual(["c"]);
+    expect(nommesParmi("La symétrie", deux)).toEqual(["c", "a"]);
+  });
+
+  it("avec Mistral : des créations relues — classe, période, matière possibles —, dans une séquence que la phrase nomme", () => {
+    const vraies = destinationsDe(NAV, SOUS_ONGLETS);
+    const classe: ContexteTelecommande = { destinations: vraies, eleves: ctx.eleves };
+    const elements = catalogue({ sequences: [{ id: "q-a", titre: "Les volcans" }], seances: [], jeux: [{ id: "j-a", titre: "Loto des volcans" }], outils: [], textes: [], dossiers: [] },
+      ctx.eleves, "2026-10-30");
+    const lu = (j: unknown, phrase: string) => lireLesActions(JSON.stringify(j), classe, elements, phrase);
+    expect(lu({ actions: [{ action: "creer_sequence", titre: "Les volcans", classe: "cm1", periode: 2, matiere: "Sciences et techno." }] }, "crée une séquence de sciences sur les volcans au CM1"))
+      .toEqual([{ genre: "creerSequence", titre: "Les volcans", classe: "CM1", periode: 2, matiere: "Sciences et techno.", touteFaite: false }]);
+    // Une classe, une période, une matière qui n'existent pas tombent ; la création reste, sans elles.
+    expect(lu({ actions: [{ action: "creer_sequence", titre: "Les volcans", classe: "6e", periode: 9, matiere: "Chimie" }] }, "crée une séquence sur les volcans"))
+      .toEqual([{ genre: "creerSequence", titre: "Les volcans", classe: null, periode: null, matiere: null, touteFaite: false }]);
+    expect(lu({ actions: [{ action: "creer_sequence", titre: "" }] }, "crée une séquence")).toBeNull();
+    expect(lu({ actions: [{ action: "creer_seance", titre: "Les éruptions", sequence: "q1", jour: "Demain", duree: 45 }] }, "ajoute une séance aux volcans sur les éruptions demain"))
+      .toEqual([{ genre: "creerSeance", titre: "Les éruptions", sequence: "Les volcans", sequenceId: "q-a", jour: "demain", duree: 45 }]);
+    // Une référence qui n'est pas une séquence, ou une séquence que la phrase ne nomme pas : rien.
+    expect(lu({ actions: [{ action: "creer_seance", titre: "x", sequence: "j1" }] }, "ajoute une séance au loto des volcans")).toBeNull();
+    expect(lu({ actions: [{ action: "creer_seance", titre: "x", sequence: "q1" }] }, "ajoute une séance aux fractions")).toBeNull();
+    expect(lu({ actions: [{ action: "annuler" }] }, "annule tout ça")).toEqual([{ genre: "annuler" }]);
+    const consigne = consigneDeMistral(vraies, elements, "");
+    for (const a of ["creer_sequence", "creer_seance", "annuler"]) expect(consigne).toContain(`"action":"${a}"`);
   });
 });

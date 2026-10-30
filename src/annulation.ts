@@ -122,6 +122,17 @@ function surAvantSaisie(e: Event) {
   if (choix && choix !== "frappe") { if (type === "historyRedo") choix.source.refaire?.(); else choix.source.defaire(); }
 }
 
+/**
+ * « Annule », dit à la télécommande : comme ⌘Z, le geste le plus récent de ce qu'on voit — une création, une
+ * suppression —, sans la frappe. Faux s'il n'y a rien à défaire.
+ */
+export function annulerDeLoin(): boolean {
+  const choix = choisir(false, { dansUnChamp: null, propre: true, natif: false });
+  if (!choix || choix === "frappe") return false;
+  choix.source.defaire();
+  return true;
+}
+
 let installee = false;
 
 /** Pose l'écouteur unique, une fois, au démarrage. */

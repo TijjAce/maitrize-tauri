@@ -10,6 +10,8 @@ import { demanderMinuteur, EVT_FERMER_AFFICHAGE } from "../demandeMinuteur";
 import { etatDuMinuteur, piloterLeMinuteur, preparerSon } from "../pages/SupportsVisuels";
 import { zoomerDeLoin } from "../theme";
 import { EVT_CHERCHER_BUREAU } from "../bureauAteliers";
+import { annulerDeLoin } from "../annulation";
+import { seanceACreer, sequenceACreer, sequenceToutefaiteACreer, type Demander } from "../creationsALaVoix";
 import {
   CLE_SECOURS, CLE_TEMPS_REEL, MODELE_DE_SECOURS, catalogue, ceQuIlComprend, comprendre, consigneDeMistral, destinationsDe,
   dureeEnClair, estComplexe, inviteDeLaVoix, lireLesActions, nomDeLaPage, pageAConfirmer, trouvailleAConfirmer, type Compris,
@@ -27,15 +29,17 @@ const destinations = (): Destination[] => destinationsDe(NAV, SOUS_ONGLETS);
 
 /** Ce que dit le téléphone à « que dire ? » — la liste entière s'ouvre dessous. */
 const QUE_DIRE_EN_BREF =
-  "Par exemple : « minuteur cinq minutes », « affiche les supports visuels », « plein écran », « ferme », « note pour [prénom] : … ».";
+  "Par exemple : « minuteur cinq minutes », « affiche les supports visuels », « plein écran », « ferme », « note pour [prénom] : … », « crée une séquence sur… ».";
 
 /**
- * Ce qui attend le « oui » du téléphone, par question : une note à écrire, ou une page qui montre les élèves. `suite` :
- * les actions de la même phrase venues après — elles se font après le « oui », et tombent avec le « non ».
+ * Ce qui attend le « oui » du téléphone, par question : une note à écrire, une page qui montre les élèves, une séquence
+ * ou une séance à créer. `suite` : les actions de la même phrase venues après — elles se font après le « oui », et
+ * tombent avec le « non ».
  */
 type EnAttente = (
   | { genre: "note"; eleveId: string; prenom: string; texte: string }
   | { genre: "afficher"; faire: () => ReponseTelecommande }
+  | { genre: "creer"; faire: () => Promise<ReponseTelecommande> }
 ) & { suite?: Compris[] };
 const enAttente = new Map<string, EnAttente>();
 
@@ -45,6 +49,13 @@ function apresUnOui(nom: string, faire: () => ReponseTelecommande): ReponseTelec
   enAttente.set(id, { genre: "afficher", faire });
   return { ok: true, aConfirmer: `Afficher « ${nom} » au tableau ?`, id };
 }
+
+/** Une création se demande sur le téléphone : la phrase mal entendue ne crée rien. */
+const demanderAvantDeCreer: Demander = (question, faire) => {
+  const id = newId();
+  enAttente.set(id, { genre: "creer", faire });
+  return { ok: true, aConfirmer: question, id };
+};
 
 async function pleinEcran(actif: boolean) {
   try {
@@ -235,6 +246,12 @@ async function agir(c: Compris, nav: (to: string) => void): Promise<ReponseTelec
     case "aide":
       // La liste entière part avec : le téléphone l'ouvre.
       return { ok: true, fait: QUE_DIRE_EN_BREF, comprend: ceQuIlComprend(destinations()) };
+    case "creerSequence":
+      return c.touteFaite ? sequenceToutefaiteACreer(c, nav, demanderAvantDeCreer) : sequenceACreer(c, nav, demanderAvantDeCreer);
+    case "creerSeance":
+      return seanceACreer(c, nav, demanderAvantDeCreer);
+    case "annuler":
+      return annulerDeLoin() ? { ok: true, fait: "Annulé." } : { ok: false, fait: "Rien à annuler." };
     case "rien":
       return { ok: false, fait: c.pourquoi };
   }
@@ -248,9 +265,10 @@ export async function decider(id: string, oui: boolean, nav: (to: string) => voi
   const q = enAttente.get(id);
   enAttente.delete(id);
   if (!q) return { ok: false, fait: "Cette question n'attend plus de réponse." };
-  if (!oui) return { ok: true, fait: q.genre === "note" ? "Rien n'est noté." : "Rien n'est affiché." };
+  if (!oui) return { ok: true, fait: q.genre === "note" ? "Rien n'est noté." : q.genre === "creer" ? "Rien n'est créé." : "Rien n'est affiché." };
   let fait: ReponseTelecommande;
   if (q.genre === "afficher") fait = q.faire();
+  else if (q.genre === "creer") fait = await q.faire().catch((e): ReponseTelecommande => ({ ok: false, fait: "Rien n'est créé : " + texteErreur(e) }));
   else {
     await api.commentaireSave({ id: newId(), date: nowIso(), texte: q.texte, type: "divers", eleveId: q.eleveId });
     fait = { ok: true, fait: `Noté pour ${q.prenom}.` };
@@ -358,6 +376,10 @@ export function CarteTelecommande() {
             s'écrit dans ses observations après un « oui » sur le téléphone, sans s'afficher au tableau.</p>
           <p>Sur l'iPhone, « Que dire ? » montre tout ce que la télécommande comprend, et chaque page par son nom :
             toucher une phrase l'envoie, comme si on l'avait dite.</p>
+          <p>Créer à la voix : « crée une séquence de sciences sur les volcans au CM1 », « crée la séquence toute faite
+            de la symétrie au CE2 » — ses séances et ses feuilles —, « ajoute une séance à la séquence des volcans : les
+            éruptions », « crée une séance de lecture pour demain » (dans la séquence affichée). Rien ne se crée sans un
+            « oui » sur le téléphone ; ensuite la séquence ou la séance s'affiche, et « annule » la retire.</p>
           <p>Écoute en direct : pendant qu'on parle, l'iPhone envoie la voix à Voxtral Realtime (Mistral, en ligne) et
             montre le texte sous le bouton ; la phrase est prête dès qu'on lâche. Ce Mac donne à l'iPhone un jeton
             d'une phrase, jamais la clé. Si ce texte n'est pas compris — ou sans réseau —, ce Mac transcrit le même son,
