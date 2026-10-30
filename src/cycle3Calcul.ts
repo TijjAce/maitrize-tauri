@@ -233,11 +233,12 @@ export function demarcheDuCalculCM(classe: string, comp: string): string | null 
 
 // ── Les feuilles ──────────────────────────────────────────────────────────
 
+/** Une feuille de l'atelier « Le calcul — CM1, CM2 », qui la refait avec les mêmes réglages et le même tirage. */
 const calcul = (seance: number, titre: string, r: Partial<ReglagesCalculCM>): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_CALCUL_CM, ...r, titre };
   return {
-    seance, atelier: "posees", titre,
-    fabriquer: (g) => ({ html: htmlCalculCM(reglages, g), style: STYLE_FEUILLE + STYLE_CALCUL_CM }),
+    seance, atelier: "calculCM", titre,
+    fabriquer: (g) => ({ html: htmlCalculCM(reglages, g), style: STYLE_FEUILLE + STYLE_CALCUL_CM, refaire: { calculCM: reglages } }),
   };
 };
 

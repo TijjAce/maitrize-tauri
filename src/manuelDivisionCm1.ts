@@ -28,14 +28,13 @@
 // le manuel, et le dit. À côté de « La division euclidienne posée (CM1) »
 // (cycle3Calcul.ts), bâtie sur le programme, celle-ci part du partage.
 //
-// Ses feuilles viennent des ateliers « Calcul mental », « Problèmes
-// multiplicatifs », « Résoudre un problème pas à pas », « Opérations
-// posées », « Nombres en cubes », « Cartes de calcul » et « Grands nombres et
-// décimaux », à leurs réglages : chacune se rouvre dans le sien. Les
-// divisions à poser n'ont pas de feuille : aucun atelier de Fabriquer ne pose
-// une division — celles de cycle3Calcul.ts ne se rouvrent pas. Le dessin du
-// trésor, l'affiche de la méthode et les problèmes à reste non plus : on les
-// écrit au tableau, ou l'on prend le fichier de la classe.
+// Ses feuilles viennent des ateliers « Calcul mental », « Le calcul — CM1,
+// CM2 » — le quotient et le reste en ligne, les partages, les divisions en
+// potence —, « Problèmes multiplicatifs », « Résoudre un problème pas à
+// pas », « Opérations posées », « Nombres en cubes », « Cartes de calcul » et
+// « Grands nombres et décimaux », à leurs réglages : chacune se rouvre dans
+// le sien. Le dessin du trésor et l'affiche de la méthode n'en ont pas : on
+// les écrit au tableau.
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 import type { FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
@@ -50,6 +49,7 @@ import { STYLE_AIDES, htmlResolution, reglagesResolutionSurs } from "./aidesALaT
 import { REGLAGES_CUBES, STYLE_CUBES, exercicesCubes, htmlCubes, reglagesCubesSurs } from "./cubesNumeration";
 import { STYLE_JEUX_MATHS, cartesCalcul, htmlCartesCalcul, type ReglagesCalcul } from "./jeuxMaths";
 import { REGLAGES_NUMERATION, STYLE_NUMERATION, htmlNumeration, type ReglagesNumeration } from "./numeration";
+import { REGLAGES_CALCUL_CM, STYLE_CALCUL_CM, htmlCalculCM, type ReglagesCalculCM } from "./calculCoursMoyen";
 
 export const ID_DIVISION_EUCLIDIENNE_CM1 = "division-euclidienne-cm1";
 
@@ -100,8 +100,8 @@ export const DEMARCHE_DIVISION_EUCLIDIENNE_CM1: Demarche = {
     // La séance détaillée du manuel : ses six phases, leur organisation et leur durée ; le calcul en ligne qui l'ouvre devient le calcul mental.
     seance("Le trésor des pirates : partager les centaines, les dizaines, les unités",
       sauront("trouver le résultat d'une division par partages successifs : partager les centaines, puis les dizaines, puis les unités, en changeant en dizaines les centaines qui restent et en unités les dizaines qui restent ; écrire le résultat par une égalité : 672 = 4 × 168, 841 = 5 × 168 + 1."), 60, [
-        ph(LM, "10 min", "L'enseignant dit ce qu'on va apprendre, et pourquoi ces calculs : ils préparent la suite. Des calculs de formes variées, dits et écrits au tableau — « 6 × … = 36 », « 49, c'est combien de fois 7 ? », « 47 = (9 × …) + … » : chacun écrit le résultat sur son ardoise et la lève au signal. Correction collective.",
-          "Différencie : une aide individuelle, la table de multiplication sous les yeux, des nombres plus petits, ou la recherche à deux. Le manuel donne ces calculs en ligne, sur une fiche : on peut garder cette forme."),
+        ph(LM, "10 min", "L'enseignant dit ce qu'on va apprendre, et pourquoi ces calculs : ils préparent la suite. Des calculs de formes variées, dits et écrits au tableau — « 6 × … = 36 », « 49, c'est combien de fois 7 ? », « 47 = (9 × …) + … » : chacun écrit le résultat sur son ardoise et la lève au signal. Correction collective. Le manuel les donne aussi en ligne, sur une fiche : la feuille « Calcul en ligne — le quotient et le reste ».",
+          "Différencie : une aide individuelle, la table de multiplication sous les yeux, des nombres plus petits, ou la recherche à deux."),
         ph("Phase 2 – Individuel", "10 min", "Recherche. Chacun reçoit la feuille « Le trésor des pirates » et la lit seul : quatre pirates se partagent à parts égales un trésor de 6 coffres, 7 bourses et 2 pièces d'or ; un coffre contient 10 bourses, une bourse 10 pièces. Combien de pièces d'or pour chacun ?",
           "S'assure que la situation est comprise : un coffre, c'est 10 bourses, donc 100 pièces. Procédures possibles : des essais qu'on ajuste en encadrant — 100 chacun, ce n'est pas assez ; 200, c'est trop — ; certains partageront déjà les coffres, puis les bourses, puis les pièces."),
         ph("Phase 3 – Collectif", "10 min", "Mise en commun. Des volontaires montrent leur solution et disent comment ils ont fait ; chaque proposition est discutée. Puis l'enseignant annonce la suite : vérifier les résultats, et apprendre la technique de la division.",
@@ -110,7 +110,7 @@ export const DEMARCHE_DIVISION_EUCLIDIENNE_CM1: Demarche = {
           "Veille au lien entre le matériel et le problème : la plaque, c'est le coffre ; la barre, la bourse ; le cube, la pièce. Erreur la plus fréquente : partager ce qui se partage tout de suite — 4 plaques et 4 barres — et laisser le reste. Aide, s'il le faut, à échanger une plaque contre dix barres, une barre contre dix cubes, pour finir le partage."),
         ph("Phase 5 – Collectif", "10 min", "Mise en commun : on confronte les façons de faire, on valide — 168 pièces chacun, 672 = 4 × 168 — et l'on présente la méthode, étape par étape. Les 6 centaines pour 4 : 1 chacun, il en reste 2. Ces 2 centaines font 20 dizaines ; avec les 7, 27 dizaines : 6 chacun, il en reste 3. Ces 3 dizaines font 30 unités ; avec les 2, 32 unités : 8 chacun. Puis une autre manipulation, 841 ÷ 5 : un cube reste, qu'on ne partage pas. 841 = 5 × 168 + 1.",
           "Écrit chaque partage, et ce qui reste, sur l'affiche de la méthode. Fait dire qu'après les centaines, il y a deux sortes de dizaines à partager : celles qu'on voyait, et celles qui viennent des centaines restantes. Le reste, plus petit que le diviseur, ne se partage pas dans la division euclidienne."),
-        ph("Phase 6 – Individuel", "10 min", "Entraînement : des divisions à faire seul, par partages successifs, sur le fichier ou sur une fiche. Selon son niveau, chacun garde ce qui l'aide : le dessin des coffres, des bourses et des pièces, celui du matériel multibase, ou les lettres C, D, U.",
+        ph("Phase 6 – Individuel", "10 min", "Entraînement : des divisions à faire seul, par partages successifs, sur la feuille « Partager les centaines, les dizaines, les unités ». Selon son niveau, chacun garde ce qui l'aide : le dessin des coffres, des bourses et des pièces, celui du matériel multibase, à côté de chaque tableau, ou les lettres C, D, U.",
           "Observe qui partage seul et qui revient au matériel. Selon les difficultés : des nombres plus petits ; un matériel plus explicite — de grandes enveloppes de dix petites, de dix pièces chacune — ; le calcul mental à reprendre."),
       ]),
     seance("La potence : diviser par un nombre à un chiffre",
@@ -119,7 +119,7 @@ export const DEMARCHE_DIVISION_EUCLIDIENNE_CM1: Demarche = {
           CHAQUE_JOUR),
         ph(T1, "10 min", "Des partages à la potence : on reprend 672 ÷ 4 avec le matériel et l'affiche de la méthode, et l'on écrit chaque partage dans la potence. 6 centaines pour 4 : 1, il en reste 2. J'abaisse les 7 dizaines : 27 dizaines pour 4, 6, il en reste 3. J'abaisse les 2 unités : 32 pour 4, 8. On nomme : 672 est le dividende, 4 le diviseur, 168 le quotient, 0 le reste.",
           "Garde le matériel à côté de l'écrit : abaisser, c'est ajouter les dizaines qu'on voyait à celles qui viennent des centaines restantes."),
-        ph(T2, "20 min", "Poser des divisions, d'abord ensemble, puis seul : 584 ÷ 3, 256 ÷ 9, 1 548 ÷ 7, 841 ÷ 5. D'abord, combien de chiffres au quotient ? Dans 256 ÷ 9, 2 centaines pour 9, on ne peut pas : on prend 25 dizaines, et le quotient a deux chiffres. Puis, à chaque étape : combien de fois le diviseur ? On multiplie, on soustrait, on abaisse le chiffre suivant.",
+        ph(T2, "20 min", "Poser des divisions, d'abord ensemble — 584 ÷ 3, 256 ÷ 9, 1 548 ÷ 7, 841 ÷ 5 —, puis seul, sur la feuille « Divisions en potence — par un chiffre ». D'abord, combien de chiffres au quotient ? Dans 256 ÷ 9, 2 centaines pour 9, on ne peut pas : on prend 25 dizaines, et le quotient a deux chiffres. Puis, à chaque étape : combien de fois le diviseur ? On multiplie, on soustrait, on abaisse le chiffre suivant.",
           "Les lettres C, D, U pour le quotient, le matériel et la table de multiplication pour qui en a besoin. Erreurs attendues : un chiffre oublié au quotient, un reste plus grand que le diviseur, une soustraction fausse. On pose les soustractions ; qui les fait de tête peut s'en passer."),
         ph(T3, "5 min", "Ce qu'on retient, sur l'affiche : on prévoit le nombre de chiffres du quotient ; à chaque étape, on cherche combien de fois le diviseur, on soustrait, on abaisse le chiffre suivant ; le reste est toujours plus petit que le diviseur. On écrit 256 = 9 × 28 + 4."),
         ph(T4, "10 min", "Vérifier une division : avec le diviseur, le quotient et le reste, on retrouve le dividende — 9 × 28 + 4 = 256. La feuille « Multiplications posées, pour vérifier » : des multiplications par un nombre à un chiffre, comme celles des vérifications.",
@@ -131,7 +131,7 @@ export const DEMARCHE_DIVISION_EUCLIDIENNE_CM1: Demarche = {
           CHAQUE_JOUR),
         ph(T1, "10 min", "785 ÷ 25 : combien de chiffres au quotient ? 25 × 10 = 250 et 25 × 100 = 2 500 : le quotient est entre 10 et 100, il a deux chiffres. On écrit à côté les produits de 25 qui serviront : 25, 50, 75, 100.",
           "Le programme de 2025 n'attend au CM1 qu'un diviseur à un chiffre : cette séance va plus loin, comme le manuel. On peut la garder pour ceux qui sont prêts, ou pour la fin de l'année."),
-        ph(T2, "20 min", "On pose : 78 dizaines pour 25, 3 fois — 75 —, il en reste 3. J'abaisse le 5 : 35 pour 25, 1 fois, il reste 10. 785 = 25 × 31 + 10. Puis d'autres divisions, et pour qui est prêt 7 805 ÷ 27, ce qu'on attend en fin d'école : 27 × 9 = 243 et 27 × 8 = 216 s'écrivent à côté. La feuille « Multiplications posées — deux chiffres par un chiffre » : les calculs qu'on fait à côté de la potence.",
+        ph(T2, "20 min", "On pose : 78 dizaines pour 25, 3 fois — 75 —, il en reste 3. J'abaisse le 5 : 35 pour 25, 1 fois, il reste 10. 785 = 25 × 31 + 10. Puis d'autres divisions, sur la feuille « Divisions en potence — par deux chiffres », et pour qui est prêt 7 805 ÷ 27, ce qu'on attend en fin d'école : 27 × 9 = 243 et 27 × 8 = 216 s'écrivent à côté. La feuille « Multiplications posées — deux chiffres par un chiffre » : les calculs qu'on fait à côté de la potence.",
           "Des essais mieux ciblés par un encadrement : 27 × 9 = 243 est le plus grand produit qui ne dépasse pas 245. Autorise les produits écrits à côté ; encourage à poser les soustractions. Les tables en aide-mémoire pour qui en a besoin."),
         ph(T3, "5 min", "Ce qu'on retient : avec un diviseur à deux chiffres, on prévoit le nombre de chiffres du quotient, on écrit à côté les produits du diviseur, et l'on pose comme avant ; le reste est toujours plus petit que le diviseur."),
         ph(T4, "5 min", "Une division à poser seul, 936 ÷ 12, puis à vérifier par l'égalité : 936 = 12 × 78."),
@@ -142,7 +142,7 @@ export const DEMARCHE_DIVISION_EUCLIDIENNE_CM1: Demarche = {
           CHAQUE_JOUR),
         ph(T4, "10 min", "La feuille « Problèmes — partager ou grouper » : chercher la valeur d'une part, ou le nombre de parts — combien de boîtes ? —, puis écrire l'égalité. La même division répond aux deux.",
           "Fait dire ce qu'on cherche avant de calculer : la valeur d'une part, ou combien de parts."),
-        ph("Évaluation", "20 min", "Seul, sans aide : quatre divisions à poser et à calculer, par un nombre à un chiffre — dont une où le premier chiffre du dividende est plus petit que le diviseur, et une avec un zéro au quotient, comme 824 ÷ 4 —, et l'égalité qui vérifie chacune.",
+        ph("Évaluation", "20 min", "Seul, sans aide, la feuille « Divisions en potence — évaluation » : quatre divisions à poser et à calculer, par un nombre à un chiffre — dont une où le premier chiffre du dividende est plus petit que le diviseur, et une avec un zéro au quotient, comme 824 ÷ 4 —, et l'égalité qui vérifie chacune.",
           "Observe sans aider : qui prévoit le nombre de chiffres du quotient, qui oublie le zéro du quotient, qui se trompe dans les tables ou dans les soustractions."),
         ph("Remédiations", "15 min", "Pour qui en a besoin : refaire un partage avec le matériel multibase, ou avec des enveloppes et des pièces ; les tables, avec la feuille « Cartes de calcul — tables de 6 à 9 » ; la numération, avec la feuille « Décomposer les nombres ». Les autres : des divisions plus longues, et des problèmes. Ensuite, un entraînement court et régulier ; au CM2, on partagera aussi le reste : la division décimale.",
           "Reprend avec le matériel ce que l'évaluation a montré. Pour passer à la division décimale, il faudra un reste qu'on peut partager en dixièmes et en centièmes : des euros, des mètres."),
@@ -222,6 +222,15 @@ const decomposer = (seance: number): FeuilleAFabriquer => ({
   fabriquer: (g) => ({ html: htmlNumeration(DECOMPOSER, g), style: STYLE_FEUILLE + STYLE_NUMERATION, refaire: { numeration: DECOMPOSER } }),
 });
 
+/** Une feuille de l'atelier « Le calcul — CM1, CM2 » : il la refait, avec les mêmes réglages et le même tirage. */
+const calcul = (seance: number, titre: string, r: Partial<ReglagesCalculCM>): FeuilleAFabriquer => {
+  const reglages: ReglagesCalculCM = { ...REGLAGES_CALCUL_CM, classe: "CM1", ...r, titre };
+  return {
+    seance, atelier: "calculCM", titre,
+    fabriquer: (g) => ({ html: htmlCalculCM(reglages, g), style: STYLE_FEUILLE + STYLE_CALCUL_CM, refaire: { calculCM: reglages } }),
+  };
+};
+
 const FEUILLES: FeuilleAFabriquer[] = [
   // Le calcul mental de chaque séance : les tables, dans les deux sens, puis ce que demandent les essais de la potence.
   martiniere(0, ["cm1-table-multiplication"], [6, 7, 8, 9]),
@@ -231,10 +240,15 @@ const FEUILLES: FeuilleAFabriquer[] = [
   martiniere(4, ["cm1-fois-dizaines-centaines"]),
   problemes(0, "Problèmes — partager à parts égales", ["part"], [3, 9], [11, 25]),
   facons(0),
-  // La séance du manuel : l'énoncé des pirates ; le matériel multibase et les divisions de l'entraînement n'ont pas de feuille.
+  // La séance du manuel : son calcul en ligne, l'énoncé des pirates, et les partages de l'entraînement, le matériel dessiné à côté.
+  calcul(1, "Calcul en ligne — le quotient et le reste", { exercice: "quotient-reste", combien: 10 }),
   tresor(1),
+  calcul(1, "Partager les centaines, les dizaines, les unités", { exercice: "division-partages", combien: 3, materiel: true }),
+  calcul(2, "Divisions en potence — par un chiffre", { exercice: "division-euclidienne", diviseur: 1, combien: 4, posees: true }),
   posees(2, "Multiplications posées, pour vérifier", { operation: "×", chiffres: 3, chiffresDuSecond: 1, retenue: "melange", combien: 6, posees: true }),
+  calcul(3, "Divisions en potence — par deux chiffres", { exercice: "division-euclidienne", diviseur: 2, combien: 4, posees: true }),
   posees(3, "Multiplications posées — deux chiffres par un chiffre", { operation: "×", chiffres: 2, chiffresDuSecond: 1, retenue: "melange", combien: 6, posees: true }),
+  calcul(4, "Divisions en potence — évaluation", { exercice: "division-euclidienne", diviseur: 1, combien: 4, posees: false, difficultes: true }),
   problemes(4, "Problèmes — partager ou grouper", ["part", "nombre"], [3, 9], [11, 30]),
   cartesDesTables(4),
   decomposer(4),
@@ -245,11 +259,11 @@ const MATERIEL = [
   "Les ardoises ; une boîte de 72 jetons par groupe de quatre ; le matériel multibase — plaques, barres, cubes —, à disposition",
   "Les ardoises ; par groupe de quatre, 6 plaques, 7 barres et 2 cubes du matériel multibase, et de quoi échanger — une vingtaine de barres, "
     + "une trentaine de cubes — ; au tableau, 8 plaques, 4 barres et 1 cube pour 841 ÷ 5 ; le dessin du trésor — 6 coffres, 7 bourses, 2 pièces — "
-    + "à projeter ou à dessiner ; l'affiche de la méthode, à écrire avec la classe ; le fichier ou une fiche de divisions, pour l'entraînement ; "
+    + "à projeter ou à dessiner ; l'affiche de la méthode, à écrire avec la classe ; "
     + "pour la remédiation, des enveloppes et des pièces — de grandes enveloppes de dix petites, de dix pièces chacune",
   "Les ardoises ; le matériel multibase et l'affiche de la méthode ; les divisions à poser, au tableau ; les tables de multiplication en aide-mémoire",
   "Les ardoises ; les divisions à poser, au tableau ; les tables de multiplication en aide-mémoire",
-  "Les ardoises ; les divisions de l'évaluation, au tableau ou sur une fiche ; pour la remédiation, le matériel multibase, des enveloppes et des pièces",
+  "Les ardoises ; pour la remédiation, le matériel multibase, des enveloppes et des pièces",
 ];
 
 /** Les feuilles et le matériel de la séquence. */

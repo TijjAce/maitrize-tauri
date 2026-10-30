@@ -42,6 +42,7 @@ import { REGLAGES_MARTINIERE, STYLE_MARTINIERE, calculsMartiniere, htmlMartinier
 import { REGLAGES_MONNAIE, STYLE_MONNAIE, htmlMonnaie, type ReglagesMonnaie } from "./monnaie";
 import { REGLAGES_NUMERATION, STYLE_NUMERATION, htmlNumeration, type ReglagesNumeration } from "./numeration";
 import { REGLAGES_POSEES, STYLE_POSEES, htmlOperationsPosees, type ReglagesPosees } from "./operationsPosees";
+import { REGLAGES_CALCUL_CM, STYLE_CALCUL_CM, htmlCalculCM, type ReglagesCalculCM } from "./calculCoursMoyen";
 
 export const ID_DECIMAUX_CM2 = "addition-decimaux-cm2";
 
@@ -113,7 +114,7 @@ export const DEMARCHE_DECIMAUX_CM2: Demarche = {
           "Chaque résultat faux vient d'une erreur relevée : 20,85, les parties entière et décimale ajoutées chacune à part ; 13,65, les nombres alignés à droite comme des entiers ; 20,166, les 16 dixièmes laissés dans leur colonne. Fait dire par les élèves qui ont réussi qu'une colonne ne peut pas garder deux chiffres ; envoie au tableau un élève qui a fait la troisième erreur. Aides : la mesure, le tableau, l'écriture en fractions."),
         ph("Phase 5 – Individuel", "5 min", "21,66 + 21,66, en ligne : chacun montre son résultat sur l'ardoise. Puis quelques minutes pour finir le problème. L'enseignant conclut avec la classe : le périmètre mesure 43,32 m ; il faut acheter 44 m de grillage ; 44 × 4,50 € = 198 €.",
           "Termine les derniers calculs devant la classe : le grillage se vend au mètre entier, d'où 44 m."),
-        ph("Phase 6 – Individuel", "10 min", "Seul : deux additions à poser en colonnes, 13,25 + 4,72 et 7,46 + 3,1, puis quatre en ligne : 4,36 + 2,21 ; 3,75 + 1,2 ; 2,8 + 4,35 ; 3,52 + 2,5. Qui a fini prend la feuille « Additions posées — des prix » ou la feuille « Calcul en ligne — des décimaux ».",
+        ph("Phase 6 – Individuel", "10 min", "Seul : deux additions à poser en colonnes, 13,25 + 4,72 et 7,46 + 3,1, puis quatre en ligne : 4,36 + 2,21 ; 3,75 + 1,2 ; 2,8 + 4,35 ; 3,52 + 2,5. Qui a fini prend la feuille « Additions de décimaux à poser », la feuille « Additions posées — des prix » ou la feuille « Calcul en ligne — des décimaux ».",
           "Différencie selon les erreurs de chacun : qui en fait encore une reprend avec l'enseignant le tableau des longueurs et les fractions décimales ; les autres avancent seuls."),
       ]),
     seance("Quand le zéro compte : des prix et des masses",
@@ -167,6 +168,15 @@ const additionsDePrix = (seance: number, titre: string, r: Partial<ReglagesPosee
   };
 };
 
+/** Une feuille de l'atelier « Le calcul — CM1, CM2 » : il la refait, avec les mêmes réglages et le même tirage. */
+const calcul = (seance: number, titre: string, r: Partial<ReglagesCalculCM>): FeuilleAFabriquer => {
+  const reglages: ReglagesCalculCM = { ...REGLAGES_CALCUL_CM, classe: "CM2", ...r, titre };
+  return {
+    seance, atelier: "calculCM", titre,
+    fabriquer: (g) => ({ html: htmlCalculCM(reglages, g), style: STYLE_FEUILLE + STYLE_CALCUL_CM, refaire: { calculCM: reglages } }),
+  };
+};
+
 /** Une feuille de l'atelier « La monnaie ». */
 const monnaie = (seance: number, titre: string, r: Partial<ReglagesMonnaie>): FeuilleAFabriquer => {
   const reglages: ReglagesMonnaie = { ...REGLAGES_MONNAIE, ...r };
@@ -185,7 +195,8 @@ const FEUILLES: FeuilleAFabriquer[] = [
   cartesDecimaux(0, "La bataille des décimaux", ["virgule", "fraction", "fractions", "unitesDec", "lettres"]),
   calculMental(1, "Ajouter deux décimaux — chercher, expliquer", ["cm2-somme-decimaux"], "decouverte"),
   calculMental(2, "Calcul en ligne — évaluation", EN_LIGNE, "evaluation"),
-  // La séance du manuel : ses calculs s'écrivent au tableau ; ces deux feuilles, pour qui a fini.
+  // La séance du manuel : ses calculs s'écrivent au tableau ; ces trois feuilles, pour qui a fini. Les parties décimales n'y ont jamais la même longueur.
+  calcul(3, "Additions de décimaux à poser", { exercice: "addition-decimaux", decimales: "differentes", combien: 6, posees: false }),
   additionsDePrix(3, "Additions posées — des prix", { chiffres: 4, retenue: "melange", combien: 6, posees: true }),
   calculMental(3, "Calcul en ligne — des décimaux", EN_LIGNE, "ecrit"),
   monnaie(4, "Pièces et billets à découper", { exercice: "planche", jusqua: 50, centimes: true }),

@@ -6,7 +6,7 @@ export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "vilainPetitCanard", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive",
-  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "problemeDuJour", "motifs", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "soustractionPosee", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "donnees", "numeration",
+  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "coloriage", "collections", "problemeDuJour", "motifs", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "calculCM", "soustractionPosee", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "geometrie", "solides", "deplacements", "donnees", "numeration",
   "carteMentale", "taches",
   "sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction",
   "planClasse", "frise", "paysage",
@@ -190,6 +190,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Ajouter deux nombres en dizaines et unités, l'arbre à compléter." },
       { id: "posees", nom: "Opérations posées", icone: "🧾", cycles: "Cycle 2",
         quoi: "Des additions, des soustractions, des multiplications dans un quadrillage — une case par chiffre, une ligne pour les retenues —, posées d'avance ou à poser, et le corrigé." },
+      { id: "calculCM", nom: "Le calcul — CM1, CM2", icone: "➗", cycles: "Cycle 3 (CM1, CM2)",
+        quoi: "Additions et soustractions de décimaux, multiplications, divisions en potence par un ou deux chiffres, le quotient et le reste, le partage des centaines, dizaines et unités, les parenthèses — et le corrigé." },
       { id: "soustractionPosee", nom: "La soustraction posée — CE1", icone: "➖", cycles: "Cycle 2 (CE1)", sequence: true,
         quoi: "La séquence de CE1, d'après Éduscol : chaque séance s'ouvre sur le calcul mental La Martinière ; on retire avec les barres et les cubes, on casse une dizaine, puis une centaine, avant de poser — dix séances et leurs feuilles." },
       { id: "fractions", nom: "Fractions", icone: "🍰", cycles: "Cycle 3",
@@ -274,7 +276,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
  */
 export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[] = [
   { id: "nombres", nom: "Les nombres", outils: ["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "oie", "fractions", "numeration"] },
-  { id: "calcul", nom: "Le calcul", outils: ["martiniere", "calcul", "arbre", "posees", "pyramides", "compteEstBon", "coloriage"] },
+  { id: "calcul", nom: "Le calcul", outils: ["martiniere", "calcul", "arbre", "posees", "pyramides", "compteEstBon", "coloriage", "calculCM"] },
   { id: "problemes", nom: "Les problèmes", outils: ["partieTout", "multiplicatifs"] },
   { id: "grandeurs", nom: "Grandeurs et mesures", outils: ["heure", "monnaie", "mesures"] },
   { id: "geometrie", nom: "Espace et géométrie", outils: ["motifs", "geometrie", "solides", "deplacements"] },
