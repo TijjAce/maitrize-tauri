@@ -433,19 +433,17 @@ export function demarcheDesProblemesCM(classe: string, cg: string, comp: string)
 
 // ── Les feuilles ──────────────────────────────────────────────────────────
 
-/** L'atelier de Fabriquer le plus proche d'une feuille : les problèmes partie-tout, multiplicatifs, ou la résolution pas à pas. */
-const ADDITIVES: SorteProblemeCM[] = ["partie-tout", "comparaison", "deux-etapes", "comparaison-deux-etapes"];
-const atelierDesProblemes = (sortes: SorteProblemeCM[]) =>
-  sortes.every((s) => ADDITIVES.includes(s)) ? "partieTout"
-    : sortes.every((s) => s === "parts-egales" || s === "comparaison-multiplicative" || s.includes("proportionnalite")) ? "multiplicatifs"
-      : "resolution";
 /** Les égalités, les programmes et les suites relèvent du calcul ; les nombres inconnus, de la résolution pas à pas. */
 const atelierDeLAlgebre = (exercices: ExerciceAlgebre[]) =>
   exercices.every((e) => e === "egalites" || e === "programme" || e === "suite-nombres" || e === "suite-motifs") ? "martiniere" : "resolution";
 
 const problemes = (seance: number, titre: string, r: Partial<ReglagesProblemesCM> & { sortes: SorteProblemeCM[] }): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_PROBLEMES_CM, ...r, titre };
-  return { seance, atelier: atelierDesProblemes(r.sortes), titre, fabriquer: (g) => ({ html: htmlProblemesCM(reglages, g), style: STYLE_FEUILLE + STYLE_PROBLEMES_CM }) };
+  // L'atelier « Les problèmes — CM1, CM2 » la refait, avec les mêmes réglages et le même tirage.
+  return {
+    seance, atelier: "problemesCM", titre,
+    fabriquer: (g) => ({ html: htmlProblemesCM(reglages, g), style: STYLE_FEUILLE + STYLE_PROBLEMES_CM, refaire: { problemesCM: reglages } }),
+  };
 };
 const algebre = (seance: number, titre: string, r: Partial<ReglagesAlgebre> & { exercices: ExerciceAlgebre[] }): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_ALGEBRE, ...r, titre };

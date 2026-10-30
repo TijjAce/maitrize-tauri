@@ -50,6 +50,7 @@ import { REGLAGES_CUBES, STYLE_CUBES, exercicesCubes, htmlCubes, reglagesCubesSu
 import { STYLE_JEUX_MATHS, cartesCalcul, htmlCartesCalcul, type ReglagesCalcul } from "./jeuxMaths";
 import { REGLAGES_NUMERATION, STYLE_NUMERATION, htmlNumeration, type ReglagesNumeration } from "./numeration";
 import { REGLAGES_CALCUL_CM, STYLE_CALCUL_CM, htmlCalculCM, type ReglagesCalculCM } from "./calculCoursMoyen";
+import { REGLAGES_PROBLEMES_CM, STYLE_PROBLEMES_CM, htmlProblemesCM, type ReglagesProblemesCM } from "./problemesCoursMoyen";
 
 export const ID_DIVISION_EUCLIDIENNE_CM1 = "division-euclidienne-cm1";
 
@@ -144,7 +145,7 @@ export const DEMARCHE_DIVISION_EUCLIDIENNE_CM1: Demarche = {
           "Fait dire ce qu'on cherche avant de calculer : la valeur d'une part, ou combien de parts."),
         ph("Évaluation", "20 min", "Seul, sans aide, la feuille « Divisions en potence — évaluation » : quatre divisions à poser et à calculer, par un nombre à un chiffre — dont une où le premier chiffre du dividende est plus petit que le diviseur, et une avec un zéro au quotient, comme 824 ÷ 4 —, et l'égalité qui vérifie chacune.",
           "Observe sans aider : qui prévoit le nombre de chiffres du quotient, qui oublie le zéro du quotient, qui se trompe dans les tables ou dans les soustractions."),
-        ph("Remédiations", "15 min", "Pour qui en a besoin : refaire un partage avec le matériel multibase, ou avec des enveloppes et des pièces ; les tables, avec la feuille « Cartes de calcul — tables de 6 à 9 » ; la numération, avec la feuille « Décomposer les nombres ». Les autres : des divisions plus longues, et des problèmes. Ensuite, un entraînement court et régulier ; au CM2, on partagera aussi le reste : la division décimale.",
+        ph("Remédiations", "15 min", "Pour qui en a besoin : refaire un partage avec le matériel multibase, ou avec des enveloppes et des pièces ; les tables, avec la feuille « Cartes de calcul — tables de 6 à 9 » ; la numération, avec la feuille « Décomposer les nombres ». Les autres : des divisions plus longues, et la feuille « Problèmes — partager, avec un reste ». Ensuite, un entraînement court et régulier ; au CM2, on partagera aussi le reste : la division décimale.",
           "Reprend avec le matériel ce que l'évaluation a montré. Pour passer à la division décimale, il faudra un reste qu'on peut partager en dixièmes et en centièmes : des euros, des mètres."),
       ]),
   ],
@@ -231,6 +232,13 @@ const calcul = (seance: number, titre: string, r: Partial<ReglagesCalculCM>): Fe
   };
 };
 
+/** Des partages qui ne tombent pas juste, dans l'atelier « Les problèmes — CM1, CM2 » : il les refait, avec les mêmes réglages et le même tirage. */
+const PARTAGES_AVEC_RESTE: ReglagesProblemesCM = { ...REGLAGES_PROBLEMES_CM, classe: "CM1", sortes: ["partage-reste"], combien: 3, titre: "Problèmes — partager, avec un reste" };
+const partagesAvecReste = (seance: number): FeuilleAFabriquer => ({
+  seance, atelier: "problemesCM", titre: PARTAGES_AVEC_RESTE.titre!,
+  fabriquer: (g) => ({ html: htmlProblemesCM(PARTAGES_AVEC_RESTE, g), style: STYLE_FEUILLE + STYLE_PROBLEMES_CM, refaire: { problemesCM: PARTAGES_AVEC_RESTE } }),
+});
+
 const FEUILLES: FeuilleAFabriquer[] = [
   // Le calcul mental de chaque séance : les tables, dans les deux sens, puis ce que demandent les essais de la potence.
   martiniere(0, ["cm1-table-multiplication"], [6, 7, 8, 9]),
@@ -251,6 +259,7 @@ const FEUILLES: FeuilleAFabriquer[] = [
   calcul(4, "Divisions en potence — évaluation", { exercice: "division-euclidienne", diviseur: 1, combien: 4, posees: false, difficultes: true }),
   problemes(4, "Problèmes — partager ou grouper", ["part", "nombre"], [3, 9], [11, 30]),
   cartesDesTables(4),
+  partagesAvecReste(4),
   decomposer(4),
 ];
 

@@ -30,7 +30,7 @@ import {
 import { CursiveTab, EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { AbaqueTab, BillesTab, SuiteNombresTab } from "./AteliersNumerationCP";
 import { DemiDroiteTab, OrdinauxTab } from "./AteliersReperage";
-import { CalculCMTab } from "./AteliersCoursMoyen";
+import { CalculCMTab, ProblemesCMTab } from "./AteliersCoursMoyen";
 import { GenerateurPersoTab } from "./AtelierGenerateurPerso";
 import { enregistrerGenerateur, useGenerateursPerso } from "../components/GenerateursPerso";
 import type { GenerateurPerso } from "../generateursPerso";
@@ -420,6 +420,7 @@ export default function Jeux() {
       <ModeImagesDeLAtelier atelier={onglet} />
       {onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
+        : onglet === "problemesCM" ? <ProblemesCMTab />
         : onglet === "coloriage" ? <ColoriageMagiqueTab />
         : onglet === "sons" ? <LectureSonsTab />
         : onglet === "fluence" ? <FluenceTab />

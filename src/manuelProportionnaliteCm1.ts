@@ -21,11 +21,12 @@
 // papier mises bout à bout, des manuels et des cailloux qu'on pèse, des tours
 // de cubes qu'on mesure, des pièces pour jouer.
 //
-// Aucun atelier de Fabriquer ne fait encore de problèmes de proportionnalité.
 // Les feuilles viennent des ateliers « Problèmes multiplicatifs » — fois plus,
-// fois moins : la brique du raisonnement multiplicatif — et « La monnaie », à
-// leurs réglages ; chacune se rouvre dans le sien. La feuille de la boisson,
-// les énoncés et l'évaluation restent à faire à la main.
+// fois moins : la brique du raisonnement multiplicatif —, « Les problèmes —
+// CM1, CM2 » — reconnaître la proportionnalité, ajouter ou multiplier,
+// compléter un tableau, et l'évaluation — et « La monnaie », à leurs
+// réglages ; chacune se rouvre dans le sien. La feuille de la boisson et les
+// problèmes de la première séance, ceux du manuel, se projettent.
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 import type { FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
@@ -34,6 +35,7 @@ import { REGLAGES_MONNAIE, STYLE_MONNAIE, htmlMonnaie, type ReglagesMonnaie } fr
 import {
   PRESENTATION_COMPLETE, STYLE_FEUILLE as STYLE_PROBLEMES, feuilleProblemes, genererMultiplicatifs, type Presentation, type TypeMultiplicatif,
 } from "./problemesBarres";
+import { REGLAGES_PROBLEMES_CM, STYLE_PROBLEMES_CM, htmlProblemesCM, type ReglagesProblemesCM, type SorteProblemeCM } from "./problemesCoursMoyen";
 
 export const ID_PROPORTIONNALITE_CM1 = "linearite-cm1";
 
@@ -90,7 +92,7 @@ export const DEMARCHE_PROPORTIONNALITE_CM1: Demarche = {
       sauront("dire si une situation est de proportionnalité et le justifier — si l'une des quantités double, l'autre double-t-elle ? —, puis trouver une quantité en ajoutant deux colonnes connues ou en multipliant, et l'écrire dans un tableau."), 45, [
         ph(T1, "10 min", "Les tableaux des séances 1 et 2, affichés : la boisson, les pommes de terre et leurs flèches « + », les bandes et leurs flèches « × ». Qu'ont ces situations en commun ? L'objectif : savoir quand on peut ajouter ou multiplier, et comment.",
           "Fait redire chaque façon de faire par un élève, avec ses mots."),
-        ph(T2, "20 min", "Reconnaître, avec du vrai : une pile de manuels identiques, pesée avec 1, 2 puis 4 manuels ; des cailloux pris au hasard, pesés par deux, puis par quatre. Pour chaque pesée : si le nombre double, la masse double-t-elle ? On range au tableau : proportionnel, pas proportionnel. Puis des situations dites, la réponse sur l'ardoise : l'âge et la taille d'un enfant ; une carte de piscine à 20 € l'année, puis 2 € par entrée ; des baguettes toutes au même prix.",
+        ph(T2, "20 min", "Reconnaître, avec du vrai : une pile de manuels identiques, pesée avec 1, 2 puis 4 manuels ; des cailloux pris au hasard, pesés par deux, puis par quatre. Pour chaque pesée : si le nombre double, la masse double-t-elle ? On range au tableau : proportionnel, pas proportionnel. Puis des situations dites, la réponse sur l'ardoise : l'âge et la taille d'un enfant ; une carte de piscine à 20 € l'année, puis 2 € par entrée ; des baguettes toutes au même prix. Seul ensuite, la feuille « Proportionnel ou pas ? ».",
           "Le contexte décide souvent : il faut dire ce qui reste pareil — le même manuel, le même prix. Erreur attendue : croire que tout ce qui grandit ensemble est proportionnel. La piscine le montre : 10 entrées coûtent 40 €, 20 entrées 60 €, pas le double."),
         ph(T3, "10 min", "La trace écrite, construite ensemble : deux quantités sont proportionnelles quand, si l'une est multipliée par 2, par 3…, l'autre l'est aussi. Pour trouver une quantité, on ajoute deux colonnes connues : 3 kg et 5 kg, c'est 8 kg, donc 6 € et 10 €, c'est 16 €. Ou l'on multiplie : 6 croissants, c'est 3 fois 2 croissants, donc 3 fois 1,50 €. Chaque exemple garde son tableau et ses flèches.",
           "Affiche aussi, barrée, l'erreur que le manuel signale : pour 8 croissants, 1,50 + 6 = 7,50 — on a ajouté le nombre de croissants au lieu de leur prix. La bonne réponse : 1,50 + 4,50 = 6 €."),
@@ -100,15 +102,15 @@ export const DEMARCHE_PROPORTIONNALITE_CM1: Demarche = {
       sauront("choisir selon les nombres d'ajouter ou de multiplier pour résoudre un problème de proportionnalité, et compléter un tableau de proportionnalité."), 45, [
         ph(T1, "10 min", "Des cubes emboîtables : une tour de 3 cubes et une tour de 5 cubes, mesurées à la règle. Sans construire : combien mesure une tour de 8 cubes ? De 6 cubes ? De 30 cubes ? On construit celles de 8 et de 6 pour vérifier.",
           "Fait dire le chemin de chaque réponse : 8, c'est 3 et 5 ; 6, c'est 2 fois 3 ; 30, c'est 10 fois 3."),
-        ph(T2, "20 min", "Par deux, des problèmes projetés l'un après l'autre, chacun avec son tableau. Une bouteille coûte 2 € : le prix de 2, 4, 6, 8, 10, 15, 20 et 50 bouteilles. 10 briques identiques pèsent 20 kg : combien pèsent 25 briques ? Vrai ou faux : si 5 L d'essence coûtent 8 €, 15 L coûtent 24 €. Deux magasins vendent les mêmes stylos, l'un 4 pour 2 €, l'autre 6 pour 2,50 € : où sont-ils le moins chers ?",
+        ph(T2, "20 min", "Par deux, des problèmes projetés l'un après l'autre, chacun avec son tableau. Une bouteille coûte 2 € : le prix de 2, 4, 6, 8, 10, 15, 20 et 50 bouteilles. 10 briques identiques pèsent 20 kg : combien pèsent 25 briques ? Vrai ou faux : si 5 L d'essence coûtent 8 €, 15 L coûtent 24 €. Deux magasins vendent les mêmes stylos, l'un 4 pour 2 €, l'autre 6 pour 2,50 € : où sont-ils le moins chers ? Puis, à deux, la feuille « Problèmes — ajouter ou multiplier ? ».",
           "Les petits nombres se traitent en ajoutant, les grands en multipliant. Erreur attendue, le modèle additif : 4 stylos coûtent 2 €, donc 6 stylos 4 €, parce qu'on a ajouté 2 en haut et en bas. Aides : les pièces de la séance 2, les tours de cubes, un tableau déjà tracé. Pour les stylos, chercher le prix de 12 stylos dans chaque magasin : 6 € et 5 €."),
         ph(T3, "10 min", "On compare les façons de résoudre un même problème — les briques : 25, c'est 10, 10 et 5 ; ou 5 fois 5 — et l'on garde au cahier un problème résolu de deux façons.",
           "Aucune façon n'est la seule bonne : on choisit celle que les nombres rendent simple."),
-        ph(T4, "5 min", "Sur l'ardoise, deux situations dites : proportionnelles ou non ? Le prix des places de cinéma, quand toutes coûtent le même prix ; le nombre de buts marqués et le nombre de matchs joués."),
+        ph(T4, "5 min", "Sur l'ardoise, deux situations dites : proportionnelles ou non ? Le prix des places de cinéma, quand toutes coûtent le même prix ; le nombre de buts marqués et le nombre de matchs joués. En autonomie, les jours suivants : la feuille « Des tableaux de proportionnalité à compléter »."),
       ]),
     seance("Évaluation et remédiations",
       sauront("reconnaître seuls une situation de proportionnalité et la traiter en ajoutant ou en multipliant ; ceux qui en ont besoin reprennent avec le matériel."), 45, [
-        ph("Évaluation", "25 min", "Seul, sans aide. Vrai ou faux, en justifiant : si 4 billes identiques pèsent 20 g, 8 de ces billes pèsent 40 g ; un enfant qui mesure 1 m 30 cm à 9 ans mesurera 2 m 60 cm à 18 ans. Un tableau à compléter : un cahier coûte 3 €, le prix de 2, 5, 10 et 20 cahiers. Deux problèmes : 4 m de tissu coûtent 12 € et 3 m coûtent 9 €, combien coûtent 7 m ? Pour 2 L de boisson, il faut 20 cL de sirop : combien pour 6 L ?",
+        ph("Évaluation", "25 min", "Seul, sans aide, la feuille « Proportionnalité — évaluation » : dire si deux grandeurs sont proportionnelles, et pourquoi ; compléter un tableau ; deux problèmes, l'un qui se résout en ajoutant deux colonnes, l'autre en multipliant. Par exemple : si 4 billes identiques pèsent 20 g, 8 de ces billes pèsent-elles 40 g ? Un cahier coûte 3 € : le prix de 2, 5, 10 et 20 cahiers. 4 m de tissu coûtent 12 € et 3 m coûtent 9 € : combien coûtent 7 m ?",
           "Observe sans aider : qui reconnaît, qui ajoute, qui multiplie, qui ajoute le même nombre en haut et en bas."),
         ph("Remédiations", "20 min", "Pour qui en a besoin, reprendre avec le matériel — les bandes, les tours de cubes, les pièces — en disant « deux fois plus de…, deux fois plus de… ». Les autres : deux magasins vendent les mêmes cahiers, 3 pour 4 € ou 5 pour 6 € ; où sont-ils le moins chers ? Ensuite, le retour à l'unité — le prix d'un seul objet —, que le manuel veut voir venir assez vite.",
           "Reprend avec le matériel ce que l'évaluation a montré."),
@@ -141,11 +143,25 @@ const monnaie = (seance: number, titre: string, r: Partial<ReglagesMonnaie>): Fe
   };
 };
 
+/** Des problèmes de l'atelier « Les problèmes — CM1, CM2 », au CM1 : il les refait, avec les mêmes réglages et le même tirage. */
+const problemesCM = (seance: number, titre: string, sortes: SorteProblemeCM[], combien: number): FeuilleAFabriquer => {
+  const reglages: ReglagesProblemesCM = { ...REGLAGES_PROBLEMES_CM, classe: "CM1", sortes, combien, titre };
+  return {
+    seance, atelier: "problemesCM", titre,
+    fabriquer: (g) => ({ html: htmlProblemesCM(reglages, g), style: STYLE_FEUILLE + STYLE_PROBLEMES_CM, refaire: { problemesCM: reglages } }),
+  };
+};
+
 const FEUILLES: FeuilleAFabriquer[] = [
   // Les pièces, pour poser trois fois le même tas : elles resservent à la séance 4.
   monnaie(1, "Pièces et billets à découper", { exercice: "planche", jusqua: 20, centimes: true }),
   // « Trois fois plus », « trois fois moins », le schéma en barres à compléter : deux à cinq fois, de petites quantités.
   multiplicatifs(1, "Fois plus, fois moins", ["grand", "petit"], 4, [2, 5], [3, 20], { ...PRESENTATION_COMPLETE, schema: "vide" }),
+  problemesCM(2, "Proportionnel ou pas ?", ["identifier-proportionnalite"], 4),
+  // Ajouter deux colonnes ou multiplier, selon les nombres ; puis les tableaux, en autonomie.
+  problemesCM(3, "Problèmes — ajouter ou multiplier ?", ["proportionnalite-additive", "proportionnalite"], 3),
+  problemesCM(3, "Des tableaux de proportionnalité à compléter", ["tableau-proportionnalite"], 3),
+  problemesCM(4, "Proportionnalité — évaluation", ["identifier-proportionnalite", "tableau-proportionnalite", "proportionnalite-additive", "proportionnalite"], 4),
 ];
 
 /** Ce qu'il faut préparer, séance par séance ; les feuilles sont nommées après. */
@@ -158,7 +174,7 @@ const MATERIEL = [
   "Les tableaux des séances 1 et 2, gardés ; une balance de cuisine, une pile de manuels identiques et des cailloux de tailles différentes ; "
     + "une affiche pour la trace écrite ; les ardoises",
   "Des cubes emboîtables et une règle par binôme ; les pièces et les billets de la séance 2 ; les problèmes, à projeter ; les ardoises ; le cahier",
-  "L'évaluation, à écrire ; pour les remédiations, les bandes, les cubes et les pièces",
+  "Pour les remédiations, les bandes, les cubes et les pièces",
 ];
 
 /** Les feuilles et le matériel de la séquence. */

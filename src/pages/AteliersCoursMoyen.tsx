@@ -6,10 +6,15 @@ import { ApercuFeuille } from "../components/ApercuFeuille";
 import { graineAuHasard } from "../hasard";
 import { useGraine } from "../modifierFeuille";
 import { Boutons, Coche, Colonnes } from "./AteliersLangage";
+import { Choix } from "./AteliersNumerationCP";
 import {
   EXERCICES_CALCUL_CM, REGLAGES_CALCUL_CM, STYLE_CALCUL_CM, combienAuPlus, htmlCalculCM, reglagesCalculCMSurs, sePose, titreCalculCM,
   type ExerciceCalculCM, type ReglagesCalculCM,
 } from "../calculCoursMoyen";
+import {
+  PROBLEMES_CM_MAX, REGLAGES_PROBLEMES_CM, SORTES_PROBLEMES_CM, STYLE_PROBLEMES_CM, htmlProblemesCM, reglagesProblemesCMSurs,
+  type ReglagesProblemesCM, type SorteProblemeCM,
+} from "../problemesCoursMoyen";
 
 // ── Fabriquer › le cours moyen ─────────────────────────────────────────────
 //
@@ -119,6 +124,41 @@ export function CalculCMTab() {
         {EN_FAIRE_UNE_SEQUENCE}
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_CALCUL_CM} />}
+    />
+  );
+}
+
+// ── Les problèmes ──
+
+const SORTES_AFFICHEES = SORTES_PROBLEMES_CM.map((s) => ({ id: s.id, libelle: s.cm2 ? `${s.libelle} (CM2)` : s.libelle }));
+
+export function ProblemesCMTab() {
+  const [brut, maj] = useReglages<ReglagesProblemesCM>("problemesCM", REGLAGES_PROBLEMES_CM);
+  const r = React.useMemo(() => reglagesProblemesCMSurs(brut), [brut]);
+  const [graine, setGraine] = useGraine();
+  const html = React.useMemo(() => htmlProblemesCM(r, graine), [r, graine]);
+  const titre = r.titre?.trim() || "Résoudre des problèmes";
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Les problèmes — CM1, CM2
+          <Aide titre="Les problèmes au cours moyen" vers="droite"><p>Les problèmes du programme du cycle 3 (2025) et de ses exemples de réussite, sur de grands nombres,
+            des décimaux et des grandeurs, résolus en quatre phases — comprendre, modéliser, calculer, répondre. Le corrigé écrit les calculs, la phrase réponse
+            et le schéma en barres quand il aide. Les sortes se mêlent dans l'ordre choisi ; les prénoms sont inventés.</p></Aide>
+        </h3>
+        <ChoixDeLaClasse classe={r.classe} onChange={(classe) => maj({ classe })} />
+        <Field label="Les problèmes">
+          <Choix<SorteProblemeCM> liste={SORTES_AFFICHEES} choisis={r.sortes} onChange={(sortes) => maj({ sortes })} />
+        </Field>
+        <Combien libelle="Combien de problèmes" valeur={r.combien} max={PROBLEMES_CM_MAX} onChange={(combien) => maj({ combien })} />
+        <Field label="Le titre">
+          <Input value={r.titre ?? ""} placeholder="Résoudre des problèmes" onChange={(e) => maj({ titre: e.target.value })} />
+        </Field>
+        <Boutons atelier="problemesCM" titre={titre} html={html} style={STYLE_PROBLEMES_CM} peut onTirage={() => setGraine(graineAuHasard())} />
+        {EN_FAIRE_UNE_SEQUENCE}
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_PROBLEMES_CM} />}
     />
   );
 }

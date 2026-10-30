@@ -28,11 +28,12 @@
 // cette compétence, et se range avec les décimaux.
 //
 // Ses feuilles viennent des ateliers « Grands nombres et décimaux », « Comparer
-// les nombres », « Calcul mental », « Opérations posées » et « La monnaie », à
-// leurs réglages : chacune se rouvre dans le sien. Aucun atelier ne fait encore
-// d'additions de décimaux dont les parties décimales n'ont pas la même
-// longueur, ni de problèmes à données décimales : les calculs du manuel
-// s'écrivent au tableau.
+// les nombres », « Calcul mental », « Opérations posées », « La monnaie »,
+// « Le calcul — CM1, CM2 » — des additions dont les parties décimales n'ont
+// pas la même longueur —, « Les problèmes — CM1, CM2 » — des longueurs, des
+// masses, des prix — et « Résoudre un problème pas à pas » — l'énoncé du
+// grillage —, à leurs réglages : chacune se rouvre dans le sien. Les calculs
+// de la séance du manuel s'écrivent au tableau.
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 import type { FeuilleAFabriquer, PlanDesFeuilles } from "./feuillesDesSequences";
@@ -43,6 +44,8 @@ import { REGLAGES_MONNAIE, STYLE_MONNAIE, htmlMonnaie, type ReglagesMonnaie } fr
 import { REGLAGES_NUMERATION, STYLE_NUMERATION, htmlNumeration, type ReglagesNumeration } from "./numeration";
 import { REGLAGES_POSEES, STYLE_POSEES, htmlOperationsPosees, type ReglagesPosees } from "./operationsPosees";
 import { REGLAGES_CALCUL_CM, STYLE_CALCUL_CM, htmlCalculCM, type ReglagesCalculCM } from "./calculCoursMoyen";
+import { REGLAGES_PROBLEMES_CM, STYLE_PROBLEMES_CM, htmlProblemesCM, type ReglagesProblemesCM } from "./problemesCoursMoyen";
+import { STYLE_AIDES, htmlResolution, reglagesResolutionSurs } from "./aidesALaTache";
 
 export const ID_DECIMAUX_CM2 = "addition-decimaux-cm2";
 
@@ -106,7 +109,7 @@ export const DEMARCHE_DECIMAUX_CM2: Demarche = {
       sauront("additionner en ligne deux décimaux dont les parties décimales n'ont pas le même nombre de chiffres — 12,76 + 8,9 = 21,66 —, en disant la valeur de chaque chiffre, en s'aidant du tableau des longueurs et en échangeant dix dixièmes contre une unité."), 55, [
         ph("Phase 1 – Collectif", "5 min", "L'enseignant dit des décimaux ; chacun les écrit en chiffres sur l'ardoise. Puis une liste de décimaux écrite au tableau : on les lit à voix haute.",
           "Fait dire les nombres par leurs unités — « 8 unités et 9 dixièmes », « 12 unités et 76 centièmes ». Repère qui confond encore dixième et dizaine."),
-        ph("Phase 2 – Groupes de quatre", "10 min", "Un problème en plusieurs étapes, cherché par groupes sur une affiche, avec les traces de recherche et les calculs : « Un maraîcher veut entourer de grillage un jardin rectangulaire de 12,76 m de long sur 8,9 m de large. Le grillage se vend au mètre — on ne coupe pas un mètre —, 4,50 € le mètre. Combien va-t-il payer ? »",
+        ph("Phase 2 – Groupes de quatre", "10 min", "Un problème en plusieurs étapes, la feuille « Le grillage du jardin », cherché par groupes sur une affiche, avec les traces de recherche et les calculs : « Un maraîcher veut entourer de grillage un jardin rectangulaire de 12,76 m de long sur 8,9 m de large. Le grillage se vend au mètre — on ne coupe pas un mètre —, 4,50 € le mètre. Combien va-t-il payer ? »",
           "Fait des groupes plutôt homogènes, pour rester au plus près de ce que chacun sait faire ; le travail à quatre fait dire les nombres. Laisse chercher : les trois erreurs relevées à l'évaluation vont revenir dans les calculs."),
         ph("Phase 3 – Collectif", "10 min", "Les groupes montrent leurs démarches ; on les compare. L'enseignant en explicite une : ce que veut dire 12,76 m — 12 m et 76 cm, ou 12 m, 7 dm et 6 cm : 12 mètres et 76 centièmes de mètre ; le demi-périmètre, puis le périmètre ; la longueur de grillage à acheter ; le prix. Il donne le résultat attendu, 198 € : chaque groupe dit si le sien est juste.",
           "Mène la confrontation ; dit les nombres avec leurs unités de longueur. Ne reprend pas encore les calculs faux : la phase suivante y revient."),
@@ -125,7 +128,7 @@ export const DEMARCHE_DECIMAUX_CM2: Demarche = {
           "Fait comparer les grandeurs : un prix a toujours deux chiffres après la virgule, ce qui cache la difficulté des parties décimales de longueurs différentes ; une masse en kilogrammes en a souvent trois — 1,250 kg. Le matériel reste sous la main."),
         ph(T3, "10 min", "Ce qu'on retient : on peut écrire des zéros à la fin de la partie décimale sans changer le nombre — 2,5 = 2,50 = 2,500 ; un zéro entre la virgule et un chiffre, lui, compte — 2,05 n'est pas 2,5. Prix, longueurs et masses s'additionnent de la même façon : les unités avec les unités, les dixièmes avec les dixièmes.",
           "Écrit la trace avec les élèves, à côté de celle des longueurs."),
-        ph(T4, "5 min", "Un problème dit, résolu sur l'ardoise : un livre à 8,95 € et un cahier à 2,5 €. Combien faut-il payer ? On vérifie avec les pièces : 11,45 €."),
+        ph(T4, "5 min", "Un problème dit, résolu sur l'ardoise : un livre à 8,95 € et un cahier à 2,5 €. Combien faut-il payer ? On vérifie avec les pièces : 11,45 €. Les jours suivants, la feuille « Problèmes — des longueurs, des masses, des prix »."),
       ]),
   ],
 };
@@ -177,6 +180,26 @@ const calcul = (seance: number, titre: string, r: Partial<ReglagesCalculCM>): Fe
   };
 };
 
+/** Le problème du grillage, dans l'atelier « Résoudre un problème pas à pas » : l'énoncé en couleurs, la question à part, les quatre étapes. */
+const GRILLAGE = reglagesResolutionSurs({
+  niveau: "ecole",
+  enonce: "Un maraîcher veut entourer de grillage un jardin rectangulaire.\nLe jardin mesure 12,76 m de long et 8,9 m de large.\n"
+    + "Le grillage se vend au mètre : on n'achète pas un morceau de mètre.\nUn mètre de grillage coûte 4,50 €.",
+  question: "Combien le maraîcher va-t-il payer ?",
+  couleurs: true, questionAPart: true,
+});
+const grillage = (seance: number): FeuilleAFabriquer => ({
+  seance, atelier: "resolution", titre: "Le grillage du jardin",
+  fabriquer: () => ({ html: htmlResolution(GRILLAGE), style: STYLE_FEUILLE + STYLE_AIDES, refaire: { resolution: GRILLAGE } }),
+});
+
+/** Des problèmes de l'atelier « Les problèmes — CM1, CM2 », au CM2 : il les refait, avec les mêmes réglages et le même tirage. */
+const PROBLEMES_DECIMAUX: ReglagesProblemesCM = { ...REGLAGES_PROBLEMES_CM, classe: "CM2", sortes: ["decimaux"], combien: 3, titre: "Problèmes — des longueurs, des masses, des prix" };
+const problemesDecimaux = (seance: number): FeuilleAFabriquer => ({
+  seance, atelier: "problemesCM", titre: PROBLEMES_DECIMAUX.titre!,
+  fabriquer: (g) => ({ html: htmlProblemesCM(PROBLEMES_DECIMAUX, g), style: STYLE_FEUILLE + STYLE_PROBLEMES_CM, refaire: { problemesCM: PROBLEMES_DECIMAUX } }),
+});
+
 /** Une feuille de l'atelier « La monnaie ». */
 const monnaie = (seance: number, titre: string, r: Partial<ReglagesMonnaie>): FeuilleAFabriquer => {
   const reglages: ReglagesMonnaie = { ...REGLAGES_MONNAIE, ...r };
@@ -195,13 +218,16 @@ const FEUILLES: FeuilleAFabriquer[] = [
   cartesDecimaux(0, "La bataille des décimaux", ["virgule", "fraction", "fractions", "unitesDec", "lettres"]),
   calculMental(1, "Ajouter deux décimaux — chercher, expliquer", ["cm2-somme-decimaux"], "decouverte"),
   calculMental(2, "Calcul en ligne — évaluation", EN_LIGNE, "evaluation"),
-  // La séance du manuel : ses calculs s'écrivent au tableau ; ces trois feuilles, pour qui a fini. Les parties décimales n'y ont jamais la même longueur.
+  // La séance du manuel : l'énoncé du grillage, pour chaque groupe ; ses calculs s'écrivent au tableau ; trois feuilles pour qui a fini,
+  // dont les parties décimales n'ont jamais la même longueur.
+  grillage(3),
   calcul(3, "Additions de décimaux à poser", { exercice: "addition-decimaux", decimales: "differentes", combien: 6, posees: false }),
   additionsDePrix(3, "Additions posées — des prix", { chiffres: 4, retenue: "melange", combien: 6, posees: true }),
   calculMental(3, "Calcul en ligne — des décimaux", EN_LIGNE, "ecrit"),
   monnaie(4, "Pièces et billets à découper", { exercice: "planche", jusqua: 50, centimes: true }),
   monnaie(4, "Euros et centimes : l'écriture à virgule", { exercice: "ecriture", jusqua: 50, combien: 10 }),
   additionsDePrix(4, "Additions de prix à poser", { chiffres: 3, retenue: "avec", combien: 6, posees: false }),
+  problemesDecimaux(4),
 ];
 
 /** Ce qu'il faut préparer, séance par séance ; les feuilles sont nommées après. */
@@ -210,7 +236,7 @@ const MATERIEL = [
   "Deux rubans, de 1,45 m et de 0,8 m ; par groupe, des bandes de papier de longueurs données et un mètre ruban ; les carrés de cent de la séance 1 ; "
     + "une affiche pour ce qu'on retient ; les ardoises",
   "Les trois calculs à écrire au tableau en fin d'évaluation (12,47 + 2,7 ; 5,6 + 3,85 ; 6,8 + 2,57) ; les copies, gardées pour le relevé des erreurs",
-  "Les ardoises ; par groupe de quatre, l'énoncé du problème du grillage, une affiche et des feutres ; au TBI ou au tableau, le tableau des longueurs — "
+  "Les ardoises ; par groupe de quatre, une affiche et des feutres ; au TBI ou au tableau, le tableau des longueurs — "
     + "dizaines de mètres, mètres, décimètres, centimètres, millimètres —, à remplir devant la classe",
   "Une balance et deux paquets, de 1,25 kg et de 0,8 kg ; des étiquettes de prix ; les ardoises",
 ];
