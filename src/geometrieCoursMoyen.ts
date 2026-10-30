@@ -18,7 +18,8 @@ import { escapeHtml } from "./print";
 import { assemblageCubesSvg, solideSvg, type Assemblage } from "./solides";
 
 export type ExerciceGeometrieCM =
-  | "perpendiculaires" | "paralleles" | "vocabulaire" | "cercle" | "figures" | "constructions" | "programme" | "symetrique"
+  | "perpendiculaires" | "paralleles" | "vocabulaire" | "cercle" | "figures" | "constructions"
+  | "programme-etapes" | "programme-figures" | "programme-ordre" | "programme" | "symetrique"
   | "solides" | "faces" | "patron-cube" | "patron-pave" | "cubes-compter" | "vues";
 
 export const EXERCICES_GEOMETRIE_CM: { id: ExerciceGeometrieCM; libelle: string }[] = [
@@ -28,6 +29,9 @@ export const EXERCICES_GEOMETRIE_CM: { id: ExerciceGeometrieCM; libelle: string 
   { id: "cercle", libelle: "Le cercle et le disque" },
   { id: "figures", libelle: "Nommer une figure, et dire pourquoi" },
   { id: "constructions", libelle: "Construire sur papier uni" },
+  { id: "programme-etapes", libelle: "Suivre un programme de construction, étape par étape" },
+  { id: "programme-figures", libelle: "Un programme, quatre figures : laquelle est juste ?" },
+  { id: "programme-ordre", libelle: "Remettre un programme de construction dans l'ordre" },
   { id: "programme", libelle: "Écrire un programme de construction (CM2)" },
   { id: "symetrique", libelle: "Le symétrique d'une figure, sur quadrillage" },
   { id: "solides", libelle: "Nommer les solides" },
@@ -40,6 +44,18 @@ export const EXERCICES_GEOMETRIE_CM: { id: ExerciceGeometrieCM; libelle: string 
 
 export interface ReglagesGeometrieCM { classe: "CM1" | "CM2"; exercices: ExerciceGeometrieCM[]; combien: number; titre?: string }
 export const REGLAGES_GEOMETRIE_CM: ReglagesGeometrieCM = { classe: "CM1", exercices: ["perpendiculaires"], combien: 4 };
+
+/** Les réglages tels que l'atelier les relit : des exercices connus — un au moins —, de 1 à 10 items. */
+export function reglagesGeometrieCMSurs(brut: Partial<ReglagesGeometrieCM> | null | undefined): ReglagesGeometrieCM {
+  const b = brut ?? {};
+  const exercices = Array.isArray(b.exercices) ? b.exercices.filter((x) => EXERCICES_GEOMETRIE_CM.some((e) => e.id === x)) : [];
+  return {
+    ...b,
+    classe: b.classe === "CM2" ? "CM2" : "CM1",
+    exercices: exercices.length ? exercices : REGLAGES_GEOMETRIE_CM.exercices,
+    combien: Math.max(1, Math.min(10, Math.round(Number(b.combien)) || REGLAGES_GEOMETRIE_CM.combien)),
+  };
+}
 
 interface Bloc { consigne: string; corps: string; corrige: string }
 type Alea = () => number;
@@ -293,7 +309,7 @@ function figures(alea: Alea, r: ReglagesGeometrieCM): Bloc {
 
 /** Une figure du corrigé, à l'échelle 1/2 : ses points, ses segments, ses cercles, ses codes. */
 interface Trace { pts: Record<string, Pt>; segments: [string, string][]; cercles: { centre: string; r: number }[]; droits: [string, string, string][]; egaux: [string, string, number][] }
-function dessinerTrace(t: Trace): string {
+function dessinerTrace(t: Trace, mm = 0.5): string {
   const tous = Object.values(t.pts).concat(t.cercles.flatMap((c) => { const o = t.pts[c.centre]; return [[o[0] - c.r, o[1] - c.r], [o[0] + c.r, o[1] + c.r]] as Pt[]; }));
   const minX = Math.min(...tous.map((p) => p[0])) - 6, minY = Math.min(...tous.map((p) => p[1])) - 6;
   const P = (n: string): Pt => [t.pts[n][0] - minX, t.pts[n][1] - minY];
@@ -303,7 +319,7 @@ function dessinerTrace(t: Trace): string {
     + t.segments.map(([a, b]) => segment(P(a), P(b))).join("")
     + t.droits.map(([s, a, b]) => angleDroit(P(s), P(a), P(b))).join("") + t.egaux.map(([a, b, k]) => traits(P(a), P(b), k)).join("")
     + Object.keys(t.pts).filter((n) => !n.startsWith("_")).map((n) => { const p = P(n), d = Math.hypot(p[0] - cx, p[1] - cy) || 1; return texte([p[0] + ((p[0] - cx) / d) * 3.4, p[1] + ((p[1] - cy) / d) * 3.4 + 1.2], n); }).join("");
-  return cadre(w, h, corps, 0.5);
+  return cadre(w, h, corps, mm);
 }
 
 function constructions(alea: Alea, r: ReglagesGeometrieCM): Bloc {
@@ -359,6 +375,174 @@ function programme(alea: Alea, r: ReglagesGeometrieCM): Bloc {
     consigne: "Écris un programme de construction pour chaque figure : les étapes, dans l'ordre, avec les longueurs. Ton voisin doit pouvoir la construire sans la voir.",
     corps: items.map((x) => `<div class="ge-construction">${dessinerTrace(x.trace)}<div class="ge-note">${escapeHtml(x.legende)}</div>${lignes([TRAIT, TRAIT, TRAIT, TRAIT])}</div>`).join(""),
     corrige: items.map((x) => `<div class="ge-construction">${dessinerTrace(x.trace)}<div class="ge-note">${escapeHtml(x.legende)}</div><div><b>Par exemple :</b> ${escapeHtml(x.programme)}</div></div>`).join(""),
+  };
+}
+
+// ── Lire un programme de construction ─────────────────────────────────────
+//
+// Ce que la séquence « Lire un programme de construction » du manuel du CRPE
+// de l'enseignant fait faire au CM1 : suivre un programme écrit en étapes,
+// avec ses points nommés ; reconnaître, parmi quatre figures, celle qu'il
+// construit — les trois autres ont chacune une erreur ; remettre ses consignes
+// dans l'ordre. Les figures sont en vraie grandeur, pour qu'on les vérifie
+// avec la règle, l'équerre et le compas.
+
+interface ProgrammeDeConstruction { etapes: string[]; juste: Trace; fausses: { trace: Trace; pourquoi: string }[] }
+
+const QUATRE_ANGLES_DROITS: [string, string, string][] = [["A", "D", "B"], ["B", "A", "C"], ["C", "B", "D"], ["D", "C", "A"]];
+const COTES_DU_QUADRILATERE: [string, string][] = [["A", "B"], ["B", "C"], ["C", "D"], ["D", "A"]];
+const milieu = (p: Pt, q: Pt): Pt => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+const distance = (p: Pt, q: Pt) => Math.hypot(q[0] - p[0], q[1] - p[1]);
+
+/** Un carré, ses diagonales, le cercle de centre O qui passe par A. `petit` : pour que quatre figures tiennent sur la page, en vraie grandeur. */
+function programmeDuCarre(alea: Alea, petit: boolean): ProgrammeDeConstruction {
+  const c = petit ? 3 : entier(alea, 4, 5), s = c * 10;
+  const carre = (h: number): Record<string, Pt> => ({ A: [0, h], B: [s, h], C: [s, 0], D: [0, 0], O: [s / 2, h / 2] });
+  const juste: Trace = {
+    pts: carre(s), segments: [...COTES_DU_QUADRILATERE, ["A", "C"], ["B", "D"]], cercles: [{ centre: "O", r: (s * Math.SQRT2) / 2 }],
+    droits: QUATRE_ANGLES_DROITS, egaux: COTES_DU_QUADRILATERE.map(([a, b]) => [a, b, 1]),
+  };
+  const h = s * 0.7;
+  return {
+    etapes: [`Trace un carré ABCD de ${c} cm de côté.`, "Trace ses diagonales [AC] et [BD].", "Nomme O le point où les diagonales se coupent.", "Trace le cercle de centre O qui passe par A."],
+    juste,
+    fausses: [
+      { trace: { ...juste, pts: carre(h), cercles: [{ centre: "O", r: Math.hypot(s, h) / 2 }], egaux: [] }, pourquoi: "ABCD n'est pas un carré : ses côtés n'ont pas tous la même longueur." },
+      { trace: { ...juste, cercles: [{ centre: "A", r: (s * Math.SQRT2) / 2 }] }, pourquoi: "Le cercle a pour centre A, et non O." },
+      { trace: { ...juste, segments: [...COTES_DU_QUADRILATERE, ["A", "C"]] }, pourquoi: "La diagonale [BD] n'est pas tracée." },
+      { trace: { ...juste, cercles: [{ centre: "O", r: s / 2 }] }, pourquoi: "Le cercle ne passe pas par A." },
+    ],
+  };
+}
+
+/** Un segment, son milieu, la perpendiculaire, le cercle, et le quadrilatère qui en naît. */
+function programmeDuSegment(alea: Alea, petit: boolean): ProgrammeDeConstruction {
+  const L = petit ? 4 : entier(alea, 5, 7), s = L * 10, r = s / 2;
+  const figure = (o: number, rayon: number, angle: number): Trace => {
+    const O: Pt = [o, r], d: Pt = [Math.cos(rad(angle)), -Math.sin(rad(angle))];
+    const C: Pt = [O[0] + d[0] * rayon, O[1] + d[1] * rayon], D: Pt = [O[0] - d[0] * rayon, O[1] - d[1] * rayon];
+    const E: Pt = [O[0] + d[0] * (rayon + 5), O[1] + d[1] * (rayon + 5)], F: Pt = [O[0] - d[0] * (rayon + 5), O[1] - d[1] * (rayon + 5)];
+    return {
+      pts: { A: [0, r], B: [s, r], O, C, D, _E: E, _F: F }, segments: [["A", "B"], ["_E", "_F"], ["A", "C"], ["C", "B"], ["B", "D"], ["D", "A"]],
+      cercles: [{ centre: "O", r: rayon }], droits: angle === 90 ? [["O", "B", "C"]] : [], egaux: o === r ? [["A", "O", 1], ["O", "B", 1]] : [],
+    };
+  };
+  const juste = figure(r, r, 90);
+  return {
+    etapes: [`Trace un segment [AB] de ${L} cm.`, "Place le point O, milieu du segment [AB].", "Trace la droite perpendiculaire à (AB) qui passe par O.",
+      "Trace le cercle de centre O qui passe par A.", "Nomme C et D les deux points où le cercle coupe la droite.", "Trace le quadrilatère ACBD."],
+    juste,
+    fausses: [
+      { trace: figure(r, r, 60), pourquoi: "La droite qui passe par O n'est pas perpendiculaire à (AB)." },
+      { trace: figure(r, r * 0.7, 90), pourquoi: "Le cercle ne passe pas par A." },
+      { trace: { ...juste, segments: [["A", "B"], ["_E", "_F"], ["B", "C"], ["D", "A"]] }, pourquoi: "Le quadrilatère ACBD n'est pas tracé : il manque ses côtés [AC] et [BD]." },
+      { trace: { ...figure(s / 3, s / 3, 90), egaux: [] }, pourquoi: "O n'est pas le milieu du segment [AB]." },
+    ],
+  };
+}
+
+/** Un rectangle, le milieu d'un côté, le cercle qui passe par un sommet. */
+function programmeDuRectangle(alea: Alea, petit: boolean): ProgrammeDeConstruction {
+  const L = petit ? 4 : entier(alea, 5, 7), l = entier(alea, 2, 3), s = L * 10, h = l * 10;
+  const rect = (hauteur: number, I: Pt): Record<string, Pt> => ({ A: [0, hauteur], B: [s, hauteur], C: [s, 0], D: [0, 0], I });
+  const juste: Trace = {
+    pts: rect(h, [s / 2, h]), segments: COTES_DU_QUADRILATERE, cercles: [{ centre: "I", r: s / 2 }], droits: QUATRE_ANGLES_DROITS, egaux: [["A", "I", 1], ["I", "B", 1]],
+  };
+  return {
+    etapes: [`Trace un rectangle ABCD tel que AB = ${L} cm et BC = ${l} cm.`, "Place le point I, milieu du côté [AB].", "Trace le cercle de centre I qui passe par A."],
+    juste,
+    fausses: [
+      { trace: { ...juste, cercles: [{ centre: "A", r: s / 2 }] }, pourquoi: "Le cercle a pour centre A, et non I." },
+      { trace: { ...juste, pts: rect(h, [s / 2, 0]), cercles: [{ centre: "I", r: s / 2 }], egaux: [["D", "I", 1], ["I", "C", 1]] }, pourquoi: "I est le milieu du côté [DC], et non de [AB]." },
+      { trace: { ...juste, pts: rect(s, [s / 2, s]) }, pourquoi: `BC ne mesure pas ${l} cm : ABCD est un carré.` },
+      { trace: { ...juste, cercles: [{ centre: "I", r: s * 0.3 }] }, pourquoi: "Le cercle ne passe pas par A." },
+    ],
+  };
+}
+
+/** Un triangle rectangle tracé à l'équerre, le milieu de son grand côté, le cercle qui passe par B. */
+function programmeDuTriangleRectangle(alea: Alea, petit: boolean): ProgrammeDeConstruction {
+  const a = petit ? entier(alea, 3, 4) : entier(alea, 4, 6), b = petit ? 2 + (a - 3) : entier(alea, 3, 4), A: Pt = [0, b * 10], B: Pt = [a * 10, b * 10];
+  const figure = (C: Pt, M: Pt, centre: "M" | "B", rayon: number, droit: boolean): Trace => ({
+    pts: { A, B, C, M, _E: [C[0] + (C[0] - A[0]) * 0.25, C[1] + (C[1] - A[1]) * 0.25] },
+    segments: [["A", "B"], ["A", "_E"], ["B", "C"]], cercles: [{ centre, r: rayon }],
+    droits: droit ? [["A", "_E", "B"]] : [], egaux: [["B", "M", 1], ["M", "C", 1]],
+  });
+  const C: Pt = [0, 0], M = milieu(B, C);
+  const Cpenche: Pt = [b * 10 * Math.cos(rad(70)), b * 10 - b * 10 * Math.sin(rad(70))], Mpenche = milieu(B, Cpenche);
+  const Chaut: Pt = [0, b * 10 - b * 14], Mhaut = milieu(B, Chaut);
+  const Mtiers: Pt = [B[0] + (C[0] - B[0]) / 3, B[1] + (C[1] - B[1]) / 3];
+  return {
+    etapes: [`Trace un segment [AB] de ${a} cm.`, "Trace la droite perpendiculaire à (AB) qui passe par A.", `Place sur cette droite le point C, à ${b} cm de A.`,
+      "Trace le triangle ABC.", "Place le point M, milieu du segment [BC].", "Trace le cercle de centre M qui passe par B."],
+    juste: figure(C, M, "M", distance(B, C) / 2, true),
+    fausses: [
+      { trace: figure(Cpenche, Mpenche, "M", distance(B, Cpenche) / 2, false), pourquoi: "La droite qui passe par A n'est pas perpendiculaire à (AB) : l'angle en A n'est pas droit." },
+      { trace: { ...figure(C, Mtiers, "M", distance(Mtiers, B), true), egaux: [] }, pourquoi: "M n'est pas le milieu du segment [BC]." },
+      { trace: figure(C, M, "B", distance(B, C) / 2, true), pourquoi: "Le cercle a pour centre B, et non M." },
+      { trace: figure(Chaut, Mhaut, "M", distance(B, Chaut) / 2, true), pourquoi: `AC ne mesure pas ${b} cm.` },
+    ],
+  };
+}
+
+/** Le triangle équilatéral, au compas : deux arcs de cercle de même rayon. Ses figures fausses ne tiendraient pas en vraie grandeur. */
+function programmeDuTriangleEquilateral(alea: Alea): ProgrammeDeConstruction {
+  const c = entier(alea, 3, 4), s = c * 10, h = (s * Math.sqrt(3)) / 2;
+  const juste: Trace = {
+    pts: { A: [0, h], B: [s, h], C: [s / 2, 0] }, segments: [["A", "B"], ["B", "C"], ["C", "A"]],
+    cercles: [{ centre: "A", r: s }, { centre: "B", r: s }], droits: [], egaux: [["A", "B", 1], ["B", "C", 1], ["C", "A", 1]],
+  };
+  return {
+    etapes: [`Trace un segment [AB] de ${c} cm.`, "Trace un arc du cercle de centre A qui passe par B, au-dessus du segment.",
+      "Trace un arc du cercle de centre B qui passe par A : il coupe le premier arc.", "Nomme C le point où les deux arcs se coupent.", "Trace le triangle ABC."],
+    juste, fausses: [],
+  };
+}
+
+const PROGRAMMES: ((alea: Alea, petit: boolean) => ProgrammeDeConstruction)[] = [programmeDuCarre, programmeDuSegment, programmeDuRectangle, programmeDuTriangleRectangle, programmeDuTriangleEquilateral];
+/** Ceux dont les quatre figures tiennent sur la page en vraie grandeur. */
+const PROGRAMMES_A_FIGURES = PROGRAMMES.slice(0, 4);
+
+const etapesHtml = (etapes: string[]) => `<ol class="ge-programme">${etapes.map((e) => `<li>${escapeHtml(e)}</li>`).join("")}</ol>`;
+
+/** Suivre un programme écrit en étapes, et construire la figure sur papier uni. */
+function programmeEtapes(alea: Alea, r: ReglagesGeometrieCM): Bloc {
+  // De la figure la plus simple à la plus complexe : le programme le plus court d'abord. Chacun garde son cadre entier, quitte à passer à la page.
+  const choisis = melanger(alea, PROGRAMMES).slice(0, Math.max(1, Math.min(2, r.combien))).map((f) => f(alea, false)).sort((a, b) => a.etapes.length - b.etapes.length);
+  return {
+    consigne: "Je lis le programme de construction, étape par étape. Je construis la figure dans le cadre, avec la règle graduée, l'équerre et le compas. J'écris le nom de chaque point.",
+    corps: choisis.map((p) => `<div class="ge-construction">${etapesHtml(p.etapes)}<div class="ge-cadre ge-cadre-programme"></div></div>`).join(""),
+    // Le corrigé en vraie grandeur : on le décalque, et on le superpose à sa figure.
+    corrige: choisis.map((p) => `<div class="ge-construction">${etapesHtml(p.etapes)}${dessinerTrace(p.juste, 1)}<div class="ge-note">À la taille réelle.</div></div>`).join(""),
+  };
+}
+
+/** Un programme et quatre figures en vraie grandeur : une seule le suit ; les trois autres ont chacune une erreur. */
+function programmeFigures(alea: Alea, _r: ReglagesGeometrieCM): Bloc {
+  const p = choisir(alea, PROGRAMMES_A_FIGURES)(alea, true);
+  const figures = melanger(alea, [{ trace: p.juste, pourquoi: "" }, ...melanger(alea, p.fausses).slice(0, 3)]);
+  const juste = figures.findIndex((f) => !f.pourquoi);
+  const cases = (corrige: boolean) => `<div class="ge-figures ge-quatre">${figures.map((f, i) => `<div class="ge-case"><b class="ge-lettre">Figure ${i + 1}</b>${dessinerTrace(f.trace, 1)}`
+    + (corrige ? `<div>${f.pourquoi ? escapeHtml(f.pourquoi) : "<b>C'est la figure du programme.</b>"}</div>` : `<div>Ce qui ne va pas : ${TRAIT}</div>`) + "</div>").join("")}</div>`;
+  return {
+    consigne: "Je lis le programme. J'entoure le numéro de la figure qu'il construit. Pour chacune des trois autres, j'écris ce qui ne va pas. "
+      + "Les figures sont en vraie grandeur : je vérifie avec la règle graduée, l'équerre et le compas.",
+    corps: etapesHtml(p.etapes) + cases(false),
+    corrige: etapesHtml(p.etapes) + `<p><b>La figure ${juste + 1}</b> suit le programme.</p>` + cases(true),
+  };
+}
+
+/** Les consignes d'un programme, mélangées : les remettre dans l'ordre — numéroter, ou découper les bandes et les coller. */
+function programmeOrdre(alea: Alea, _r: ReglagesGeometrieCM): Bloc {
+  const p = choisir(alea, PROGRAMMES)(alea, false);
+  let ordre = melanger(alea, p.etapes.map((_, i) => i));
+  for (let garde = 0; ordre.every((x, i) => x === i) && garde < 20; garde++) ordre = melanger(alea, ordre);
+  const bandes = ordre.map((i) => `<div class="ge-bande"><span class="ge-numero"></span>${escapeHtml(p.etapes[i])}</div>`).join("");
+  return {
+    consigne: "Les consignes du programme sont mélangées. Je les remets dans l'ordre : j'écris leur numéro dans la case, ou je découpe les bandes et je les colle dans l'ordre. "
+      + "La figure m'aide : c'est celle que le programme construit.",
+    corps: `<div class="ge-bandes">${bandes}</div>${dessinerTrace(p.juste, 0.75)}<div class="ge-note">La figure, réduite.</div>`,
+    corrige: etapesHtml(p.etapes) + dessinerTrace(p.juste, 0.75),
   };
 }
 
@@ -580,13 +764,14 @@ function vues(alea: Alea, _r: ReglagesGeometrieCM): Bloc {
 }
 
 const FABRIQUES: Record<ExerciceGeometrieCM, (alea: Alea, r: ReglagesGeometrieCM) => Bloc> = {
-  perpendiculaires, paralleles, vocabulaire, cercle, figures, constructions, programme, symetrique,
+  perpendiculaires, paralleles, vocabulaire, cercle, figures, constructions,
+  "programme-etapes": programmeEtapes, "programme-figures": programmeFigures, "programme-ordre": programmeOrdre, programme, symetrique,
   solides, faces, "patron-cube": patronCube, "patron-pave": patronPave, "cubes-compter": cubesCompter, vues,
 };
 
 export function htmlGeometrieCM(r: ReglagesGeometrieCM, graine: number): string {
   const alea = hasard(graine);
-  const titre = r.titre ?? "Espace et géométrie";
+  const titre = r.titre?.trim() || "Espace et géométrie";
   const exos: string[] = [], corriges: string[] = [];
   EXERCICES_GEOMETRIE_CM.map((e) => e.id).filter((e) => r.exercices.includes(e)).forEach((ex, i) => {
     const b = FABRIQUES[ex](alea, { ...r, combien: Math.max(1, Math.min(10, r.combien)) });
@@ -616,4 +801,12 @@ export const STYLE_GEOMETRIE_CM = `
   .feuille.ge .ge-tableau th { background: #f0f2f8; }
   .feuille.ge .ge-tableau td:first-child svg { margin: 0 auto; }
   .feuille.ge svg { display: block; }
+  .feuille.ge .ge-programme { margin: 0 0 3mm; padding-left: 7mm; font-size: 14.5px; line-height: 1.6; }
+  .feuille.ge .ge-cadre.ge-cadre-programme { height: 78mm; }
+  .feuille.ge .ge-figures.ge-quatre { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5mm 6mm; align-items: start; }
+  .feuille.ge .ge-quatre .ge-case { max-width: none; }
+  .feuille.ge .ge-lettre { display: block; font-size: 13.5px; margin-bottom: 1.5mm; }
+  .feuille.ge .ge-bandes { margin: 0 0 4mm; }
+  .feuille.ge .ge-bande { display: flex; align-items: center; gap: 3mm; border: 1.2px dashed #9aa0b4; padding: 2.5mm 3mm; margin: 0 0 2mm; font-size: 14.5px; break-inside: avoid; page-break-inside: avoid; }
+  .feuille.ge .ge-numero { flex: none; width: 8mm; height: 8mm; border: 1.5px solid #1c2233; border-radius: 1.5mm; }
 `;

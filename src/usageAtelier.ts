@@ -62,7 +62,7 @@ export const USAGE_PAR_DEFAUT: Record<string, Usage> = {
   // Mathématiques : le calcul mental est le rituel par excellence.
   martiniere: "rituel", compteEstBon: "rituel", pyramides: "entrainement", partieTout: "entrainement", multiplicatifs: "entrainement", problemesCM: "entrainement",
   coloriage: "reinvestissement", collections: "manipulation", problemeDuJour: "rituel", motifs: "manipulation", nombres: "manipulation", cubes: "manipulation", billes: "manipulation", abaque: "manipulation", suiteNombres: "entrainement", demiDroite: "entrainement", ordinaux: "entrainement", comparer: "entrainement", calcul: "entrainement", arbre: "entrainement", posees: "entrainement", calculCM: "entrainement",
-  fractions: "manipulation", oie: "reinvestissement", heure: "entrainement", monnaie: "manipulation", mesures: "entrainement", grandeursCM: "entrainement", geometrie: "entrainement", solides: "manipulation", deplacements: "entrainement", donnees: "entrainement", numeration: "entrainement",
+  fractions: "manipulation", oie: "reinvestissement", heure: "entrainement", monnaie: "manipulation", mesures: "entrainement", grandeursCM: "entrainement", geometrie: "entrainement", solides: "manipulation", deplacements: "entrainement", geometrieCM: "entrainement", donnees: "entrainement", numeration: "entrainement",
   // Affichages : la trace qu'on reprend, au mur.
   carteMentale: "reinvestissement",
   // Évaluer : en fin de séquence, savoir où en est chacun.

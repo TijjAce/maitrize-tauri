@@ -19,6 +19,10 @@ import {
   AVEC_GRANDEUR, EXERCICES_GRANDEURS, REGLAGES_GRANDEURS_CM, STYLE_GRANDEURS_CM, SURFACES_DE_REFERENCE, htmlGrandeursCM, reglagesGrandeursCMSurs,
   type ExerciceGrandeurs, type GrandeurCM, type ReglagesGrandeursCM, type SurfaceDeReference,
 } from "../grandeursCoursMoyen";
+import {
+  EXERCICES_GEOMETRIE_CM, REGLAGES_GEOMETRIE_CM, STYLE_GEOMETRIE_CM, htmlGeometrieCM, reglagesGeometrieCMSurs,
+  type ExerciceGeometrieCM, type ReglagesGeometrieCM,
+} from "../geometrieCoursMoyen";
 
 // ── Fabriquer › le cours moyen ─────────────────────────────────────────────
 //
@@ -214,6 +218,40 @@ export function GrandeursCMTab() {
         {EN_FAIRE_UNE_SEQUENCE}
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_GRANDEURS_CM} />}
+    />
+  );
+}
+
+// ── La géométrie ──
+
+export function GeometrieCMTab() {
+  const [brut, maj] = useReglages<ReglagesGeometrieCM>("geometrieCM", REGLAGES_GEOMETRIE_CM);
+  const r = React.useMemo(() => reglagesGeometrieCMSurs(brut), [brut]);
+  const [graine, setGraine] = useGraine();
+  const html = React.useMemo(() => htmlGeometrieCM(r, graine), [r, graine]);
+  const titre = r.titre?.trim() || "Espace et géométrie";
+  return (
+    <Colonnes
+      gauche={<>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Espace et géométrie — CM1, CM2
+          <Aide titre="La géométrie au cours moyen" vers="droite"><p>Les droites perpendiculaires et parallèles, le cercle, les figures nommées par leur définition, les constructions
+            sur papier uni, le symétrique sur quadrillage, les solides et leurs patrons, d'après le programme du cycle 3 (2025). Et lire un programme de construction, comme
+            la séquence du manuel « Réussir mon CRPE » (Nathan) : le suivre étape par étape, reconnaître parmi quatre figures en vraie grandeur celle qu'il construit,
+            remettre ses consignes dans l'ordre.</p></Aide>
+        </h3>
+        <ChoixDeLaClasse classe={r.classe} onChange={(classe) => maj({ classe })} />
+        <Field label="Les exercices">
+          <Choix<ExerciceGeometrieCM> liste={EXERCICES_GEOMETRIE_CM} choisis={r.exercices} onChange={(exercices) => maj({ exercices })} />
+        </Field>
+        <Combien libelle="Combien d'items par exercice" valeur={r.combien} max={10} onChange={(combien) => maj({ combien })} />
+        <Field label="Le titre">
+          <Input value={r.titre ?? ""} placeholder="Espace et géométrie" onChange={(e) => maj({ titre: e.target.value })} />
+        </Field>
+        <Boutons atelier="geometrieCM" titre={titre} html={html} style={STYLE_GEOMETRIE_CM} peut onTirage={() => setGraine(graineAuHasard())} />
+        {EN_FAIRE_UNE_SEQUENCE}
+      </>}
+      droite={<ApercuFeuille html={html} style={STYLE_GEOMETRIE_CM} />}
     />
   );
 }
