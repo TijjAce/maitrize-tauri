@@ -17,12 +17,12 @@ import {
 // quadrillage qu'on coupe aux dizaines, un grand rectangle à découper, la
 // table de Pythagore.
 
-/** Un nombre de 2 à 60, ou 0 pour le tirer au sort. */
+/** Un nombre de 2 à 60, ou rien pour le tirer au sort. Ce qu'on tape reste affiché — le « 1 » de 15 — ; les réglages relus l'écartent s'il est trop petit. */
 function Nombre({ libelle, valeur, onChange }: { libelle: string; valeur: number; onChange: (n: number) => void }) {
   return (
     <Field label={libelle}>
       <Input type="number" min={0} max={60} value={valeur || ""} placeholder="au hasard" style={{ width: 110 }}
-        onChange={(e) => { const n = Math.round(Number(e.target.value)); onChange(n >= 2 ? Math.min(60, n) : 0); }} />
+        onChange={(e) => onChange(Math.max(0, Math.min(60, Math.round(Number(e.target.value)) || 0)))} />
     </Field>
   );
 }
@@ -51,8 +51,8 @@ export function RectanglesTab() {
         </Field>
         {r.exercice !== "pythagore" && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <Nombre libelle={quadrillage ? "Carreaux de long" : "Dans chaque rangée"} valeur={r.parRangee} onChange={(parRangee) => maj({ parRangee })} />
-            <Nombre libelle={quadrillage ? "Carreaux de large" : "Rangées"} valeur={r.rangees} onChange={(rangees) => maj({ rangees })} />
+            <Nombre libelle={quadrillage ? "Carreaux de long" : "Dans chaque rangée"} valeur={brut.parRangee} onChange={(parRangee) => maj({ parRangee })} />
+            <Nombre libelle={quadrillage ? "Carreaux de large" : "Rangées"} valeur={brut.rangees} onChange={(rangees) => maj({ rangees })} />
           </div>
         )}
         {r.exercice === "objets" && (
