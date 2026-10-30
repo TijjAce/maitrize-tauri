@@ -6,7 +6,7 @@ export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "vilainPetitCanard", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive",
-  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "problemesCM", "coloriage", "collections", "problemeDuJour", "motifs", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "calculCM", "soustractionPosee", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "grandeursCM", "geometrie", "solides", "deplacements", "donnees", "numeration",
+  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "problemesCM", "coloriage", "collections", "problemeDuJour", "motifs", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "calculCM", "soustractionPosee", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "grandeursCM", "geometrie", "solides", "deplacements", "geometrieCM", "donnees", "numeration",
   "carteMentale", "taches",
   "sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction",
   "planClasse", "frise", "paysage",
@@ -214,6 +214,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Des solides en perspective à nommer, les objets et leur forme, faces, sommets et arêtes, le jeu du portrait, l'intrus ; les faces à découper, les patrons du cube, des assemblages de cubes à construire." },
       { id: "deplacements", nom: "Se repérer, se déplacer", icone: "🧭", cycles: "Cycle 2",
         quoi: "La bille et ses flèches, puis, plus dur, le robot qui avance et pivote comme dans Scratch : suivre, écrire ou corriger un code sur un quadrillage ; les cartes des positions." },
+      { id: "geometrieCM", nom: "Espace et géométrie — CM1, CM2", icone: "🔷", cycles: "Cycle 3 (CM1, CM2)",
+        quoi: "Perpendiculaires et parallèles, le cercle, nommer les figures ; lire un programme de construction — l'étape par étape, quatre figures dont une juste, les consignes à remettre dans l'ordre — ; le symétrique, les solides et leurs patrons." },
       { id: "donnees", nom: "Tableaux et diagrammes", icone: "📊", cycles: "Cycle 2",
         quoi: "Une enquête et son relevé par bâtons, le tableau, le diagramme en barres à lire ou à construire, le tableau à double entrée des formes et des couleurs, des tableaux à compléter, des problèmes." },
       { id: "numeration", nom: "Grands nombres et décimaux", icone: "💯", cycles: "Cycle 3",
@@ -283,7 +285,7 @@ export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[]
   { id: "calcul", nom: "Le calcul", outils: ["martiniere", "calcul", "arbre", "posees", "pyramides", "compteEstBon", "coloriage", "calculCM"] },
   { id: "problemes", nom: "Les problèmes", outils: ["partieTout", "multiplicatifs", "problemesCM"] },
   { id: "grandeurs", nom: "Grandeurs et mesures", outils: ["heure", "monnaie", "mesures", "grandeursCM"] },
-  { id: "geometrie", nom: "Espace et géométrie", outils: ["motifs", "geometrie", "solides", "deplacements"] },
+  { id: "geometrie", nom: "Espace et géométrie", outils: ["motifs", "geometrie", "solides", "deplacements", "geometrieCM"] },
   { id: "donnees", nom: "Données", outils: ["donnees"] },
 ];
 

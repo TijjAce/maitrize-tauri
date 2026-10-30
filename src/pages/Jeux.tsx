@@ -30,7 +30,7 @@ import {
 import { CursiveTab, EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { AbaqueTab, BillesTab, SuiteNombresTab } from "./AteliersNumerationCP";
 import { DemiDroiteTab, OrdinauxTab } from "./AteliersReperage";
-import { CalculCMTab, GrandeursCMTab, ProblemesCMTab } from "./AteliersCoursMoyen";
+import { CalculCMTab, GeometrieCMTab, GrandeursCMTab, ProblemesCMTab } from "./AteliersCoursMoyen";
 import { GenerateurPersoTab } from "./AtelierGenerateurPerso";
 import { enregistrerGenerateur, useGenerateursPerso } from "../components/GenerateursPerso";
 import type { GenerateurPerso } from "../generateursPerso";
@@ -456,6 +456,7 @@ export default function Jeux() {
         : onglet === "geometrie" ? <GeometrieTab />
         : onglet === "solides" ? <SolidesTab />
         : onglet === "deplacements" ? <DeplacementsTab />
+        : onglet === "geometrieCM" ? <GeometrieCMTab />
         : onglet === "donnees" ? <DonneesTab />
         : onglet === "voixHaute" ? <VoixHauteTab />
         : onglet === "comprehension" ? <ComprehensionTab />

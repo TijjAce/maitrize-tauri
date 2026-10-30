@@ -294,10 +294,13 @@ const SOURCES_DU_CYCLE_2: [string, string][] = [
 ];
 const sourceDuCycle3 = (html: string) => SOURCES_DU_CYCLE_2.reduce((h, [a, b]) => h.split(a).join(b), html);
 
+/** Une feuille de l'atelier « Espace et géométrie — CM1, CM2 », qui la refait avec les mêmes réglages et le même tirage. */
 const geometrieCM = (seance: number, titre: string, classe: "CM1" | "CM2", exercices: ExerciceGeometrieCM[], combien = 4): FeuilleAFabriquer => {
   const reglages = { ...REGLAGES_GEOMETRIE_CM, classe, exercices, combien, titre };
-  const atelier = exercices.some((e) => ["solides", "faces", "patron-cube", "patron-pave", "cubes-compter", "vues"].includes(e)) ? "solides" : "geometrie";
-  return { seance, atelier, titre, fabriquer: (g) => ({ html: htmlGeometrieCM(reglages, g), style: STYLE_FEUILLE + STYLE_GEOMETRIE_CM }) };
+  return {
+    seance, atelier: "geometrieCM", titre,
+    fabriquer: (g) => ({ html: htmlGeometrieCM(reglages, g), style: STYLE_FEUILLE + STYLE_GEOMETRIE_CM, refaire: { geometrieCM: reglages } }),
+  };
 };
 /** Une feuille de l'atelier « Géométrie » qui convient au CM telle quelle, avec la source du cycle 3. */
 const geometrie2 = (seance: number, titre: string, exercice: ExerciceGeometrie, niveau: "lignes" | "diagonales" | "obliques" = "obliques"): FeuilleAFabriquer => {
