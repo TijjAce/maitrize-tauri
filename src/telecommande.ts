@@ -40,6 +40,18 @@ export type Compris =
   | { genre: "retour" }
   /** Un élément de la classe — séquence, séance, jeu, outil, texte —, choisi par Mistral dans le catalogue. */
   | { genre: "ouvrir"; element: ElementDeLaClasse }
+  /**
+   * Une séquence à créer, après un « oui » sur le téléphone : son titre et ce que la phrase en dit — la classe, la
+   * période, la matière. `touteFaite` : celle des séquences toutes faites que le titre nomme, ses séances et ses feuilles.
+   */
+  | { genre: "creerSequence"; titre: string; classe: string | null; periode: number | null; matiere: string | null; touteFaite: boolean }
+  /**
+   * Une séance à créer, après un « oui » : son titre ; la séquence que la phrase nomme — `sequenceId` quand Mistral l'a
+   * choisie dans le catalogue —, sinon celle qui est affichée ; le jour dit (« demain », « lundi »).
+   */
+  | { genre: "creerSeance"; titre: string; sequence: string | null; sequenceId?: string; jour: string | null; duree: number | null }
+  /** « Annule » : le geste le plus récent qu'on peut défaire, comme ⌘Z — une création, une suppression. */
+  | { genre: "annuler" }
   | { genre: "rien"; pourquoi: string };
 
 /**
@@ -299,6 +311,208 @@ const DESCENDRE = /^(descends|descend|descendre|descendez|defile|defiler|plus ba
 const MONTER = /^(monte|monter|remonte|remonter|montez|plus haut|vers le haut|en haut|page precedente)$/;
 const RETOUR = /^(retour|reviens|revenir|reviens en arriere|retourne en arriere|en arriere|precedent|page d avant)$/;
 const MINUTEUR = /\b(minuteur|chrono|chronometre|sablier|timer|compte a rebours|decompte)\b/;
+const ANNULER = /^(annule|annuler|annulez|defais|defaire|defaites)( (ca|cela|la creation|la derniere action|ce que tu viens de faire))?$/;
+
+// ── Créer à la voix ─────────────────────────────────────────────────────────
+//
+// « Je voudrais également pouvoir, dans le pilotage de l'application, créer des séances et des séquences, uniquement par
+// la voix » (l'enseignant, le 30 octobre 2026). Une création se confirme sur le téléphone, comme une note : la phrase
+// mal entendue ne crée rien. « Annule » la défait ensuite, comme ⌘Z.
+
+/** Les classes qu'on dit, telles qu'on les écrit. */
+const CLASSES_DITES: Record<string, string> = { ps: "PS", ms: "MS", gs: "GS", cp: "CP", ce1: "CE1", ce2: "CE2", cm1: "CM1", cm2: "CM2" };
+const SECTIONS: Record<string, string> = { petite: "PS", moyenne: "MS", grande: "GS" };
+
+/** Les matières qu'on dit — « une séquence de sciences », « en maths » —, et leur nom dans l'emploi du temps. */
+const MATIERES_DITES: [string, string][] = ([
+  ["histoire geographie", "Histoire-Géographie"], ["histoire geo", "Histoire-Géographie"], ["arts plastiques", "Arts plastiques"],
+  ["questionner le monde", "Questionner le monde"], ["education musicale", "Éducation musicale"], ["mathematiques", "Mathématiques"],
+  ["maths", "Mathématiques"], ["math", "Mathématiques"], ["francais", "Français"], ["sciences", "Sciences et techno."],
+  ["science", "Sciences et techno."], ["histoire", "Histoire-Géographie"], ["geographie", "Histoire-Géographie"], ["emc", "EMC"],
+  ["musique", "Éducation musicale"], ["eps", "EPS"], ["sport", "EPS"], ["anglais", "LVE / Anglais"],
+] as [string, string][]).sort((a, b) => b[0].length - a[0].length);
+/** Les matières qu'une création peut porter : Mistral n'en donne pas d'autre. */
+export const MATIERES_DE_LA_VOIX = [...new Set(MATIERES_DITES.map(([, m]) => m))];
+
+const VERBES_DE_CREATION = new Set([
+  "cree", "creer", "creez", "crees", "creons", "fais", "faire", "faites", "fabrique", "fabriquer", "fabriquez", "prepare", "preparer",
+  "preparez", "ajoute", "ajouter", "ajoutez", "rajoute", "rajouter", "commence", "commencer", "ecris", "ecrire", "ecrivez", "programme",
+  "programmer", "planifie", "planifier",
+]);
+/** Entre le verbe et le nom : « crée-moi une nouvelle séquence ». */
+const AVANT_LE_NOM = new Set(["moi", "nous", "une", "un", "la", "le", "l", "ma", "mon", "notre", "cette", "nouvelle", "nouveau", "autre", "petite", "premiere"]);
+/** Ce qu'on retire devant ce que la phrase précise : « au CM1 », « en période 2 », « pour demain ». */
+const PREPOSITIONS = new Set(["au", "aux", "en", "pour", "le", "les", "la", "de", "du", "des", "a", "d", "l", "ce", "cette", "dans", "sur"]);
+const JOURS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+const UN = new Set(["1", "un", "une"]);
+const DEUX = new Set(["2", "deux"]);
+
+/** Les mots d'une phrase, à plat, et où chacun est : le titre se reprend tel qu'il a été dit, majuscules et accents. */
+function motsDe(phrase: string) {
+  return [...phrase.matchAll(/[^\s'’:;,.!?«»"()[\]–—-]+['’]?/g)]
+    .map((m) => ({ plat: plat(m[0]), debut: m.index, fin: m.index + m[0].length, pris: false }))
+    .filter((m) => m.plat);
+}
+type Mot = ReturnType<typeof motsDe>[number];
+
+/** Le texte que disent ces mots, tel qu'il a été dit ; plusieurs morceaux se mettent bout à bout. */
+function texteDe(phrase: string, mots: Mot[]): string {
+  const morceaux: string[] = [];
+  let debut = -1;
+  for (const [k, m] of mots.entries()) {
+    if (debut < 0) debut = m.debut;
+    const suivant = mots[k + 1];
+    if (!suivant || suivant.debut > m.fin + 1) { morceaux.push(phrase.slice(debut, m.fin)); debut = -1; }
+  }
+  return morceaux.join(" ");
+}
+
+/** « sur les volcans » → « Les volcans » ; « des fractions » → « Les fractions » ; « de lecture » → « Lecture ». */
+function titreDit(texte: string): string {
+  const t = texte.trim()
+    .replace(/^(?:sur(?: le thème)?|(?:à|a) propos|au sujet|intitulée?s?|appelée?s?|nommée?s?|qui s['’]appelle|le thème)\s+/i, "")
+    .replace(/^des\s+/i, "les ").replace(/^du\s+/i, "le ").replace(/^de la\s+/i, "la ").replace(/^de l['’]\s*/i, "l'")
+    .replace(/^(?:de\s+|d['’]\s*)/i, "")
+    .replace(/[\s:;,.!?–—-]+$/, "").trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/**
+ * Une création dite : « crée une séquence sur les volcans au CM1 en période 2 », « nouvelle séquence de sciences : le
+ * corps humain », « crée la séquence toute faite de la symétrie au CE2 », « ajoute une séance à la séquence des
+ * fractions : partager une pizza », « crée une séance de lecture pour demain ». Rien si la phrase ne demande pas de
+ * créer : « la séquence des fractions » s'ouvre, elle ne se crée pas.
+ */
+function creationDite(phrase: string): Compris | null {
+  const mots = motsDe(phrase);
+  let i = 0;
+  // « Alors », « tu peux », « je voudrais »…
+  for (let encore = true; encore;) {
+    encore = false;
+    for (const f of AVANT) {
+      const fm = f.split(" ");
+      if (fm.every((w, k) => mots[i + k]?.plat === w)) { i += fm.length; encore = true; break; }
+    }
+  }
+  const verbe = VERBES_DE_CREATION.has(mots[i]?.plat ?? "");
+  if (verbe) i++;
+  let nouvelle = false;
+  while (i < mots.length && AVANT_LE_NOM.has(mots[i].plat)) { nouvelle ||= /^nouve/.test(mots[i].plat); i++; }
+  const nom = mots[i]?.plat.replace(/s$/, "");
+  if ((nom !== "sequence" && nom !== "seance") || (!verbe && !nouvelle)) return null;
+  const reste = mots.slice(i + 1);
+  // « s'il te plaît », « merci » à la fin.
+  for (let encore = true; encore;) {
+    encore = false;
+    const libres = reste.filter((m) => !m.pris);
+    for (const f of APRES) {
+      const fm = f.split(" ");
+      const fin = libres.slice(-fm.length);
+      if (fin.length === fm.length && fm.every((w, k) => fin[k].plat === w)) { fin.forEach((m) => { m.pris = true; }); encore = true; break; }
+    }
+  }
+  const est = (k: number, ...w: string[]) => w.every((x, d) => reste[k + d]?.plat === x);
+  /** Prend ces mots, et les petits mots juste devant (« au », « en », « pour le »). */
+  const prendre = (debut: number, fin: number) => {
+    for (let k = debut; k < fin; k++) reste[k].pris = true;
+    for (let k = debut - 1, n = 0; k >= 0 && n < 2 && !reste[k].pris && PREPOSITIONS.has(reste[k].plat); k--, n++) reste[k].pris = true;
+  };
+  let touteFaite = false, classe: string | null = null, periode: number | null = null, matiere: string | null = null, jour: string | null = null;
+  for (let k = 0; k < reste.length; k++) {
+    const p = reste[k].plat, suite = reste[k + 1]?.plat ?? "";
+    if (est(k, "toute", "faite") || est(k, "toutes", "faites") || est(k, "tout", "fait")) {
+      touteFaite = true; reste[k].pris = reste[k + 1].pris = true; k++;
+    } else if (CLASSES_DITES[p]) {
+      classe = CLASSES_DITES[p]; prendre(k, k + 1);
+    } else if ((p === "ce" || p === "cm") && (UN.has(suite) || DEUX.has(suite))) {
+      classe = `${p.toUpperCase()}${UN.has(suite) ? 1 : 2}`; prendre(k, k + 2); k++;
+    } else if (SECTIONS[p] && suite === "section") {
+      classe = SECTIONS[p]; prendre(k, k + 2); k++;
+    } else if (p === "periode" && /^[1-5]$/.test(enChiffres(suite))) {
+      periode = Number(enChiffres(suite)); prendre(k, k + 2); k++;
+    }
+  }
+  if (nom === "sequence") {
+    // La matière, quand on la dit avec « de » ou « en » : « une séquence de sciences », « en maths ».
+    for (let k = 1; k < reste.length && !matiere; k++) {
+      if (reste[k].pris || !["de", "d", "en"].includes(reste[k - 1].plat)) continue;
+      const trouvee = MATIERES_DITES.find(([dit]) => est(k, ...dit.split(" ")) && dit.split(" ").every((_, d) => !reste[k + d].pris));
+      if (trouvee) { matiere = trouvee[1]; prendre(k, k + trouvee[0].split(" ").length); }
+    }
+    const titre = titreDit(texteDe(phrase, reste.filter((m) => !m.pris)));
+    if (!titre && !touteFaite) return { genre: "rien", pourquoi: "Quel titre ? Dites par exemple « crée une séquence sur les volcans »." };
+    if (!titre) return { genre: "rien", pourquoi: "Laquelle ? Dites par exemple « crée la séquence toute faite de la symétrie au CE2 »." };
+    return { genre: "creerSequence", titre, classe, periode, matiere, touteFaite };
+  }
+  // Une séance : sa durée, le jour, puis la séquence où elle va.
+  let duree: number | null = null;
+  for (let k = 0; k < reste.length; k++) {
+    const p = reste[k].plat;
+    if (reste[k].pris) continue;
+    const n = Number(enChiffres(p)), unite = reste[k + 1]?.plat ?? "";
+    if (n > 0 && /^(minutes?|min|mn)$/.test(unite)) { duree = Math.min(n, 240); prendre(k, k + 2); k++; }
+    else if (n > 0 && n <= 4 && /^(heures?|h)$/.test(unite)) {
+      const demie = reste[k + 2]?.plat === "et" && /^demie?$/.test(reste[k + 3]?.plat ?? "");
+      duree = n * 60 + (demie ? 30 : 0); prendre(k, demie ? k + 4 : k + 2); k += demie ? 3 : 1;
+    } else if (p === "aujourd" && reste[k + 1]?.plat === "hui") { jour = "aujourd'hui"; prendre(k, k + 2); k++; }
+    else if (p === "demain") {
+      if (reste[k - 1]?.plat === "apres") { jour = "après-demain"; prendre(k - 1, k + 1); } else { jour = "demain"; prendre(k, k + 1); }
+    } else if (JOURS.includes(p)) {
+      jour = p; prendre(k, reste[k + 1]?.plat === "prochain" ? k + 2 : k + 1);
+    }
+  }
+  let sequence: string | null = null;
+  const s = reste.findIndex((m) => !m.pris && m.plat.replace(/s$/, "") === "sequence");
+  if (s >= 0) {
+    prendre(s, s + 1);
+    // Ses mots vont jusqu'aux deux-points, ou jusqu'à « intitulée » : la suite est le titre de la séance.
+    const coupe = (m: Mot) => /^\s*[:–—,]/.test(phrase.slice(m.fin));
+    let f = s + 1;
+    if (!coupe(reste[s])) {
+      while (f < reste.length && !reste[f].pris && !/^(intitulee?|appelee?|nommee?)$/.test(reste[f].plat)) {
+        f++;
+        if (coupe(reste[f - 1])) break;
+      }
+    }
+    const dits = reste.slice(s + 1, f);
+    dits.forEach((m) => { m.pris = true; });
+    // « cette séquence », « la séquence affichée » : celle qui est à l'écran.
+    const ici = reste[s - 1]?.plat === "cette" || dits.every((m) => /^(affichee|ouverte|en|cours|actuelle|ici)$/.test(m.plat));
+    sequence = ici ? null : dits.map((m) => m.plat).join(" ") || null;
+  }
+  return { genre: "creerSeance", titre: titreDit(texteDe(phrase, reste.filter((m) => !m.pris))), sequence, jour, duree };
+}
+
+/** Le jour dit, en date : « demain », « lundi » — le prochain lundi —, « aujourd'hui ». */
+export function jourDit(jour: string, aujourdhui: string): string {
+  const d = new Date(`${aujourdhui}T12:00:00`);
+  const j = JOURS.indexOf(plat(jour));
+  const ajout = jour === "demain" ? 1 : jour === "après-demain" ? 2 : j < 0 ? 0 : ((j - d.getDay() + 7) % 7) || 7;
+  d.setDate(d.getDate() + ajout);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Ce que la phrase nomme parmi des titres : ceux qui ont le plus de ses mots — à une lettre près, ou par leur début
+ * (« maths », « Mathématiques ») —, à égalité tous. Rien si aucun mot ne s'y retrouve.
+ */
+export function nommesParmi<T>(mots: string, titres: { titre: string; valeur: T }[]): T[] {
+  const dits = plat(mots).split(" ").filter((m) => m.length >= 3 && !LIENS.has(m) && !MOTS_QUI_NE_NOMMENT_RIEN.has(m) && m !== "toute" && m !== "faite")
+    .map((m) => m.replace(/[sx]$/, ""));
+  if (!dits.length) return [];
+  const debut = (a: string, b: string) => a.length >= 4 && b.startsWith(a);
+  // Le titre sans sa classe ni son article : « La symétrie axiale (CE2) » se dit « la symétrie axiale ».
+  const nu = (t: string) => plat(t.replace(/\s*\([^()]*\)\s*$/, "")).replace(/^(?:de la|de l|le|la|les|l|des|du|de|d) /, "");
+  let meilleurs: { titre: string; valeur: T }[] = [], max = 0;
+  for (const t of titres) {
+    const nom = nu(t.titre).split(" ").map((m) => m.replace(/[sx]$/, ""));
+    const score = dits.filter((d) => nom.some((n) => d === n || memeMot(d, n) || debut(d, n) || debut(n, d))).length;
+    if (score > max) { max = score; meilleurs = [t]; } else if (score && score === max) meilleurs.push(t);
+  }
+  // À égalité, le titre qu'on a dit tel quel l'emporte.
+  const exacts = meilleurs.filter((t) => nu(t.titre) === nu(mots));
+  return (exacts.length ? exacts : meilleurs).map((t) => t.valeur);
+}
 
 /** Ce que la phrase demande. */
 export function comprendre(phrase: string, ctx: ContexteTelecommande): Compris {
@@ -310,6 +524,10 @@ export function comprendre(phrase: string, ctx: ContexteTelecommande): Compris {
   // Une note d'abord : son texte peut dire une durée (« a travaillé dix minutes seul »). « Observations » seul est
   // une page.
   if (MOTS_DE_NOTE.has(p.split(" ")[0]) && p.includes(" ")) return noteDite(phrase, ctx.eleves);
+  // Créer, avant le minuteur : « ajoute une séance de 45 minutes » ne rallonge pas le minuteur.
+  if (ANNULER.test(p)) return { genre: "annuler" };
+  const creation = creationDite(phrase);
+  if (creation) return creation;
   // Le minuteur en cours, ce qui est affiché, la page d'avant : des commandes brèves, comprises ici, sans attendre.
   if (PAUSE.test(p)) return { genre: "minuteurPause" };
   if (REPRENDRE.test(p)) return { genre: "minuteurReprendre" };
@@ -438,6 +656,9 @@ Actions possibles, et aucune autre :
 - {"action":"defiler","sens":"bas"} ou {"action":"defiler","sens":"haut"} — faire défiler la page affichée.
 - {"action":"retour"} — revenir à la page d'avant.
 - {"action":"note","eleve":"PRÉNOM","texte":"TEXTE"} — noter une observation sur un élève ; rien ne s'affiche.
+- {"action":"creer_sequence","titre":"TITRE","classe":"CE2","periode":3,"matiere":"MATIÈRE","toute_faite":false} — créer une séquence ; l'enseignant confirme sur le téléphone. "classe" (PS, MS, GS, CP, CE1, CE2, CM1, CM2), "periode" (1 à 5) et "matiere" (${MATIERES_DE_LA_VOIX.join(", ")}) seulement s'ils sont dits. "toute_faite":true quand il demande une séquence toute faite : "titre" dit alors ce qu'elle traite.
+- {"action":"creer_seance","titre":"TITRE","sequence":"RÉF","jour":"demain","duree":45} — créer une séance dans une séquence des ÉLÉMENTS, par sa référence ; sans "sequence", dans la séquence affichée. "jour" (aujourd'hui, demain, après-demain, lundi…) et "duree" (en minutes) seulement s'ils sont dits ; "titre" peut être vide.
+- {"action":"annuler"} — défaire la dernière action, comme ⌘Z.
 - {"action":"aide"} — l'enseignant demande ce qu'il peut dire.
 Si la phrase ne demande rien de tout cela : {"actions":[]}.
 
@@ -455,6 +676,7 @@ Règles :
 - « Descends », « plus bas » : defiler bas ; « remonte », « monte », « plus haut » : defiler haut — jamais un zoom.
 - Un mot peut être mal entendu : « Calfiche » pour « Affiche », « la prise » pour « la frise ». Choisis ce qui ressemble à l'oreille à un nom des listes.
 - N'ouvre un élément que si son titre correspond vraiment à ce qui est dit ; sinon, « chercher » avec les mots dits. N'invente jamais une page ni une référence absente des listes.
+- « Crée », « ajoute », « prépare », « nouvelle » devant « séquence » ou « séance » : creer_sequence ou creer_seance, jamais ouvrir ni chercher. Le titre se reprend tel qu'il est dit, sans « sur » ni « de » devant.
 - « La séance d'aujourd'hui » : celle marquée « aujourd'hui ». ${elements.some((e) => e.libelle.endsWith("aujourd'hui")) ? "" : "Aujourd'hui, aucune séance n'est prévue : n'en choisis aucune pour elle."}
 
 Exemples :
@@ -462,7 +684,8 @@ Exemples :
 - « Reviens en arrière et zoome » → {"actions":[{"action":"retour"},{"action":"zoom","sens":"plus"}]}
 - « Va sur le tableau de bord et remonte » → {"actions":[{"action":"page","page":"Tableau de bord"},{"action":"defiler","sens":"haut"}]}
 - « Encore deux minutes » → {"actions":[{"action":"minuteur_ajouter","secondes":120}]}
-- « Ouvre la séquence sur les volcans », absente des ÉLÉMENTS → {"actions":[{"action":"chercher","quoi":"volcans"}]}`;
+- « Ouvre la séquence sur les volcans », absente des ÉLÉMENTS → {"actions":[{"action":"chercher","quoi":"volcans"}]}
+- « Crée une séquence de sciences sur les volcans au CM1, puis ajoute-lui une séance sur les éruptions » → {"actions":[{"action":"creer_sequence","titre":"Les volcans","classe":"CM1","matiere":"Sciences et techno."},{"action":"creer_seance","titre":"Les éruptions"}]}`;
 }
 
 /** L'élève que Mistral a nommé : son nom entier ou son prénom, et un seul élève de la classe. */
@@ -518,9 +741,40 @@ function lireUneAction(j: Record<string, unknown>, ctx: ContexteTelecommande, el
     }
     case "aide":
       return { genre: "aide" };
+    case "creer_sequence": {
+      const titre = String(j.titre ?? "").trim().slice(0, 120);
+      const classe = String(j.classe ?? "").toUpperCase();
+      const periode = Number(j.periode);
+      return titre ? {
+        genre: "creerSequence", titre, touteFaite: j.toute_faite === true,
+        classe: Object.values(CLASSES_DITES).includes(classe) ? classe : null,
+        periode: Number.isInteger(periode) && periode >= 1 && periode <= 5 ? periode : null,
+        matiere: MATIERES_DE_LA_VOIX.includes(String(j.matiere)) ? String(j.matiere) : null,
+      } : null;
+    }
+    case "creer_seance": {
+      // Une référence qui n'est pas une séquence du catalogue : l'action tombe, plutôt que d'aller ailleurs.
+      const e = j.sequence ? elements.find((x) => x.ref === j.sequence && x.sorte === "sequence") : undefined;
+      if (j.sequence && !e) return null;
+      const duree = Math.round(Number(j.duree));
+      return {
+        genre: "creerSeance", titre: String(j.titre ?? "").trim().slice(0, 120), sequence: e?.titre ?? null, sequenceId: e?.id,
+        jour: jourDeMistral(j.jour), duree: duree >= 5 && duree <= 240 ? duree : null,
+      };
+    }
+    case "annuler":
+      return { genre: "annuler" };
     default:
       return null;
   }
+}
+
+/** Le jour que Mistral rend, s'il est de ceux qu'on dit. */
+function jourDeMistral(v: unknown): string | null {
+  const p = plat(String(v ?? ""));
+  if (p === "aujourd hui" || p === "aujourdhui") return "aujourd'hui";
+  if (p === "apres demain") return "après-demain";
+  return p === "demain" || JOURS.includes(p) ? p : null;
 }
 
 /** Les mots qui ne nomment rien : la sorte, les verbes, les rangs. Un élément ne s'ouvre pas sur eux seuls. */
@@ -562,7 +816,9 @@ export function lireLesActions(reponse: string, ctx: ContexteTelecommande, eleme
     : (j as { action?: unknown })?.action ? [j] : [];
   const lues = brutes.slice(0, ACTIONS_MAX)
     .map((a) => (a && typeof a === "object" ? lireUneAction(a as Record<string, unknown>, ctx, elements) : null))
-    .filter((c): c is Compris => c !== null && (c.genre !== "ouvrir" || phraseNomme(phrase, c.element)));
+    .filter((c): c is Compris => c !== null && (c.genre !== "ouvrir" || phraseNomme(phrase, c.element))
+      // La séquence d'une séance à créer : la phrase doit la nommer, comme un élément qu'on ouvre.
+      && (c.genre !== "creerSeance" || !c.sequenceId || phraseNomme(phrase, elements.find((x) => x.id === c.sequenceId)!)));
   return lues.length ? lues : null;
 }
 
@@ -581,7 +837,7 @@ export function inviteDeLaVoix(eleves: { nom: string }[]): string {
   }
   return [
     "Minuteur cinq minutes.", "Plein écran.", "Ferme.", "Affiche les supports visuels.", "Montre la carte mentale.",
-    "Ouvre le tableau de jetons, le d'abord ensuite, les TLA, la CAA.", ...groupes,
+    "Ouvre le tableau de jetons, le d'abord ensuite, les TLA, la CAA.", "Crée une séquence, ajoute une séance.", ...groupes,
   ].join(" ");
 }
 
@@ -612,6 +868,14 @@ export function ceQuIlComprend(destinations: Destination[]): Groupe[] {
     ...[...rayons.keys()].sort((a, b) => rang(a) - rang(b)).map((titre) => ({ titre, exemples: rayons.get(titre)!, aToucher: true })),
     { titre: "Chercher par son nom", exemples: ["Affiche la séquence sur les fractions", "Montre le jeu des animaux de la ferme"], aToucher: false },
     { titre: "Noter, sans rien afficher", exemples: ["Note pour [prénom] : a lu douze mots seul"], aToucher: false },
+    {
+      titre: "Créer, après un « oui » sur le téléphone",
+      exemples: [
+        "Crée une séquence de sciences sur les volcans au CM1", "Crée la séquence toute faite de la symétrie au CE2",
+        "Ajoute une séance à la séquence des volcans : les éruptions", "Crée une séance de lecture pour demain", "Annule",
+      ],
+      aToucher: false,
+    },
     {
       titre: "Plusieurs choses à la fois (avec Mistral)",
       exemples: ["Lance dix minutes et affiche la carte mentale", "Ouvre la séance d'aujourd'hui en plein écran", "Montre la frise, puis plus grand"],
