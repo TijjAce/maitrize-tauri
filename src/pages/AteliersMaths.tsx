@@ -355,7 +355,7 @@ export function FractionsTab() {
   const [r, maj] = useReglages("fractions", REGLAGES_FRACTIONS);
   const [graine, setGraine] = useGraine();
   const html = React.useMemo(() => htmlFractions(r, graine), [r, graine]);
-  const MATERIEL: [MaterielFraction, string][] = [["cartes", "cartes (mémory, bataille)"], ["bandes", "bandes unités à plier"], ["regle", "règle graduée"], ["nageurs", "course des nageurs"],
+  const MATERIEL: [MaterielFraction, string][] = [["cartes", "cartes (mémory, bataille)"], ["colorier", "colorier une fraction"], ["bandes", "bandes unités à plier"], ["regle", "règle graduée"], ["nageurs", "course des nageurs"],
     ["mesurer", "segments à mesurer"], ["tracer", "segments à tracer"], ["comparer", "comparer des fractions"], ["operations", "ajouter, retrancher"]];
   const REPS: [RepresentationFraction, string][] = [["chiffres", "en chiffres"], ["lettres", "en lettres"], ["bande", "bande partagée"], ["disque", "disque partagé"]];
   return (
@@ -366,8 +366,10 @@ export function FractionsTab() {
           <Aide titre="Fractions" vers="droite"><p>Les cartes pour nommer et comparer les fractions, la bande unité qu'on plie, la règle graduée en quarts, en huitièmes ou en dixièmes, la course des nageurs, des segments à mesurer ou à tracer, des fractions à comparer, à ajouter et à retrancher.</p></Aide>
         </h3>
         <Field label="Matériel"><Chips liste={MATERIEL.map((m) => m[0])} choisis={r.materiel} onChange={(v) => maj({ materiel: v })} libelle={(id) => MATERIEL.find((m) => m[0] === id)![1]} /></Field>
-        {r.materiel.includes("cartes") && (<>
+        {(r.materiel.includes("cartes") || r.materiel.includes("colorier")) && (
           <Field label="Dénominateurs"><Chips liste={[2, 3, 4, 5, 6, 8, 10]} choisis={r.denominateurs} onChange={(v) => maj({ denominateurs: [...v].sort((a, b) => a - b) })} /></Field>
+        )}
+        {r.materiel.includes("cartes") && (<>
           <Field label="Formes"><Chips liste={REPS.map((m) => m[0])} choisis={r.representations} onChange={(v) => maj({ representations: v })} libelle={(id) => REPS.find((m) => m[0] === id)![1]} /></Field>
           <Coche on={!!r.unitaires} libelle="Les fractions unitaires seulement : un demi, un tiers, un quart…" onChange={(v) => maj({ unitaires: v })} />
         </>)}
