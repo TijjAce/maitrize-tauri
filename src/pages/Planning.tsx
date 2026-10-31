@@ -25,7 +25,7 @@ import { CLE_RITUELS, STYLE_RITUELS_IMPRIMES, avecRituels, deroulementEnHtml, li
 import { avecImages } from "../components/imagesTexte";
 import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
 import { aImprimer, creneauMasque, masqueJeu, masqueRituel, masqueSequence, masquesDesReglages } from "../journalMasques";
-import { SCRIPTS_DES_BANDES, STYLE_BANDES_DU_JOURNAL, bandesDuJour, corpsDesBandes, pageDeLaJourneeEnBandes } from "../journeeEnBandes";
+import { SCRIPTS_DES_BANDES, STYLE_BANDES_DU_JOURNAL, bandesDuJour, corpsDesBandes } from "../journeeEnBandes";
 import { JOURS_DE_RECUL, STYLE_VEILLE, bilansDeLaVeilleHtml, veilleDe } from "../bilansVeille";
 import { niveauDeProgrammation } from "../programmation";
 import { EnRetard } from "../components/EnRetard";
@@ -245,22 +245,16 @@ export default function Planning() {
     : cap(ancre.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }));
 
   // Vue jour : rendu riche (grille horaire + contenu des séances) en HTML,
-  // ouvert dans le navigateur (imprimable / PDF natif via ⌘P). `enBandes` : la
-  // journée sur une seule page, chaque créneau en bande — son déroulement,
-  // comme sur les tablettes (voir journeeEnBandes.ts).
-  const imprimerJourRiche = async (liste: Creneau[], enBandes = false) => {
+  // ouvert dans le navigateur (imprimable / PDF natif via ⌘P), puis la journée
+  // sur une page, chaque créneau en bande — son déroulement, comme sur les
+  // tablettes (voir journeeEnBandes.ts).
+  const imprimerJourRiche = async (liste: Creneau[]) => {
     const reglages = await api.settingsAll().catch((): Record<string, string> => ({}));
     // Ce que chaque créneau cite sans l'imprimer : la case cochée dans le journal ; et les créneaux qu'on n'imprime pas du tout.
     const masques = masquesDesReglages(reglages);
     const jourCreneaux = liste.filter((c) => c.date === iso(ancre) && !creneauMasque(masques, c.id)).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
     // Le matériel des séances : annoncé dans le créneau, joint à la suite, à son échelle.
     const materiels = await api.materielList().catch((): MaterielItem[] => []);
-    if (enBandes) {
-      const seancesActuelles = await api.seancesList().catch(() => seances ?? []);
-      const jeuxDuJour = await api.jeuxList().catch((): Jeu[] => []);
-      await api.ouvrirHtml(await pageDeLaJourneeEnBandes(titre, jourCreneaux, seancesActuelles, sequences ?? [], materiels, jeuxDuJour), SCRIPTS_DES_BANDES);
-      return;
-    }
     const reImg = /\[img:([^\]]+)\]/g;
     const echelles = echellesDesReglages(reglages);
     // Les rituels cités dans le prévu : leur déroulement s'imprime sous lui.
@@ -455,7 +449,7 @@ export default function Planning() {
     const seancesActuelles = await api.seancesList().catch(() => seances ?? []);
     const duJour = await bandesDuJour(jourCreneaux, seancesActuelles, sequences ?? [], materiels, jeux).catch(() => ({ bandes: [], refs: [] }));
     const pageDesBandes = duJour.bandes.length
-      ? corpsDesBandes(titre, duJour.bandes, mentionDesPictos(duJour.refs, "", "bandes-attribution"), "portrait") : "";
+      ? corpsDesBandes(titre, duJour.bandes, mentionDesPictos(duJour.refs, "", "bandes-attribution")) : "";
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Planning — ${escapeHtml(titre)}</title><style>${css}${pageDesBandes ? STYLE_BANDES_DU_JOURNAL : ""}</style></head>
       <body>${moletteDuJournalHtml()}<div class="journal"><h1>${escapeHtml(titre)}</h1><div class="sub">Cahier journal</div>
       ${bilansDeLaVeilleHtml(veille)}
@@ -468,15 +462,15 @@ export default function Planning() {
     await api.ouvrirHtml(html, pageDesBandes ? [...SCRIPTS_DU_JOURNAL, ...SCRIPTS_DES_BANDES] : SCRIPTS_DU_JOURNAL);
   };
 
-  // Impression du planning : jour = HTML riche, ou la journée en bandes ; semaine = PDF natif (Aperçu).
-  const imprimer = async (enBandes = false) => {
+  // Impression du planning : jour = HTML riche, ses bandes à la suite ; semaine = PDF natif (Aperçu).
+  const imprimer = async () => {
     // Ce qui vient d'être tapé dans le cahier journal, puis les créneaux tels
     // qu'ils sont en base : ceux chargés à l'ouverture ignoraient tout ce qui a
     // été écrit depuis — l'impression montrait des créneaux vides.
     await ecrireLeCahierJournal();
     const liste = await api.creneauxList(debut, fin).catch(() => creneaux ?? []);
     reload();
-    if (vue === "jour") { await imprimerJourRiche(liste, enBandes); return; }
+    if (vue === "jour") { await imprimerJourRiche(liste); return; }
     const materiels = await api.materielList().catch((): MaterielItem[] => []);
     const reglages = await api.settingsAll().catch((): Record<string, string> => ({}));
     const echelles = echellesDesReglages(reglages);
@@ -561,12 +555,8 @@ export default function Planning() {
               style={cache ?? (deplacer ? { background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" } : undefined)}
               title={deplacer ? "Déplacement activé — glissez les créneaux. Cliquez pour désactiver." : "Activer le déplacement des créneaux par glisser-déposer"}>
               ✋ Déplacer</button>
-            {/* Le jour s'imprime en cahier journal, ou sur une seule page en bandes : le bouton propose les deux. */}
-            <button className="btn" style={cache} disabled={surLeMois} aria-hidden={surLeMois}
-              onClick={(e) => (vue === "jour" ? openCtx(e, [
-                { label: "Le cahier journal", icon: "📓", onClick: () => { void imprimer(); } },
-                { label: "La journée sur une page, en bandes", icon: "▥", onClick: () => { void imprimer(true); } },
-              ]) : void imprimer())}>🖨 PDF</button>
+            {/* Le jour s'imprime en cahier journal, ses bandes à la suite : une seule impression (demande de l'enseignant, 31 octobre 2026). */}
+            <button className="btn" style={cache} disabled={surLeMois} aria-hidden={surLeMois} onClick={() => void imprimer()}>🖨 PDF</button>
           </>;
         })()}
         <div className="seg">
