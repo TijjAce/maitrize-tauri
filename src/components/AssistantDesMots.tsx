@@ -1,5 +1,7 @@
 import React from "react";
-import { api, type CategorieArasaac } from "../api";
+import { api, nowIso, type CategorieArasaac } from "../api";
+import { lireNiveaux } from "../classe";
+import { ceQuOnTravaille, corpusIllustre, niveauDuCorpus, type CompetenceDuCorpus } from "../corpusDeLaPeriode";
 import { corpusDe } from "../corpusProjet";
 import { EXCLUES_PAR_DEFAUT, libelleCategorie } from "../data/categoriesArasaac";
 import { MOTS_PAR_THEME, themesDeDepart } from "../departsEnUnClic";
@@ -8,6 +10,7 @@ import { MODES_IMAGES, MODE_IMAGES_DEFAUT, feuillesAvecImages } from "../imagesS
 import type { MotImage } from "../jeuxSons";
 import { uneImageParMot } from "../loto";
 import { feuillesPubliees } from "../optionsFeuille";
+import { chargerVacances, periodeDuJour } from "../vacances";
 import { AtelierContext } from "./AtelierContext";
 import { motsAvecImages } from "./Exemple";
 import { BoutonMesImages } from "./MesImages";
@@ -87,7 +90,7 @@ export interface AutreSource { id: string; libelle: string; description?: string
  * autre projet, d'un thème de la banque, ses images, ceux qu'on écrit, ou ce
  * que l'atelier propose —, puis ses réglages, puis ceux de la feuille.
  */
-export function AssistantDesMots({ titre, question = "Avec quels mots ?", mots, onMots, banque, avant = [], reglages, autresSources = [], fin, parTheme = MOTS_PAR_THEME, feuille = true }: {
+export function AssistantDesMots({ titre, question = "Avec quels mots ?", mots, onMots, banque, avant = [], reglages, autresSources = [], fin, parTheme = MOTS_PAR_THEME, feuille = true, competence }: {
   titre: string;
   /** La question des mots : « Avec quels mots fait-on le loto ? ». */
   question?: string;
@@ -101,11 +104,20 @@ export function AssistantDesMots({ titre, question = "Avec quels mots ?", mots, 
   parTheme?: number;
   /** Poser aussi les questions de la feuille (voir useQuestionsDeLaFeuille). */
   feuille?: boolean;
+  /** Ce que l'atelier fait travailler : la carte « Les mots de la période » choisit ses mots pour cela (voir corpusDeLaPeriode). */
+  competence?: CompetenceDuCorpus;
 }) {
   const [suite, setSuite] = React.useState<"" | "theme" | "projet">("");
   const [occupe, setOccupe] = React.useState(false);
   const { projet, corpus, choix } = useProjetDuMoment();
   const { data: niveauClasse } = useAsync(() => api.settingGet("niveauClasse").catch(() => null), []);
+  // La période du jour, d'après les vacances de la zone : les mots de la période s'y mesurent.
+  const { data: periode } = useAsync(async () => {
+    const jour = nowIso().slice(0, 10);
+    const vacances = await chargerVacances(jour).catch(() => []);
+    return periodeDuJour(jour, Array.isArray(vacances) ? vacances : []);
+  }, []);
+  const niveau = niveauDuCorpus(lireNiveaux(niveauClasse));
   // Tous les thèmes de la banque, pour celui qu'on écrit : ceux qui ont assez de mots, comme dans la liste des mots.
   const { data: categories } = useAsync<CategorieArasaac[]>(() => (banque ? api.arasaacCategories() : Promise.resolve([])), [banque]);
   const deLaFeuille = useQuestionsDeLaFeuille(feuille);
@@ -133,6 +145,10 @@ export function AssistantDesMots({ titre, question = "Avec quels mots ?", mots, 
     choix: [
       ...autresSources.map(({ id, libelle, description }) => ({ id: `source:${id}`, libelle, description })),
       ...(mots.length ? [{ id: "garder", libelle: `Garder mes ${mots.length} mots`, description: "ceux de la liste, à gauche" }] : []),
+      ...(competence && banque && periode ? [{
+        id: "periode", libelle: `🎯 Les mots de la période ${periode}`,
+        description: `pour travailler ${ceQuOnTravaille(competence)}, ${/^(PS|MS|GS)$/.test(niveau) ? "en" : "au"} ${niveau} : des noms que la banque illustre`,
+      }] : []),
       ...(projet && corpus.mots.length ? [{ id: "projet", libelle: `📌 Le projet « ${projet.titre} »`, description: `ses ${corpus.mots.length} mots, avec leurs images` }] : []),
       ...(autres.length ? [{ id: "autreProjet", libelle: "📁 Un autre projet", description: autres.slice(0, 3).map((p) => p.titre).join(", ") + (autres.length > 3 ? "…" : "") }] : []),
       ...(themes.length || categories?.length ? [{
@@ -175,6 +191,7 @@ export function AssistantDesMots({ titre, question = "Avec quels mots ?", mots, 
       const source = autresSources.find((x) => `source:${x.id}` === c);
       if (source) { source.choisir(); poser("mots", source.libelle); }
       else if (c === "garder") poser("mots", `Mes ${mots.length} mots`);
+      else if (c === "periode" && competence && periode) void charger("mots", `🎯 Les mots de la période ${periode}`, () => corpusIllustre(niveau, periode, competence, parTheme));
       else if (c === "projet" && projet) void charger("mots", `📌 Le projet « ${projet.titre} »`, () => motsAvecImages(corpus.mots));
       else if (c === "theme") poser("mots", "🐮 Un thème");
       else if (c === "autreProjet") poser("mots", "📁 Un autre projet");

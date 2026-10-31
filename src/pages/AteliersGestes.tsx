@@ -267,6 +267,7 @@ export function MotsEnGestesTab({ banque }: { banque: boolean }) {
       droite={
         <div className="loto-droite">
           <AssistantDesMots titre="Préparer les mots en gestes" mots={mots} onMots={setMots} banque={banque} reglages={reglages} parTheme={12}
+            competence={{ sorte: "geste", son: r.son }}
             fin={mots.length ? (peut ? `C'est prêt : ${bilan}` : `⚠️ ${bilan}`) : FIN_SANS_MOTS} />
           <Boutons sousLAssistant atelier="motsGestes" titre="Les mots en gestes" html={html} style={STYLE_GESTES} peut={peut} onTirage={() => setGraine(graineAuHasard())} />
           {!mots.length && utiles.length
