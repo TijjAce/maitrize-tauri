@@ -288,14 +288,14 @@ function DetailDeLaSequence({ s, infos, periode, onPeriode, classeDuPlan, compet
     try { return f.fabriquer(graineDeLaFeuille(graine, k)); } catch { return null; }
   }, [tout, k, graine]);
   const [enSequence, setEnSequence] = React.useState(false);
-  // La grille d'observables de la séquence, vierge, aux élèves de la classe : l'évaluation sommative avant même de la créer (voir grillesObservables.ts).
+  // La grille d'observables de la séquence, vierge : l'évaluation sommative avant même de la créer (voir grillesObservables.ts).
+  // Pas encore au cahier journal, elle n'a les élèves de personne : ses colonnes se nomment à la main.
   const imprimerLaGrille = async () => {
-    const eleves = (await api.elevesList().catch(() => [])).filter((e) => e.present !== false);
     const observables = observablesDeLaSequence(tout.demarche.seances.map((x, i) => ({ id: `s${i + 1}`, numero: i + 1, titre: x.titre, objectifs: x.objectifs })));
     const echelle = echelleDe({ cycle: estUneSection(s.classe) ? "Cycle 1" : "", niveau: s.classe });
     const titre = `${nomDansLeDossier(s.demarche.nom)} — ${s.classe}`;
     await api.ouvrirHtml(documentImprimable(`Grille — ${titre}`,
-      htmlGrilleObservables({ titre, sous: `période ${periode} · grille d'observables à remplir`, observables, eleves, valeurs: {}, echelle, vierge: true }), STYLE_GRILLE_OBSERVABLES))
+      htmlGrilleObservables({ titre, sous: `période ${periode} · grille d'observables à remplir`, observables, eleves: [], valeurs: {}, echelle, vierge: true }), STYLE_GRILLE_OBSERVABLES))
       .catch((e) => toast(String(e), { icone: "⚠️" }));
   };
   return (
@@ -358,7 +358,7 @@ function DetailDeLaSequence({ s, infos, periode, onPeriode, classeDuPlan, compet
           )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {tout.plan.feuilles.length > 0 && <button className="btn" onClick={() => setGraine(graineAuHasard())}>🎲 Autre tirage</button>}
-            <button className="btn" title="L'objectif de chaque séance en ligne, chaque élève en colonne : à remplir pendant les séances" onClick={() => void imprimerLaGrille()}>📋 Grille d'observables</button>
+            <button className="btn" title="L'objectif de chaque séance en ligne, une colonne par élève à nommer : à remplir pendant les séances" onClick={() => void imprimerLaGrille()}>📋 Grille d'observables</button>
             <button className="btn primary" onClick={() => setEnSequence(true)} disabled={imagesEnAttente}>
               {imagesEnAttente ? "Chargement des pictogrammes…" : "📚 Créer la séquence"}
             </button>

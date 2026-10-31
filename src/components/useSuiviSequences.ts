@@ -1,5 +1,5 @@
 import React from "react";
-import { api, anneeScolaireActuelle, type Seance, type Sequence } from "../api";
+import { api, anneeScolaireActuelle, type Creneau, type Seance, type Sequence } from "../api";
 import { useAsync } from "./ui";
 import { isoJour } from "../dates";
 import { bornesDeLAnnee, suivisDesSequences, type EtatSequence, type SuiviSequence } from "../suiviSequences";
@@ -12,6 +12,8 @@ export function useSuiviSequences(): {
   suivis: Map<string, SuiviSequence>;
   sequences: Sequence[];
   seances: Seance[];
+  /** Les créneaux de l'année. */
+  creneaux: Creneau[];
   aujourdHui: string;
   chargement: boolean;
   recharger: () => void;
@@ -26,7 +28,7 @@ export function useSuiviSequences(): {
     [sequences, seances, creneaux, aujourdHui],
   );
   const recharger = React.useCallback(() => { r1(); r2(); r3(); }, [r1, r2, r3]);
-  return { suivis, sequences: sequences ?? [], seances: seances ?? [], aujourdHui, chargement: !sequences || !seances || !creneaux, recharger };
+  return { suivis, sequences: sequences ?? [], seances: seances ?? [], creneaux: creneaux ?? [], aujourdHui, chargement: !sequences || !seances || !creneaux, recharger };
 }
 
 // ── Ouvrir le plan de travail sur un état ──────────────────────────────────

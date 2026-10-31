@@ -6,16 +6,19 @@
 // aux évaluations des séquences »).
 //
 // Chaque séance dit ce que les élèves sauront à la fin : c'est un observable.
-// La grille d'une séquence en fait ses lignes, les élèves ses colonnes. Chaque
+// La grille d'une séquence en fait ses lignes ; ses colonnes sont les élèves
+// qui ont eu l'une de ses séances au cahier journal, et eux seuls. Chaque
 // case prend un niveau — en maternelle, celui du carnet de suivi (ne réussit
 // pas encore, en voie de réussite, réussit souvent), ensuite celui du LSU (non
 // atteint, partiellement atteint, atteint, dépassé) — et, s'il le faut, l'aide
 // qu'il a fallu : réussir avec un geste de l'adulte n'est pas échouer. Ce que
 // l'enseignant coche se range dans le dossier de chaque élève.
 
-import { NIVEAUX_MAITRISE, type Seance, type Sequence } from "./api";
+import { NIVEAUX_MAITRISE, type Creneau, type Eleve, type Seance, type Sequence } from "./api";
 import { DEBUT_OBJECTIF_SEANCE } from "./demarches";
+import { elevesDuCreneau, prenomDe } from "./fichesAutonomie";
 import { escapeHtml } from "./print";
+import { forme, sequencesCitees } from "./sequencesCitees";
 
 /** Une ligne de la grille : ce qu'on observe, et la séance d'où il vient. */
 export interface Observable { id: string; numero: number; seance: string; texte: string }
@@ -84,7 +87,44 @@ export function observablesDeLaSequence(seances: Pick<Seance, "id" | "numero" | 
     .map((texte, k, tous) => ({ id: tous.length > 1 ? `${s.id}:${k + 1}` : s.id, numero: s.numero, seance: s.titre, texte })));
 }
 
+/**
+ * Les élèves de la grille d'une séquence (« seulement ceux qui ont eu dans le
+ * cahier journal une séance de la séquence, sinon ça va trop m'encombrer »,
+ * 31 octobre 2026) : ceux des créneaux où l'une de ses séances est posée ou
+ * citée — toute la classe pour un créneau sans élève nommé. Une ligne 📚 au
+ * nom d'un élève, « … — Prénom » comme les écrit « En retard », ne compte que
+ * pour lui.
+ */
+export function elevesDeLaSequence(
+  sequence: Pick<Sequence, "id" | "titre">, creneaux: Creneau[], sequences: Sequence[], seances: Seance[],
+  classe: Pick<Eleve, "id" | "nom">[],
+): Set<string> {
+  const tous = classe.map((e) => e.id);
+  const titre = forme(sequence.titre);
+  const sortie = new Set<string>();
+  const prendre = (ids: string[]) => { for (const id of ids) sortie.add(id); };
+  for (const c of creneaux) {
+    if (c.nature === "reunion") continue;
+    const nommes = elevesDuCreneau(c);
+    const ceuxDuCreneau = nommes.length ? nommes.filter((id) => tous.includes(id)) : tous;
+    if (c.seanceId && seances.some((s) => s.id === c.seanceId && s.sequenceId === sequence.id)) prendre(ceuxDuCreneau);
+    for (const ligne of (c.prevu ?? "").split("\n")) {
+      // Sans le titre de la séquence, la ligne ne la cite pas : inutile de chercher plus loin.
+      if (!titre.trim() || !forme(ligne).includes(titre)) continue;
+      if (!sequencesCitees(ligne, sequences, seances).some((x) => x.sequence.id === sequence.id)) continue;
+      const i = ligne.lastIndexOf(" — ");
+      const nom = i < 0 ? "" : forme(ligne.slice(i + 3));
+      const lui = nom.trim() ? classe.filter((e) => forme(prenomDe(e)) === nom || forme(e.nom) === nom).map((e) => e.id) : [];
+      prendre(lui.length ? lui : ceuxDuCreneau);
+    }
+  }
+  return sortie;
+}
+
 // ── La grille imprimée ──
+
+/** Une séquence pas encore au cahier journal : sa grille vierge garde des colonnes à nommer à la main. */
+export const COLONNES_A_NOMMER = 8;
 
 /** La page : en paysage, pour que chaque élève ait sa colonne. */
 export const STYLE_GRILLE_OBSERVABLES = `
@@ -115,7 +155,9 @@ export function htmlGrilleObservables(o: {
   titre: string; sous: string; observables: Observable[]; eleves: { id: string; nom: string }[];
   valeurs: Record<string, GrilleDeLEleve>; echelle: Niveau[]; vierge?: boolean;
 }): string {
-  const largeurObservable = o.eleves.length > 12 ? 34 : o.eleves.length > 6 ? 42 : 52;
+  const eleves = o.eleves.length || !o.vierge ? o.eleves
+    : Array.from({ length: COLONNES_A_NOMMER }, (_, i) => ({ id: `a-nommer-${i + 1}`, nom: "" }));
+  const largeurObservable = eleves.length > 12 ? 34 : eleves.length > 6 ? 42 : 52;
   const legende = [...o.echelle.map((x) => `<span><i style="background:${x.couleur}"></i>${escapeHtml(x.libelle)}</span>`),
     ...AIDES.map((a) => `<span><b>${a.lettre}</b> ${escapeHtml(a.libelle)}</span>`)].join("");
   const cellule = (c: Cellule | undefined) => {
@@ -125,10 +167,10 @@ export function htmlGrilleObservables(o: {
     return `${niveau ? `<i style="background:${niveau.couleur}" title="${escapeHtml(niveau.libelle)}"></i>` : ""}${aide ? `<em>${aide.lettre}</em>` : ""}`;
   };
   const lignes = o.observables.map((ob) => `<tr><td class="go-observable"><b>S${ob.numero}</b>${escapeHtml(ob.texte)}</td>`
-    + o.eleves.map((e) => `<td class="go-case">${cellule(o.valeurs[e.id]?.[ob.id])}</td>`).join("") + "</tr>").join("");
+    + eleves.map((e) => `<td class="go-case">${cellule(o.valeurs[e.id]?.[ob.id])}</td>`).join("") + "</tr>").join("");
   return `<div class="go-titre">${escapeHtml(o.titre)}</div><div class="go-sous">${escapeHtml(o.sous)}</div>`
     + `<div class="go-legende">${legende}</div>`
-    + `<table class="go"><colgroup><col style="width:${largeurObservable}%">${o.eleves.map(() => "<col>").join("")}</colgroup>`
-    + `<thead><tr><th>Ce qu'on observe</th>${o.eleves.map((e) => `<th class="go-eleve"><span>${escapeHtml(e.nom)}</span></th>`).join("")}</tr></thead>`
+    + `<table class="go"><colgroup><col style="width:${largeurObservable}%">${eleves.map(() => "<col>").join("")}</colgroup>`
+    + `<thead><tr><th>Ce qu'on observe</th>${eleves.map((e) => `<th class="go-eleve"><span>${escapeHtml(e.nom)}</span></th>`).join("")}</tr></thead>`
     + `<tbody>${lignes}</tbody></table>`;
 }
