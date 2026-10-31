@@ -122,12 +122,12 @@ export function planchesLotoSyllabes(mots: MotImage[], r: ReglagesLotoSyllabes, 
 const arcs = (n: number) =>
   `<svg viewBox="0 0 ${n * 22} 14" width="${n * 22 * 0.9}" height="12"><path d="${Array.from({ length: n }, (_, i) => `M${i * 22 + 2} 3 Q${i * 22 + 11} 16 ${i * 22 + 20} 3`).join(" ")}" fill="none" stroke="#1c2233" stroke-width="2"/></svg>`;
 
-export function htmlLotoSyllabes(planches: number[][], mots: MotImage[], images: Images, r: ReglagesLotoSyllabes, titre = "Loto des syllabes"): string {
+export function htmlLotoSyllabes(planches: number[][], mots: MotImage[], images: Images, r: ReglagesLotoSyllabes, titre = "Loto : combien de syllabes ?"): string {
   const colonnes = 3;
   const lignes = r.cases / 3;
   // Des cases carrées, et des cartes à piocher de la même taille, qu'on pose dessus.
   const cote = lignes === 2 ? 48 : 36;
-  const regle = `<div class="regle"><b>Loto des syllabes</b>Chaque élève a une planche : dans chaque case, un nombre de syllabes.
+  const regle = `<div class="regle"><b>Loto : combien de syllabes ?</b>Chaque élève a une planche : dans chaque case, un nombre de syllabes.
     On pioche une image, on scande les syllabes du mot, on les compte — si une case le demande, on y pose l'image. La planche pleine a gagné.
     <span class="reference">Pour préparer l'apprentissage de la lecture et de l'écriture à l'école maternelle, Éduscol 2020.</span></div>`;
   const pagesPlanches: string[] = [];

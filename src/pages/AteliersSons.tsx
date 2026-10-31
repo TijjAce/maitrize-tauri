@@ -83,7 +83,7 @@ export const Vide = ({ quoi }: { quoi: string }) => (
   <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>{quoi}</div>
 );
 
-// ── Loto des syllabes ──
+// ── Loto : combien de syllabes ? ── (le « Loto » du guide de maternelle de 2020 : chaque case impose un nombre de syllabes)
 
 export function LotoSyllabesTab({ banque }: { banque: boolean }) {
   const [mots, setMots] = useMotsGardes("lotoSyllabes:mots");
@@ -134,19 +134,19 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
     <Colonnes
       gauche={<>
         <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
-          Loto des syllabes
-          <Aide titre="Loto des syllabes" vers="droite"><p>{"Chaque case d'une planche impose un nombre de syllabes ; on pioche une image, on scande, on compte. Le nombre sous chaque mot se corrige d'un clic."}</p></Aide>
+          Loto : combien de syllabes ?
+          <Aide titre="Loto : combien de syllabes ?" vers="droite"><p>{"Chaque case d'une planche impose un nombre de syllabes ; on pioche une image, on scande, on compte. Le nombre sous chaque mot se corrige d'un clic."}</p></Aide>
         </h3>
         <BanqueDeMots mots={mots} onChange={setMots} banque={banque} assistant
           extra={(m) => <button type="button" className="bm-compte" title="Changer le nombre de syllabes" onClick={() => tourner(m)}>{nbSyllabes(m, r.ecrites)} syll.</button>} />
       </>}
       droite={
         <div className="loto-droite">
-          <AssistantDesMots titre="Préparer le loto des syllabes" question="Avec quels mots fait-on le loto ?" mots={mots} onMots={setMots} banque={banque} parTheme={18} reglages={reglages} fin={fin}
+          <AssistantDesMots titre="Préparer le loto : combien de syllabes ?" question="Avec quels mots fait-on le loto ?" mots={mots} onMots={setMots} banque={banque} parTheme={18} reglages={reglages} fin={fin}
             competence={{ sorte: "syllabes", maximum: r.maximum }} />
           <Boutons sousLAssistant peut={mots.length > 0 && planches.length > 0} onTirage={() => setGraine(graineAuHasard())}
-            onImprimer={() => imprimer("lotoSyllabes", "Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)}
-            onBureau={() => bureau("lotoSyllabes", "Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)} />
+            onImprimer={() => imprimer("lotoSyllabes", "Loto : combien de syllabes ?", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)}
+            onBureau={() => bureau("lotoSyllabes", "Loto : combien de syllabes ?", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)} />
           {planches.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
             : planches.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
             : <Vide quoi="Ajoutez des mots : le loto se fabrique avec les mots de la classe et leurs images." />}

@@ -102,7 +102,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
       // Sons et lecture
       { id: "sons", nom: "Fiches de sons", icone: "🔤", cycles: "Cycle 2",
         quoi: "Syllabes, mots à lire, à entourer, à compléter — une fiche par graphème." },
-      { id: "lotoSyllabes", nom: "Loto des syllabes", icone: "🎯", pictos: true, cycles: "Cycles 1 et 2",
+      { id: "lotoSyllabes", nom: "Loto : combien de syllabes ?", icone: "🎯", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Des cases qui imposent un nombre de syllabes : on pioche une image, on scande, on compte." },
       // Les lotos des sons (demande de l'enseignant, 31 octobre 2026) : un même atelier, une unité chacun (voir lotosDesSons.ts).
       { id: "lotoAttaques", nom: "Loto des attaques", icone: "🚂", pictos: true, cycles: "Cycles 1 et 2",
