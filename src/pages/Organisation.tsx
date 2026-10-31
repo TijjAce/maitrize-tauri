@@ -139,6 +139,9 @@ interface AnneeProps { annee: string; setAnnee: (a: string) => void }
 // ordinateur dès qu'il n'a plus rien en route.
 
 /** Les titres que proposent colonnes et domaines : matières et domaines de Réglages, intitulés de l'emploi du temps. */
+/** Les intitulés de l'emploi du temps : connus, pour leur couleur, mais plus proposés comme titres (voir `ColonneForm`). */
+const GROUPE_EMPLOI_DU_TEMPS = "Emploi du temps";
+
 function useSourcesDeTitres(): GroupeDeTitres[] {
   const [sources, setSources] = React.useState<GroupeDeTitres[]>([{ groupe: "Matières", titres: MATIERES }]);
   React.useEffect(() => {
@@ -150,7 +153,7 @@ function useSourcesDeTitres(): GroupeDeTitres[] {
       const duPlanning = edts.flatMap((e) => { try { return (JSON.parse(e.slotsJson) as SlotEdt[]).map((s) => s.titre ?? ""); } catch { return []; } });
       const choisis = Object.keys(getMatiereOverrides()).filter((m) => !MATIERES.includes(m) && !matiereDuDomaine(m));
       const intitules = [...new Set([...duPlanning, ...choisis].map((t) => t.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
-      if (vivant) setSources([{ groupe: "Matières", titres: MATIERES }, { groupe: "Domaines de vos référentiels", titres: domaines }, { groupe: "Emploi du temps", titres: intitules }]);
+      if (vivant) setSources([{ groupe: "Matières", titres: MATIERES }, { groupe: "Domaines de vos référentiels", titres: domaines }, { groupe: GROUPE_EMPLOI_DU_TEMPS, titres: intitules }]);
     });
     return () => { vivant = false; };
   }, []);
@@ -706,8 +709,10 @@ function CaseProgression({ valeur, onChange, libelle }: { valeur: string; onChan
 
 /**
  * Une colonne de la progression, ou un domaine de la programmation : son titre
- * se tire des matières, domaines et intitulés de l'emploi du temps, dont il
- * prend la couleur.
+ * se tire des matières et des domaines, dont il prend la couleur. Les
+ * intitulés de l'emploi du temps ne s'y proposent plus — des prénoms y
+ * passaient (demande de l'enseignant, 31 octobre 2026) — ; un titre qui en
+ * reprend un garde quand même sa couleur.
  */
 function ColonneForm({ colonne, nouvelle, sources, teinte, onClose, onValider, onSupprimer, quoi = "colonne" }: {
   colonne: Colonne; nouvelle: boolean; sources: GroupeDeTitres[]; teinte: (c: Colonne) => string;
@@ -716,7 +721,7 @@ function ColonneForm({ colonne, nouvelle, sources, teinte, onClose, onValider, o
 }) {
   const [c, setC] = React.useState<Colonne>(colonne);
   const connu = titreConnu(sources, c.titre);
-  const groupes = titresProposes(sources, connu ? "" : c.titre);
+  const groupes = titresProposes(sources.filter((g) => g.groupe !== GROUPE_EMPLOI_DU_TEMPS), connu ? "" : c.titre);
   const valider = () => c.titre.trim() && onValider({ ...c, titre: c.titre.trim() });
   return (
     <Modal titre={quoi === "domaine" ? (nouvelle ? "Nouveau domaine" : "Domaine") : (nouvelle ? "Nouvelle colonne" : "Colonne")} onClose={onClose}
@@ -729,14 +734,14 @@ function ColonneForm({ colonne, nouvelle, sources, teinte, onClose, onValider, o
         <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
           Titre
           <Aide titre="D'où viennent les titres" vers="droite">
-            <p>Des matières et des domaines de Réglages › Personnalisation, et des intitulés de votre emploi du temps.
+            <p>Des matières et des domaines de Réglages › Personnalisation.
               {quoi === "domaine" ? " Le domaine" : " La colonne"} en prend la couleur : la changer là-bas la change ici, dans la
               progression comme dans la programmation. Un titre écrit à la main garde la couleur choisie ici.</p>
           </Aide>
         </label>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span className="prog-pastille" style={{ background: teinte(c) }} />
-          <Input autoFocus value={c.titre} placeholder="Une matière, un domaine, un intitulé…" onChange={(e) => setC({ ...c, titre: e.target.value })}
+          <Input autoFocus value={c.titre} placeholder="Une matière, un domaine…" onChange={(e) => setC({ ...c, titre: e.target.value })}
             onKeyDown={(e) => { if (e.key === "Enter") valider(); }} />
         </div>
       </div>
