@@ -142,7 +142,8 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
       </>}
       droite={
         <div className="loto-droite">
-          <AssistantDesMots titre="Préparer le loto des syllabes" question="Avec quels mots fait-on le loto ?" mots={mots} onMots={setMots} banque={banque} parTheme={18} reglages={reglages} fin={fin} />
+          <AssistantDesMots titre="Préparer le loto des syllabes" question="Avec quels mots fait-on le loto ?" mots={mots} onMots={setMots} banque={banque} parTheme={18} reglages={reglages} fin={fin}
+            competence={{ sorte: "syllabes", maximum: r.maximum }} />
           <Boutons sousLAssistant peut={mots.length > 0 && planches.length > 0} onTirage={() => setGraine(graineAuHasard())}
             onImprimer={() => imprimer("lotoSyllabes", "Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)}
             onBureau={() => bureau("lotoSyllabes", "Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)} />
@@ -183,7 +184,7 @@ export function DominosTab({ banque }: { banque: boolean }) {
       droite={
         <div className="loto-droite">
           <AssistantDesMots titre="Préparer les dominos" question="Avec quels mots fait-on les dominos ?" mots={mots} onMots={setMots} banque={banque}
-            reglages={[questionDesLegendes(legendes, setLegendes)]} fin={fin} parTheme={30} />
+            reglages={[questionDesLegendes(legendes, setLegendes)]} fin={fin} parTheme={30} competence={{ sorte: "enchainement" }} />
           <Boutons sousLAssistant peut={mots.length > 0 && pieces.length >= 3} onTirage={() => setGraine(graineAuHasard())}
             onImprimer={() => imprimer("dominos", "Dominos des syllabes", (im) => htmlDominos(pieces, im, legendes), ids(mots), STYLE_JEUX_SONS)}
             onBureau={() => bureau("dominos", "Dominos des syllabes", (im) => htmlDominos(pieces, im, legendes), ids(mots), STYLE_JEUX_SONS)} />
@@ -248,7 +249,7 @@ export function IntrusTab({ banque }: { banque: boolean }) {
       droite={
         <div className="loto-droite">
           <AssistantDesMots titre="Préparer la chasse à l'intrus" question="Avec quels mots fait-on la chasse à l'intrus ?" mots={mots} onMots={setMots}
-            banque={banque} reglages={reglages} fin={fin} parTheme={30} />
+            banque={banque} reglages={reglages} fin={fin} parTheme={30} competence={{ sorte: "intrus", mode: r.mode }} />
           <Boutons sousLAssistant peut={mots.length > 0 && lignes.length > 0} onTirage={() => setGraine(graineAuHasard())}
             onImprimer={() => imprimer("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes), ids(mots), STYLE_JEUX_SONS)}
             onBureau={() => bureau("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes), ids(mots), STYLE_JEUX_SONS)} />

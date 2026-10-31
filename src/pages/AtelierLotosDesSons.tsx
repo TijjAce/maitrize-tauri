@@ -121,7 +121,7 @@ export function LotoDesSonsTab({ banque, unite }: { banque: boolean; unite: Unit
       droite={
         <div className="loto-droite">
           <AssistantDesMots titre={`Préparer le ${loto.nom.charAt(0).toLowerCase()}${loto.nom.slice(1)}`} question="Avec quels mots fait-on le loto ?" mots={mots} onMots={setMots} banque={banque} parTheme={18}
-            reglages={reglages} fin={fin} />
+            reglages={reglages} fin={fin} competence={{ sorte: "son", unite, differents: r.cases }} />
           <Boutons sousLAssistant peut={mots.length > 0 && partie.planches.length > 0} onTirage={() => setGraine(graineAuHasard())}
             onImprimer={() => imprimer(loto.atelier, loto.nom, fabriquer, ids(mots), style)}
             onBureau={() => bureau(loto.atelier, loto.nom, fabriquer, ids(mots), style)} />
