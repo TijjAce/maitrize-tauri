@@ -110,7 +110,8 @@ export function ProjetDuMomentProvider({ children }: { children: React.ReactNode
 
 /** Les ateliers qui travaillent sur des mots ou des phrases : les seuls où le projet a quelque chose à dire. */
 export const ATELIERS_A_CORPUS: readonly string[] = [
-  "jeux", "memory", "imagier", "etiquettes", "ombres", "lotoSyllabes", "dominos", "intrus", "motsGestes", "syllabeManquante", "fluence", "tri", "phrases", "motsMeles",
+  "jeux", "memory", "imagier", "etiquettes", "ombres", "lotoSyllabes", "lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin",
+  "lotoPhonemesAttaque", "lotoPhonemesFin", "dominos", "intrus", "motsGestes", "syllabeManquante", "fluence", "tri", "phrases", "motsMeles",
 ];
 
 /** En tête de l'atelier : le projet suivi, de quoi en changer, et le chemin vers son corpus. */

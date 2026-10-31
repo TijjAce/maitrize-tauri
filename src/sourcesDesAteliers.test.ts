@@ -4,8 +4,6 @@ import { SOURCES_DES_ATELIERS, SOURCE_INCONNUE, sourceDeLAtelier } from "./sourc
 
 /** Les ateliers qui n'ont pas encore leur source : à remplir, puis à retirer d'ici. */
 const ATTENDENT_LEUR_SOURCE: string[] = [];
-/** Les lotos des sons qui arrivent au catalogue : leur source est déjà là (31 octobre 2026) ; à retirer d'ici une fois au catalogue. */
-const A_VENIR = ["lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin", "lotoPhonemesAttaque", "lotoPhonemesFin"];
 
 describe("d'où vient chaque atelier (demande de l'enseignant, 31 octobre 2026)", () => {
   const ateliers = FAMILLES.flatMap((f) => f.outils).filter((o) => !o.dossier);
@@ -14,7 +12,7 @@ describe("d'où vient chaque atelier (demande de l'enseignant, 31 octobre 2026)"
     const sans = ateliers.filter((o) => !SOURCES_DES_ATELIERS[o.id] && !ATTENDENT_LEUR_SOURCE.includes(o.id)).map((o) => o.id);
     expect(sans, "ajoutez leur entrée dans sourcesDesAteliers.ts").toEqual([]);
     const ids = new Set(ateliers.map((o) => o.id as string));
-    for (const id of Object.keys(SOURCES_DES_ATELIERS)) expect(ids.has(id) || A_VENIR.includes(id), id).toBe(true);
+    for (const id of Object.keys(SOURCES_DES_ATELIERS)) expect(ids.has(id), id).toBe(true);
   });
 
   it("se lit en une ligne, sous le « ? » du titre : « Source : … », ou « Source inconnue »", () => {

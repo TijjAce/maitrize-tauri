@@ -4,7 +4,7 @@
 
 export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "vilainPetitCanard", "etiquettes", "ombres", "oeilDeLynx",
-  "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
+  "sons", "lotoSyllabes", "lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin", "lotoPhonemesAttaque", "lotoPhonemesFin", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "problemesAides", "problemesCM", "coloriage", "collections", "albumCalcul", "problemeDuJour", "motifs", "tangram", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "rectangles", "calculCM", "soustractionPosee", "sequencesPS", "sequencesMS", "sequencesGS", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "grandeursCM", "geometrie", "solides", "deplacements", "geometrieCM", "donnees", "numeration",
   "carteMentale", "taches",
@@ -104,6 +104,19 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Syllabes, mots à lire, à entourer, à compléter — une fiche par graphème." },
       { id: "lotoSyllabes", nom: "Loto des syllabes", icone: "🎯", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Des cases qui imposent un nombre de syllabes : on pioche une image, on scande, on compte." },
+      // Les lotos des sons (demande de l'enseignant, 31 octobre 2026) : un même atelier, une unité chacun (voir lotosDesSons.ts).
+      { id: "lotoAttaques", nom: "Loto des attaques", icone: "🚂", pictos: true, cycles: "Cycles 1 et 2",
+        quoi: "/tr/ de train, /ch/ de chat : les planches d'images, les cartes du meneur qui dit l'attaque, ou des images à piocher." },
+      { id: "lotoRimes", nom: "Loto des rimes", icone: "🎶", pictos: true, cycles: "Cycles 1 et 2",
+        quoi: "Bateau, gâteau ; poule, boule : on pose un jeton sur l'image qui finit par la rime dite, ou l'image piochée sur celle qui rime." },
+      { id: "lotoSyllabesAttaque", nom: "Loto des syllabes d'attaque", icone: "🔤", pictos: true, cycles: "Cycles 1 et 2",
+        quoi: "« ba » de bateau, de banane : le meneur dit la première syllabe, on la cherche sur sa planche." },
+      { id: "lotoSyllabesFin", nom: "Loto des syllabes de fin", icone: "🔚", pictos: true, cycles: "Cycles 1 et 2",
+        quoi: "« ri » de souris et de riz : le meneur dit la dernière syllabe, on la cherche sur sa planche." },
+      { id: "lotoPhonemesAttaque", nom: "Loto des phonèmes d'attaque", icone: "👂", pictos: true, cycles: "Cycles 1 et 2",
+        quoi: "/s/ de soleil et de sac : le meneur dit le premier son, on pose un jeton sur l'image qui commence ainsi." },
+      { id: "lotoPhonemesFin", nom: "Loto des phonèmes en rime", icone: "🔈", pictos: true, cycles: "Cycles 1 et 2",
+        quoi: "/n/ de lune et de banane : le meneur dit le dernier son, on pose un jeton sur l'image qui finit ainsi." },
       { id: "dominos", nom: "Dominos des syllabes", icone: "🁡", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "La fin d'une image commence la suivante : micro – crocodile." },
       { id: "intrus", nom: "Chasse à l'intrus", icone: "🔍", pictos: true, cycles: "Cycles 1 et 2",
@@ -315,7 +328,7 @@ export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[]
  */
 export const PARTIES_DU_FRANCAIS: { id: string; nom: string; outils: Onglet[] }[] = [
   { id: "langage", nom: "Langage", outils: ["jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres"] },
-  { id: "sons", nom: "Sons et lecture", outils: ["sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante"] },
+  { id: "sons", nom: "Sons et lecture", outils: ["sons", "lotoSyllabes", "lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin", "lotoPhonemesAttaque", "lotoPhonemesFin", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante"] },
   { id: "ecrit", nom: "Lecture et écriture", outils: ["comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive"] },
 ];
 

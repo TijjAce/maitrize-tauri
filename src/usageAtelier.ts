@@ -54,7 +54,9 @@ export const USAGE_PAR_DEFAUT: Record<string, Usage> = {
   // Observation : on s'exerce à explorer une image, souvent en autonomie.
   oeilDeLynx: "entrainement",
   // Sons et lecture : la fluence et le syllabaire se font chaque jour.
-  sons: "entrainement", lotoSyllabes: "manipulation", dominos: "reinvestissement", intrus: "entrainement", paires: "entrainement",
+  sons: "entrainement", lotoSyllabes: "manipulation", dominos: "reinvestissement",
+  lotoAttaques: "entrainement", lotoRimes: "entrainement", lotoSyllabesAttaque: "entrainement", lotoSyllabesFin: "entrainement",
+  lotoPhonemesAttaque: "entrainement", lotoPhonemesFin: "entrainement", intrus: "entrainement", paires: "entrainement",
   fluence: "rituel", voixHaute: "entrainement", syllabaire: "rituel", lettres: "reinvestissement", gestes: "manipulation", motsGestes: "entrainement", syllabeManquante: "entrainement",
   // Lecture et écriture : on trie pour découvrir, on remet en ordre pour s'entraîner.
   comprehension: "entrainement", lecteur: "reinvestissement", orthographe: "entrainement", ecrire: "entrainement", grammaire: "entrainement", oral: "entrainement",

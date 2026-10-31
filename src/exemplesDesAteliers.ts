@@ -23,6 +23,13 @@ export const MOTS_EXEMPLE = {
   motsGestes: ["moto", "lune", "vélo", "papa", "tapis", "robot"],
   // Les animaux de la ferme : un loto, un jeu de mémoire, un imagier.
   jeux: ["chat", "chien", "vache", "poule", "lapin", "cheval", "mouton", "canard", "cochon", "chèvre", "âne", "oie"],
+  // Les lotos des sons (voir lotosDesSons.ts) : six sons, chacun porté par deux mots — on joue avec le meneur, ou en piochant des images.
+  lotoAttaques: ["train", "tracteur", "crayon", "crabe", "fleur", "flûte", "clé", "cloche", "chat", "chapeau", "bateau", "ballon"],
+  lotoRimes: ["bateau", "gâteau", "lapin", "sapin", "souris", "radis", "ballon", "poisson", "chat", "rat", "lune", "prune"],
+  lotoSyllabesAttaque: ["bateau", "banane", "lapin", "lavabo", "chapeau", "chameau", "papillon", "panier", "canard", "cadeau", "robot", "rocher"],
+  lotoSyllabesFin: ["bateau", "gâteau", "lapin", "sapin", "ballon", "melon", "souris", "riz", "canard", "renard", "poisson", "hérisson"],
+  lotoPhonemesAttaque: ["soleil", "sac", "lune", "lapin", "moto", "maison", "ballon", "bateau", "chat", "cheval", "fourmi", "fleur"],
+  lotoPhonemesFin: ["lune", "banane", "bateau", "vélo", "chat", "panda", "souris", "lit", "ballon", "mouton", "poule", "table"],
 } as const;
 
 /**
