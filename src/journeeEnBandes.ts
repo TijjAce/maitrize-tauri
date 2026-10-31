@@ -11,7 +11,9 @@
 // toujours la même taille », « doivent tenir sur une page », « regroupées au
 // même endroit ». Les bandes ont donc une largeur fixe et se tiennent
 // ensemble au milieu de la page ; toutes les cartes ont la même taille. La
-// page sort seule, en paysage, ou à la suite du cahier journal, en portrait.
+// page suit le cahier journal du jour, en portrait — et seulement là : « ça
+// se met tout seul dans le cahier journal, pas besoin de faire la
+// distinction » (plus de page à part, en paysage).
 //
 // Un script de la page réduit toutes les cartes d'autant, juste ce qu'il faut
 // pour que la bande la plus longue tienne dans la hauteur — à l'ouverture,
@@ -22,8 +24,8 @@ import {
   aFaireDuCreneau, cadresDuDeroulement, domaineDeLaSeance, elevesDuCreneau, estUneFicheDEleve, pasDuDeroulement, pictosDuDeroulement,
   STYLE_DU_DEROULEMENT, type PasDuDeroulement,
 } from "./journalTelephone";
-import { mentionDesPictos, type RefPicto } from "./pictosAppoint";
-import { STYLE_PIED, documentImprimable, escapeHtml, logoImprimable, piedMaitrize } from "./print";
+import type { RefPicto } from "./pictosAppoint";
+import { escapeHtml } from "./print";
 import { titresDesRituels } from "./rituels";
 
 /** Les temps sans enseignement : la récréation, le repas, la sieste… */
@@ -68,39 +70,24 @@ export function pasDeLaBande(
   return [{ texte: matiere || "Créneau", matiere: "", ...(matiere ? { domaine: matiere } : {}) }];
 }
 
-/** La feuille, en millimètres : seule, en paysage, un peu moins que les 281 × 194 mm qu'une page A4 laisse entre ses marges de 8 mm ; à la suite du cahier journal, en portrait, dans ses marges de 11 mm. */
-export const FEUILLE_BANDES_MM = { largeur: 279, hauteur: 190 };
-export const FEUILLE_BANDES_PORTRAIT_MM = { largeur: 186, hauteur: 262 };
-export type FormatDesBandes = "paysage" | "portrait";
+/** La feuille, en millimètres : celle qui suit le cahier journal, en portrait, dans ses marges de 11 mm. */
+export const FEUILLE_BANDES_MM = { largeur: 186, hauteur: 262 };
 
 /** La largeur d'une bande, toujours la même — celle de la colonne des tablettes — tant que les bandes tiennent toutes ; sinon elles se partagent la page. */
 export const LARGEUR_BANDE_MM = 44;
 export const ECART_BANDES_MM = 3;
-export function largeurDesBandes(combien: number, format: FormatDesBandes = "paysage"): number {
-  const page = format === "portrait" ? FEUILLE_BANDES_PORTRAIT_MM.largeur : FEUILLE_BANDES_MM.largeur;
-  const partagee = (page - ECART_BANDES_MM * Math.max(0, combien - 1)) / Math.max(1, combien);
+export function largeurDesBandes(combien: number): number {
+  const partagee = (FEUILLE_BANDES_MM.largeur - ECART_BANDES_MM * Math.max(0, combien - 1)) / Math.max(1, combien);
   return Math.round(Math.min(LARGEUR_BANDE_MM, partagee) * 10) / 10;
 }
 
-/** La page de la journée en bandes, seule : une feuille A4 en paysage. */
-export const STYLE_PAGE_BANDES = `
-  @page { size: A4 landscape; margin: 8mm; }
-  body { margin: 0; padding: 0; max-width: none; }
-  @media screen {
-    body { background: #e9ecf2; padding: 8mm 0; max-width: none; }
-    .feuille-bandes { margin: 0 auto; background: #fff; box-shadow: 0 2px 14px rgba(20, 30, 60, .18); }
-  }
-  @media print { body { padding: 0 !important; } }
-`;
-
 /**
- * Les bandes, après le style des cadres des tablettes (`STYLE_DU_DEROULEMENT`) : rien ici ne touche à la page, pour
- * qu'elles prennent place aussi à la suite du cahier journal.
+ * Les bandes, après le style des cadres des tablettes (`STYLE_DU_DEROULEMENT`) : rien ici ne touche à la page, qui est
+ * celle du cahier journal ; la feuille des bandes en commence une.
  */
 export const STYLE_BANDES = `
   .feuille-bandes { width: ${FEUILLE_BANDES_MM.largeur}mm; height: ${FEUILLE_BANDES_MM.hauteur}mm; display: flex; flex-direction: column;
-    overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
-  .feuille-bandes.portrait { width: ${FEUILLE_BANDES_PORTRAIT_MM.largeur}mm; height: ${FEUILLE_BANDES_PORTRAIT_MM.hauteur}mm; break-before: page; page-break-before: always; }
+    overflow: hidden; break-inside: avoid; page-break-inside: avoid; break-before: page; page-break-before: always; }
   .bandes-tete { flex: none; display: flex; align-items: baseline; gap: 12px; padding: 0 1mm 2mm; }
   .bandes-tete h1 { font-size: 18px; margin: 0; color: #23527c; }
   .bandes-tete span { color: #687087; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; }
@@ -122,7 +109,6 @@ export const STYLE_BANDES = `
   .bandes-vide { padding: 20px; color: #687087; }
   .bandes-fin { flex: none; display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
   .bandes-attribution { font-size: 8.5px; color: #8a8f9c; padding-top: 1.5mm; }
-  .feuille-bandes .pied-maitrize { position: static; padding: 1.5mm 0 0; margin-left: auto; }
   .bandes-alerte { max-width: ${FEUILLE_BANDES_MM.largeur}mm; margin: 0 auto 4mm; padding: 6px 10px; border-radius: 8px;
     background: #fdecea; color: #8a1f17; font-size: 12px; }
   @media print { .bandes-alerte { display: none; } }
@@ -173,11 +159,10 @@ export interface Bande { heures: string; matiere: string; cadres: string }
 /**
  * Le corps de la page : le jour en titre, les bandes côte à côte — de la
  * même largeur, regroupées —, et ce qui finit la feuille (la mention des
- * pictos, le pied). En portrait, la feuille commence une page : celle qui
- * suit le cahier journal.
+ * pictos). La feuille commence une page : celle qui suit le cahier journal.
  */
-export function corpsDesBandes(titre: string, bandes: Bande[], fin = "", format: FormatDesBandes = "paysage"): string {
-  const largeur = largeurDesBandes(bandes.length, format);
+export function corpsDesBandes(titre: string, bandes: Bande[], fin = ""): string {
+  const largeur = largeurDesBandes(bandes.length);
   const colonnes = bandes.length
     ? bandes.map((b) => `<div class="bande" style="width:${largeur}mm"><div class="bande-tete"><span class="bande-heure">${escapeHtml(b.heures)}</span>`
       + (b.matiere.trim() ? `<span class="bande-matiere">${escapeHtml(b.matiere.trim())}</span>` : "")
@@ -185,7 +170,7 @@ export function corpsDesBandes(titre: string, bandes: Bande[], fin = "", format:
     : `<div class="bandes-vide">Aucun créneau à imprimer ce jour-là.</div>`;
   return `<div class="bandes-alerte" hidden>La journée est trop longue pour la page, même réduite : le bas d'une bande est coupé. `
     + `Cochez « ne pas imprimer » sur un créneau, ou raccourcissez une séance.</div>`
-    + `<div class="feuille-bandes${format === "portrait" ? " portrait" : ""}" lang="fr"><div class="bandes-tete"><h1>${escapeHtml(titre)}</h1><span>La journée</span></div>`
+    + `<div class="feuille-bandes" lang="fr"><div class="bandes-tete"><h1>${escapeHtml(titre)}</h1><span>La journée</span></div>`
     + `<div class="bandes">${colonnes}</div><div class="bandes-fin">${fin}</div></div>`
     + `<script>${CORPS_BANDES}</script>`;
 }
@@ -210,13 +195,3 @@ export async function bandesDuJour(
 
 /** Les styles des bandes pour le cahier journal : les cartes des tablettes, sans ce qui ne vaut que pour leur page. */
 export const STYLE_BANDES_DU_JOURNAL = STYLE_DU_DEROULEMENT.replace(/\.page > \.titre \{[^}]*\}/, "") + STYLE_BANDES;
-
-/** La page de la journée en bandes, seule, en paysage — et la mention de la banque de ses pictos. */
-export async function pageDeLaJourneeEnBandes(
-  titre: string, creneaux: Creneau[], seances: Seance[], sequences: Sequence[], materiel: MaterielItem[], jeux: Jeu[] = [],
-): Promise<string> {
-  const { bandes, refs } = await bandesDuJour(creneaux, seances, sequences, materiel, jeux);
-  const logo = await logoImprimable().catch(() => "");
-  const fin = mentionDesPictos(refs, "", "bandes-attribution") + piedMaitrize(logo);
-  return documentImprimable(`La journée — ${titre}`, corpsDesBandes(titre, bandes, fin), STYLE_DU_DEROULEMENT + STYLE_PIED + STYLE_PAGE_BANDES + STYLE_BANDES);
-}

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import {
-  FEUILLE_BANDES_MM, FEUILLE_BANDES_PORTRAIT_MM, LARGEUR_BANDE_MM, SCRIPTS_DES_BANDES, STYLE_BANDES, STYLE_BANDES_DU_JOURNAL, STYLE_PAGE_BANDES,
+  FEUILLE_BANDES_MM, LARGEUR_BANDE_MM, SCRIPTS_DES_BANDES, STYLE_BANDES, STYLE_BANDES_DU_JOURNAL,
   corpsDesBandes, creneauxEnBandes, estUnePause, heuresDeLaBande, largeurDesBandes, pasDeLaBande,
 } from "./journeeEnBandes";
 import { documentImprimable } from "./print";
@@ -71,21 +71,18 @@ describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octob
       .toEqual([["", "Rituel"], ["Mathématiques", "Comparer des collections"], ["Mathématiques", "Jeu de l’oie"]]);
   });
 
-  it("met les bandes côte à côte, regroupées, d'une largeur fixe, sur une seule page A4 en paysage", () => {
-    expect(STYLE_PAGE_BANDES).toMatch(/@page \{ size: A4 landscape; margin: 8mm; \}/);
-    // Les bandes ne touchent pas à la page : elles prennent place aussi à la suite du cahier journal.
+  it("met les bandes côte à côte, regroupées, d'une largeur fixe, sur une page à la suite du cahier journal", () => {
+    // Les bandes ne touchent pas à la page, qui est celle du cahier journal : leur feuille en commence une.
     expect(STYLE_BANDES).not.toMatch(/@page|\bbody\b/);
+    expect(STYLE_BANDES).toMatch(/\.feuille-bandes \{[^}]*break-before: page;/);
     expect(STYLE_BANDES_DU_JOURNAL).not.toContain(".page > .titre");
-    // La feuille tient dans les 281 × 194 mm que la page laisse entre ses marges ; en portrait, dans les 188 × 275 mm du journal.
-    expect(FEUILLE_BANDES_MM.largeur).toBeLessThanOrEqual(281);
-    expect(FEUILLE_BANDES_MM.hauteur).toBeLessThanOrEqual(194);
-    expect(FEUILLE_BANDES_PORTRAIT_MM.largeur).toBeLessThanOrEqual(188);
-    expect(FEUILLE_BANDES_PORTRAIT_MM.hauteur).toBeLessThanOrEqual(275);
+    // La feuille tient dans les 188 × 275 mm que le journal laisse entre ses marges.
+    expect(FEUILLE_BANDES_MM.largeur).toBeLessThanOrEqual(188);
+    expect(FEUILLE_BANDES_MM.hauteur).toBeLessThanOrEqual(275);
     // Toujours la même largeur, celle de la colonne des tablettes, tant qu'elles tiennent ; sinon elles se partagent la page.
     expect(largeurDesBandes(3)).toBe(LARGEUR_BANDE_MM);
-    expect(largeurDesBandes(6)).toBe(LARGEUR_BANDE_MM);
-    expect(largeurDesBandes(7)).toBeCloseTo((279 - 6 * 3) / 7, 1);
-    expect(largeurDesBandes(5, "portrait")).toBeCloseTo((186 - 4 * 3) / 5, 1);
+    expect(largeurDesBandes(4)).toBe(LARGEUR_BANDE_MM);
+    expect(largeurDesBandes(5)).toBeCloseTo((186 - 4 * 3) / 5, 1);
     // Les cartes de la colonne des tablettes : le picto au-dessus, toutes de la même taille.
     expect(STYLE_BANDES).toMatch(/\.bande \.dr-etape \{ flex-direction: column;[^}]*height: 32mm;/);
     const corps = corpsDesBandes("Lundi 2 novembre 2026", [
@@ -97,7 +94,6 @@ describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octob
     expect(corps).toContain('<div class="dr"><div class="at-etape dr-etape">Compter</div></div>');
     expect(corps).toMatch(/<div class="bandes-alerte" hidden>/);
     expect(corps).toContain('<div class="feuille-bandes" lang="fr">');
-    expect(corpsDesBandes("Lundi", [{ heures: "8h30 – 9h00", matiere: "", cadres: "" }], "", "portrait")).toContain('<div class="feuille-bandes portrait" lang="fr">');
     expect(corpsDesBandes("Lundi", [])).toContain("Aucun créneau à imprimer ce jour-là.");
     expect(corpsDesBandes("<b>x</b>", [{ heures: "<i>", matiere: "<u>", cadres: "" }])).not.toMatch(/<b>x<\/b>|<i>|<u>/);
   });
