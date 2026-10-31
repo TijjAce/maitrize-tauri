@@ -18,6 +18,22 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.41",
+    titre: "Six lotos des sons, un assistant qui pose tous les réglages, et la journée en bandes dans le cahier journal",
+    points: [
+      { quoi: "Six lotos des sons, d'après le guide de maternelle (2020) : les attaques, les rimes, les syllabes d'attaque et de fin, le premier et le dernier son. Le loto où chaque case demande un nombre de syllabes s'appelle désormais « Loto : combien de syllabes ? ».", ou: "Fabriquer › Français › Sons et lecture" },
+      { quoi: "Dans les ateliers à mots — les lotos, les dominos, l'intrus, les mots en gestes, la syllabe qui manque, les étiquettes, les ombres —, un assistant pose ses questions une à une : avec quels mots, puis chaque réglage, puis ceux de la feuille — la consigne, les tablettes, le mode dyslexique, photos ou pictos. À gauche ne restent que les mots et leurs images ; un clic sur une réponse rouvre sa question.", ou: "Fabriquer" },
+      { quoi: "« 🎯 Les mots de la période » : des noms que la banque illustre, choisis pour ce que l'atelier fait travailler — les attaques, les rimes, le nombre de syllabes… —, à la mesure de la classe et de la période ; au CP, en gestes, des mots qu'on sait déchiffrer.", ou: "Fabriquer › un loto, les dominos, l'intrus, les mots en gestes" },
+      { quoi: "Les phrases en puzzle : des pièces sujet, verbe et complément qui ne s'emboîtent que dans l'ordre, aux couleurs du code de la phrase ; en changeant une pièce, on fait une autre phrase.", ou: "Fabriquer › Français › Lecture et écriture" },
+      { quoi: "Le cahier journal du jour, imprimé, finit par la journée en bandes : chaque créneau en colonne, avec les cartes des tablettes, toutes de la même taille, sur une page. Un créneau coché « ne pas imprimer » n'y est pas.", ou: "Planning › Jour › 🖨 PDF" },
+      { quoi: "Sur les tablettes et dans les bandes, une carte par tâche : le rituel, chaque séance — posée, ou citée au prévu par sa ligne 📚 —, chaque jeu de la ludothèque nommé au prévu, avec le picto de son domaine, puis les fiches de chaque élève. Les étapes d'une séance restent dans son aide séquentielle.", ou: "Planning › un créneau › Sur les tablettes" },
+      { quoi: "« En retard » propose de nouvelles fiches autonomes : motifs à continuer, demi-droite graduée, nombres ordinaux, suite des nombres, tableaux et diagrammes, fractions, arbre à calcul, phrases en désordre, être et avoir.", ou: "Planning › En retard" },
+      { quoi: "Séquences toutes faites : un dossier par section de maternelle, rangé par domaine et par période ; les dossiers ne montrent plus que leur classe ; une séquence s'ouvre dans sa page, et le retour ramène au tableau, sur elle.", ou: "Fabriquer › 📚 Séquences toutes faites" },
+      { quoi: "Le « ? » du titre de chaque atelier dit d'où vient le jeu : Éduscol ou le programme d'abord.", ou: "Fabriquer" },
+      { quoi: "Quinze séquences toutes faites et deux ateliers, « L'album à calculer » et « Problèmes et outils d'aide », sont retirés : ils venaient d'un livre sur lequel Maitrize n'a pas de droits. Les séquences que vous en aviez déjà créées restent dans vos séquences.", ou: "Fabriquer" },
+    ],
+  },
+  {
     version: "1.6.40",
     titre: "Des assistants pour les projets, les feuilles du cours moyen et de la grande section, et une progression par élève",
     points: [
