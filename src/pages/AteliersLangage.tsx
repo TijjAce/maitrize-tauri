@@ -9,6 +9,7 @@ import { chargerImages, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { ApercuExemple, useMotsExemple } from "../components/Exemple";
+import { AssistantDesMots, FIN_SANS_MOTS, questionDesLegendes, type QuestionDeReglage } from "../components/AssistantDesMots";
 import { MOTS_EXEMPLE } from "../exemplesDesAteliers";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
@@ -51,6 +52,13 @@ export const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string;
   <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span><LibelleAvecAide libelle={libelle} /></span></label>
 );
 
+/** Ce que les étiquettes impriment, pour la question de l'assistant. */
+const A_IMPRIMER: { id: "grandes" | "petites" | "corolle"; libelle: string; description: string }[] = [
+  { id: "grandes", libelle: "Les grandes étiquettes", description: "pour le tableau" },
+  { id: "petites", libelle: "Les petites étiquettes", description: "une enveloppe par groupe" },
+  { id: "corolle", libelle: "La corolle lexicale", description: "vierge, le mot au centre" },
+];
+
 export function EtiquettesTab({ banque }: { banque: boolean }) {
   const [mots, setMots] = useMotsGardes("etiquettes:mots");
   const [r, maj] = useReglages("etiquettes", REGLAGES_ETIQUETTES);
@@ -67,6 +75,38 @@ export function EtiquettesTab({ banque }: { banque: boolean }) {
     } catch (e) { toast(String(e), { icone: "⚠️" }); }
   };
   const peut = mots.length > 0 && (r.grandes || r.petites || r.corolle);
+  // L'assistant (31 octobre 2026) : les mots, ce qu'on imprime — plusieurs choix —, les enveloppes, les images.
+  const reglages: QuestionDeReglage[] = [
+    {
+      question: {
+        id: "quoi", puce: "À imprimer", titre: "Qu'imprime-t-on ? Un ou plusieurs choix.", choix: A_IMPRIMER,
+        plusieurs: { coches: A_IMPRIMER.filter((x) => r[x.id]).map((x) => x.id) },
+      },
+      repondre: (c) => {
+        const l = c.split(",");
+        maj({ grandes: l.includes("grandes"), petites: l.includes("petites"), corolle: l.includes("corolle") });
+        return A_IMPRIMER.filter((x) => l.includes(x.id)).map((x) => x.libelle).join(", ");
+      },
+    },
+    ...(r.petites ? [{
+      question: {
+        id: "enveloppes", puce: "Enveloppes", titre: "Combien d'enveloppes ? Une par groupe.",
+        choix: [4, 6, 8].map((n) => ({ id: String(n), libelle: `${n} enveloppes` })), autre: { placeholder: "Un autre nombre, de 1 à 12", nombre: { min: 1, max: 12 } },
+      },
+      repondre: (c: string, texte?: string) => { const n = Math.max(1, Math.min(12, Number(texte ?? c) || 6)); maj({ enveloppes: n }); return `${n} enveloppe${n > 1 ? "s" : ""}`; },
+    }] : []),
+    {
+      question: {
+        id: "pictos", puce: "Images", titre: "Avec l'image du mot ?",
+        choix: [
+          { id: "oui", libelle: "Oui, quand il y en a une", description: "pour qui ne déchiffre pas encore" },
+          { id: "non", libelle: "Non, le mot seul" },
+        ],
+      },
+      repondre: (c) => { maj({ pictos: c === "oui" }); return c === "oui" ? "Avec l'image" : "Le mot seul"; },
+    },
+  ];
+  const fin = !mots.length ? FIN_SANS_MOTS : peut ? `C'est prêt : ${mots.length} mot${mots.length > 1 ? "s" : ""}.` : "⚠️ Choisissez au moins une chose à imprimer.";
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 380px) 1fr", gap: 14, alignItems: "start" }}>
       <div className="card">
@@ -96,9 +136,10 @@ export function EtiquettesTab({ banque }: { banque: boolean }) {
           }} />
         </div>
       </div>
-      <div style={{ minWidth: 0 }}>
+      <div className="loto-droite">
+        <AssistantDesMots titre="Préparer les étiquettes" mots={mots} onMots={setMots} banque={banque} reglages={reglages} fin={fin} />
         {mots.length ? <ApercuFeuille html={html} style={STYLE_ETIQUETTES} />
-          : montres.length ? <ApercuExemple onPrendre={() => setMots(montres)} departs={{ onMots: setMots, banque }}><ApercuFeuille html={html} style={STYLE_ETIQUETTES} /></ApercuExemple>
+          : montres.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_ETIQUETTES} /></ApercuExemple>
           : <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>Ajoutez les mots de la séquence : ils s'afficheront tels qu'ils s'imprimeront.</div>}
       </div>
     </div>
@@ -597,6 +638,35 @@ export function OmbresTab({ banque }: { banque: boolean }) {
   const sansImage = pret && mots.length ? mots.length - items.length : 0;
   const peut = pret && mots.length > 0 && items.length >= OMBRES_MINIMUM;
   const feuilles = feuillesDOmbres(items.length, r);
+  // L'assistant (31 octobre 2026) : les images, la façon de jouer, la taille des ombres, le mot écrit.
+  const reglages: QuestionDeReglage[] = [
+    {
+      question: {
+        id: "forme", puce: "Le jeu", titre: "Comment joue-t-on ?",
+        choix: [
+          { id: "poser", libelle: "Poser les images sur les ombres", description: "des images à découper, une planche de silhouettes" },
+          { id: "relier", libelle: "Relier chaque image à son ombre", description: "une fiche" },
+        ],
+      },
+      repondre: (c) => { maj({ forme: c === "relier" ? "relier" : "poser" }); return c === "relier" ? "Relier sur une fiche" : "Poser sur les ombres"; },
+    },
+    ...(r.forme === "poser" ? [{
+      question: {
+        id: "parPage", puce: "Ombres", titre: "Combien d'ombres par planche ?",
+        choix: [
+          { id: "6", libelle: "6 ombres", description: "grandes, pour les petites mains" },
+          { id: "9", libelle: "9 ombres" },
+          { id: "12", libelle: "12 ombres", description: "petites" },
+        ],
+      },
+      repondre: (c: string) => { const n = (c === "9" ? 9 : c === "12" ? 12 : 6) as ReglagesOmbres["parPage"]; maj({ parPage: n }); return `${n} ombres par planche`; },
+    }] : []),
+    questionDesLegendes((v) => maj({ legendes: v })),
+  ];
+  const fin = !mots.length ? FIN_SANS_MOTS
+    : !pret ? "Les ombres se dessinent…"
+      : items.length >= OMBRES_MINIMUM ? `C'est prêt : ${items.length} images, ${feuilles} feuille${feuilles > 1 ? "s" : ""}.`
+        : "⚠️ Il faut au moins deux images : ajoutez des mots que la banque illustre, ou vos images.";
   return (
     <Colonnes
       gauche={<>
@@ -628,9 +698,15 @@ export function OmbresTab({ banque }: { banque: boolean }) {
         </div>
         <Boutons atelier="ombres" titre="Le jeu des ombres" html={html} style={STYLE_OMBRES} peut={peut} onTirage={() => setGraine(graineAuHasard())} />
       </>}
-      droite={items.length && mots.length ? <ApercuFeuille html={html} style={STYLE_OMBRES} />
-        : items.length ? <ApercuExemple onPrendre={() => setMots(montres)} departs={{ onMots: setMots, banque }}><ApercuFeuille html={html} style={STYLE_OMBRES} /></ApercuExemple>
-        : <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>Ajoutez au moins deux images — des mots de la banque, un thème, ou vos propres images : chacune aura son ombre.</div>}
+      droite={
+        <div className="loto-droite">
+          <AssistantDesMots titre="Préparer le jeu des ombres" question="Avec quelles images ?" mots={mots} onMots={setMots} banque={banque}
+            reglages={reglages} fin={fin} parTheme={12} />
+          {items.length && mots.length ? <ApercuFeuille html={html} style={STYLE_OMBRES} />
+            : items.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_OMBRES} /></ApercuExemple>
+            : <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>Ajoutez au moins deux images — des mots de la banque, un thème, ou vos propres images : chacune aura son ombre.</div>}
+        </div>
+      }
     />
   );
 }

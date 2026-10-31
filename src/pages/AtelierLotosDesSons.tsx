@@ -1,7 +1,7 @@
 import React from "react";
 import { Aide } from "../components/Aide";
 import { ApercuFeuille } from "../components/ApercuFeuille";
-import { AssistantDuLoto, questionDesCases, questionDesLegendes, questionDesPlanches, type QuestionDeReglage } from "../components/AssistantDuLoto";
+import { AssistantDesMots, questionDesCases, questionDesLegendes, questionDesPlanches, type QuestionDeReglage } from "../components/AssistantDesMots";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { usePictoImages } from "../components/ChoixPicto";
 import { ApercuExemple, useMotsExemple } from "../components/Exemple";
@@ -22,7 +22,7 @@ import { Boutons, Coche, Colonnes, Vide, bureau, ids, imprimer } from "./Atelier
 // Six lotos, un même atelier (voir lotosDesSons.ts) : les attaques, les
 // rimes, les syllabes d'attaque et de fin, les phonèmes d'attaque et de fin.
 // En tête, un assistant pose ses questions une à une — avec quels mots,
-// combien de planches, de cases, comment on joue (voir AssistantDuLoto) — ;
+// combien de planches, de cases, comment on joue (voir AssistantDesMots) — ;
 // à gauche, les mots, chacun avec son son, et les réglages ; à droite, la
 // feuille telle qu'elle s'imprimera.
 
@@ -135,7 +135,7 @@ export function LotoDesSonsTab({ banque, unite }: { banque: boolean; unite: Unit
       </>}
       droite={
         <div className="loto-droite">
-          <AssistantDuLoto titre={`Préparer le ${loto.nom.charAt(0).toLowerCase()}${loto.nom.slice(1)}`} mots={mots} onMots={setMots} banque={banque}
+          <AssistantDesMots titre={`Préparer le ${loto.nom.charAt(0).toLowerCase()}${loto.nom.slice(1)}`} question="Avec quels mots fait-on le loto ?" mots={mots} onMots={setMots} banque={banque} parTheme={18}
             reglages={reglages} fin={fin} />
           {partie.manque ? <Vide quoi={`${partie.manque} Ajoutez des mots qui ${loto.debut ? "commencent" : "finissent"} autrement${conseil}.`} />
             : mots.length ? apercu

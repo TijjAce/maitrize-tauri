@@ -7,7 +7,7 @@ import { chargerImages, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { ApercuExemple, useMotsExemple } from "../components/Exemple";
-import { AssistantDuLoto, questionDesCases, questionDesLegendes, questionDesPlanches } from "../components/AssistantDuLoto";
+import { AssistantDesMots, FIN_SANS_MOTS, questionDesCases, questionDesLegendes, questionDesPlanches, type QuestionDeReglage } from "../components/AssistantDesMots";
 import { MOTS_EXEMPLE } from "../exemplesDesAteliers";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
@@ -144,7 +144,7 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
       </>}
       droite={
         <div className="loto-droite">
-          <AssistantDuLoto titre="Préparer le loto des syllabes" mots={mots} onMots={setMots} banque={banque} reglages={reglages} fin={fin} />
+          <AssistantDesMots titre="Préparer le loto des syllabes" question="Avec quels mots fait-on le loto ?" mots={mots} onMots={setMots} banque={banque} parTheme={18} reglages={reglages} fin={fin} />
           {planches.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
             : planches.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
             : <Vide quoi="Ajoutez des mots : le loto se fabrique avec les mots de la classe et leurs images." />}
@@ -167,6 +167,9 @@ export function DominosTab({ banque }: { banque: boolean }) {
   const pieces = React.useMemo(() => dominos(pairesQuiSenchainent(montres, hasard(graine))), [montres, graine]);
   const images = usePictoImages(ids(montres));
   const html = React.useMemo(() => htmlDominos(pieces, images, legendes), [pieces, images, legendes]);
+  const fin = !mots.length ? FIN_SANS_MOTS
+    : pieces.length >= 3 ? `C'est prêt : ${pieces.length} dominos, ${pieces.length * 2} images, qui se referment en boucle.`
+      : "⚠️ Ces mots ne s'enchaînent pas encore : il faut des mots dont la dernière syllabe commence un autre mot (micro – crocodile). Piochez un thème entier, ou deux.";
   return (
     <Colonnes
       gauche={<>
@@ -185,9 +188,15 @@ export function DominosTab({ banque }: { banque: boolean }) {
           onImprimer={() => imprimer("dominos", "Dominos des syllabes", (im) => htmlDominos(pieces, im, legendes), ids(mots), STYLE_JEUX_SONS)}
           onBureau={() => bureau("dominos", "Dominos des syllabes", (im) => htmlDominos(pieces, im, legendes), ids(mots), STYLE_JEUX_SONS)} />
       </>}
-      droite={pieces.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
-        : pieces.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
-        : <Vide quoi="Les dominos apparaîtront dès que des mots s'enchaînent : la rime de l'un est l'attaque de l'autre." />}
+      droite={
+        <div className="loto-droite">
+          <AssistantDesMots titre="Préparer les dominos" question="Avec quels mots fait-on les dominos ?" mots={mots} onMots={setMots} banque={banque}
+            reglages={[questionDesLegendes(setLegendes)]} fin={fin} parTheme={30} />
+          {pieces.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
+            : pieces.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
+            : <Vide quoi="Les dominos apparaîtront dès que des mots s'enchaînent : la rime de l'un est l'attaque de l'autre." />}
+        </div>
+      }
     />
   );
 }
@@ -204,6 +213,30 @@ export function IntrusTab({ banque }: { banque: boolean }) {
   const lignes = React.useMemo(() => lignesIntrus(montres, r.mode, r.combien, hasard(graine)), [montres, r.mode, r.combien, graine]);
   const images = usePictoImages(ids(montres));
   const html = React.useMemo(() => htmlIntrus(lignes, images, r.mode, r.legendes), [lignes, images, r]);
+  const reglages: QuestionDeReglage[] = [
+    {
+      question: {
+        id: "mode", puce: "Ce qui se ressemble", titre: "Les trois mots de chaque ligne…",
+        choix: [
+          { id: "attaque", libelle: "Commencent pareil", description: "la même première syllabe : bateau, banane, ballon — et l'intrus, tapis" },
+          { id: "rime", libelle: "Finissent pareil", description: "la même dernière syllabe : bateau, gâteau, râteau — et l'intrus, lapin" },
+        ],
+      },
+      repondre: (c) => { maj({ mode: c === "rime" ? "rime" : "attaque" }); return c === "rime" ? "Ils finissent pareil" : "Ils commencent pareil"; },
+    },
+    {
+      question: {
+        id: "combien", puce: "Lignes", titre: "Combien de lignes ?",
+        choix: [4, 6, 8].map((n) => ({ id: String(n), libelle: `${n} lignes` })),
+        autre: { placeholder: "Un autre nombre, de 1 à 15", nombre: { min: 1, max: 15 } },
+      },
+      repondre: (c, texte) => { const n = Math.max(1, Math.min(15, Number(texte ?? c) || 6)); maj({ combien: n }); return `${n} ligne${n > 1 ? "s" : ""}`; },
+    },
+    questionDesLegendes((v) => maj({ legendes: v })),
+  ];
+  const fin = !mots.length ? FIN_SANS_MOTS
+    : lignes.length ? `C'est prêt : ${lignes.length} ligne${lignes.length > 1 ? "s" : ""}, chacune avec son intrus.`
+      : "⚠️ Pas encore trois mots qui se ressemblent : piochez un thème entier, ou deux.";
   return (
     <Colonnes
       gauche={<>
@@ -227,9 +260,15 @@ export function IntrusTab({ banque }: { banque: boolean }) {
           onImprimer={() => imprimer("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes), ids(mots), STYLE_JEUX_SONS)}
           onBureau={() => bureau("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes), ids(mots), STYLE_JEUX_SONS)} />
       </>}
-      droite={lignes.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
-        : lignes.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
-        : <Vide quoi="Les lignes apparaîtront dès que trois mots partagent une syllabe." />}
+      droite={
+        <div className="loto-droite">
+          <AssistantDesMots titre="Préparer la chasse à l'intrus" question="Avec quels mots fait-on la chasse à l'intrus ?" mots={mots} onMots={setMots}
+            banque={banque} reglages={reglages} fin={fin} parTheme={30} />
+          {lignes.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
+            : lignes.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
+            : <Vide quoi="Les lignes apparaîtront dès que trois mots partagent une syllabe." />}
+        </div>
+      }
     />
   );
 }

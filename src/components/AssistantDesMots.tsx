@@ -2,7 +2,7 @@ import React from "react";
 import { api } from "../api";
 import { corpusDe } from "../corpusProjet";
 import { EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
-import { themesDeDepart } from "../departsEnUnClic";
+import { MOTS_PAR_THEME, themesDeDepart } from "../departsEnUnClic";
 import { melanger } from "../hasard";
 import type { MotImage } from "../jeuxSons";
 import { uneImageParMot } from "../loto";
@@ -13,26 +13,42 @@ import { QuestionsGuidees, type QuestionGuidee } from "./QuestionsGuidees";
 import { toast } from "./Toaster";
 import { useAsync } from "./ui";
 
-// L'assistant des lotos (demande de l'enseignant, 31 octobre 2026) : à la
-// place de la bande « Ou partir de », il pose ses questions une à une — avec
-// quels mots, puis celles de l'atelier — et chaque réponse règle le loto
-// (voir QuestionsGuidees). Les mots du projet restent aussi à cocher dans la
+// L'assistant des ateliers à mots (demande de l'enseignant, 31 octobre 2026) :
+// à la place de la bande « Ou partir de », il pose ses questions une à une —
+// avec quels mots, et celles de l'atelier — et chaque réponse le règle (voir
+// QuestionsGuidees). D'abord sur les lotos, puis « mets l'assistant partout » :
+// les dominos, l'intrus, les mots en gestes, la syllabe qui manque, les
+// étiquettes, les ombres. Les mots du projet restent aussi à cocher dans la
 // liste des mots.
 
 /** Une question de réglage : ce qu'elle demande, et ce qu'une réponse règle — elle rend ce qu'on affiche de la réponse. */
 export interface QuestionDeReglage { question: QuestionGuidee; repondre: (choix: string, texte?: string) => string }
 
-/** Combien de mots un thème donne à un loto : de quoi remplir plusieurs planches de sons différents. */
-const MOTS_D_UN_THEME = 18;
+/** Le dernier message, tant que la liste est vide. */
+export const FIN_SANS_MOTS = "Écrivez vos mots à gauche, ou choisissez-en : la feuille se fait sous vos yeux.";
+
+/** Une autre façon de trouver des mots, propre à l'atelier : un clic l'ouvre — la recherche des mots d'une syllabe —, et la réponse se note. */
+export interface AutreSource { id: string; libelle: string; description?: string; choisir: () => void }
 
 /**
- * L'assistant d'un loto : d'abord les mots — ceux du projet, d'un autre
- * projet, d'un thème de la banque, ses images, ou ceux qu'on écrit —, puis
- * les questions de l'atelier. Il s'ouvre tant que la liste est vide.
+ * L'assistant d'un atelier à mots : ses questions d'abord quand les mots en
+ * dépendent (les syllabes à retrouver), puis les mots — ceux du projet, d'un
+ * autre projet, d'un thème de la banque, ses images, ceux qu'on écrit, ou ce
+ * que l'atelier propose —, puis ses autres questions. Il s'ouvre tant que la
+ * liste est vide.
  */
-export function AssistantDuLoto({ titre, mots, onMots, banque, reglages, fin }: {
-  titre: string; mots: MotImage[]; onMots: (mots: MotImage[]) => void; banque: boolean;
-  reglages: QuestionDeReglage[]; fin: React.ReactNode;
+export function AssistantDesMots({ titre, question = "Avec quels mots ?", mots, onMots, banque, avant = [], reglages, autresSources = [], fin, parTheme = MOTS_PAR_THEME }: {
+  titre: string;
+  /** La question des mots : « Avec quels mots fait-on le loto ? ». */
+  question?: string;
+  mots: MotImage[]; onMots: (mots: MotImage[]) => void; banque: boolean;
+  /** Les questions à poser avant celle des mots. */
+  avant?: QuestionDeReglage[];
+  reglages: QuestionDeReglage[];
+  autresSources?: AutreSource[];
+  fin: React.ReactNode;
+  /** Combien de mots un thème donne : une feuille d'ordinaire, davantage pour un loto ou des dominos, qui demandent des sons qui se répondent. */
+  parTheme?: number;
 }) {
   const [ouvert, setOuvert] = React.useState(() => mots.length === 0);
   const [reponses, setReponses] = React.useState<Record<string, string>>({});
@@ -55,12 +71,13 @@ export function AssistantDuLoto({ titre, mots, onMots, banque, reglages, fin }: 
   };
   const piocher = async (categorie: string) => {
     const vivier = await api.arasaacSelection([categorie], EXCLUES_PAR_DEFAUT, false, 0, 1);
-    return melanger(Math.random, uneImageParMot(vivier).map((x) => x.picto)).slice(0, MOTS_D_UN_THEME).map((p) => ({ id: p.id, mot: p.mot }));
+    return melanger(Math.random, uneImageParMot(vivier).map((x) => x.picto)).slice(0, parTheme).map((p) => ({ id: p.id, mot: p.mot }));
   };
 
   const questionDesMots: QuestionGuidee = {
-    id: "mots", puce: "Les mots", titre: "Avec quels mots fait-on le loto ?",
+    id: "mots", puce: "Les mots", titre: question,
     choix: [
+      ...autresSources.map(({ id, libelle, description }) => ({ id: `source:${id}`, libelle, description })),
       ...(mots.length ? [{ id: "garder", libelle: `Garder mes ${mots.length} mots`, description: "ceux de la liste, à gauche" }] : []),
       ...(projet && corpus.mots.length ? [{ id: "projet", libelle: `📌 Le projet « ${projet.titre} »`, description: `ses ${corpus.mots.length} mots, avec leurs images` }] : []),
       ...(autres.length ? [{ id: "autreProjet", libelle: "📁 Un autre projet", description: autres.slice(0, 3).map((p) => p.titre).join(", ") + (autres.length > 3 ? "…" : "") }] : []),
@@ -78,6 +95,7 @@ export function AssistantDuLoto({ titre, mots, onMots, banque, reglages, fin }: 
     ],
   };
   const questions: QuestionGuidee[] = [
+    ...avant.map((r) => r.question),
     questionDesMots,
     ...(suite === "theme" ? [{
       id: "theme", puce: "Le thème", titre: "Quel thème ?",
@@ -93,7 +111,9 @@ export function AssistantDuLoto({ titre, mots, onMots, banque, reglages, fin }: 
     if (q === "mots") {
       setSuite(c === "theme" ? "theme" : c === "autreProjet" ? "projet" : "");
       setReponses((r) => { const { theme: _t, projet: _p, ...reste } = r; return reste; });
-      if (c === "garder") poser("mots", `Mes ${mots.length} mots`);
+      const source = autresSources.find((x) => `source:${x.id}` === c);
+      if (source) { source.choisir(); poser("mots", source.libelle); }
+      else if (c === "garder") poser("mots", `Mes ${mots.length} mots`);
       else if (c === "projet" && projet) void charger("mots", `📌 Le projet « ${projet.titre} »`, () => motsAvecImages(corpus.mots));
       else if (c === "theme") poser("mots", "🐮 Un thème");
       else if (c === "autreProjet") poser("mots", "📁 Un autre projet");
@@ -113,7 +133,7 @@ export function AssistantDuLoto({ titre, mots, onMots, banque, reglages, fin }: 
       if (p) void charger("projet", `📌 ${p.titre || "Sans titre"}`, () => motsAvecImages(corpusDe(p).mots));
       return;
     }
-    const r = reglages.find((x) => x.question.id === q);
+    const r = [...avant, ...reglages].find((x) => x.question.id === q);
     if (r) poser(q, r.repondre(c, texte));
   };
   const revenir = (q: string) => {
@@ -138,7 +158,7 @@ export function AssistantDuLoto({ titre, mots, onMots, banque, reglages, fin }: 
   );
 }
 
-// ── Les questions de réglage, communes aux lotos ──
+// ── Les questions de réglage que plusieurs ateliers posent ──
 
 export function questionDesPlanches(maj: (n: number) => void): QuestionDeReglage {
   return {

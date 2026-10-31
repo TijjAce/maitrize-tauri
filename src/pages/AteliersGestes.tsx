@@ -6,6 +6,7 @@ import { usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { ApercuExemple, useMotsExemple } from "../components/Exemple";
+import { AssistantDesMots, FIN_SANS_MOTS, type QuestionDeReglage } from "../components/AssistantDesMots";
 import { MOTS_EXEMPLE } from "../exemplesDesAteliers";
 import { BanqueDeGestes, demanderLesGestesAuJeu, useBanqueDeGestes } from "../components/BanqueDeGestes";
 import { graineAuHasard } from "../hasard";
@@ -122,6 +123,14 @@ function CodageDuMot({ mot, pas, corrige, onChange, onRetablir }: {
 }
 
 /** Les mots codés en gestes : à relier au mot, à reconnaître par son dessin, ou à écrire. */
+/** Ce que fait l'élève, pour la question de l'assistant. */
+const FORMES: { id: FormeMotsCodes; libelle: string; description: string }[] = [
+  { id: "fiche", libelle: "Colorier, puis relier", description: "colorier le bon dessin, puis relier les gestes au bon mot" },
+  { id: "relier", libelle: "Relier", description: "les gestes au bon mot" },
+  { id: "colorier", libelle: "Colorier", description: "le dessin du mot écrit en gestes" },
+  { id: "ecrire", libelle: "Écrire le mot", description: "lu en gestes" },
+];
+
 export function MotsEnGestesTab({ banque }: { banque: boolean }) {
   const gestes = useBanqueDeGestes();
   const [mots, setMots] = useMotsGardes("motsGestes:mots");
@@ -170,6 +179,11 @@ export function MotsEnGestesTab({ banque }: { banque: boolean }) {
     : `${utiles.length} mot${utiles.length > 1 ? "s" : ""}${r.forme === "fiche" && aColorier ? `, dont ${aColorier} à colorier` : ""}, `
       + `${feuilles} feuille${feuilles > 1 ? "s" : ""} avec le corrigé.`;
 
+  // L'assistant (31 octobre 2026) : les mots, puis ce que fait l'élève.
+  const reglages: QuestionDeReglage[] = [{
+    question: { id: "forme", puce: "La fiche", titre: "Que fait l'élève ?", choix: FORMES },
+    repondre: (c) => { const f = FORMES.find((x) => x.id === c) ?? FORMES[0]; maj({ forme: f.id }); return f.libelle; },
+  }];
   return (
     <Colonnes
       gauche={<>
@@ -223,9 +237,15 @@ export function MotsEnGestesTab({ banque }: { banque: boolean }) {
         </div>
         <Boutons atelier="motsGestes" titre="Les mots en gestes" html={html} style={STYLE_GESTES} peut={peut} onTirage={() => setGraine(graineAuHasard())} />
       </>}
-      droite={!mots.length && utiles.length
-        ? <ApercuExemple onPrendre={() => setMots(montres)} departs={{ onMots: setMots, banque }}><ApercuFeuille html={html} style={STYLE_GESTES} /></ApercuExemple>
-        : <ApercuFeuille html={html} style={STYLE_GESTES} />}
+      droite={
+        <div className="loto-droite">
+          <AssistantDesMots titre="Préparer les mots en gestes" mots={mots} onMots={setMots} banque={banque} reglages={reglages} parTheme={12}
+            fin={mots.length ? (peut ? `C'est prêt : ${bilan}` : `⚠️ ${bilan}`) : FIN_SANS_MOTS} />
+          {!mots.length && utiles.length
+            ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_GESTES} /></ApercuExemple>
+            : <ApercuFeuille html={html} style={STYLE_GESTES} />}
+        </div>
+      }
     />
   );
 }

@@ -6,7 +6,8 @@ import React from "react";
 // partir de » des lotos : « sous forme de chatbot qui pose les questions […]
 // avec un ou plusieurs choix, puis question suivante ». Chaque question a son
 // étiquette et ses choix — un clic, ou le chiffre du choix au clavier,
-// répond —, parfois « Autre » à écrire. La réponse se range à droite, et la
+// répond ; quand plusieurs choix vont ensemble, on les coche puis on valide —,
+// parfois « Autre » à écrire. La réponse se range à droite, et la
 // question suivante vient. Une réponse se change d'un clic : on revient à sa
 // question. L'atelier décide des questions et de ce que fait chaque réponse.
 
@@ -24,6 +25,8 @@ export interface QuestionGuidee {
   puce: string;
   titre: string;
   choix: ChoixGuide[];
+  /** Plusieurs choix à la fois : on les coche, puis « Valider » répond avec leurs identifiants, séparés par des virgules. */
+  plusieurs?: { coches: string[] };
   /** Une réponse à écrire, quand aucun choix ne convient : un nombre, ou un texte. */
   autre?: { placeholder: string; nombre?: { min: number; max: number } };
 }
@@ -43,7 +46,10 @@ export function QuestionsGuidees({ titre, questions, reponses, onRepondre, onRev
   const courante = questions.find((q) => reponses[q.id] === undefined);
   const repondues = courante ? questions.slice(0, questions.indexOf(courante)) : questions;
   const [texte, setTexte] = React.useState("");
-  React.useEffect(() => { setTexte(""); }, [courante?.id]);
+  // Les choix cochés d'une question à plusieurs choix : ceux de départ, puis ceux qu'on coche.
+  const [coches, setCoches] = React.useState<string[]>([]);
+  React.useEffect(() => { setTexte(""); setCoches(courante?.plusieurs?.coches ?? []); }, [courante?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cocher = (id: string) => setCoches((avant) => (avant.includes(id) ? avant.filter((x) => x !== id) : [...avant, id]));
   const autre = courante?.autre;
   const valeurAutre = autre?.nombre ? Number(texte) : NaN;
   const autreValable = !!autre && texte.trim() !== "" && (!autre.nombre || (Number.isInteger(valeurAutre) && valeurAutre >= autre.nombre.min && valeurAutre <= autre.nombre.max));
@@ -53,7 +59,9 @@ export function QuestionsGuidees({ titre, questions, reponses, onRepondre, onRev
     if (!courante || e.metaKey || e.ctrlKey || e.altKey || (e.target as HTMLElement).closest("input, textarea")) return;
     const n = Number(e.key);
     const c = Number.isInteger(n) && n >= 1 ? courante.choix[n - 1] : undefined;
-    if (c && !c.bouton) { e.preventDefault(); onRepondre(courante.id, c.id); }
+    if (!c || c.bouton) return;
+    e.preventDefault();
+    if (courante.plusieurs) cocher(c.id); else onRepondre(courante.id, c.id);
   };
   return (
     <div className="qg" role="group" aria-label={titre} onKeyDown={auClavier}>
@@ -77,11 +85,18 @@ export function QuestionsGuidees({ titre, questions, reponses, onRepondre, onRev
                 <span className="qg-libelle">{c.libelle}</span>
                 {c.description && <span className="qg-description">{c.description}</span>}
               </>;
-              return c.bouton
-                ? <React.Fragment key={c.id}>{c.bouton({ className: "qg-carte", contenu })}</React.Fragment>
+              if (c.bouton) return <React.Fragment key={c.id}>{c.bouton({ className: "qg-carte", contenu })}</React.Fragment>;
+              const coche = coches.includes(c.id);
+              return courante.plusieurs
+                ? <button key={c.id} type="button" className={`qg-carte${coche ? " coche" : ""}`} aria-pressed={coche} onClick={() => cocher(c.id)}>{contenu}</button>
                 : <button key={c.id} type="button" className="qg-carte" onClick={() => onRepondre(courante.id, c.id)}>{contenu}</button>;
             })}
           </div>
+          {courante.plusieurs && (
+            <div className="qg-valider">
+              <button type="button" className="btn sm primary" disabled={!coches.length} onClick={() => onRepondre(courante.id, coches.join(","))}>Valider</button>
+            </div>
+          )}
           {autre && (
             <form className="qg-autre" onSubmit={(e) => { e.preventDefault(); repondreAutre(); }}>
               <input className="input" value={texte} placeholder={autre.placeholder} aria-label={autre.placeholder}

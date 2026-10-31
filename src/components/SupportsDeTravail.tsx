@@ -69,23 +69,38 @@ function LigneDeSupport({ photo, jeux, sequences, onChanger }: {
         <input key={`${photo.id}-${photo.mot}`} className="input sdt-nom" defaultValue={photo.mot} aria-label="Le nom de la photo"
           onBlur={(e) => { const mot = e.target.value.trim(); if (mot && mot !== photo.mot) onChanger({ mot }); else e.target.value = photo.mot; }}
           onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
-        <select className="select" value={photo.matiere ?? ""} aria-label={`La matière de « ${photo.mot} »`} onChange={(e) => onChanger({ matiere: e.target.value })}>
-          <option value="">Matière…</option>
-          {MATIERES.map((m) => <option key={m} value={m}>{etiquetteDeMatiere(m)}</option>)}
-        </select>
-        <select className="select" value={photo.niveau ?? ""} aria-label={`Le niveau de « ${photo.mot} »`} onChange={(e) => onChanger({ niveau: e.target.value })}>
-          <option value="">Niveau…</option>
-          <option value={TOUS_LES_NIVEAUX}>Tous les niveaux</option>
-          {NIVEAUX_SCOLAIRES.map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-        <select className="select" value={photo.jeuId ?? ""} aria-label={`Le jeu dont « ${photo.mot} » prend les règles`} onChange={(e) => onChanger({ jeuId: e.target.value })}>
-          <option value="">Pas de règles de jeu</option>
-          {jeux.map((j) => <option key={j.id} value={j.id}>Les règles de « {j.titre} »</option>)}
-        </select>
-        <select className="select" value={photo.sequenceId ?? ""} aria-label={`La séquence de « ${photo.mot} »`} onChange={(e) => onChanger({ sequenceId: e.target.value })}>
-          <option value="">Aucune séquence</option>
-          {sequences.map((q) => <option key={q.id} value={q.id}>{q.titre}</option>)}
-        </select>
+        {/* Les champs en grille, chacun sous son nom : la matière et le niveau côte à côte, le jeu et la séquence deux fois plus larges ; un long titre se coupe, la ligne ne déborde plus. */}
+        <div className="sdt-grille">
+          <label className="sdt-champ">
+            <span>Matière</span>
+            <select className="select" value={photo.matiere ?? ""} aria-label={`La matière de « ${photo.mot} »`} onChange={(e) => onChanger({ matiere: e.target.value })}>
+              <option value="">—</option>
+              {MATIERES.map((m) => <option key={m} value={m}>{etiquetteDeMatiere(m)}</option>)}
+            </select>
+          </label>
+          <label className="sdt-champ">
+            <span>Niveau</span>
+            <select className="select" value={photo.niveau ?? ""} aria-label={`Le niveau de « ${photo.mot} »`} onChange={(e) => onChanger({ niveau: e.target.value })}>
+              <option value="">—</option>
+              <option value={TOUS_LES_NIVEAUX}>Tous les niveaux</option>
+              {NIVEAUX_SCOLAIRES.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+          <label className="sdt-champ long">
+            <span>Les règles du jeu</span>
+            <select className="select" value={photo.jeuId ?? ""} aria-label={`Le jeu dont « ${photo.mot} » prend les règles`} onChange={(e) => onChanger({ jeuId: e.target.value })}>
+              <option value="">Aucun jeu</option>
+              {jeux.map((j) => <option key={j.id} value={j.id}>{j.titre}</option>)}
+            </select>
+          </label>
+          <label className="sdt-champ long">
+            <span>La séquence</span>
+            <select className="select" value={photo.sequenceId ?? ""} aria-label={`La séquence de « ${photo.mot} »`} onChange={(e) => onChanger({ sequenceId: e.target.value })}>
+              <option value="">Aucune</option>
+              {sequences.map((q) => <option key={q.id} value={q.id}>{q.titre}</option>)}
+            </select>
+          </label>
+        </div>
         {!complet && <span className="meta sdt-a-completer">Un niveau, et « En retard » la propose.</span>}
       </div>
     </div>
