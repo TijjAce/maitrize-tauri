@@ -11,19 +11,22 @@
 // par une, chacune avec sa consigne, son minuteur et son élève : chaque élève
 // a sa tablette (demande de l'enseignant, octobre 2026), que le téléphone lui
 // attribue. Les déroulements partent avec elles — ce qui va se passer, dans
-// l'ordre : toujours le rituel d'abord, puis les phases de la séance ; celui
-// de chaque élève finit par ses fiches —, et la tablette y surligne l'étape.
+// l'ordre : toujours le rituel d'abord, puis chaque tâche de la classe ;
+// celui de chaque élève finit par ses fiches —, et la tablette y surligne
+// l'étape.
 // Une séance qu'« En retard » a posée pour un élève part de même à sa
 // tablette, à sa place parmi ses fiches : son « Décomposer la tâche », ou le
 // séquentiel de ses étapes, avec sa durée pour minuteur (demande de
 // l'enseignant, octobre 2026).
 //
 // Sans séance posée, le prévu dit aussi ce que fait la classe : la ligne du
-// bouton 📚 cite une séance, une ligne nomme un jeu de la ludothèque. Leurs
-// cadres suivent le rituel, dans l'ordre du prévu — les phases de la séance,
-// le jeu avec son picto —, et les aides de la séance citée partent comme
-// celles de la séance posée (« y a une séquence de maths et le jeu de l'oie
-// […], pourtant je vois rien », 31 octobre 2026).
+// bouton 📚 cite une séance, une ligne nomme un jeu de la ludothèque (« y a
+// une séquence de maths et le jeu de l'oie […], pourtant je vois rien »,
+// 31 octobre 2026). Chaque tâche est un cadre, dans l'ordre du prévu : une
+// séance, et non ses phases — son aide séquentielle les montre, « juste une
+// aide pour séquencer cette tâche » —, un jeu, avec la matière de la séance
+// dont il est la suite (« encore une séance de maths »). Les aides d'une
+// séance citée partent comme celles de la séance posée.
 //
 // Tout part chiffré avec la clé du retour (voir telephone.rs) : Nuage ne lit
 // rien. Rien ne repart qui n'a pas changé ; ici, rien ne se redessine non plus.
@@ -180,9 +183,6 @@ export function deLaClasse(c: Pick<Creneau, "prevu">, posee: Seance | undefined,
   return sortie;
 }
 
-/** Le mot dont un jeu prend le picto quand la banque n'en a pas à son nom. */
-const JEU = "jeu";
-
 /** Le nom d'un jeu sur son cadre : celui de la ludothèque, sa première lettre en capitale. */
 const nomDuJeu = (j: Pick<Jeu, "titre">): string => {
   const titre = (j.titre ?? "").trim();
@@ -193,14 +193,12 @@ const nomDuJeu = (j: Pick<Jeu, "titre">): string => {
  * Une étape du déroulement d'un créneau, avant son image : ce qu'on lit, la
  * matière au-dessus, et le domaine dont elle prend le picto — rien d'autre
  * (demande de l'enseignant, octobre 2026) : le rituel celui de « Rituel », une
- * phase de séance celui du domaine de la séance, une fiche d'élève celui du
- * domaine de sa sorte, retrouvé en dessinant la page (voir pictosMatieres).
+ * séance ou un jeu celui de son domaine, une fiche d'élève celui du domaine de
+ * sa sorte, retrouvé en dessinant la page (voir pictosMatieres).
  */
 export interface PasDuDeroulement {
   texte: string; matiere: string; domaine?: string; rituel?: boolean; fiche?: boolean;
-  /** Un jeu de la ludothèque : le picto choisi pour son nom, sinon celui que la banque a pour lui, sinon pour « jeu ». */
-  jeu?: boolean;
-  /** La séance dont c'est une phase : ses aides partent à sa première. */
+  /** La séance de cette étape : ses aides partent avec elle. */
   seance?: string;
   /** Une fiche faite d'un support de travail : sa photo, qui lui sert de picto (voir supportsDeTravail). */
   picto?: number;
@@ -208,49 +206,67 @@ export interface PasDuDeroulement {
   eleve?: string;
 }
 
+/** La première compétence d'une liste en JSON — d'une séance, d'une séquence, d'un jeu — : son domaine et son sous-domaine, s'ils sont écrits. */
+function premiereCompetence(json: string | undefined): { domaine: string; sousDomaine: string } | null {
+  try {
+    const liste: unknown = JSON.parse(json || "[]");
+    const c = Array.isArray(liste) ? (liste[0] as { sousDomaineTitre?: unknown; domaineTitre?: unknown } | undefined) : undefined;
+    const texte = (x: unknown) => (typeof x === "string" ? x.trim() : "");
+    return c ? { domaine: texte(c.domaineTitre), sousDomaine: texte(c.sousDomaineTitre) } : null;
+  } catch { return null; }
+}
+
 /** Le domaine d'une séance, par sa première compétence — la sienne, sinon celle de sa séquence : le sous-domaine, sinon le domaine. */
 export function domaineDeLaSeance(seance: Pick<Seance, "competences">, sequence?: Pick<Sequence, "competences">): string {
   for (const json of [seance.competences, sequence?.competences]) {
-    try {
-      const liste: unknown = JSON.parse(json || "[]");
-      const c = Array.isArray(liste) ? (liste[0] as { sousDomaineTitre?: unknown; domaineTitre?: unknown } | undefined) : undefined;
-      const domaine = [c?.sousDomaineTitre, c?.domaineTitre].find((x): x is string => typeof x === "string" && x.trim() !== "");
-      if (domaine) return domaine.trim();
-    } catch { /* compétences illisibles : on regarde la séquence */ }
+    const c = premiereCompetence(json);
+    const domaine = c?.sousDomaine || c?.domaine;
+    if (domaine) return domaine;
   }
   return "";
 }
-
-/** Les étapes d'une séance pour l'élève — ses consignes, ou ses phases dites pour lui (voir aidesALaTache). */
-export type EtapesDeLaSeance = (s: Seance) => string[];
 
 /** Les élèves qui ont quelque chose à faire au créneau — une fiche, une séance —, dans l'ordre du prévu. */
 export const elevesDuCreneau = (aFaire: AFaire[]): string[] => [...new Set(aFaire.map((x) => x.eleve).filter(Boolean))];
 
 /**
  * Le déroulement d'un créneau : le rituel toujours en premier — ceux du prévu
- * par leur nom —, puis ce que fait la classe (voir deLaClasse) : les phases
- * de chaque séance — son titre seul si elle n'en dit rien —, chaque jeu.
- * Celui d'un `eleve` finit par ses fiches, dans l'ordre du prévu ; celui de
- * la classe n'en a pas, chaque élève ayant les siennes. Rien sans séance, ni
- * jeu, ni fiche.
+ * par leur nom —, puis chaque tâche de la classe (voir deLaClasse), un cadre
+ * chacune. Une séance : son titre, la matière de sa séquence, le picto de son
+ * domaine ; ses phases ne s'y déroulent pas — son aide séquentielle les montre,
+ * « juste une aide pour séquencer cette tâche » (demande de l'enseignant,
+ * 31 octobre 2026). Un jeu : son nom, la matière et le domaine de ses
+ * compétences, sinon ceux de la première séance du créneau, dont il est la
+ * suite — le jeu de l'oie après la séance de numération, « encore une séance
+ * de maths » —, sinon « Jeu ». Celui d'un `eleve` finit par ses fiches, dans
+ * l'ordre du prévu ; celui de la classe n'en a pas, chaque élève ayant les
+ * siennes. Rien sans séance, ni jeu, ni fiche.
  */
 export function pasDuDeroulement(
-  c: Pick<Creneau, "prevu">, seance: Seance | undefined, etapesDe: EtapesDeLaSeance, fiches: MaterielItem[], domaineDeSeance = "", eleve?: string,
+  c: Pick<Creneau, "prevu">, seance: Seance | undefined, fiches: MaterielItem[], domaineDeSeance = "", eleve?: string,
   sequences: Sequence[] = [], seances: Seance[] = [], jeux: Jeu[] = [],
 ): PasDuDeroulement[] {
   const lesSiennes = eleve === undefined ? [] : aFaireDuCreneau(c, fiches, sequences, seances).filter((x) => x.eleve === eleve);
   const classe = deLaClasse(c, seance, sequences, seances, jeux);
   if (!classe.length && !lesSiennes.length) return [];
   const rituels = titresDesRituels(c.prevu ?? "");
+  const deLaSeance = (s: Seance): PasDuDeroulement => {
+    const sequence = sequences.find((q) => q.id === s.sequenceId);
+    // Le domaine de la séance posée vient de l'appelant ; celui d'une séance citée, de ses compétences ou de sa séquence.
+    const domaine = (s === seance && domaineDeSeance) || domaineDeLaSeance(s, sequence);
+    return { texte: s.titre.trim() || sequence?.titre.trim() || "Séance", matiere: sequence?.matiere ?? "", ...(domaine ? { domaine } : {}), seance: s.id };
+  };
+  const taches = classe.map((x) => (x.seance ? deLaSeance(x.seance) : null));
+  const premiere = taches.find((t): t is PasDuDeroulement => t !== null);
   return [
     { texte: rituels.length ? rituels.join(" · ") : "Rituel", matiere: rituels.length ? "Rituel" : "", rituel: true },
-    ...classe.flatMap((x): PasDuDeroulement[] => {
-      if (x.jeu) return [{ texte: nomDuJeu(x.jeu), matiere: "Jeu", jeu: true }];
-      // Le domaine de la séance posée vient de l'appelant ; celui d'une séance citée, de ses compétences ou de sa séquence.
-      const domaine = x.seance === seance ? domaineDeSeance : domaineDeLaSeance(x.seance, sequences.find((q) => q.id === x.seance.sequenceId));
-      const phases = etapesDe(x.seance);
-      return (phases.length ? phases : [x.seance.titre]).map((texte) => ({ texte, matiere: "", ...(domaine ? { domaine } : {}), seance: x.seance.id }));
+    ...classe.map((x, i): PasDuDeroulement => {
+      if (x.seance) return taches[i]!;
+      const sienne = premiereCompetence(x.jeu.competencesBo);
+      const propre = sienne?.sousDomaine || sienne?.domaine;
+      const domaine = propre || premiere?.domaine;
+      const matiere = (propre ? sienne?.domaine : premiere?.matiere) || "Jeu";
+      return { texte: nomDuJeu(x.jeu), matiere, ...(domaine ? { domaine } : {}) };
     }),
     ...lesSiennes.map((x): PasDuDeroulement => {
       if (x.seance) {
@@ -309,8 +325,7 @@ export const STYLE_CONSIGNE_TABLETTE = `
  * figure vide : le téléphone sait alors que c'est un jour sans classe.
  */
 export function journalDes(
-  jours: string[], creneaux: Creneau[], seances: Seance[], materiel: MaterielItem[], etapesDe: EtapesDeLaSeance = () => [], sequences: Sequence[] = [],
-  jeux: Jeu[] = [],
+  jours: string[], creneaux: Creneau[], seances: Seance[], materiel: MaterielItem[], sequences: Sequence[] = [], jeux: Jeu[] = [],
 ): JournalTelephone {
   const seanceDe = new Map(seances.map((s) => [s.id, s]));
   const deSeance = materiel.filter((m) => !!m.seanceId);
@@ -327,9 +342,9 @@ export function journalDes(
           const seance = c.seanceId ? seanceDe.get(c.seanceId) : undefined;
           const lesSeances = deLaClasse(c, seance, sequences, seances, jeux).flatMap((x) => (x.seance ? [x.seance] : []));
           const aFaire = aFaireDuCreneau(c, fiches, sequences, seances);
-          // Le déroulement de la classe : le rituel, les phases de ses séances, ses jeux. Celui d'un élève y ajoute
-          // ses fiches et ses séances, qui en sont la fin — après le rituel seul, sans rien pour la classe.
-          const pas = pasDuDeroulement(c, seance, etapesDe, fiches, "", undefined, sequences, seances, jeux);
+          // Le déroulement de la classe : le rituel, ses séances, ses jeux. Celui d'un élève y ajoute ses fiches
+          // et ses séances, qui en sont la fin — après le rituel seul, sans rien pour la classe.
+          const pas = pasDuDeroulement(c, seance, fiches, "", undefined, sequences, seances, jeux);
           const eleves = elevesDuCreneau(aFaire);
           const debutDesFiches = pas.length || 1;
           const lesSiennes = (prenom: string) => aFaire.filter((x) => x.eleve === prenom);
@@ -337,10 +352,10 @@ export function journalDes(
             id: c.id, debut: c.heureDebut, fin: c.heureFin, matiere: c.matiere ?? "", prevu: c.prevu ?? "", bilan: c.bilan ?? "",
             seance: lesSeances[0]?.titre ?? "",
             aides: [
-              // Une aide de séance commence avec la première phase de sa séance : juste après le rituel pour la première.
+              // Une aide de séance part avec sa séance : juste après le rituel pour la première.
               ...aidesDuCreneau(c, deSeance, lesSeances.map((s) => s.id)).map((m) => {
-                const premiere = pas.findIndex((p) => p.seance === m.seanceId);
-                return { id: m.id, titre: titreDeLAide(m), minuteur, ...(premiere > 0 ? { etape: premiere } : {}) };
+                const etape = pas.findIndex((p) => p.seance === m.seanceId);
+                return { id: m.id, titre: titreDeLAide(m), minuteur, ...(etape > 0 ? { etape } : {}) };
               }),
               ...aFaire.map((x) => {
                 const etape = debutDesFiches + lesSiennes(x.eleve).indexOf(x);
@@ -521,23 +536,19 @@ export async function cadresDuDeroulement(etapes: PasDuDeroulement[], pictos: Pi
     return r ? { ...p, matiere: matiereDeLaRecette(r), domaine: domaineDeLaRecette(r) } : p;
   });
   // Le picto de la matière, par défaut ; celui du domaine si l'enseignant détaille la matière et l'a choisi — jamais
-  // celui du verbe (demandes de l'enseignant). Le rituel a le sien, sous « Rituel » ; un jeu, celui de son nom
-  // (« jeu de l'oie » : la banque l'écrit avec l'apostrophe droite).
+  // celui du verbe (demandes de l'enseignant). Le rituel a le sien, sous « Rituel ».
   const cibles = pas.map((p) => {
     if (p.rituel) return { nom: "Rituel", matiere: "Rituel" };
-    if (p.jeu) return { nom: p.texte.replace(/’/g, "'"), matiere: undefined };
     const nom = p.domaine ?? "";
     return nom ? { nom, matiere: (p.fiche && p.matiere) || matiereDuNom(nom, domaines) } : null;
   });
   const images: (string | undefined)[] = pas.map(() => undefined);
   const montres: RefPicto[] = [];
   try {
-    const aProposer = [...new Set([...cibles.flatMap((x) => (x ? [x.matiere ?? x.nom] : [])), ...(pas.some((p) => p.jeu) ? [JEU] : [])])];
+    const aProposer = [...new Set(cibles.flatMap((x) => (x ? [x.matiere ?? x.nom] : [])))];
     const proposes = await pictosProposes(aProposer).catch((): Record<string, number> => ({}));
-    // La photo d'un support d'abord ; sinon le picto de la matière, ou du domaine ; un jeu sans picto à son nom, celui du jeu.
-    const refs = cibles.map((x, i) => pas[i].picto
-      ?? (x ? pictoDuDomaine(x.nom, x.matiere, choix, parDomaine, domaines, proposes) : null)
-      ?? (pas[i].jeu ? proposes[JEU] ?? null : null));
+    // La photo d'un support d'abord ; sinon le picto de la matière, ou du domaine.
+    const refs = cibles.map((x, i) => pas[i].picto ?? (x ? pictoDuDomaine(x.nom, x.matiere, choix, parDomaine, domaines, proposes) : null));
     const { chargerImages } = await import("./components/ChoixPicto");
     const dessins = await chargerImages([...new Set(refs.filter((r): r is number | string => r != null))], true);
     refs.forEach((r, i) => { if (r != null && dessins[r]) { images[i] = dessins[r]; montres.push(r); } });
@@ -552,9 +563,9 @@ export async function cadresDuDeroulement(etapes: PasDuDeroulement[], pictos: Pi
 }
 
 /**
- * Le déroulement d'un créneau, pour les tablettes : le rituel, les phases de
- * ses séances, ses jeux, ses fiches, chacun dans son cadre, reliés par des
- * flèches, de haut en bas. Chaque cadre est une étape : le téléphone les lit pour que la
+ * Le déroulement d'un créneau, pour les tablettes : le rituel, ses séances,
+ * ses jeux, ses fiches, chacun dans son cadre, reliés par des flèches, de
+ * haut en bas. Chaque cadre est une étape : le téléphone les lit pour que la
  * tablette surligne où en est la classe.
  */
 export async function pageDuDeroulement(etapes: PasDuDeroulement[]): Promise<string> {
@@ -587,16 +598,15 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
   enCours = true;
   try {
     const { api } = await import("./api");
-    const { etapesDeLaSeance } = await import("./aidesALaTache");
     const jours = joursPublies(maintenant);
     const [creneaux, seances, materiel, sequences, jeux] = await Promise.all([
       api.creneauxList(jours[0], jours[jours.length - 1]), api.seancesList(), api.materielList(), api.sequencesList().catch((): Sequence[] => []),
       api.jeuxList().catch((): Jeu[] => []),
     ]);
-    const journal = journalDes(jours, creneaux, seances, materiel, etapesDeLaSeance, sequences, jeux);
-    // Les déroulements de chaque créneau qui en a : celui de la classe — le rituel, les phases de ses séances, ses
-    // jeux —, et celui de chaque élève qui a des fiches, qui finit par les siennes. Leurs étapes entrent dans la
-    // signature : une phase réécrite, un jeu renommé, et ils repartent.
+    const journal = journalDes(jours, creneaux, seances, materiel, sequences, jeux);
+    // Les déroulements de chaque créneau qui en a : celui de la classe — le rituel, ses séances, ses jeux —, et
+    // celui de chaque élève qui a des fiches, qui finit par les siennes. Leurs étapes entrent dans la signature :
+    // une séance renommée, un jeu ajouté, et ils repartent.
     const fiches = materiel.filter(estUneFicheDEleve);
     const seanceDe = new Map(seances.map((s) => [s.id, s]));
     const sequenceDe = new Map(sequences.map((q) => [q.id, q]));
@@ -612,7 +622,7 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
         ...Object.entries(publie.deroules ?? {}).map(([eleve, cle]) => [cle, eleve] as [string, string]),
       ];
       for (const [cle, eleve] of aPublier) {
-        deroulements.push({ cle, pas: pasDuDeroulement(c, seance, etapesDeLaSeance, fiches, domaine, eleve, sequences, seances, jeux) });
+        deroulements.push({ cle, pas: pasDuDeroulement(c, seance, fiches, domaine, eleve, sequences, seances, jeux) });
       }
     }
     // Un picto de matière ou de domaine choisi, une matière détaillée ou non : les déroulements changent, ils repartent.
