@@ -9,7 +9,10 @@
 // mathématiques, le français et l'histoire-géographie en lignes, domaine par
 // domaine, les périodes en colonnes : celle du programme, d'un livret ou d'un
 // guide, sinon celle que Maitrize suggère (periodesProposees.ts) ; l'enseignant
-// les glisse où il veut. La soustraction posée du CE1 y est aussi.
+// les glisse où il veut. La soustraction posée du CE1 y est aussi, en
+// période 3. La maternelle aussi, une section par dossier (demande de
+// l'enseignant, 31 octobre 2026) : ses domaines en lignes (voir
+// sequencesDeMaternelle.ts).
 //
 // En numération et en calcul, chaque séance s'ouvre sur le calcul mental, au
 // procédé La Martinière (demande de l'enseignant) — sauf les séquences de
@@ -59,10 +62,18 @@ import { DEMARCHES_VOCABULAIRE_CM } from "./cycle3Vocabulaire";
 import { programmationProposee } from "./programmation";
 import { sequenceDuManuel } from "./sequencesDuManuel";
 import {
+  DISCIPLINES_DE_MATERNELLE, DOMAINES_DE_MATERNELLE, SECTIONS, competenceDeMaternelle, domaineDeMaternelle, estUneSection, matiereDeMaternelle,
+  planDeMaternelle, sectionsDeLaDemarche, type DisciplineDeMaternelle, type Section,
+} from "./sequencesDeMaternelle";
+import type { Images } from "./supportsVisuels";
+import {
   DEMARCHE_SOUSTRACTION_POSEE, FEUILLES_SOUSTRACTION_POSEE, MATERIEL_SOUSTRACTION_POSEE, competenceDeLaSoustraction, graineDeLaFeuille,
 } from "./sequenceSoustractionPosee";
 
 export const CLASSES: Classe[] = ["CP", "CE1", "CE2", "CM1", "CM2"];
+
+/** La classe d'un dossier : une section de maternelle, ou une classe de l'école. */
+export type ClasseDuDossier = Section | Classe;
 
 // ── Les familles : les disciplines et leurs domaines ───────────────────────
 
@@ -74,7 +85,7 @@ export const DISCIPLINES: { nom: Discipline; icone: string; court: string }[] = 
   { nom: "Histoire-géographie", icone: "🌍", court: "Histoire-géo" },
 ];
 
-export interface Domaine { id: string; discipline: Discipline; nom: string }
+export interface Domaine { id: string; discipline: Discipline | DisciplineDeMaternelle; nom: string }
 
 export const DOMAINES: Domaine[] = [
   { id: "nombres", discipline: "Mathématiques", nom: "Les nombres" },
@@ -172,20 +183,24 @@ export function classesDeLaDemarche(d: Pick<Demarche, "id" | "nom">): Classe[] {
 /** Le nom sans la classe qui le termine : la classe est déjà dite. */
 export const nomSansClasse = (nom: string) => nom.replace(/\s*\((?:CP|CE1|CE2|CM1|CM2)(?:\s*[-,]\s*(?:CP|CE1|CE2|CM1|CM2))*\)\s*$/, "");
 
+/** Dans le dossier d'une classe, le nom sans la classe ni la section qu'il dit — à la fin, ou avant les deux-points : le dossier les dit. */
+export const nomDansLeDossier = (nom: string) =>
+  nomSansClasse(nom).replace(/\s*\((?:PS|MS|GS)(?:\s*[-,]\s*(?:PS|MS|GS))*\)(?=\s*(?::|$))/, "").trim();
+
 /** La période que le programme ou le livret fixe pour la démarche, à cette classe, et la phrase qui la donne ; rien quand ils n'en disent pas. */
-export function repereDeLaDemarche(demarcheId: string, classe: Classe, competence = ""): { periode: number; raison: string } | null {
+export function repereDeLaDemarche(demarcheId: string, classe: ClasseDuDossier, competence = ""): { periode: number; raison: string } | null {
   const p = programmationProposee({ niveau: classe, competenceTitre: competence }, demarcheId);
   return p?.periode ? { periode: p.periode, raison: p.raison } : null;
 }
 
 /** La période seule. */
-export const periodeDeLaDemarche = (demarcheId: string, classe: Classe, competence = ""): number | null =>
+export const periodeDeLaDemarche = (demarcheId: string, classe: ClasseDuDossier, competence = ""): number | null =>
   repereDeLaDemarche(demarcheId, classe, competence)?.periode ?? null;
 
 // ── Les séquences ──────────────────────────────────────────────────────────
 
-/** Une séquence toute faite : une démarche, à une classe. */
-export interface SequenceToutefaite { cle: string; demarche: Demarche; classe: Classe; domaine: Domaine }
+/** Une séquence toute faite : une démarche, à une classe ou une section de maternelle. */
+export interface SequenceToutefaite { cle: string; demarche: Demarche; classe: ClasseDuDossier; domaine: Domaine }
 
 /** Les séquences toutes faites qui ne sont pas un déroulement de la fiche d'une séquence : leurs séances et leurs feuilles sont à elles. */
 interface Propre { demarche: Demarche; classe: Classe; plan: () => PlanDesFeuilles; competence: (refs: Referentiel[]) => CompetenceSelectionnee | null }
@@ -203,8 +218,9 @@ let toutes: SequenceToutefaite[] | null = null;
  * Toutes les séquences toutes faites : chaque démarche de mathématiques, de
  * français ou d'histoire-géographie d'une classe connue, à chacune de ses
  * classes où les ateliers fabriquent au moins une feuille ; puis celles qui
- * sont à elles. Dans l'ordre des domaines, des classes, puis du menu des
- * déroulements.
+ * sont à elles ; puis celles de la maternelle, à chacune de leurs sections —
+ * leurs feuilles se font dans leurs ateliers. Dans l'ordre des domaines, des
+ * classes, puis du menu des déroulements.
  */
 export function sequencesToutesFaites(): SequenceToutefaite[] {
   if (toutes) return toutes;
@@ -218,18 +234,27 @@ export function sequencesToutesFaites(): SequenceToutefaite[] {
     for (const c of classesDeLaDemarche(demarche)) if (lesFeuilles(demarche, c) > 0) ajouter(demarche, c);
   }
   for (const p of PROPRES) ajouter(p.demarche, p.classe);
+  for (const demarche of DEMARCHES) {
+    const d = domaineDeMaternelle(demarche.id);
+    if (d) for (const c of sectionsDeLaDemarche(demarche.id)) sortie.push({ cle: `${demarche.id}:${c}`, demarche, classe: c, domaine: d });
+  }
   const rang = new Map(sortie.map((s, i) => [s.cle, i]));
-  toutes = sortie.sort((a, b) => DOMAINES.indexOf(a.domaine) - DOMAINES.indexOf(b.domaine)
-    || CLASSES.indexOf(a.classe) - CLASSES.indexOf(b.classe) || rang.get(a.cle)! - rang.get(b.cle)!);
+  const domaines = [...DOMAINES_DE_MATERNELLE, ...DOMAINES];
+  const classes: ClasseDuDossier[] = [...SECTIONS, ...CLASSES];
+  toutes = sortie.sort((a, b) => domaines.indexOf(a.domaine) - domaines.indexOf(b.domaine)
+    || classes.indexOf(a.classe) - classes.indexOf(b.classe) || rang.get(a.cle)! - rang.get(b.cle)!);
   return toutes;
 }
 
 // ── Les dossiers : un par classe ───────────────────────────────────────────
 
 /** L'onglet de Fabriquer de chaque dossier, et sa classe : sa carte est au catalogue (voir catalogueAteliers.ts). */
-export const DOSSIERS: Record<string, Classe> = { sequencesCP: "CP", sequencesCE1: "CE1", sequencesCE2: "CE2", sequencesCM1: "CM1", sequencesCM2: "CM2" };
+export const DOSSIERS: Record<string, ClasseDuDossier> = {
+  sequencesPS: "PS", sequencesMS: "MS", sequencesGS: "GS",
+  sequencesCP: "CP", sequencesCE1: "CE1", sequencesCE2: "CE2", sequencesCM1: "CM1", sequencesCM2: "CM2",
+};
 
-export const classeDuDossier = (onglet: string): Classe | null => DOSSIERS[onglet] ?? null;
+export const classeDuDossier = (onglet: string): ClasseDuDossier | null => DOSSIERS[onglet] ?? null;
 
 // ── Le tableau : les familles en lignes, les périodes en colonnes ──────────
 
@@ -248,17 +273,17 @@ export const COLONNES_DU_TABLEAU: { periode: number | null; titre: string; aide:
 ];
 
 export interface LigneDuTableau { domaine: Domaine; cases: SequenceToutefaite[][] }
-export interface BlocDuTableau { discipline: Discipline; icone: string; nombre: number; lignes: LigneDuTableau[] }
+export interface BlocDuTableau { discipline: Discipline | DisciplineDeMaternelle; icone: string; nombre: number; lignes: LigneDuTableau[] }
 
 /**
  * Le tableau d'une classe, comme une programmation de l'année : une ligne par
- * domaine qui a des séquences, groupées par discipline ; une case par
- * colonne — la période du programme ou du livret, ou celle que l'enseignant
- * a choisie.
+ * domaine qui a des séquences, groupées par discipline — en maternelle, par
+ * domaine du programme ; une case par colonne — la période du programme ou
+ * du livret, ou celle que l'enseignant a choisie.
  */
 export function tableauDesSequences(liste: SequenceToutefaite[], periodeDe: (s: SequenceToutefaite) => number | null): BlocDuTableau[] {
-  return DISCIPLINES.map((d) => {
-    const lignes = DOMAINES.filter((x) => x.discipline === d.nom)
+  return [...DISCIPLINES_DE_MATERNELLE, ...DISCIPLINES].map((d) => {
+    const lignes = [...DOMAINES_DE_MATERNELLE, ...DOMAINES].filter((x) => x.discipline === d.nom)
       .map((domaine) => ({ domaine, cases: COLONNES_DU_TABLEAU.map((c) => liste.filter((s) => s.domaine === domaine && periodeDe(s) === c.periode)) }))
       .filter((l) => l.cases.some((c) => c.length > 0));
     return { discipline: d.nom, icone: d.icone, nombre: lignes.reduce((n, l) => n + l.cases.reduce((m, c) => m + c.length, 0), 0), lignes };
@@ -423,29 +448,34 @@ export interface PlanToutFait {
   calculMental: boolean;
 }
 
-/** Ce que la classe dit d'elle-même, pour les feuilles qui en ont besoin : le plan de la classe de la géographie, les étiquettes des maquettes. */
-export interface ContexteDeLaClasse { salle?: { elements: ElemSalle[]; agencement: string }; prenoms?: string[] }
+/**
+ * Ce que la classe dit d'elle-même, pour les feuilles qui en ont besoin : le plan de la classe de la géographie, les étiquettes
+ * des maquettes ; en maternelle, les pictogrammes des feuilles, une fois chargés (voir sequencesDeMaternelle.ts).
+ */
+export interface ContexteDeLaClasse { salle?: { elements: ElemSalle[]; agencement: string }; prenoms?: string[]; images?: Images }
 
 /**
  * Les séances et les feuilles d'une séquence toute faite, à une classe et une
  * période : celles que la fiche d'une séquence fabrique pour ce déroulement,
  * la séance des mots en tête d'une séquence de problèmes, et le calcul mental
  * en tête de chaque séance de numération et de calcul — sauf si l'on n'en
- * veut pas.
+ * veut pas. En maternelle, ni calcul mental ni nombres de la période.
  */
 export function planToutFait(
-  d: Demarche, classe: Classe, periode: number, options: { calculMental?: boolean; competence?: string } & ContexteDeLaClasse = {},
+  d: Demarche, classe: ClasseDuDossier, periode: number, options: { calculMental?: boolean; competence?: string } & ContexteDeLaClasse = {},
 ): PlanToutFait {
   const propre = propreDe(d.id);
   let base: { demarche: Demarche; plan: PlanDesFeuilles };
   if (propre) {
     base = { demarche: d, plan: propre.plan() };
   } else {
-    const brut = planDesFeuilles(d.id, { classe, periode, competence: options.competence ?? "", salle: options.salle, prenoms: options.prenoms })
-      ?? { feuilles: [], materiel: [] };
+    const brut = estUneSection(classe) ? planDeMaternelle(d.id, classe, options.competence ?? "", options.images)
+      : planDesFeuilles(d.id, { classe, periode, competence: options.competence ?? "", salle: options.salle, prenoms: options.prenoms })
+        ?? { feuilles: [], materiel: [] };
     const { demarche, plan } = avecLesMotsDesProblemes(d, brut);
     base = { demarche: demarche ?? d, plan: plan ?? brut };
   }
+  if (estUneSection(classe)) return { ...base, calculMental: false };
   if (ouverteSurLeCalculMental(base.demarche)) {
     return options.calculMental === false ? { ...sansLeCalculMental(base.demarche, base.plan), calculMental: false } : { ...base, calculMental: true };
   }
@@ -462,22 +492,26 @@ interface RefSous { titre: string; competences?: RefComp[]; competencesGenerales
 interface RefDom { id: string; titre: string; sousDomaines?: RefSous[] }
 
 /** Les domaines du programme où chercher la compétence d'une discipline. */
-const DOMAINE_DU_PROGRAMME: Record<Discipline, RegExp> = {
+const DOMAINE_DU_PROGRAMME: Record<Discipline | DisciplineDeMaternelle, RegExp> = {
   "Mathématiques": /math/i, "Français": /fran/i, "Histoire-géographie": /histoire|g[ée]ographie|questionner/i,
+  "Le langage oral et écrit": /langage/i, "Les premiers outils mathématiques": /math/i, "Se repérer dans le temps et l'espace": /temps|monde/i,
 };
 
 /**
  * La compétence du programme qu'une séquence toute faite vise : la première,
  * à sa classe, pour laquelle la fiche d'une séquence propose ce déroulement —
  * à la période choisie d'abord, puis aux autres (au CP, les nombres jusqu'à 59
- * ou jusqu'à 100 suivent la période). Rien si aucune ne le propose.
+ * ou jusqu'à 100 suivent la période). En maternelle, celle que sa démarche ou
+ * son atelier nomme, d'abord. Rien si aucune ne le propose.
  */
-export function competenceDeLaDemarche(referentiels: Referentiel[], demarcheId: string, classe: Classe, periode: number): CompetenceSelectionnee | null {
+export function competenceDeLaDemarche(referentiels: Referentiel[], demarcheId: string, classe: ClasseDuDossier, periode: number): CompetenceSelectionnee | null {
   const propre = propreDe(demarcheId);
   if (propre) return propre.competence(referentiels);
   const demarche = demarcheDe(demarcheId);
   if (!demarche) return null;
-  const discipline = domaineDeLaDemarche(demarche)?.discipline;
+  const nommee = estUneSection(classe) ? competenceDeMaternelle(referentiels, demarche, classe) : null;
+  if (nommee) return nommee;
+  const discipline = (domaineDeLaDemarche(demarche) ?? domaineDeMaternelle(demarcheId))?.discipline;
   const actifs = referentiels.filter((r) => r.actif).sort((a, b) => Number(/2025|2026/.test(b.nom)) - Number(/2025|2026/.test(a.nom)));
   const candidates: { c: CompetenceSelectionnee; ref: string }[] = [];
   for (const ref of actifs) {
@@ -517,14 +551,15 @@ export function competenceDeLaDemarche(referentiels: Referentiel[], demarcheId: 
  * déroulement (voir poserLeDeroulement.ts).
  */
 export async function creerLaSequenceToutefaite(choix: {
-  tout: PlanToutFait; classe: Classe; periode: number; titre: string; competence: CompetenceSelectionnee | null; graine: number;
+  tout: PlanToutFait; classe: ClasseDuDossier; periode: number; titre: string; competence: CompetenceSelectionnee | null; graine: number;
   aides: { sequentiel: boolean; parole: number };
   onProgres?: (texte: string) => void; onEchec?: (titre: string, erreur: unknown) => void;
 }): Promise<{ sequence: Sequence; seances: number; feuilles: number; aides: number }> {
   const { tout: { demarche, plan }, competence } = choix;
-  const matiere = competence?.domaineTitre || domaineDeLaDemarche(demarche)?.discipline || "Mathématiques";
+  const matiere = competence?.domaineTitre || domaineDeLaDemarche(demarche)?.discipline || matiereDeMaternelle(demarche.id) || "Mathématiques";
+  const cycle = estUneSection(choix.classe) ? "Cycle 1" : choix.classe === "CM1" || choix.classe === "CM2" ? "Cycle 3" : "Cycle 2";
   const sequence: Sequence = {
-    id: newId(), titre: choix.titre.trim() || demarche.nom, matiere, cycle: "Cycle 2",
+    id: newId(), titre: choix.titre.trim() || demarche.nom, matiere, cycle,
     objectifs: demarche.resume, competences: JSON.stringify(competence ? [competence] : []), competenceVisee: competence ? JSON.stringify(competence) : "",
     imageNom: null, couleur: couleurPourMatiere(matiere), dateCreation: nowIso(), periode: choix.periode, annee: anneeScolaireActuelle(), niveau: choix.classe,
     ratingEngagement: 0, ratingFacilite: 0, ratingApprentissage: 0, ratingDateMaj: null, projetId: null, video: "",

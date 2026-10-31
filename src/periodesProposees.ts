@@ -9,8 +9,13 @@
 // en haut de la séquence, et sa raison commence par « Suggestion de Maitrize ». Une ligne se répartit sur l'année, du plus
 // simple au plus complexe ou du proche au lointain, autour des séquences que
 // les textes datent. L'enseignant change une période en glissant la séquence.
+//
+// La maternelle aussi (demande de l'enseignant, 31 octobre 2026) : son
+// programme range ses objectifs par âge, sans période ; Maitrize s'appuie sur
+// ce qu'il dit de l'ordre des apprentissages (voir sequencesDeMaternelle.ts).
 
 import type { Classe } from "./feuillesDesSequences";
+import type { Section } from "./sequencesDeMaternelle";
 
 export interface PeriodeProposee { periode: number; raison: string }
 
@@ -239,5 +244,45 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
   },
 };
 
+// ── La maternelle : d'après le programme de l'école maternelle (BO n° 41 du 31 octobre 2024, BO n° 19 du 7 mai 2026) ──
+
+const COLLECTIONS = "le programme veut « s'assurer d'une bonne compréhension des nombres deux, puis trois, avant d'aborder des collections "
+  + "de quatre objets », une acquisition qui « s'étale sur plusieurs mois » : les collections viennent tôt — dès la rentrée en moyenne et en "
+  + "grande section, en période 2 en petite section, une fois la classe découverte.";
+const PROBLEME_DU_JOUR = "le programme propose ces problèmes « dès que les élèves sont capables de déterminer les quantités impliquées dans le "
+  + "problème » : la période qui suit les collections. La séquence tient une période ; on la reprend aux suivantes avec une autre sorte de "
+  + "problème — l'ajout d'abord, « plus accessible » que le retrait d'après le programme.";
+const CHRONOLOGIE = "le programme fait construire « de premiers repères temporels dans le cadre d'activités récurrentes de la vie quotidienne » : "
+  + "la suite se vit d'abord en classe. En petite section quand les moments de la journée sont connus, en période 3 ; en moyenne section en "
+  + "période 2 ; en grande section dès la rentrée, avant le temps long des histoires.";
+const PHONOLOGIE = "des séances « courtes, structurées et répétées régulièrement », où le professeur part « de la perception du mot pour aller "
+  + "vers celle de la syllabe puis du phonème » : les syllabes en période 2 en moyenne section ; dès la rentrée en grande section, pour aller "
+  + "jusqu'aux phonèmes avant le CP. La séquence se reprend ensuite sur d'autres mots.";
+const ALBUM = "le programme fait « commencer par les mots relatifs aux actes du quotidien, aux activités de la classe et aux relations avec "
+  + "les autres » : les mots d'un album viennent ensuite. L'histoire suit les saisons et s'achève au printemps : la période 4.";
+
+export const PERIODES_PROPOSEES_EN_MATERNELLE: Record<Section, Record<string, PeriodeProposee>> = {
+  PS: {
+    ...ligne(COLLECTIONS, { "collections-maternelle": 2 }),
+    ...ligne(PROBLEME_DU_JOUR, { "probleme-du-jour-maternelle": 3 }),
+    ...ligne(CHRONOLOGIE, { "chronologie-maternelle": 3 }),
+  },
+  MS: {
+    ...ligne(ALBUM, { "vilain-petit-canard-ms": 4 }),
+    ...ligne(PHONOLOGIE, { phonologie: 2 }),
+    ...ligne(COLLECTIONS, { "collections-maternelle": 1 }),
+    ...ligne(PROBLEME_DU_JOUR, { "probleme-du-jour-maternelle": 2 }),
+    ...ligne(CHRONOLOGIE, { "chronologie-maternelle": 2 }),
+  },
+  GS: {
+    ...ligne(ALBUM, { "vilain-petit-canard-gs": 4 }),
+    ...ligne(PHONOLOGIE, { phonologie: 1 }),
+    ...ligne(COLLECTIONS, { "collections-maternelle": 1 }),
+    ...ligne(PROBLEME_DU_JOUR, { "probleme-du-jour-maternelle": 2 }),
+    ...ligne(CHRONOLOGIE, { "chronologie-maternelle": 1 }),
+  },
+};
+
 /** La période que Maitrize propose à une séquence qu'aucun texte ne date, et pourquoi ; rien pour les autres. */
-export const periodeProposee = (demarcheId: string, classe: Classe): PeriodeProposee | null => PERIODES_PROPOSEES[classe]?.[demarcheId] ?? null;
+export const periodeProposee = (demarcheId: string, classe: Classe | Section): PeriodeProposee | null =>
+  (classe === "PS" || classe === "MS" || classe === "GS" ? PERIODES_PROPOSEES_EN_MATERNELLE[classe] : PERIODES_PROPOSEES[classe])?.[demarcheId] ?? null;

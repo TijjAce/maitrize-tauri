@@ -93,10 +93,10 @@ describe("celles de grande section, rangées avec la maternelle", () => {
     it(`${d.nom} : d'où elle vient, la compétence de 2025 qu'elle sert, son livre dans la bibliothèque`, () => {
       sourceEtSeances(s);
       expect(d.nom).toMatch(/\(GS\)$/);
-      // Ni domaine ni classe du CP au CM2 : elle n'est pas parmi les séquences toutes faites.
+      // Ni domaine ni classe du CP au CM2 : elle est dans le dossier de la grande section (31 octobre 2026).
       expect(s.domaine).toBeUndefined();
       expect(classesDeLaDemarche(d)).toEqual([]);
-      expect(sequencesToutesFaites().some((x) => x.demarche.id === d.id)).toBe(false);
+      expect(sequencesToutesFaites().filter((x) => x.demarche.id === d.id).map((x) => x.classe)).toEqual(["GS"]);
       for (const x of d.seances) expect(x.phases.some((p) => p.phase === PHASE_LA_MARTINIERE), x.titre).toBe(false);
       // Une compétence du programme de 2025, et une seule, en grande section.
       const trouvees = deLaMaternelle.filter((c) => c.niveau === "GS" && d.visee!.intitule.test(c.texte));

@@ -29,6 +29,9 @@ function retirerLaSequence(id: string, nav: Nav) {
   };
 }
 
+/** « au CP », « en GS ». */
+const aLaClasse = (classe: string) => `${/^[PMG]S$/.test(classe) ? "en" : "au"} ${classe}`;
+
 /** Quelques titres, pour qu'on choisisse en les disant. */
 const enListe = (titres: string[]) => `${titres.slice(0, 3).map((t) => `« ${t} »`).join(", ")}${titres.length > 3 ? "…" : ""}`;
 
@@ -58,17 +61,21 @@ export async function sequenceToutefaiteACreer(c: Extract<Compris, { genre: "cre
   const stf = await import("./sequencesToutesFaites");
   const toutes = stf.sequencesToutesFaites().filter((s) => !c.classe || s.classe === c.classe);
   const trouvees = nommesParmi(c.titre, toutes.map((s) => ({ titre: s.demarche.nom, valeur: s })));
-  if (!trouvees.length) return { ok: false, fait: `Aucune séquence toute faite ne parle de « ${c.titre} »${c.classe ? ` au ${c.classe}` : ""}.` };
-  const noms = [...new Set(trouvees.map((s) => stf.nomSansClasse(s.demarche.nom)))];
+  if (!trouvees.length) return { ok: false, fait: `Aucune séquence toute faite ne parle de « ${c.titre} »${c.classe ? ` ${aLaClasse(c.classe)}` : ""}.` };
+  const noms = [...new Set(trouvees.map((s) => stf.nomDansLeDossier(s.demarche.nom)))];
   if (noms.length > 1) return { ok: false, fait: `Laquelle ? ${enListe(noms)}. Dites quelques mots de son titre.` };
-  if (trouvees.length > 1) return { ok: false, fait: `Pour quelle classe ? ${trouvees.map((s) => s.classe).join(", ")}. Dites par exemple « … au ${trouvees[0].classe} ».` };
+  if (trouvees.length > 1) return { ok: false, fait: `Pour quelle classe ? ${trouvees.map((s) => s.classe).join(", ")}. Dites par exemple « … ${aLaClasse(trouvees[0].classe)} ».` };
   const s = trouvees[0];
   const { periodeProposee } = await import("./periodesProposees");
   const choisies = stf.lirePeriodes(await api.settingGet(stf.CLE_PERIODES).catch(() => null));
   const periode = c.periode ?? choisies[s.cle] ?? stf.repereDeLaDemarche(s.demarche.id, s.classe)?.periode
     ?? periodeProposee(s.demarche.id, s.classe)?.periode ?? await periodeDuMoment();
   const competence = stf.competenceDeLaDemarche(await api.referentielsList().catch(() => []), s.demarche.id, s.classe, periode);
-  const tout = stf.planToutFait(s.demarche, s.classe, periode, { calculMental: true, competence: competence?.competenceTitre });
+  // En maternelle, les feuilles faites de pictogrammes attendent leurs images (voir sequencesDeMaternelle.ts).
+  const { estUneSection, feuillesEnPictos } = await import("./sequencesDeMaternelle");
+  const enPictos = estUneSection(s.classe) ? feuillesEnPictos(s.demarche.id, s.classe, competence?.competenceTitre ?? "") : null;
+  const images = enPictos ? await (await import("./components/ChoixPicto")).chargerImages(enPictos.ids).catch(() => ({})) : undefined;
+  const tout = stf.planToutFait(s.demarche, s.classe, periode, { calculMental: true, competence: competence?.competenceTitre, images });
   const n = tout.demarche.seances.length;
   return demander(`Créer la séquence toute faite « ${s.demarche.nom} » (période ${periode}) : ${n} séances et leurs feuilles ?`, async () => {
     const [{ seanceDeLaParole }, { graineAuHasard }] = await Promise.all([import("./aidesDesSequences"), import("./hasard")]);

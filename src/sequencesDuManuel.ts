@@ -35,7 +35,7 @@ export interface SequenceDuManuel {
   domaine?: string;
   /**
    * En maternelle, la matière de l'emploi du temps, qui donne sa couleur au livre de la bibliothèque : ses séquences n'ont pas de
-   * domaine, et ne sont pas parmi les séquences toutes faites, qui vont du CP au CM2.
+   * domaine de l'école ; elles vont dans le dossier de la grande section (voir sequencesDeMaternelle.ts).
    */
   matiere?: string;
   /** Ses feuilles et son matériel ; en maternelle, le matériel seul. */

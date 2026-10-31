@@ -6,7 +6,7 @@ export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "vilainPetitCanard", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive",
-  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "problemesAides", "problemesCM", "coloriage", "collections", "albumCalcul", "problemeDuJour", "motifs", "tangram", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "rectangles", "calculCM", "soustractionPosee", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "grandeursCM", "geometrie", "solides", "deplacements", "geometrieCM", "donnees", "numeration",
+  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "problemesAides", "problemesCM", "coloriage", "collections", "albumCalcul", "problemeDuJour", "motifs", "tangram", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "rectangles", "calculCM", "soustractionPosee", "sequencesPS", "sequencesMS", "sequencesGS", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "grandeursCM", "geometrie", "solides", "deplacements", "geometrieCM", "donnees", "numeration",
   "carteMentale", "taches",
   "sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction",
   "planClasse", "frise", "paysage",
@@ -40,6 +40,11 @@ export interface Outil {
   sequence?: true;
   /** Un dossier de séquences toutes faites — celles d'une classe — plutôt qu'une seule (demande de l'enseignant, octobre 2026). */
   dossier?: true;
+  /**
+   * L'atelier d'une séquence toute faite rangée dans le tableau de sa classe : sa carte n'est plus à part (demande de
+   * l'enseignant, 31 octobre 2026) ; il s'ouvre depuis la séquence, dans son dossier.
+   */
+  dansSonDossier?: true;
 }
 
 export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[] = [
@@ -47,6 +52,12 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     id: "sequences", libelle: "📚 Séquences toutes faites",
     aide: "Un dossier par classe : les séquences, leurs séances et toutes leurs feuilles, prêtes ; on crée la séquence d'un clic, puis on l'adapte.",
     outils: [
+      { id: "sequencesPS", nom: "PS", icone: "📁", sequence: true, dossier: true,
+        quoi: "Construire des collections jusqu'à trois, le problème du jour, ordonner et raconter une suite d'images — en tableau, période par période, avec leurs pictogrammes." },
+      { id: "sequencesMS", nom: "MS", icone: "📁", sequence: true, dossier: true,
+        quoi: "Le Vilain Petit Canard, les syllabes ; les collections jusqu'à six, le problème du jour ; la chronologie en images — en tableau, période par période, avec leurs pictogrammes." },
+      { id: "sequencesGS", nom: "GS", icone: "📁", sequence: true, dossier: true,
+        quoi: "Le Vilain Petit Canard, des syllabes aux phonèmes ; les collections jusqu'à dix, décomposer les nombres, le problème du jour, le tangram ; la chronologie — en tableau, période par période." },
       { id: "sequencesCP", nom: "CP", icone: "📁", sequence: true, dossier: true,
         quoi: "Grouper par dix, les nombres jusqu'à 100, l'addition posée, les problèmes ; le code et la fluence, les premières phrases, les dictées ; le temps qui passe, le plan de la classe — en tableau, période par période, avec toutes leurs feuilles." },
       { id: "sequencesCE1", nom: "CE1", icone: "📁", sequence: true, dossier: true,
@@ -82,7 +93,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Les jeux d'Éduscol pour ranger les mots en catégories : boîtes de tri, intrus, loto aveugle, « J'appelle… », familles, mistigri — et leur séquence." },
       { id: "suites", nom: "Images séquentielles", icone: "🎞", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Remettre dans l'ordre une histoire, un geste, une recette : les images à découper et les cases à remplir, en colonne ou fléchées — des pictos ou vos photos." },
-      { id: "vilainPetitCanard", nom: "Le Vilain Petit Canard — MS, GS", icone: "🦢", pictos: true, cycles: "Cycle 1", sequence: true,
+      { id: "vilainPetitCanard", nom: "Le Vilain Petit Canard — MS, GS", icone: "🦢", pictos: true, cycles: "Cycle 1", sequence: true, dansSonDossier: true,
         quoi: "La séquence de vocabulaire du guide Éduscol de maternelle : familles d'animaux, documentaires, émotions ou synonymots, lieux, devinettes, plan du récit, tapis de conte — et la séquence entière." },
       { id: "etiquettes", nom: "Étiquettes à catégoriser", icone: "🏷", cycles: "Cycles 2 et 3",
         quoi: "Les mots collectés en grand pour le tableau, en petit par enveloppe, et la corolle lexicale." },
@@ -170,7 +181,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Juste ce qu'il faut : les fiches de places, les cartes-nombres, les bons de commande et le bon panier des situations Éduscol — et leur séquence." },
       { id: "albumCalcul", nom: "L'album à calculer — maternelle", icone: "🐦", cycles: "Cycle 1",
         quoi: "La page vierge de l'album — quatre cases, trois fils, une porte qui cache des oiseaux —, des pages faites d'avance pour les nombres de 2 à 9, des oiseaux à découper, et l'image des oiseaux sur les fils." },
-      { id: "problemeDuJour", nom: "Le problème du jour — maternelle", icone: "🧳", pictos: true, cycles: "Cycle 1", sequence: true,
+      { id: "problemeDuJour", nom: "Le problème du jour — maternelle", icone: "🧳", pictos: true, cycles: "Cycle 1", sequence: true, dansSonDossier: true,
         quoi: "Une sorte de problème pour une période, dix minutes chaque jour : ajouter, enlever, avancer sur la piste, faire des groupes, partager — de la PS à la GS, avec les cartes du jour, l'affiche, le matériel et la grille." },
       { id: "motifs", nom: "Les motifs — maternelle", icone: "🧦", cycles: "Cycle 1",
         quoi: "Le fil à linge de la mascotte, des bandes à reproduire, compléter, prolonger, l'intrus et sa bande autocorrective, le motif qui grandit, la même règle avec d'autres dessins." },
@@ -202,7 +213,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Des objets rangés en rectangle, un quadrillage à dénombrer en le coupant aux dizaines, un grand rectangle à découper, la table de Pythagore — d'où vient la multiplication posée." },
       { id: "calculCM", nom: "Le calcul — CM1, CM2", icone: "➗", cycles: "Cycle 3 (CM1, CM2)",
         quoi: "Additions et soustractions de décimaux, multiplications, divisions en potence par un ou deux chiffres, le quotient et le reste, le partage des centaines, dizaines et unités, les parenthèses — et le corrigé." },
-      { id: "soustractionPosee", nom: "La soustraction posée — CE1", icone: "➖", cycles: "Cycle 2 (CE1)", sequence: true,
+      { id: "soustractionPosee", nom: "La soustraction posée — CE1", icone: "➖", cycles: "Cycle 2 (CE1)", sequence: true, dansSonDossier: true,
         quoi: "La séquence de CE1, d'après Éduscol : chaque séance s'ouvre sur le calcul mental La Martinière ; on retire avec les barres et les cubes, on casse une dizaine, puis une centaine, avant de poser — dix séances et leurs feuilles." },
       { id: "fractions", nom: "Fractions", icone: "🍰", cycles: "Cycle 3",
         quoi: "Cartes, bandes à plier, règle graduée en quarts ou en dixièmes, course des nageurs." },
@@ -329,8 +340,11 @@ export function partiesDeLaFamille(f: { id: string; outils: Outil[] }): { id: st
  */
 export const FAMILLES_DE_SUPPORTS = FAMILLES.map((f) => ({ ...f, outils: f.outils.filter((o) => !o.sequence) })).filter((f) => f.outils.length > 0);
 
-/** Les séquences toutes faites, pour leur onglet : les dossiers du CP au CE2, puis les autres, dans l'ordre du catalogue. */
-export const SEQUENCES_TOUTES_FAITES: Outil[] = FAMILLES.flatMap((f) => f.outils).filter((o) => o.sequence);
+/**
+ * Les séquences toutes faites, pour leur onglet : les dossiers de la PS au CM2, dans l'ordre du catalogue. Les ateliers des
+ * séquences rangées dans leur dossier n'y sont plus : on les ouvre depuis leur séquence.
+ */
+export const SEQUENCES_TOUTES_FAITES: Outil[] = FAMILLES.flatMap((f) => f.outils).filter((o) => o.sequence && !o.dansSonDossier);
 
 /** Le nom d'un atelier, avec son icône : « 🧱 Nombres en cubes » ; son identifiant s'il n'est pas au catalogue. */
 export function nomDeLAtelier(id: string): string {

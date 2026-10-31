@@ -38,19 +38,21 @@ import { DEMARCHES, demarcheDe } from "./demarches";
 import { DEMARCHES_CALCUL } from "./demarchesCalcul";
 import { DEMARCHES_HISTOIRE_GEO } from "./demarchesHistoireGeo";
 import { objectifParId } from "./faitsNumeriques";
-import { planDesFeuilles, type Classe } from "./feuillesDesSequences";
+import { planDesFeuilles } from "./feuillesDesSequences";
 import { estLaSeanceDesMots } from "./motsDesProblemes";
-import { PERIODES_PROPOSEES, periodeProposee } from "./periodesProposees";
+import { PERIODES_PROPOSEES, PERIODES_PROPOSEES_EN_MATERNELLE, periodeProposee } from "./periodesProposees";
 import { DEMARCHE_SOUSTRACTION_POSEE, FEUILLES_SOUSTRACTION_POSEE, graineDeLaFeuille } from "./sequenceSoustractionPosee";
+import { SECTIONS, ateliersDesFeuilles, estUneSection, feuillesEnPictos, type Section } from "./sequencesDeMaternelle";
 import {
   CLASSES, DISCIPLINES, DOSSIERS, PHASE_LA_MARTINIERE, classeDuDossier, classesDeLaDemarche, competenceDeLaDemarche, creerLaSequenceToutefaite,
-  domaineDeLaDemarche, lirePeriodes, nomSansClasse, periodeDeLaDemarche, planToutFait, repereDeLaDemarche, sequencesToutesFaites, tableauDesSequences,
+  domaineDeLaDemarche, lirePeriodes, nomDansLeDossier, nomSansClasse, periodeDeLaDemarche, planToutFait, repereDeLaDemarche, sequencesToutesFaites, tableauDesSequences,
   COLONNES_DU_TABLEAU,
-  type SequenceToutefaite,
+  type ClasseDuDossier, type SequenceToutefaite,
 } from "./sequencesToutesFaites";
 
-const toutes = sequencesToutesFaites();
-const periodeDe = (id: string, c: Classe) => periodeDeLaDemarche(id, c) ?? 3;
+// Celles de l'école, du CP au CM2 ; la maternelle a ses tests, plus bas.
+const toutes = sequencesToutesFaites().filter((s) => !estUneSection(s.classe));
+const periodeDe = (id: string, c: ClasseDuDossier) => periodeDeLaDemarche(id, c) ?? 3;
 const REFERENTIELS: Referentiel[] = [{
   id: "cycle2", nom: "Cycle 2 — CP, CE1, CE2 (programmes 2026)", cycle: "Cycle 2", donnees: JSON.stringify(cycle2),
   estIntegre: true, dateAjout: "", actif: true,
@@ -71,8 +73,8 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     // La soustraction posée du CE1 en est aussi, avec ses séances et ses feuilles à elle.
     expect([...cles].sort()).toEqual([...attendues, "soustraction-posee-ce1:CE1"].sort());
     expect(cles.length).toBeGreaterThan(200);
-    // Les démarches des guides, sans classe, restent dans la fiche d'une séquence ; une démarche sans feuille aussi ; la maternelle a ses cartes.
-    for (const id of ["problemes", "calcul-mental-martiniere", "geometrie-grandeurs", "comprehension", "investigation", "mots-operations-ce2", "phonologie"]) {
+    // Les démarches des guides, sans classe, restent dans la fiche d'une séquence ; une démarche sans feuille aussi.
+    for (const id of ["problemes", "calcul-mental-martiniere", "geometrie-grandeurs", "comprehension", "investigation", "mots-operations-ce2"]) {
       expect(cles.some((c) => c.startsWith(`${id}:`)), id).toBe(false);
     }
     // Un déroulement de plusieurs classes est pris à chacune.
@@ -100,7 +102,7 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     }));
     const programme = (s: SequenceToutefaite) => periodes.get(s.cle) ?? null;
     // Un dossier par classe : chaque séquence est dans celui de sa classe, et dans un seul.
-    expect(Object.values(DOSSIERS)).toEqual(CLASSES);
+    expect(Object.values(DOSSIERS)).toEqual([...SECTIONS, ...CLASSES]);
     expect(classeDuDossier("sequencesCE1")).toBe("CE1");
     expect(classeDuDossier("posees")).toBeNull();
     // Les colonnes : les cinq périodes, puis celles que le programme ne place pas.
@@ -209,6 +211,9 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(nomSansClasse("Pair ou impair (CE1)")).toBe("Pair ou impair");
     expect(nomSansClasse("Les accents (CP, CE1, CE2)")).toBe("Les accents");
     expect(nomSansClasse("Paléolithique et Néolithique (CE2, période 1)")).toBe("Paléolithique et Néolithique (CE2, période 1)");
+    expect(nomDansLeDossier("Le Vilain Petit Canard (GS) : des synonymes")).toBe("Le Vilain Petit Canard : des synonymes");
+    expect(nomDansLeDossier("Le tangram : reproduire des figures (GS)")).toBe("Le tangram : reproduire des figures");
+    expect(nomDansLeDossier("Pair ou impair (CE1)")).toBe("Pair ou impair");
   });
 
   it("ouvrent chaque séance de numération et de calcul sur le calcul mental La Martinière de la classe, avec sa fiche en tête", () => {
@@ -353,6 +358,7 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
   it("se présentent dans Fabriquer en dossiers bleus, un par classe, en tête du catalogue", () => {
     expect(FAMILLES[0].id).toBe("sequences");
     expect(FAMILLES[0].outils.map((o) => [o.id, o.nom, o.sequence, o.dossier])).toEqual([
+      ["sequencesPS", "PS", true, true], ["sequencesMS", "MS", true, true], ["sequencesGS", "GS", true, true],
       ["sequencesCP", "CP", true, true], ["sequencesCE1", "CE1", true, true], ["sequencesCE2", "CE2", true, true],
       ["sequencesCM1", "CM1", true, true], ["sequencesCM2", "CM2", true, true],
     ]);
@@ -366,13 +372,119 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
   });
 
   it("ont leur onglet à part dans Fabriquer : le catalogue des supports ne les montre plus", () => {
-    expect(SEQUENCES_TOUTES_FAITES.map((o) => o.id)).toEqual(["sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "vilainPetitCanard", "problemeDuJour", "soustractionPosee"]);
+    // Un dossier par classe, et plus aucune séquence à part : chacune est dans le tableau de sa classe (31 octobre 2026).
+    expect(SEQUENCES_TOUTES_FAITES.map((o) => o.id)).toEqual(["sequencesPS", "sequencesMS", "sequencesGS", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2"]);
     const supports = FAMILLES_DE_SUPPORTS.flatMap((f) => f.outils);
     expect(supports.some((o) => o.sequence)).toBe(false);
     // La famille des dossiers n'a plus rien à montrer parmi les supports ; les autres gardent leurs ateliers.
     expect(FAMILLES_DE_SUPPORTS.map((f) => f.id)).not.toContain("sequences");
     expect(FAMILLES_DE_SUPPORTS.find((f) => f.id === "francais")?.outils.map((o) => o.id)).not.toContain("vilainPetitCanard");
-    // Chaque carte est d'un côté, et d'un seul.
-    expect(supports.length + SEQUENCES_TOUTES_FAITES.length).toBe(FAMILLES.flatMap((f) => f.outils).length);
+    // Chaque carte est d'un côté, et d'un seul ; les ateliers des séquences rangées dans leur dossier s'ouvrent depuis leur séquence.
+    const rangees = FAMILLES.flatMap((f) => f.outils).filter((o) => o.dansSonDossier);
+    expect(rangees.map((o) => o.id)).toEqual(["vilainPetitCanard", "problemeDuJour", "soustractionPosee"]);
+    expect(supports.length + SEQUENCES_TOUTES_FAITES.length + rangees.length).toBe(FAMILLES.flatMap((f) => f.outils).length);
+  });
+});
+
+describe("les séquences toutes faites de la maternelle, un dossier par section (demande de l'enseignant, 31 octobre 2026)", () => {
+  const maternelle = sequencesToutesFaites().filter((s) => estUneSection(s.classe));
+  const periode = (s: SequenceToutefaite) => repereDeLaDemarche(s.demarche.id, s.classe)?.periode ?? periodeProposee(s.demarche.id, s.classe)?.periode ?? null;
+  const de = (cle: string) => periode(maternelle.find((s) => s.cle === cle)!);
+
+  it("rangent chaque séquence de maternelle à ses sections ; les méthodologies restent dans la bibliothèque", () => {
+    expect(maternelle.map((s) => s.cle).sort()).toEqual([
+      "vilain-petit-canard-ms:MS", "vilain-petit-canard-gs:GS", "phonologie:MS", "phonologie:GS",
+      "collections-maternelle:PS", "collections-maternelle:MS", "collections-maternelle:GS", "decomposition-additive-gs:GS",
+      "probleme-du-jour-maternelle:PS", "probleme-du-jour-maternelle:MS", "probleme-du-jour-maternelle:GS", "formes-tangram-gs:GS",
+      "chronologie-maternelle:PS", "chronologie-maternelle:MS", "chronologie-maternelle:GS",
+    ].sort());
+    for (const id of ["maternelle-modalites", "categoriser-maternelle"]) expect(maternelle.some((s) => s.demarche.id === id), id).toBe(false);
+    for (const section of SECTIONS) {
+      expect(classeDuDossier(`sequences${section}`)).toBe(section);
+      expect((ONGLETS as readonly string[]).includes(`sequences${section}`)).toBe(true);
+    }
+  });
+
+  it("prennent la période du manuel quand il la donne, sinon celle que Maitrize suggère d'après le programme de l'école maternelle", () => {
+    for (const s of maternelle) {
+      const repere = repereDeLaDemarche(s.demarche.id, s.classe);
+      const proposee = periodeProposee(s.demarche.id, s.classe);
+      if (repere) {
+        expect(repere.raison, s.cle).toMatch(/^Manuel « Réussir mon CRPE/);
+        expect(proposee, s.cle).toBeNull();
+        continue;
+      }
+      // Chaque suggestion s'appuie sur une phrase du programme, citée.
+      expect(proposee?.raison, s.cle).toMatch(/^Suggestion de Maitrize : ni le programme ni les guides ne la datent\. [A-ZÀ-Ý].* « .+ ».*\.$/);
+    }
+    const cles = new Set(maternelle.map((s) => s.cle));
+    for (const section of SECTIONS) for (const id of Object.keys(PERIODES_PROPOSEES_EN_MATERNELLE[section])) expect(cles.has(`${id}:${section}`), `${id}:${section}`).toBe(true);
+    // Les collections avant le problème du jour, qui demande de savoir « déterminer les quantités » ; le tangram et l'album à calculer
+    // aux périodes du manuel.
+    for (const section of SECTIONS) expect(de(`collections-maternelle:${section}`)!, section).toBeLessThan(de(`probleme-du-jour-maternelle:${section}`)!);
+    expect(de("formes-tangram-gs:GS")).toBe(3);
+    expect(de("decomposition-additive-gs:GS")).toBe(4);
+    // La soustraction posée du CE1, en période 3, sans attendre les référentiels.
+    expect(repereDeLaDemarche(DEMARCHE_SOUSTRACTION_POSEE.id, "CE1")).toMatchObject({ periode: 3, raison: expect.stringMatching(/période 3 au plus tard/) });
+  });
+
+  it("font un tableau par section : les domaines du programme en lignes, plus rien sans période", () => {
+    const sans = COLONNES_DU_TABLEAU.findIndex((c) => c.periode === null);
+    const gs = tableauDesSequences(maternelle.filter((s) => s.classe === "GS"), periode);
+    expect(gs.map((b) => b.discipline)).toEqual(["Le langage oral et écrit", "Les premiers outils mathématiques", "Se repérer dans le temps et l'espace"]);
+    expect(gs.flatMap((b) => b.lignes.map((l) => l.domaine.nom))).toEqual([
+      "Acquérir le langage oral", "Se préparer à apprendre à lire", "Découvrir les nombres", "Utiliser les nombres pour résoudre des problèmes",
+      "Explorer les solides et les formes planes", "Se repérer dans le temps",
+    ]);
+    for (const section of SECTIONS) {
+      const tableau = tableauDesSequences(maternelle.filter((s) => s.classe === section), periode);
+      expect(tableau.flatMap((b) => b.lignes.flatMap((l) => l.cases[sans])).map((s) => s.cle), section).toEqual([]);
+    }
+    // Les tableaux de l'école ne prennent rien de la maternelle.
+    expect(tableauDesSequences(toutes.filter((s) => s.classe === "CP"), () => 1).map((b) => b.discipline)).toEqual(DISCIPLINES.map((d) => d.nom));
+  });
+
+  it("font leurs feuilles en pictogrammes une fois les images chargées, comme la fiche d'une séquence, sans calcul mental", () => {
+    let avecFeuilles = 0;
+    for (const s of maternelle) {
+      const sans = planToutFait(s.demarche, s.classe, 2);
+      expect(sans.calculMental, s.cle).toBe(false);
+      const enPictos = feuillesEnPictos(s.demarche.id, s.classe as Section);
+      if (!enPictos) continue;
+      expect(sans.plan.feuilles, s.cle).toHaveLength(0);
+      const images = Object.fromEntries(enPictos.ids.map((id) => [id, "data:image/png;base64,AA"]));
+      const avec = planToutFait(s.demarche, s.classe, 2, { images });
+      expect(avec.plan.feuilles.length, s.cle).toBeGreaterThan(0);
+      for (const f of avec.plan.feuilles) {
+        expect(f.seance, `${s.cle} — ${f.titre}`).toBeLessThan(avec.demarche.seances.length);
+        expect(f.fabriquer(5).html.length, `${s.cle} — ${f.titre}`).toBeGreaterThan(200);
+      }
+      avecFeuilles++;
+    }
+    // Le Vilain Petit Canard (2), le problème du jour (3), les collections (3).
+    expect(avecFeuilles).toBe(8);
+  });
+
+  it("ouvrent les ateliers de leurs feuilles, réglés à leur section", () => {
+    for (const s of maternelle) {
+      expect(ateliersDesFeuilles(s.demarche.id).length, s.cle).toBeGreaterThan(0);
+      for (const a of ateliersDesFeuilles(s.demarche.id)) expect((ONGLETS as readonly string[]).includes(a.id), `${s.cle} → ${a.id}`).toBe(true);
+    }
+    expect(ateliersDesFeuilles("vilain-petit-canard-gs")[0].reglages!("GS", "")).toEqual({ niveau: "GS" });
+    expect(ateliersDesFeuilles("probleme-du-jour-maternelle")[0].reglages!("PS", "")).toMatchObject({ niveau: "PS" });
+    expect(ateliersDesFeuilles("collections-maternelle")[0].reglages!("GS", "")).toMatchObject({ niveau: "GS", a: 10 });
+  });
+
+  it("créent la séquence au cycle 1, dans la matière de son domaine ; celles du cours moyen au cycle 3", async () => {
+    const s = maternelle.find((x) => x.cle === "phonologie:MS")!;
+    const tout = planToutFait(s.demarche, s.classe, 2);
+    const r = await creerLaSequenceToutefaite({ tout, classe: "MS", periode: 2, titre: "", competence: null, graine: 1, aides: { sequentiel: false, parole: -1 } });
+    expect(r.sequence).toMatchObject({ niveau: "MS", periode: 2, cycle: "Cycle 1", matiere: "Mobiliser le langage dans toutes ses dimensions" });
+    expect(r.seances).toBe(s.demarche.seances.length);
+    const cm = sequence("division-cm1:CM1");
+    const r2 = await creerLaSequenceToutefaite({
+      tout: planToutFait(cm.demarche, "CM1", 3), classe: "CM1", periode: 3, titre: "", competence: null, graine: 1, aides: { sequentiel: false, parole: -1 },
+    });
+    expect(r2.sequence.cycle).toBe("Cycle 3");
   });
 });

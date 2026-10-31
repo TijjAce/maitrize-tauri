@@ -86,6 +86,9 @@ const PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
   "nombres-livret-cp-59": { periode: 2, raison: cite("CP", "Au plus tard en période 2, les élèves travaillent avec des quantités et des nombres allant jusqu'à cinquante-neuf.") },
   // Les nombres de 10 à 20, d'après le manuel du CRPE de l'enseignant (voir demarcheDixAVingt.ts) : la période que le manuel donne à sa séance.
   "nombres-10-20-cp": { periode: 2, niveau: "CP", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 43", "avec des élèves de CP en période 2") },
+  // La soustraction posée du CE1 (voir sequenceSoustractionPosee.ts) : la période que le programme donne à son algorithme, sans
+  // attendre que la compétence soit trouvée dans les référentiels.
+  "soustraction-posee-ce1": { periode: 3, niveau: "CE1", raison: cite("CE1", "Un algorithme de la soustraction posée est introduit en période 3 au plus tard.") },
   // La soustraction posée avec retenue, d'après le même manuel (voir demarcheSoustractionRetenue.ts).
   "soustraction-retenue-ce1": { periode: 3, niveau: "CE1", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 56", "La séquence se situe en période 3") },
   // Les autres sujets du même manuel (voir sequencesDuManuel.ts), quand il les date.
