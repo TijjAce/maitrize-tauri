@@ -37,9 +37,11 @@ import { Colonnes } from "./AteliersMaths";
 // (demande de l'enseignant) : les familles en lignes, domaine par domaine,
 // les périodes de l'année en colonnes. Une séquence se glisse d'une période
 // à l'autre de sa ligne — ou se range au clic droit — : c'est la
-// programmation de la classe. Celle qu'on choisit s'ouvre sous sa ligne :
-// ses séances, leurs feuilles, et à droite la feuille choisie telle qu'elle
-// s'imprimera, du même tirage que celle qu'on créera. En maternelle, un
+// programmation de la classe. Celle qu'on choisit s'ouvre dans sa page, à la
+// place du tableau (« plutôt que d'ouvrir en dessous, que ça ouvre une
+// page », 31 octobre 2026) : ses séances, leurs feuilles, et à droite la
+// feuille choisie telle qu'elle s'imprimera, du même tirage que celle qu'on
+// créera ; le retour ramène au tableau, sur elle. En maternelle, un
 // dossier par section (voir sequencesDeMaternelle.ts) : ses séquences
 // ouvrent aussi les ateliers où leurs feuilles se font une à une.
 
@@ -116,6 +118,14 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseDuDossier }
     .filter(({ c, j }) => c.periode !== null || tableau.some((b) => b.lignes.some((l) => l.cases[j].length > 0)));
   const [choisieCle, setChoisieCle] = React.useState("");
   const choisie = toutes.find((s) => s.cle === choisieCle) ?? null;
+  // Une séquence ouverte : sa page, depuis le haut. De retour au tableau, la séquence qu'on quitte revient sous les yeux.
+  const page = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => { if (choisieCle) page.current?.scrollIntoView({ block: "start" }); }, [choisieCle]);
+  const [quittee, setQuittee] = React.useState("");
+  React.useEffect(() => {
+    if (choisie || !quittee) return;
+    document.querySelector(`.stf-puce[data-cle="${CSS.escape(quittee)}"]`)?.scrollIntoView({ block: "center" });
+  }, [choisie, quittee]);
   /** Ranger une séquence dans une période ; `null` la rend à la sienne — celle d'un texte, ou celle que Maitrize propose —, ou à aucune. */
   const ranger = (s: SequenceToutefaite, p: number | null) => {
     const suite = { ...choisies };
@@ -148,6 +158,18 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseDuDossier }
     ]);
   };
   const colonnes = colonnesVues.length + 1;
+  if (choisie) {
+    return (
+      <div className="stf-page" ref={page}>
+        <button type="button" className="btn ghost sm stf-retour" onClick={() => { setQuittee(choisie.cle); setChoisieCle(""); }}>
+          ‹ Le tableau {estUneSection(classe) ? "de la" : "du"} {classe}
+        </button>
+        <DetailDeLaSequence key={choisie.cle} s={choisie} infos={infos.get(choisie.cle)}
+          periode={periodeDe(choisie) ?? periodeDuMoment ?? 1} onPeriode={(p) => ranger(choisie, p)}
+          classeDuPlan={classeDuPlan} competenceCherchee={Boolean(referentiels)} />
+      </div>
+    );
+  }
   return (
     <>
       <div className="stf-tableau-cadre">
@@ -183,55 +205,44 @@ export function SequencesToutesFaitesTab({ classe }: { classe: ClasseDuDossier }
                   </th>
                 </tr>
                 {!plie && bloc.lignes.map((ligne) => (
-                  <React.Fragment key={ligne.domaine.id}>
-                    <tr>
-                      <th scope="row" className="stf-domaine">{ligne.domaine.nom}</th>
-                      {colonnesVues.map(({ c, j }) => {
-                        const cleCase = `${ligne.domaine.id}:${c.periode ?? "sans"}`;
-                        // On glisse dans une période de sa ligne ; « Sans période » ne se choisit pas.
-                        const accepte = c.periode !== null && glissee?.domaine === ligne.domaine;
-                        return (
-                          <td key={cleCase} className={`stf-case${c.periode === null ? " stf-sans" : ""}${survol === cleCase ? " survol" : ""}`}
-                            onDragOver={accepte ? (e) => {
-                              e.preventDefault();
-                              e.dataTransfer.dropEffect = "move";
-                              if (survol !== cleCase) setSurvol(cleCase);
-                            } : undefined}
-                            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setSurvol((x) => (x === cleCase ? "" : x)); }}
-                            onDrop={accepte ? (e) => {
-                              e.preventDefault();
-                              const s = toutes.find((x) => x.cle === (e.dataTransfer.getData(TYPE_SEQUENCE) || enVol));
-                              setSurvol("");
-                              setEnVol("");
-                              if (s && c.periode !== null && periodeDe(s) !== c.periode) ranger(s, c.periode);
-                            } : undefined}>
-                            {ligne.cases[j].map((s) => (
-                              <button key={s.cle} type="button" draggable aria-pressed={s === choisie} title={titreDeLaPuce(s, infos.get(s.cle))}
-                                className={`stf-puce${s === choisie ? " actif" : ""}${s.cle === enVol ? " en-vol" : ""}${estApprofondie(s.demarche.id) ? " approfondie" : ""}`}
-                                onClick={() => setChoisieCle(s === choisie ? "" : s.cle)}
-                                onContextMenu={(e) => menu(e, s)}
-                                onDragStart={(e) => { e.dataTransfer.setData(TYPE_SEQUENCE, s.cle); e.dataTransfer.effectAllowed = "move"; setEnVol(s.cle); }}
-                                onDragEnd={() => { setEnVol(""); setSurvol(""); }}>
-                                {estApprofondie(s.demarche.id) && <img className="stf-puce-logo" src={logo} alt={TRAVAILLEE_EN_PROFONDEUR} />}
-                                {infos.get(s.cle)?.proposee && choisies[s.cle] === undefined && <span className="stf-puce-suggestion">Suggestion Maitrize</span>}
-                                <span className="stf-puce-nom">{nomDansLeDossier(s.demarche.nom)}</span>
-                                <span className="stf-puce-meta">{avecLaSeanceDesMots(s.demarche).seances.length} séances</span>
-                              </button>
-                            ))}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                    {choisie && choisie.domaine === ligne.domaine && (
-                      <tr className="stf-ligne-detail">
-                        <td colSpan={colonnes}>
-                          <DetailDeLaSequence key={choisie.cle} s={choisie} infos={infos.get(choisie.cle)}
-                            periode={periodeDe(choisie) ?? periodeDuMoment ?? 1} onPeriode={(p) => ranger(choisie, p)}
-                            classeDuPlan={classeDuPlan} competenceCherchee={Boolean(referentiels)} />
+                  <tr key={ligne.domaine.id}>
+                    <th scope="row" className="stf-domaine">{ligne.domaine.nom}</th>
+                    {colonnesVues.map(({ c, j }) => {
+                      const cleCase = `${ligne.domaine.id}:${c.periode ?? "sans"}`;
+                      // On glisse dans une période de sa ligne ; « Sans période » ne se choisit pas.
+                      const accepte = c.periode !== null && glissee?.domaine === ligne.domaine;
+                      return (
+                        <td key={cleCase} className={`stf-case${c.periode === null ? " stf-sans" : ""}${survol === cleCase ? " survol" : ""}`}
+                          onDragOver={accepte ? (e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                            if (survol !== cleCase) setSurvol(cleCase);
+                          } : undefined}
+                          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setSurvol((x) => (x === cleCase ? "" : x)); }}
+                          onDrop={accepte ? (e) => {
+                            e.preventDefault();
+                            const s = toutes.find((x) => x.cle === (e.dataTransfer.getData(TYPE_SEQUENCE) || enVol));
+                            setSurvol("");
+                            setEnVol("");
+                            if (s && c.periode !== null && periodeDe(s) !== c.periode) ranger(s, c.periode);
+                          } : undefined}>
+                          {ligne.cases[j].map((s) => (
+                            <button key={s.cle} type="button" draggable data-cle={s.cle} title={titreDeLaPuce(s, infos.get(s.cle))}
+                              className={`stf-puce${s.cle === quittee ? " actif" : ""}${s.cle === enVol ? " en-vol" : ""}${estApprofondie(s.demarche.id) ? " approfondie" : ""}`}
+                              onClick={() => setChoisieCle(s.cle)}
+                              onContextMenu={(e) => menu(e, s)}
+                              onDragStart={(e) => { e.dataTransfer.setData(TYPE_SEQUENCE, s.cle); e.dataTransfer.effectAllowed = "move"; setEnVol(s.cle); }}
+                              onDragEnd={() => { setEnVol(""); setSurvol(""); }}>
+                              {estApprofondie(s.demarche.id) && <img className="stf-puce-logo" src={logo} alt={TRAVAILLEE_EN_PROFONDEUR} />}
+                              {infos.get(s.cle)?.proposee && choisies[s.cle] === undefined && <span className="stf-puce-suggestion">Suggestion Maitrize</span>}
+                              <span className="stf-puce-nom">{nomDansLeDossier(s.demarche.nom)}</span>
+                              <span className="stf-puce-meta">{avecLaSeanceDesMots(s.demarche).seances.length} séances</span>
+                            </button>
+                          ))}
                         </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
+                      );
+                    })}
+                  </tr>
                 ))}
               </tbody>
             );
@@ -248,8 +259,6 @@ function DetailDeLaSequence({ s, infos, periode, onPeriode, classeDuPlan, compet
   s: SequenceToutefaite; infos?: Infos; periode: number; onPeriode: (p: number) => void;
   classeDuPlan: ContexteDeLaClasse; competenceCherchee: boolean;
 }) {
-  const haut = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => { haut.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, []);
   const [calculMental, setCalculMental] = React.useState(true);
   const competenceTitre = infos?.competence?.competenceTitre ?? "";
   // En maternelle, les feuilles faites de pictogrammes attendent leurs images, comme dans la fiche d'une séquence.
@@ -278,7 +287,7 @@ function DetailDeLaSequence({ s, infos, periode, onPeriode, classeDuPlan, compet
   }, [tout, k, graine]);
   const [enSequence, setEnSequence] = React.useState(false);
   return (
-    <div className="stf-detail" ref={haut}>
+    <div className="stf-detail">
       <Colonnes
         gauche={<>
           <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
