@@ -2307,8 +2307,14 @@ table.doc-grille th { background: var(--panel-2); font-weight: 700; }
 .qg-titre { font-weight: 700; font-size: 13.5px; }
 .qg-bulle { max-width: 92%; padding: 7px 11px; border-radius: 14px; font-size: 13px; line-height: 1.45; }
 .qg-question { align-self: flex-start; background: var(--panel-2); border-bottom-left-radius: 4px; }
-.qg-reponse { align-self: flex-end; background: var(--accent-soft); color: var(--accent); border: none; border-bottom-right-radius: 4px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-align: right; }
-.qg-reponse:hover { text-decoration: underline; }
+/* Les réponses données, en pastilles : un clic rouvre la question. */
+.qg-faites { display: flex; flex-wrap: wrap; gap: 5px; }
+.qg-fait { display: inline-flex; align-items: center; max-width: 100%; padding: 3px 10px 3px 4px; border: var(--bw) solid transparent; border-radius: var(--r-pastille);
+  background: var(--accent-soft); color: var(--accent); font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1.35; text-align: left; cursor: pointer; }
+.qg-fait:hover { border-color: var(--accent); }
+.qg-fait .qg-puce { margin-right: 6px; background: var(--panel); }
+/* Les boutons d'impression, sous l'assistant. */
+.loto-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .qg-puce { display: inline-block; margin-right: 7px; padding: 0 7px; border: var(--bw) solid var(--border); border-radius: var(--r-pastille); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-2); vertical-align: 1px; }
 .qg-choix { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px; }
 .qg-carte { display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; align-content: start; padding: 8px 10px; border: var(--bw) solid var(--border); border-radius: var(--r-bouton); background: var(--panel); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
@@ -2323,7 +2329,6 @@ table.doc-grille th { background: var(--panel-2); font-weight: 700; }
 .qg-autre { display: flex; gap: 6px; align-items: center; }
 .qg-autre .input { flex: 1; min-width: 0; }
 .qg-fin { font-weight: 600; }
-.qg-ferme { display: flex; justify-content: flex-end; }
 /* Le son d'un mot, sous son image dans la liste : corrigé à la main, il se distingue. */
 .bm-compte.corrige { outline: 1px dashed currentColor; outline-offset: -1px; }
 .bm-son-champ { font: inherit; font-size: 11.5px; padding: 1px 4px; border: var(--bw) solid var(--accent); border-radius: 6px; background: var(--panel); color: var(--text); }

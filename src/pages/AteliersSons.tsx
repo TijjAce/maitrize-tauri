@@ -32,7 +32,9 @@ import { ETAPES, PERIODES, dejaVu, etapeVoisine, periodeDe, type EtapeCgp, type 
 //
 // Les jeux que les guides de lecture décrivent, avec les mots de la classe.
 // Chaque atelier : les réglages et les mots à gauche, la feuille à droite,
-// telle qu'elle s'imprimera.
+// telle qu'elle s'imprimera. Ceux qu'un assistant prépare — les lotos, les
+// dominos, l'intrus — ne gardent à gauche que les mots et leurs images :
+// l'assistant pose à droite tous les réglages (voir AssistantDesMots).
 
 export const ids = (mots: MotImage[]) => mots.map((m) => m.id).filter((x): x is number => x != null);
 
@@ -59,19 +61,18 @@ export function Colonnes({ gauche, droite }: { gauche: React.ReactNode; droite: 
   );
 }
 
-export function Boutons({ onTirage, onImprimer, onBureau, peut }: {
-  onTirage?: () => void; onImprimer: () => void; onBureau?: () => Promise<{ id: string; titre: string }>; peut: boolean;
+/** Les boutons d'impression, avec les cases de la feuille ; sous l'assistant, sans elles : il les demande (voir AssistantDesMots). */
+export function Boutons({ onTirage, onImprimer, onBureau, peut, sousLAssistant = false }: {
+  onTirage?: () => void; onImprimer: () => void; onBureau?: () => Promise<{ id: string; titre: string }>; peut: boolean; sousLAssistant?: boolean;
 }) {
-  return (
-    <>
-      <CasesFeuille />
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-        {onTirage && <button type="button" className="btn sm" onClick={onTirage}>🎲 Autre tirage</button>}
-        <button type="button" className="btn primary sm" disabled={!peut} onClick={onImprimer}>🖨 Imprimer</button>
-        {onBureau && <BoutonBureau disabled={!peut} onEnregistrer={onBureau} />}
-      </div>
-    </>
+  const boutons = (
+    <div className="loto-actions" style={sousLAssistant ? undefined : { marginTop: 10 }}>
+      {onTirage && <button type="button" className="btn sm" onClick={onTirage}>🎲 Autre tirage</button>}
+      <button type="button" className="btn primary sm" disabled={!peut} onClick={onImprimer}>🖨 Imprimer</button>
+      {onBureau && <BoutonBureau disabled={!peut} onEnregistrer={onBureau} />}
+    </div>
   );
+  return sousLAssistant ? boutons : <><CasesFeuille />{boutons}</>;
 }
 
 export const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
@@ -96,10 +97,11 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
   const html = React.useMemo(() => htmlLotoSyllabes(planches, montres, images, r), [planches, montres, images, r]);
   // Un clic sur le compte le fait tourner : notre découpage n'est pas parole d'évangile.
   const tourner = (m: MotImage) => setMots(mots.map((x) => (x === m ? { ...x, syllabes: (nbSyllabes(x, r.ecrites) % r.maximum) + 1 } : x)));
-  // L'assistant : les mots — le projet, un thème, ses images —, puis les planches, les cases, les syllabes (31 octobre 2026).
-  const reglages = [
-    questionDesPlanches((planches) => maj({ planches })),
-    questionDesCases((cases) => maj({ cases })),
+  // L'assistant : les mots — le projet, un thème, ses images —, puis les planches, les cases, les syllabes, le e final, l'écrit (31 octobre 2026).
+  const eFinal = (oui: boolean) => (oui ? "Le e final compte : ta-ble" : "Le e final ne compte pas");
+  const reglages: QuestionDeReglage[] = [
+    questionDesPlanches(r.planches, (planches) => maj({ planches })),
+    questionDesCases(r.cases, (cases) => maj({ cases })),
     {
       question: {
         id: "maximum", puce: "Syllabes", titre: "Jusqu'à combien de syllabes ?",
@@ -109,9 +111,21 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
           { id: "4", libelle: "Jusqu'à 4 syllabes", description: "ensuite" },
         ],
       },
-      repondre: (c: string) => { const n = Number(c) || 3; maj({ maximum: n }); return `Jusqu'à ${n} syllabes`; },
+      repondre: (c) => { const n = Number(c) || 3; maj({ maximum: n }); return `Jusqu'à ${n} syllabes`; },
+      actuelle: () => `Jusqu'à ${r.maximum} syllabes`,
     },
-    questionDesLegendes((legendes) => maj({ legendes })),
+    {
+      question: {
+        id: "ecrites", puce: "Le e final", titre: "Le « e » muet final compte-t-il pour une syllabe ?",
+        choix: [
+          { id: "non", libelle: "Non", description: "à l'oral, « table » se dit en une syllabe" },
+          { id: "oui", libelle: "Oui : ta-ble", description: "comme on scande à l'école, en disant le e final : deux syllabes" },
+        ],
+      },
+      repondre: (c) => { maj({ ecrites: c === "oui" }); return eFinal(c === "oui"); },
+      actuelle: () => eFinal(r.ecrites),
+    },
+    questionDesLegendes(r.legendes, (legendes) => maj({ legendes })),
   ];
   const fin = !mots.length ? "Écrivez vos mots à gauche, ou choisissez-en : le loto se fait sous vos yeux."
     : planches.length ? `C'est prêt : ${planches.length} planche${planches.length > 1 ? "s" : ""} de ${r.cases} cases, avec ${mots.length} mots.`
@@ -125,26 +139,13 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
         </h3>
         <BanqueDeMots mots={mots} onChange={setMots} banque={banque}
           extra={(m) => <button type="button" className="bm-compte" title="Changer le nombre de syllabes" onClick={() => tourner(m)}>{nbSyllabes(m, r.ecrites)} syll.</button>} />
-        <Field label="Planches">
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <Input type="number" min={1} max={12} value={r.planches} onChange={(e) => maj({ planches: Math.max(1, Math.min(12, Number(e.target.value) || 1)) })} style={{ width: 70 }} aria-label="Nombre de planches" />
-            <Select value={r.cases} onChange={(e) => maj({ cases: Number(e.target.value) as 6 | 9 })} aria-label="Cases par planche">
-              <option value={6}>6 cases</option><option value={9}>9 cases</option>
-            </Select>
-            <Select value={r.maximum} onChange={(e) => maj({ maximum: Number(e.target.value) })} aria-label="Nombre de syllabes au plus">
-              <option value={2}>jusqu'à 2 syllabes</option><option value={3}>jusqu'à 3 syllabes</option><option value={4}>jusqu'à 4 syllabes</option>
-            </Select>
-          </div>
-        </Field>
-        <Coche on={r.ecrites} libelle="Compter le e muet final (ta-ble : 2 syllabes)" onChange={(v) => maj({ ecrites: v })} />
-        <Coche on={r.legendes} libelle="Écrire le mot sous chaque image" onChange={(v) => maj({ legendes: v })} />
-        <Boutons peut={mots.length > 0 && planches.length > 0} onTirage={() => setGraine(graineAuHasard())}
-          onImprimer={() => imprimer("lotoSyllabes", "Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)}
-          onBureau={() => bureau("lotoSyllabes", "Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)} />
       </>}
       droite={
         <div className="loto-droite">
           <AssistantDesMots titre="Préparer le loto des syllabes" question="Avec quels mots fait-on le loto ?" mots={mots} onMots={setMots} banque={banque} parTheme={18} reglages={reglages} fin={fin} />
+          <Boutons sousLAssistant peut={mots.length > 0 && planches.length > 0} onTirage={() => setGraine(graineAuHasard())}
+            onImprimer={() => imprimer("lotoSyllabes", "Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)}
+            onBureau={() => bureau("lotoSyllabes", "Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)} />
           {planches.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
             : planches.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
             : <Vide quoi="Ajoutez des mots : le loto se fabrique avec les mots de la classe et leurs images." />}
@@ -178,20 +179,14 @@ export function DominosTab({ banque }: { banque: boolean }) {
           <Aide titre="Dominos des syllabes" vers="droite"><p>{"Un domino s'enchaîne quand la dernière syllabe d'une image commence la suivante : micro – crocodile. Il faut beaucoup de mots pour trouver des enchaînements — piochez un thème entier, ou deux."}</p></Aide>
         </h3>
         <BanqueDeMots mots={mots} onChange={setMots} banque={banque} />
-        {mots.length > 0 && (
-          <div className="meta" style={{ fontSize: 12.5, margin: "6px 0" }}>
-            {pieces.length ? `${pieces.length} dominos trouvés (${pieces.length * 2} images).` : "Pas encore d'enchaînement : ajoutez des mots."}
-          </div>
-        )}
-        <Coche on={legendes} libelle="Écrire le mot sous chaque image" onChange={setLegendes} />
-        <Boutons peut={mots.length > 0 && pieces.length >= 3} onTirage={() => setGraine(graineAuHasard())}
-          onImprimer={() => imprimer("dominos", "Dominos des syllabes", (im) => htmlDominos(pieces, im, legendes), ids(mots), STYLE_JEUX_SONS)}
-          onBureau={() => bureau("dominos", "Dominos des syllabes", (im) => htmlDominos(pieces, im, legendes), ids(mots), STYLE_JEUX_SONS)} />
       </>}
       droite={
         <div className="loto-droite">
           <AssistantDesMots titre="Préparer les dominos" question="Avec quels mots fait-on les dominos ?" mots={mots} onMots={setMots} banque={banque}
-            reglages={[questionDesLegendes(setLegendes)]} fin={fin} parTheme={30} />
+            reglages={[questionDesLegendes(legendes, setLegendes)]} fin={fin} parTheme={30} />
+          <Boutons sousLAssistant peut={mots.length > 0 && pieces.length >= 3} onTirage={() => setGraine(graineAuHasard())}
+            onImprimer={() => imprimer("dominos", "Dominos des syllabes", (im) => htmlDominos(pieces, im, legendes), ids(mots), STYLE_JEUX_SONS)}
+            onBureau={() => bureau("dominos", "Dominos des syllabes", (im) => htmlDominos(pieces, im, legendes), ids(mots), STYLE_JEUX_SONS)} />
           {pieces.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
             : pieces.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
             : <Vide quoi="Les dominos apparaîtront dès que des mots s'enchaînent : la rime de l'un est l'attaque de l'autre." />}
@@ -213,6 +208,8 @@ export function IntrusTab({ banque }: { banque: boolean }) {
   const lignes = React.useMemo(() => lignesIntrus(montres, r.mode, r.combien, hasard(graine)), [montres, r.mode, r.combien, graine]);
   const images = usePictoImages(ids(montres));
   const html = React.useMemo(() => htmlIntrus(lignes, images, r.mode, r.legendes), [lignes, images, r]);
+  const ressemblance = (mode: ModeIntrus) => (mode === "rime" ? "Ils finissent pareil" : "Ils commencent pareil");
+  const lignesDites = (n: number) => `${n} ligne${n > 1 ? "s" : ""}`;
   const reglages: QuestionDeReglage[] = [
     {
       question: {
@@ -222,7 +219,8 @@ export function IntrusTab({ banque }: { banque: boolean }) {
           { id: "rime", libelle: "Finissent pareil", description: "la même dernière syllabe : bateau, gâteau, râteau — et l'intrus, lapin" },
         ],
       },
-      repondre: (c) => { maj({ mode: c === "rime" ? "rime" : "attaque" }); return c === "rime" ? "Ils finissent pareil" : "Ils commencent pareil"; },
+      repondre: (c) => { const mode: ModeIntrus = c === "rime" ? "rime" : "attaque"; maj({ mode }); return ressemblance(mode); },
+      actuelle: () => ressemblance(r.mode),
     },
     {
       question: {
@@ -230,9 +228,10 @@ export function IntrusTab({ banque }: { banque: boolean }) {
         choix: [4, 6, 8].map((n) => ({ id: String(n), libelle: `${n} lignes` })),
         autre: { placeholder: "Un autre nombre, de 1 à 15", nombre: { min: 1, max: 15 } },
       },
-      repondre: (c, texte) => { const n = Math.max(1, Math.min(15, Number(texte ?? c) || 6)); maj({ combien: n }); return `${n} ligne${n > 1 ? "s" : ""}`; },
+      repondre: (c, texte) => { const n = Math.max(1, Math.min(15, Number(texte ?? c) || 6)); maj({ combien: n }); return lignesDites(n); },
+      actuelle: () => lignesDites(r.combien),
     },
-    questionDesLegendes((v) => maj({ legendes: v })),
+    questionDesLegendes(r.legendes, (v) => maj({ legendes: v })),
   ];
   const fin = !mots.length ? FIN_SANS_MOTS
     : lignes.length ? `C'est prêt : ${lignes.length} ligne${lignes.length > 1 ? "s" : ""}, chacune avec son intrus.`
@@ -245,25 +244,14 @@ export function IntrusTab({ banque }: { banque: boolean }) {
           <Aide titre="Chasse à l'intrus" vers="droite"><p>{"Trois mots qui commencent (ou finissent) par la même syllabe, et un intrus : bateau, banane, tapis, ballon. Il faut des mots qui se ressemblent — un ou deux thèmes entiers."}</p></Aide>
         </h3>
         <BanqueDeMots mots={mots} onChange={setMots} banque={banque} />
-        <Field label="Ce qui se ressemble">
-          <Select value={r.mode} onChange={(e) => maj({ mode: e.target.value as ModeIntrus })}>
-            <option value="attaque">la première syllabe (l'attaque)</option>
-            <option value="rime">la dernière syllabe (la rime)</option>
-          </Select>
-        </Field>
-        <Field label="Lignes">
-          <Input type="number" min={1} max={15} value={r.combien} onChange={(e) => maj({ combien: Math.max(1, Math.min(15, Number(e.target.value) || 1)) })} style={{ width: 70 }} />
-        </Field>
-        {mots.length > 0 && <div className="meta" style={{ fontSize: 12.5, margin: "6px 0" }}>{lignes.length ? `${lignes.length} ligne${lignes.length > 1 ? "s" : ""} possible${lignes.length > 1 ? "s" : ""}.` : "Pas encore trois mots qui se ressemblent."}</div>}
-        <Coche on={r.legendes} libelle="Écrire le mot sous chaque image" onChange={(v) => maj({ legendes: v })} />
-        <Boutons peut={mots.length > 0 && lignes.length > 0} onTirage={() => setGraine(graineAuHasard())}
-          onImprimer={() => imprimer("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes), ids(mots), STYLE_JEUX_SONS)}
-          onBureau={() => bureau("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes), ids(mots), STYLE_JEUX_SONS)} />
       </>}
       droite={
         <div className="loto-droite">
           <AssistantDesMots titre="Préparer la chasse à l'intrus" question="Avec quels mots fait-on la chasse à l'intrus ?" mots={mots} onMots={setMots}
             banque={banque} reglages={reglages} fin={fin} parTheme={30} />
+          <Boutons sousLAssistant peut={mots.length > 0 && lignes.length > 0} onTirage={() => setGraine(graineAuHasard())}
+            onImprimer={() => imprimer("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes), ids(mots), STYLE_JEUX_SONS)}
+            onBureau={() => bureau("intrus", "Chasse à l'intrus", (im) => htmlIntrus(lignes, im, r.mode, r.legendes), ids(mots), STYLE_JEUX_SONS)} />
           {lignes.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
             : lignes.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
             : <Vide quoi="Les lignes apparaîtront dès que trois mots partagent une syllabe." />}

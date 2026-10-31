@@ -1,7 +1,7 @@
 import React from "react";
-import { Aide, AideEnLigne } from "../components/Aide";
+import { Aide } from "../components/Aide";
 import { api, type PictoArasaac } from "../api";
-import { Field, Input, Modal, Select } from "../components/ui";
+import { Field, Input, Modal } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { useMotsGardes, useReglages } from "../components/useMemoire";
 import { usePictoImage, usePictoImages } from "../components/ChoixPicto";
@@ -20,7 +20,7 @@ import { GESTES, STYLE_GESTES, gesteDe, legendeDuGeste } from "../gestesBM";
 import { Boutons, Colonnes } from "./AteliersLangage";
 import {
   LETTRES_EN_TETE, MOTS_A_ECRIRE_MAX, REGLAGES_SYLLABES, STYLE_SYLLABES, ecritureDuMot, enTeteDesSyllabes, feuillesDeSyllabes, htmlSyllabes, motsAEcrire,
-  syllabesCibles, trousPossibles, type LettresEnTete, type MotATrou, type Trou,
+  syllabesCibles, trousPossibles, type MotATrou, type Trou,
 } from "../syllabeManquante";
 
 // ── Fabriquer › Sons et lecture › La syllabe qui manque ────────────────────
@@ -229,7 +229,15 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
       choix: proposees.map((x) => ({ id: x, libelle: x })), autre: { placeholder: "D'autres syllabes : to, ti, ta" },
     },
     repondre: (c, texte) => { const x = (texte ?? c).trim(); maj({ syllabes: x }); return x; },
+    actuelle: () => r.syllabes.trim() || "Aucune",
   }];
+  const colonnes = (n: number) => (n === 3 ? "Trois par rangée" : "Quatre par rangée");
+  const aEcrire = (n: number) => (n ? `${n} mot${n > 1 ? "s" : ""} à écrire` : "Aucun mot à écrire");
+  const enTete = (son: string) => {
+    const g = gesteDe(son);
+    return son === "auto" ? "En tête : le son des syllabes" : g ? `En tête : ${legendeDuGeste(g, true)}` : "Pas d'en-tête";
+  };
+  const lettres = (id: string) => (LETTRES_EN_TETE.find((l) => l.id === id) ?? LETTRES_EN_TETE[0]).libelle;
   const reglages: QuestionDeReglage[] = [
     {
       question: {
@@ -239,7 +247,8 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
           { id: "3", libelle: "Trois", description: "des cases plus larges" },
         ],
       },
-      repondre: (c) => { maj({ colonnes: c === "3" ? 3 : 4 }); return c === "3" ? "Trois par rangée" : "Quatre par rangée"; },
+      repondre: (c) => { const n = c === "3" ? 3 : 4; maj({ colonnes: n }); return colonnes(n); },
+      actuelle: () => colonnes(r.colonnes === 3 ? 3 : 4),
     },
     {
       question: {
@@ -250,9 +259,40 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
       repondre: (c, texte) => {
         const n = borne(texte ?? c, 0, MOTS_A_ECRIRE_MAX);
         maj({ aEcrire: n });
-        return n ? `${n} mot${n > 1 ? "s" : ""} à écrire` : "Aucun mot à écrire";
+        return aEcrire(n);
       },
+      actuelle: () => aEcrire(r.aEcrire),
     },
+    {
+      question: {
+        id: "son", puce: "En tête", titre: "Le son étudié, en tête de la feuille ?",
+        choix: [
+          { id: "auto", libelle: "Celui des syllabes", description: "si son geste a une image" },
+          { id: "aucun", libelle: "Pas d'en-tête", description: "la feuille garde son titre" },
+        ],
+        autre: { placeholder: "Un autre son, tel qu'il s'écrit : ch, on, ou…" },
+      },
+      repondre: (c, texte) => {
+        const ecrit = (texte ?? "").trim().toLowerCase();
+        const g = c === "autre" ? GESTES.find((x) => x.id === ecrit || x.graphies.includes(ecrit)) : undefined;
+        if (c === "autre" && !g) { toast(`« ${ecrit} » : aucun geste ne s'écrit ainsi.`, { icone: "ℹ️" }); return enTete(sonChoisi); }
+        const son = g ? g.id : c === "aucun" ? "" : "auto";
+        maj({ son });
+        return enTete(son);
+      },
+      actuelle: () => enTete(sonChoisi),
+    },
+    ...(entete ? [{
+      question: {
+        id: "lettres", puce: "Les lettres", titre: "En quelles lettres, l'en-tête ?",
+        choix: LETTRES_EN_TETE.map((l) => ({
+          id: l.id, libelle: l.libelle,
+          ...(l.id === "cursive" ? { description: "la cursive prend la police d'école de l'ordinateur — Belle Allure, Écriture A… —, sinon celle du système" } : {}),
+        })),
+      },
+      repondre: (c: string) => { const l = LETTRES_EN_TETE.find((x) => x.id === c) ?? LETTRES_EN_TETE[0]; maj({ lettres: l.id }); return l.libelle; },
+      actuelle: () => lettres(r.lettres),
+    }] : []),
   ];
   const autresSources = banque && cibles.length ? [{
     id: "banque", libelle: `🔎 Des mots avec ${cibles.join(", ")}`, description: "ceux de la banque où l'on entend ces syllabes, à choisir",
@@ -270,14 +310,6 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
             La syllabe qui manque
             <Aide titre="La syllabe qui manque" vers="droite"><p>Sous chaque dessin, le mot avec un trou : l'élève dit le mot, et écrit la syllabe qu'il entend.</p></Aide>
           </h3>
-          <Field label="Les syllabes à retrouver">
-            <Input value={r.syllabes} placeholder="ma, mi, mu" onChange={(e) => maj({ syllabes: e.target.value })} />
-          </Field>
-          {banque && (
-            <button type="button" className="btn sm primary" style={{ marginBottom: 12 }} disabled={!cibles.length} onClick={() => setRecherche(true)}>
-              🔎 Des mots de la banque avec {cibles.length ? cibles.join(", ") : "ces syllabes"}
-            </button>
-          )}
           <BanqueDeMots mots={mots} onChange={setMots} banque={banque}
             aide="Ou écrivez vos mots : chacun prend son dessin dans la banque. Un mot sans dessin, ou sans l'une de ces syllabes, reste hors de la feuille." />
           {lignes.length > 0 && (
@@ -308,16 +340,6 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
               </div>
             </Field>
           )}
-          <Field label="Dessins par rangée">
-            <Select value={String(r.colonnes === 3 ? 3 : 4)} onChange={(e) => maj({ colonnes: Number(e.target.value) })}>
-              <option value="4">Quatre — douze mots sur une page</option>
-              <option value="3">Trois — des cases plus larges</option>
-            </Select>
-          </Field>
-          <Field label="Mots à écrire en entier, sous leur dessin">
-            <Input type="number" min={0} max={MOTS_A_ECRIRE_MAX} value={r.aEcrire} style={{ width: 80 }}
-              onChange={(e) => maj({ aEcrire: borne(e.target.value, 0, MOTS_A_ECRIRE_MAX) })} />
-          </Field>
           {(ecrits.length > 0 || ecartes.length > 0) && (
             <Field label="« Un » ou « une » devant ces mots — les plus courts de la liste">
               <div className="gb-codages">
@@ -338,42 +360,20 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
               )}
             </Field>
           )}
-          <Field label="Le son étudié, en tête de la feuille">
-            <Select value={sonChoisi} onChange={(e) => maj({ son: e.target.value })}>
-              <option value="auto">Celui des syllabes, si son geste a une image</option>
-              <option value="">Pas d'en-tête</option>
-              {GESTES.map((g) => <option key={g.id} value={g.id}>{legendeDuGeste(g, true)}</option>)}
-            </Select>
-          </Field>
-          {entete && (
-            <Field label="Les lettres de l'en-tête">
-              <Select value={r.lettres} onChange={(e) => maj({ lettres: e.target.value as LettresEnTete })}>
-                {LETTRES_EN_TETE.map((l) => <option key={l.id} value={l.id}>{l.libelle}</option>)}
-              </Select>
-              {r.lettres === "cursive" && (
-                <AideEnLigne libelle="La police de la cursive">
-                  <p>La cursive prend la police d'école installée sur l'ordinateur (Belle Allure, Écriture A, Cursive standard…) ; à défaut, celle du système.</p>
-                </AideEnLigne>
-              )}
-            </Field>
+          {((entete && gestes.pret && !gestes.images[entete.son]) || sansSyllabe.length > 0 || sansDessin.length > 0) && (
+            <div className="meta" style={{ fontSize: 12.5, marginTop: 6, color: "var(--orange)" }}>
+              {entete && gestes.pret && !gestes.images[entete.son] && <span>Il manque l'image du geste « {gesteDe(entete.son)?.graphies[0]} ». </span>}
+              {sansSyllabe.length > 0 && <span>Sans ces syllabes, donc écarté{sansSyllabe.length > 1 ? "s" : ""} : {sansSyllabe.join(", ")}. </span>}
+              {sansDessin.length > 0 && <span>Sans dessin, donc écarté{sansDessin.length > 1 ? "s" : ""} : {sansDessin.join(", ")}.</span>}
+            </div>
           )}
-          <div className="meta" style={{ fontSize: 12.5, marginTop: 6 }}>
-            {mots.length && prets.length
-              ? `${prets.length} mot${prets.length > 1 ? "s" : ""}, ${feuilles} feuille${feuilles > 1 ? "s" : ""} avec le corrigé.`
-              : !cibles.length ? "Écrivez les syllabes à retrouver." : "Ajoutez des mots où l'on entend ces syllabes."}
-            {entete && gestes.pret && !gestes.images[entete.son] && (
-              <span style={{ color: "var(--orange)" }}> Il manque l'image du geste « {gesteDe(entete.son)?.graphies[0]} ».</span>
-            )}
-            {sansSyllabe.length > 0 && <span style={{ color: "var(--orange)" }}> Sans ces syllabes, donc écarté{sansSyllabe.length > 1 ? "s" : ""} : {sansSyllabe.join(", ")}.</span>}
-            {sansDessin.length > 0 && <span style={{ color: "var(--orange)" }}> Sans dessin, donc écarté{sansDessin.length > 1 ? "s" : ""} : {sansDessin.join(", ")}.</span>}
-          </div>
-          <Boutons atelier="syllabeManquante" titre="La syllabe qui manque" html={html} style={STYLE_GESTES + STYLE_SYLLABES} peut={mots.length > 0 && prets.length > 0}
-            onTirage={() => setGraine(graineAuHasard())} />
         </>}
         droite={
           <div className="loto-droite">
             <AssistantDesMots titre="Préparer la syllabe qui manque" mots={mots} onMots={setMots} banque={banque}
               avant={avant} reglages={reglages} autresSources={autresSources} fin={fin} />
+            <Boutons sousLAssistant atelier="syllabeManquante" titre="La syllabe qui manque" html={html} style={STYLE_GESTES + STYLE_SYLLABES}
+              peut={mots.length > 0 && prets.length > 0} onTirage={() => setGraine(graineAuHasard())} />
             {!mots.length && prets.length
               ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_GESTES + STYLE_SYLLABES} /></ApercuExemple>
               : <ApercuFeuille html={html} style={STYLE_GESTES + STYLE_SYLLABES} />}

@@ -3,6 +3,7 @@ import { Aide } from "../components/Aide";
 import { Field, Input, Select, ouvrirOnglet } from "../components/ui";
 import { useMotsGardes, useReglages } from "../components/useMemoire";
 import { usePictoImages } from "../components/ChoixPicto";
+import { toast } from "../components/Toaster";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { ApercuExemple, useMotsExemple } from "../components/Exemple";
@@ -179,11 +180,56 @@ export function MotsEnGestesTab({ banque }: { banque: boolean }) {
     : `${utiles.length} mot${utiles.length > 1 ? "s" : ""}${r.forme === "fiche" && aColorier ? `, dont ${aColorier} à colorier` : ""}, `
       + `${feuilles} feuille${feuilles > 1 ? "s" : ""} avec le corrigé.`;
 
-  // L'assistant (31 octobre 2026) : les mots, puis ce que fait l'élève.
-  const reglages: QuestionDeReglage[] = [{
-    question: { id: "forme", puce: "La fiche", titre: "Que fait l'élève ?", choix: FORMES },
-    repondre: (c) => { const f = FORMES.find((x) => x.id === c) ?? FORMES[0]; maj({ forme: f.id }); return f.libelle; },
-  }];
+  // L'assistant (31 octobre 2026) : les mots, puis ce que fait l'élève, le son en tête, les mots par page, le e final.
+  const forme = (id: FormeMotsCodes) => (FORMES.find((x) => x.id === id) ?? FORMES[0]).libelle;
+  const enTete = (id: string) => { const g = gesteDe(id); return g ? `En tête : ${legendeDuGeste(g, true)}` : "Pas d'en-tête"; };
+  const parPage = (n: number) => `${n} mots par page, au plus`;
+  const eFinal = (oui: boolean) => (oui ? "Le e final a son geste : fè-ve" : "Le e final n'a pas de geste");
+  const reglages: QuestionDeReglage[] = [
+    {
+      question: { id: "forme", puce: "La fiche", titre: "Que fait l'élève ?", choix: FORMES },
+      repondre: (c) => { const f = FORMES.find((x) => x.id === c) ?? FORMES[0]; maj({ forme: f.id }); return f.libelle; },
+      actuelle: () => forme(r.forme),
+    },
+    {
+      question: {
+        id: "son", puce: "En tête", titre: "Le son étudié, en tête de la feuille ?",
+        choix: [
+          { id: "aucun", libelle: "Pas d'en-tête", description: "la feuille garde son titre" },
+          ...(gesteDe(r.son) ? [{ id: r.son, libelle: legendeDuGeste(gesteDe(r.son)!, true), description: "le son de la dernière feuille" }] : []),
+        ],
+        autre: { placeholder: "Le son, tel qu'il s'écrit : ch, on, ou, an…" },
+      },
+      repondre: (c, texte) => {
+        const ecrit = (texte ?? "").trim().toLowerCase();
+        const g = c === "autre" ? GESTES.find((x) => x.id === ecrit || x.graphies.includes(ecrit)) : gesteDe(c);
+        if (c === "autre" && !g) { toast(`« ${ecrit} » : aucun geste ne s'écrit ainsi.`, { icone: "ℹ️" }); return enTete(r.son); }
+        maj({ son: g?.id ?? "" });
+        return enTete(g?.id ?? "");
+      },
+      actuelle: () => enTete(r.son),
+    },
+    {
+      question: {
+        id: "parPage", puce: "Mots par page", titre: "Combien de mots par page, au plus ?",
+        choix: [4, 6, 8].map((n) => ({ id: String(n), libelle: `${n} mots` })),
+        autre: { placeholder: "Un autre nombre, de 2 à 8", nombre: { min: 2, max: 8 } },
+      },
+      repondre: (c, texte) => { const n = borne(texte ?? c, 2, 8, REGLAGES_MOTS_CODES.parPage); maj({ parPage: n }); return parPage(n); },
+      actuelle: () => parPage(r.parPage),
+    },
+    {
+      question: {
+        id: "eFinal", puce: "Le e final", titre: "Le « e » final se dit-il avec son geste ?",
+        choix: [
+          { id: "oui", libelle: "Oui : fè-ve", description: "on le prononce, il a son geste" },
+          { id: "non", libelle: "Non : fève", description: "muet, il n'a pas de geste" },
+        ],
+      },
+      repondre: (c) => { maj({ eFinal: c === "oui" }); return eFinal(c === "oui"); },
+      actuelle: () => eFinal(r.eFinal),
+    },
+  ];
   return (
     <Colonnes
       gauche={<>
@@ -210,37 +256,19 @@ export function MotsEnGestesTab({ banque }: { banque: boolean }) {
             </div>
           </Field>
         )}
-        <Field label="Forme">
-          <Select value={r.forme} onChange={(e) => maj({ forme: e.target.value as FormeMotsCodes })}>
-            <option value="fiche">La fiche : colorier le bon dessin, puis relier au bon mot</option>
-            <option value="relier">Relier les gestes au bon mot</option>
-            <option value="colorier">Colorier le bon dessin</option>
-            <option value="ecrire">Écrire le mot</option>
-          </Select>
-        </Field>
-        <Field label="Le son étudié, en tête de la feuille">
-          <Select value={gesteDe(r.son) ? r.son : ""} onChange={(e) => maj({ son: e.target.value })}>
-            <option value="">Pas d'en-tête</option>
-            {GESTES.map((g) => <option key={g.id} value={g.id}>{legendeDuGeste(g, true)}</option>)}
-          </Select>
-        </Field>
-        <Field label="Mots par page, au plus">
-          <Input type="number" min={2} max={8} value={r.parPage} style={{ width: 80 }}
-            onChange={(e) => maj({ parPage: borne(e.target.value, 2, 8, REGLAGES_MOTS_CODES.parPage) })} />
-        </Field>
-        <Coche on={r.eFinal} libelle="Le « e » final se dit avec son geste (fè-ve)" onChange={(v) => maj({ eFinal: v })} />
-        <div className="meta" style={{ fontSize: 12.5, marginTop: 6 }}>
-          {mots.length > 0 && bilan}
-          {mots.length > 0 && manquants.length > 0 && <span style={{ color: "var(--orange)" }}> Il manque l'image de : {manquants.join(", ")}.</span>}
-          {sansImage.length > 0 && <span style={{ color: "var(--orange)" }}> Sans dessin, donc écarté{sansImage.length > 1 ? "s" : ""} : {sansImage.join(", ")}.</span>}
-          {tropLongs.length > 0 && <span style={{ color: "var(--orange)" }}> Trop long{tropLongs.length > 1 ? "s" : ""} pour une ligne : {tropLongs.join(", ")}.</span>}
-        </div>
-        <Boutons atelier="motsGestes" titre="Les mots en gestes" html={html} style={STYLE_GESTES} peut={peut} onTirage={() => setGraine(graineAuHasard())} />
+        {mots.length > 0 && (manquants.length > 0 || sansImage.length > 0 || tropLongs.length > 0) && (
+          <div className="meta" style={{ fontSize: 12.5, marginTop: 6, color: "var(--orange)" }}>
+            {manquants.length > 0 && <span>Il manque l'image de : {manquants.join(", ")}. </span>}
+            {sansImage.length > 0 && <span>Sans dessin, donc écarté{sansImage.length > 1 ? "s" : ""} : {sansImage.join(", ")}. </span>}
+            {tropLongs.length > 0 && <span>Trop long{tropLongs.length > 1 ? "s" : ""} pour une ligne : {tropLongs.join(", ")}.</span>}
+          </div>
+        )}
       </>}
       droite={
         <div className="loto-droite">
           <AssistantDesMots titre="Préparer les mots en gestes" mots={mots} onMots={setMots} banque={banque} reglages={reglages} parTheme={12}
             fin={mots.length ? (peut ? `C'est prêt : ${bilan}` : `⚠️ ${bilan}`) : FIN_SANS_MOTS} />
+          <Boutons sousLAssistant atelier="motsGestes" titre="Les mots en gestes" html={html} style={STYLE_GESTES} peut={peut} onTirage={() => setGraine(graineAuHasard())} />
           {!mots.length && utiles.length
             ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_GESTES} /></ApercuExemple>
             : <ApercuFeuille html={html} style={STYLE_GESTES} />}
