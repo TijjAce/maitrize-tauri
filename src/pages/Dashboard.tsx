@@ -39,6 +39,8 @@ export default function Dashboard() {
   const { data: sequences } = useAsync(() => api.sequencesList(), []);
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const { data: ateliers } = useAsync(() => api.ateliersList(), []);
+  const { data: jeux } = useAsync(() => api.jeuxList(), []);
+  const { data: outilsClasse } = useAsync(() => api.outilsClasseList(), []);
   const [nom, setNom] = React.useState("");
   React.useEffect(() => { api.settingGet("enseignantNom").then((v) => setNom(v ?? "")); }, []);
 
@@ -77,16 +79,21 @@ export default function Dashboard() {
     return texte.charAt(0).toUpperCase() + texte.slice(1);
   };
 
+  // Les fiches, sorte par sorte, pas seulement les ateliers (demande de l'enseignant, 31 octobre 2026).
+  const duGenre = (genre: string) => (outilsClasse ?? []).filter((o) => o.genre === genre).length;
   const stats = [
     { label: "Séquences", val: sequences?.length ?? 0, ico: "📚", to: "/plan" },
-    { label: "Ateliers", val: ateliers?.length ?? 0, ico: "🧩", to: "/ateliers" },
+    { label: "Ateliers autonomes", val: ateliers?.length ?? 0, ico: "🧩", to: "/ateliers" },
+    { label: "Jeux éducatifs", val: jeux?.length ?? 0, ico: "🎲", to: "/ateliers" },
+    { label: "Outils pour l'élève", val: duGenre("outil"), ico: "📏", to: "/ateliers" },
+    { label: "Affichage de classe", val: duGenre("affichage"), ico: "🖼", to: "/ateliers" },
     { label: "Élèves", val: eleves?.length ?? 0, ico: "👧", to: "/eleves" },
   ];
 
   return (
     <Page titre={nom ? `Bonjour ${nom}` : "Tableau de bord"} sous={new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}>
       <BandeauSync />
-      <div className="grid cols" style={{ marginBottom: 22 }}>
+      <div className="grid cols" style={{ marginBottom: 22, gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))" }}>
         {stats.map((s) => (
           <div key={s.label} className="card" style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }} onClick={() => nav(s.to)}>
             <div style={{ fontSize: 30 }}>{s.ico}</div>
