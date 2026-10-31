@@ -1192,11 +1192,13 @@ export const DEMARCHES_HISTOIRE_GEO: Demarche[] = [
 ];
 
 /**
- * Celles dont chaque séance suit une séquence d'Éduscol de 2016 : le logo de Maitrize les marque (voir
- * sequencesApprofondies.ts). Le temps représenté et les évènements situés, au CP, n'en prennent que quelques
- * séances ; le reste est bâti sur le programme.
+ * Celles qui suivent une séquence d'Éduscol de 2016 : le logo de Maitrize les marque (voir sequencesApprofondies.ts).
+ * Le temps représenté et les évènements situés, au CP, n'en prennent que quelques séances et bâtissent le reste sur
+ * le programme ; l'enseignant les veut marquées aussi (31 octobre 2026).
  */
-export const SEQUENCES_D_EDUSCOL_2016: Demarche[] = [LA_CLASSE, PETITE_SIRENE_CP, LION_A_PARIS_CE1, MARCHES_CE1, QUARTIER_VILLAGE_CE2, TRANSPORTS_CE2];
+export const SEQUENCES_D_EDUSCOL_2016: Demarche[] = [
+  LA_CLASSE, TEMPS_REPRESENTE_CP, SITUER_EVENEMENTS_CP, PETITE_SIRENE_CP, LION_A_PARIS_CE1, MARCHES_CE1, QUARTIER_VILLAGE_CE2, TRANSPORTS_CE2,
+];
 
 /**
  * La séquence d'une compétence d'histoire-géographie, à sa classe ; rien

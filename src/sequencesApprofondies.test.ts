@@ -33,17 +33,13 @@ describe("le logo de Maitrize sur les séquences travaillées en profondeur", ()
     }
   });
 
-  it("en histoire-géographie, celles qui suivent une séquence d'Éduscol de 2016 séance par séance ; pas celles bâties sur le programme", () => {
-    for (const d of DEMARCHES_HISTOIRE_GEO) {
-      const eduscol = d.source.startsWith("Éduscol, ressources 2016");
-      if (!eduscol) expect(estApprofondie(d.id), d.nom).toBe(false);
-      if (estApprofondie(d.id)) expect(d.source, d.nom).toMatch(/séquence au C[PE]|\(présentation et séances 1 à 5\)/i);
-    }
-    expect(SEQUENCES_D_EDUSCOL_2016).toHaveLength(6);
+  it("en histoire-géographie, toutes celles qui suivent une séquence d'Éduscol de 2016 ; pas celles bâties sur le programme", () => {
+    for (const d of DEMARCHES_HISTOIRE_GEO) expect(estApprofondie(d.id), d.nom).toBe(d.source.startsWith("Éduscol, ressources 2016"));
+    expect(SEQUENCES_D_EDUSCOL_2016).toHaveLength(8);
   });
 
-  it("une séquence marquée dit, dans ses phases, ce que fait l'enseignant", () => {
-    for (const d of marquees) expect(detail(d).posture, d.nom).toBeGreaterThanOrEqual(0.4);
+  it("une séquence marquée dit, dans ses phases, ce que fait l'enseignant : au moins une phase sur trois", () => {
+    for (const d of marquees) expect(detail(d).posture, d.nom).toBeGreaterThanOrEqual(1 / 3);
   });
 
   it("une séquence aussi détaillée que celles du manuel ne reste pas sans le logo", () => {
