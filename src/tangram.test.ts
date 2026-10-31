@@ -58,7 +58,7 @@ describe("les figures du tangram", () => {
   it("ont des noms et des identifiants à elles", () => {
     expect(new Set(FIGURES_TANGRAM.map((f) => f.id)).size).toBe(FIGURES_TANGRAM.length);
     expect(new Set(FIGURES_TANGRAM.map((f) => f.nom)).size).toBe(FIGURES_TANGRAM.length);
-    // De deux à sept pièces : ce que la séquence demande, des fiches de deux ou trois pièces jusqu'aux sept.
+    // De deux à sept pièces : des modèles de deux ou trois pièces, jusqu'aux sept.
     expect(new Set(FIGURES_TANGRAM.map((f) => f.pieces.length))).toEqual(new Set([2, 3, 4, 5, 7]));
   });
 
@@ -102,11 +102,9 @@ describe("les feuilles du tangram", () => {
 
   it("relit ce qu'on a gardé, et reprend sa valeur par défaut pour le reste", () => {
     expect(reglagesTangramSurs(null)).toMatchObject(REGLAGES_TANGRAM);
-    expect(reglagesTangramSurs({ exercice: "inconnu" as never, cote: 900, figure: "?", dessin: "?" as never, noires: 40 }))
-      .toMatchObject({ exercice: "modele", cote: 180, figure: "fusee-7", dessin: "contours", noires: 6 });
+    expect(reglagesTangramSurs({ exercice: "inconnu" as never, cote: 900, figure: "?", dessin: "?" as never }))
+      .toMatchObject({ exercice: "modele", cote: 180, figure: "fusee-7", dessin: "contours" });
     expect(reglagesTangramSurs({ cote: 20 }).cote).toBe(60);
-    // Des pièces noires parmi les couleurs : seulement sur un modèle.
-    expect(reglagesTangramSurs({ exercice: "desordre", dessin: "noires" }).dessin).toBe("silhouette");
     for (const e of EXERCICES_TANGRAM) {
       for (const d of DESSINS_TANGRAM) expect(d.exercices).toContain(reglagesTangramSurs({ exercice: e.id, dessin: d.id }).dessin === d.id ? e.id : d.exercices[0]);
     }
@@ -146,19 +144,16 @@ describe("les feuilles du tangram", () => {
     for (const figure of ["carre-7", "maison-3", "bateau-4"]) expect(miseEnPageDuModele(r({ figure, cote: 150 })).reduction).toBe(1);
   });
 
-  it("chaque dessin : les contours des pièces, les couleurs, des pièces noires, la silhouette", () => {
-    const fusee = (dessin: ReglagesTangram["dessin"], noires = 3) => htmlTangram(r({ figure: "fusee-7", dessin, noires }), 7);
+  it("chaque dessin : les contours des pièces, les couleurs, la silhouette", () => {
+    const fusee = (dessin: ReglagesTangram["dessin"]) => htmlTangram(r({ figure: "fusee-7", dessin }), 7);
     expect(fusee("contours")).toContain('fill="#a9afbb" stroke="#fff"');
     expect(fusee("couleur")).toContain('fill="#e53935"');
-    expect(fusee("noires").match(/fill="#111111"/g)).toHaveLength(3);
-    expect(fusee("noires", 1).match(/fill="#111111"/g)).toHaveLength(1);
-    expect(fusee("noires")).toContain("les pièces noires du dessin");
+    expect(fusee("couleur")).not.toContain('fill="#111111"');
     // La silhouette : rien que du noir, aucun trait blanc entre les pièces.
     expect(fusee("silhouette").match(/fill="#111111"/g)).toHaveLength(7);
     expect(fusee("silhouette")).not.toContain('stroke="#fff"');
-    // Le tirage change les pièces noires, pas le reste.
-    expect(htmlTangram(r({ figure: "fusee-7", dessin: "noires" }), 7)).toBe(fusee("noires"));
-    expect(new Set([1, 2, 3, 4, 5].map((g) => htmlTangram(r({ figure: "fusee-7", dessin: "noires" }), g))).size).toBeGreaterThan(1);
+    // Un modèle ne doit rien au hasard.
+    expect(new Set([1, 2, 3].map((g) => htmlTangram(r({ figure: "fusee-7", dessin: "couleur" }), g))).size).toBe(1);
   });
 
   it("le petit livre : une page par pièce, la pièce de la page cernée, les suivantes fondues", () => {

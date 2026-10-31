@@ -1,20 +1,17 @@
 // Le tangram de la grande section : le grand carré à découper, des modèles à
 // recouvrir, les sept pièces en désordre, le parallélogramme tourné ou retourné.
 //
-// La séquence du tangram du manuel du CRPE de l'enseignant (« Réussir mon
-// CRPE », Nathan, sujet n° 5, « Formes et grandeurs GS », p. 104-106) fait
-// recouvrir des modèles de plus en plus difficiles. Ce qui différencie, ce
-// sont ses variables : le nombre de pièces, les contours des pièces dessinés
-// ou non, des pièces en couleur ou toutes noires, un modèle à la taille des
-// pièces ou plus petit. Un modèle se recouvre avec les pièces de la classe :
-// il s'imprime à leur taille, donnée par le côté du carré qu'elles forment.
-// Trop grand pour la page, il s'imprime plus petit, et l'atelier le dit.
+// Des modèles de plus en plus difficiles : ce qui différencie, c'est le nombre
+// de pièces, les contours des pièces dessinés ou non, des pièces en couleur ou
+// toutes noires, un modèle à la taille des pièces ou plus petit. Un modèle se
+// recouvre avec les pièces de la classe : il s'imprime à leur taille, donnée
+// par le côté du carré qu'elles forment. Trop grand pour la page, il s'imprime
+// plus petit, et l'atelier le dit.
 //
-// Les figures sont de Maitrize — la fusée, les voiliers, la maison… —, pas
-// celles du manuel. Leurs sommets sont exacts : dans un quadrillage dont le
-// carreau est le petit carré, ou dans le grand carré, en quarts de son côté.
-// Un essai vérifie que chaque pièce a sa forme et qu'aucune n'en chevauche
-// une autre.
+// Les figures — la fusée, les voiliers, la maison… — sont de Maitrize. Leurs
+// sommets sont exacts : dans un quadrillage dont le carreau est le petit
+// carré, ou dans le grand carré, en quarts de son côté. Un essai vérifie que
+// chaque pièce a sa forme et qu'aucune n'en chevauche une autre.
 
 import { feuille } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
@@ -117,15 +114,14 @@ export const EXERCICES_TANGRAM: { id: ExerciceTangram; libelle: string }[] = [
 
 /**
  * Comment les pièces sont dessinées : grises, séparées par un trait blanc —
- * on voit chaque pièce — ; chacune de sa couleur ; quelques-unes en noir, les
- * autres en couleur ; ou la silhouette, toute noire, sans les contours.
+ * on voit chaque pièce — ; chacune de sa couleur ; ou la silhouette, toute
+ * noire, sans les contours.
  */
-export type DessinTangram = "contours" | "couleur" | "noires" | "silhouette";
+export type DessinTangram = "contours" | "couleur" | "silhouette";
 
 export const DESSINS_TANGRAM: { id: DessinTangram; libelle: string; exercices: ExerciceTangram[] }[] = [
   { id: "contours", libelle: "On voit chaque pièce", exercices: ["modele", "carre", "desordre", "parallelogrammes"] },
   { id: "couleur", libelle: "Chaque pièce de sa couleur", exercices: ["modele", "carre", "desordre", "parallelogrammes"] },
-  { id: "noires", libelle: "Des pièces noires, les autres en couleur", exercices: ["modele"] },
   { id: "silhouette", libelle: "Tout en noir, sans les contours des pièces", exercices: ["modele", "carre", "desordre", "parallelogrammes"] },
 ];
 
@@ -135,8 +131,6 @@ export interface ReglagesTangram {
   cote: number;
   figure: string;
   dessin: DessinTangram;
-  /** Combien de pièces sont noires, quand le dessin en a. */
-  noires?: number;
   /** Le modèle plus petit que les pièces : à moitié de leur taille. */
   petit?: boolean;
   /** Un modèle en petit livre : une pièce de plus à chaque page. */
@@ -144,7 +138,7 @@ export interface ReglagesTangram {
   titre?: string;
 }
 
-export const REGLAGES_TANGRAM: ReglagesTangram = { exercice: "modele", cote: 120, figure: "fusee-7", dessin: "contours", noires: 3 };
+export const REGLAGES_TANGRAM: ReglagesTangram = { exercice: "modele", cote: 120, figure: "fusee-7", dessin: "contours" };
 
 export const COTE_MIN = 60, COTE_MAX = 180;
 
@@ -153,13 +147,11 @@ export function reglagesTangramSurs(brut: Partial<ReglagesTangram> | null | unde
   const b = brut ?? {};
   const exercice = EXERCICES_TANGRAM.some((e) => e.id === b.exercice) ? b.exercice! : REGLAGES_TANGRAM.exercice;
   const cote = Math.round(Number(b.cote));
-  const dessin = DESSINS_TANGRAM.find((d) => d.id === b.dessin)?.exercices.includes(exercice) ? b.dessin! : exercice === "modele" ? "contours" : b.dessin === "noires" ? "silhouette" : "contours";
-  const noires = Math.round(Number(b.noires));
+  const dessin = DESSINS_TANGRAM.find((d) => d.id === b.dessin)?.exercices.includes(exercice) ? b.dessin! : "contours";
   return {
     ...b, exercice, dessin,
     cote: Number.isFinite(cote) && cote > 0 ? Math.min(COTE_MAX, Math.max(COTE_MIN, cote)) : REGLAGES_TANGRAM.cote,
     figure: figureTangram(b.figure).id,
-    noires: noires >= 1 ? Math.min(6, noires) : 3,
     petit: b.petit === true, etapes: b.etapes === true,
   };
 }
@@ -226,25 +218,23 @@ const polygone = (t: Trace) => `<polygon points="${t.points.map(([x, y]) => `${n
 const svgMm = (traces: Trace[], largeur: number, hauteur: number, classe = "tg-dessin") =>
   `<svg class="${classe}" viewBox="0 0 ${n2(largeur)} ${n2(hauteur)}" width="${n2(largeur)}mm" height="${n2(hauteur)}mm">${traces.map(polygone).join("")}</svg>`;
 
-/** Comment se dessine une pièce : grise et séparée des autres par un trait blanc, de sa couleur, noire, ou fondue dans la silhouette. */
-function aspect(piece: PieceTangram, dessin: DessinTangram, noire: boolean): Pick<Trace, "fond" | "trait" | "epaisseur"> {
+/** Comment se dessine une pièce : grise et séparée des autres par un trait blanc, de sa couleur, ou fondue dans la silhouette. */
+function aspect(piece: PieceTangram, dessin: DessinTangram): Pick<Trace, "fond" | "trait" | "epaisseur"> {
   if (dessin === "silhouette") return { fond: NOIR, trait: NOIR, epaisseur: 0.3 };
-  const fond = dessin === "contours" ? GRIS : noire ? NOIR : COULEURS_TANGRAM[piece];
-  return { fond, trait: "#fff", epaisseur: 0.8 };
+  return { fond: dessin === "contours" ? GRIS : COULEURS_TANGRAM[piece], trait: "#fff", epaisseur: 0.8 };
 }
 
 /**
- * Le dessin d'une figure, à `e` millimètres par unité. Les pièces `noires`
- * sont en noir ; les pièces `cachees` ne se voient que fondues dans une
- * silhouette pâle — les pages du petit livre qui ne les ont pas encore — ; la
- * pièce `nouvelle` est cernée.
+ * Le dessin d'une figure, à `e` millimètres par unité. Les pièces `cachees`
+ * ne se voient que fondues dans une silhouette pâle — les pages du petit livre
+ * qui ne les ont pas encore — ; la pièce `nouvelle` est cernée.
  */
-function svgFigure(f: FigureTangram, e: number, dessin: DessinTangram, o: { noires?: Set<PieceTangram>; cachees?: Set<PieceTangram>; nouvelle?: PieceTangram } = {}): string {
+function svgFigure(f: FigureTangram, e: number, dessin: DessinTangram, o: { cachees?: Set<PieceTangram>; nouvelle?: PieceTangram } = {}): string {
   const b = boite(f.pieces.flatMap((p) => p.points));
   const marge = 1;
   const mm = (p: Pt): Pt => [(p[0] - b.x) * e + marge, (p[1] - b.y) * e + marge];
   const pale = f.pieces.filter((p) => o.cachees?.has(p.piece)).map((p): Trace => ({ points: p.points.map(mm), fond: PALE, trait: PALE, epaisseur: 0.3 }));
-  const vues = f.pieces.filter((p) => !o.cachees?.has(p.piece)).map((p): Trace => ({ points: p.points.map(mm), ...aspect(p.piece, dessin, !!o.noires?.has(p.piece)) }));
+  const vues = f.pieces.filter((p) => !o.cachees?.has(p.piece)).map((p): Trace => ({ points: p.points.map(mm), ...aspect(p.piece, dessin) }));
   const cernee = f.pieces.filter((p) => p.piece === o.nouvelle).map((p): Trace => ({ points: p.points.map(mm), fond: "none", trait: ENCRE, epaisseur: 1.2 }));
   return svgMm([...pale, ...vues, ...cernee], b.l * e + 2 * marge, b.h * e + 2 * marge);
 }
@@ -419,7 +409,7 @@ export function htmlTangram(r: ReglagesTangram, graine: number): string {
     const texte = paras ? "Je pose ma pièce sur chaque forme, pour la cacher tout entière. Je peux la tourner, ou la retourner."
       : "Je pose chaque pièce du tangram sur la forme qui est la même.";
     return feuille(pages.map((p, i) => {
-      const traces = p.posees.map((x): Trace => ({ points: x.points, ...aspect(x.piece, r.dessin, false) }));
+      const traces = p.posees.map((x): Trace => ({ points: x.points, ...aspect(x.piece, r.dessin) }));
       const dessin = svgMm(traces, PAGE.portrait.largeur, p.hauteur + 1);
       return page(pages.length > 1 ? `${titre} — ${i + 1}/${pages.length}` : titre, dessin, i === 0 ? LIGNE_DU_PRENOM + consigne(texte) : "");
     }).join(""), "tg");
@@ -430,12 +420,9 @@ export function htmlTangram(r: ReglagesTangram, graine: number): string {
   const { reduction } = miseEnPageDuModele(r);
   const echelle = mmParUnite(f, r.cote) * (r.petit ? 0.5 : 1) * reduction;
   const n = f.pieces.length;
-  const noires = r.dessin === "noires"
-    ? new Set(melanger(alea, f.pieces.map((p) => p.piece)).slice(0, Math.min(r.noires ?? 3, n - 1))) : undefined;
   const texte = r.petit ? "Je construis la figure à côté du modèle, avec les pièces du tangram."
-    : r.dessin === "noires" ? "Je cherche dans ma boîte les pièces noires du dessin, et je les pose à leur place."
-      : r.dessin === "silhouette" ? "Je recouvre la silhouette avec les pièces du tangram : rien ne dépasse, aucun blanc ne reste."
-        : "Je pose chaque pièce sur sa forme : rien ne dépasse, aucun blanc ne reste.";
+    : r.dessin === "silhouette" ? "Je recouvre la silhouette avec les pièces du tangram : rien ne dépasse, aucun blanc ne reste."
+      : "Je pose chaque pièce sur sa forme : rien ne dépasse, aucun blanc ne reste.";
   if (r.etapes && (r.dessin === "contours" || r.dessin === "couleur") && !r.petit) {
     // Le petit livre : une page par pièce, des plus grandes aux plus petites ; la pièce de la page est cernée.
     const ordre = [...f.pieces].sort((a, b) => PIECES_TANGRAM.indexOf(a.piece) - PIECES_TANGRAM.indexOf(b.piece)).map((p) => p.piece);
@@ -445,7 +432,7 @@ export function htmlTangram(r: ReglagesTangram, graine: number): string {
         k === 0 ? consigne("Je pose les pièces dans l'ordre des pages : une pièce de plus à chaque page.") : "");
     }).join(""), "tg");
   }
-  return feuille(page(titre, `<div class="tg-modele">${svgFigure(f, echelle, r.dessin, { noires })}</div>`, consigne(texte)), "tg");
+  return feuille(page(titre, `<div class="tg-modele">${svgFigure(f, echelle, r.dessin)}</div>`, consigne(texte)), "tg");
 }
 
 /** Le grand carré à découper : les sept pièces, les traits bien marqués — noirs, ou blancs sur le tangram noir. */

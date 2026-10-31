@@ -7,9 +7,8 @@
 // maternelle (BO n° 41 du 31 octobre 2024, BO n° 19 du 7 mai 2026) n'a pas
 // de repères par période comme ceux des cycles 2 et 3 : sa progressivité
 // « est organisée selon l'âge des enfants (avant quatre ans, à partir de
-// quatre ans et à partir de cinq ans) ». La période vient du manuel quand il
-// la donne (voir programmation.ts) ; sinon Maitrize la suggère, d'après ce
-// que le programme dit de l'ordre des apprentissages (voir
+// quatre ans et à partir de cinq ans) ». Maitrize suggère donc la période,
+// d'après ce que le programme dit de l'ordre des apprentissages (voir
 // periodesProposees.ts).
 //
 // Les séquences faites de pictogrammes — le Vilain Petit Canard, le problème
@@ -25,8 +24,6 @@ import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import type { Demarche } from "./demarches";
 import { DEMARCHE_VPC } from "./demarchesVilainPetitCanard";
 import type { PlanDesFeuilles } from "./feuillesDesSequences";
-import { DEMARCHE_DECOMPOSITION_GS, planDecompositionGs } from "./manuelDecompositionGs";
-import { DEMARCHE_FORMES_GRANDEURS_GS, planFormesGrandeursGs } from "./manuelFormesGrandeursGs";
 import { competenceDuProgramme as competenceDuReferentiel } from "./sequenceCategoriser";
 import { DEMARCHE_COLLECTIONS, competenceDuProgramme as competenceDesCollections, planDesCollections, reglagesDeLaSection } from "./sequenceCollections";
 import {
@@ -86,12 +83,10 @@ const RANGEES: Record<string, Rangee> = {
   // l'autre. Ses séances nomment le loto et le domino des syllabes.
   phonologie: { domaine: "apprendre-a-lire", sections: ["MS", "GS"], ateliers: [{ id: "lotoSyllabes" }, { id: "dominos" }] },
   [DEMARCHE_COLLECTIONS]: { domaine: "decouvrir-nombres", sections: SECTIONS, ateliers: [{ id: "collections", reglages: (s) => ({ ...reglagesDeLaSection(s) }) }] },
-  [DEMARCHE_DECOMPOSITION_GS.id]: { domaine: "decouvrir-nombres", sections: ["GS"], ateliers: [{ id: "albumCalcul" }] },
   [DEMARCHE_PROBLEME]: {
     domaine: "problemes-maternelle", sections: SECTIONS,
     ateliers: [{ id: ATELIER_PROBLEME_DU_JOUR, reglages: (s, competence) => ({ ...reglagesPourLaCompetence(competence, s) }) }],
   },
-  [DEMARCHE_FORMES_GRANDEURS_GS.id]: { domaine: "solides-formes", sections: ["GS"], ateliers: [{ id: "tangram" }] },
   // Ses feuilles se font avec les images de la suite que l'enseignant choisit : dans l'atelier seulement.
   [DEMARCHE_SUITES]: { domaine: "reperer-temps", sections: SECTIONS, ateliers: [{ id: "suites", reglages: aLaSection }] },
 };
@@ -111,11 +106,6 @@ export const matiereDeMaternelle = (id: string): string | null =>
 
 // ── Les feuilles ───────────────────────────────────────────────────────────
 
-/** Le matériel des séquences du manuel de grande section : leurs feuilles se font dans les ateliers que leurs séances nomment. */
-const DU_MANUEL: Record<string, () => PlanDesFeuilles> = {
-  [DEMARCHE_FORMES_GRANDEURS_GS.id]: planFormesGrandeursGs, [DEMARCHE_DECOMPOSITION_GS.id]: planDecompositionGs,
-};
-
 /** Les feuilles d'une séquence faite de pictogrammes : les images à charger, et le plan qu'elles permettent ; rien pour une autre. */
 export function feuillesEnPictos(demarcheId: string, section: Section, competence = ""): { ids: (number | string)[]; plan: (images: Images) => PlanDesFeuilles } | null {
   const canard = niveauDeLaDemarche(demarcheId);
@@ -132,11 +122,10 @@ export function feuillesEnPictos(demarcheId: string, section: Section, competenc
   return null;
 }
 
-/** Les feuilles et le matériel d'une séquence de maternelle : en pictogrammes une fois les images chargées, le matériel du manuel, sinon rien. */
+/** Les feuilles et le matériel d'une séquence de maternelle : en pictogrammes une fois les images chargées, sinon rien. */
 export function planDeMaternelle(demarcheId: string, section: Section, competence: string, images?: Images): PlanDesFeuilles {
   const enPictos = feuillesEnPictos(demarcheId, section, competence);
-  if (enPictos) return images ? enPictos.plan(images) : { feuilles: [], materiel: [] };
-  return DU_MANUEL[demarcheId]?.() ?? { feuilles: [], materiel: [] };
+  return enPictos && images ? enPictos.plan(images) : { feuilles: [], materiel: [] };
 }
 
 // ── La compétence visée ────────────────────────────────────────────────────

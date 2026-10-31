@@ -1,5 +1,5 @@
 import React from "react";
-import { Aide, AideEnLigne } from "../components/Aide";
+import { Aide } from "../components/Aide";
 import { Field, Input, Select } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
@@ -7,7 +7,7 @@ import { graineAuHasard } from "../hasard";
 import { useGraine } from "../modifierFeuille";
 import { Boutons, Coche, Colonnes } from "./AteliersLangage";
 import {
-  COTE_MAX, COTE_MIN, DESSINS_TANGRAM, EXERCICES_TANGRAM, FIGURES_TANGRAM, REGLAGES_TANGRAM, avertissementTangram, figureTangram, htmlTangram,
+  COTE_MAX, COTE_MIN, DESSINS_TANGRAM, EXERCICES_TANGRAM, FIGURES_TANGRAM, REGLAGES_TANGRAM, avertissementTangram, htmlTangram,
   reglagesTangramSurs, styleTangram, titreTangram, type DessinTangram, type ExerciceTangram, type ReglagesTangram,
 } from "../tangram";
 
@@ -19,7 +19,7 @@ import {
 /** Les figures, rangées par nombre de pièces : de deux à sept. */
 const PAR_PIECES = [...new Set(FIGURES_TANGRAM.map((f) => f.pieces.length))].map((n) => ({ n, figures: FIGURES_TANGRAM.filter((f) => f.pieces.length === n) }));
 
-/** Le dessin qu'un exercice prend d'abord : en noir, comme dans le manuel, pour les pièces en désordre et les parallélogrammes. */
+/** Le dessin qu'un exercice prend d'abord : en noir pour les pièces en désordre et les parallélogrammes, où seule la forme compte. */
 const DESSIN_D_ABORD: Record<ExerciceTangram, DessinTangram> = { modele: "contours", carre: "contours", desordre: "silhouette", parallelogrammes: "silhouette" };
 
 export function TangramTab() {
@@ -31,16 +31,15 @@ export function TangramTab() {
   const titre = r.titre?.trim() || titreTangram(r);
   const avertissement = avertissementTangram(r);
   const modele = r.exercice === "modele";
-  const tirage = r.exercice === "desordre" || r.exercice === "parallelogrammes" || (modele && r.dessin === "noires");
+  const tirage = r.exercice === "desordre" || r.exercice === "parallelogrammes";
   return (
     <Colonnes
       gauche={<>
         <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
           Le tangram
-          <Aide titre="Le tangram" vers="droite"><p>D'après la séquence du tangram du manuel « Réussir mon CRPE » (Nathan, sujet n° 5) : le grand carré à découper ;
-            des modèles à recouvrir, de plus en plus difficiles — de deux pièces aux sept, chaque pièce dessinée, en couleur, quelques pièces noires, puis la
-            silhouette, à la taille des pièces ou plus petits ; les sept pièces en désordre, à poser chacune sur sa forme ; le parallélogramme, tourné ou
-            retourné. Les figures sont de Maitrize. Plastifiez les modèles : ils resservent.</p></Aide>
+          <Aide titre="Le tangram" vers="droite"><p>Le grand carré à découper ; des modèles à recouvrir, de plus en plus difficiles — de deux pièces aux sept,
+            chaque pièce dessinée, en couleur, puis la silhouette, à la taille des pièces ou plus petits ; les sept pièces en désordre, à poser chacune sur sa
+            forme ; le parallélogramme, tourné ou retourné. Les figures sont de Maitrize. Plastifiez les modèles : ils resservent.</p></Aide>
         </h3>
         <Field label="Exercice">
           <Select value={r.exercice} onChange={(e) => { const exercice = e.target.value as ExerciceTangram; maj({ exercice, dessin: DESSIN_D_ABORD[exercice] }); }}>
@@ -72,13 +71,6 @@ export function TangramTab() {
             {DESSINS_TANGRAM.filter((d) => d.exercices.includes(r.exercice)).map((d) => <option key={d.id} value={d.id}>{d.libelle}</option>)}
           </Select>
         </Field>
-        {modele && r.dessin === "noires" && (
-          <Field label="Les pièces noires">
-            <Select value={Math.min(r.noires ?? 3, figureTangram(r.figure).pieces.length - 1)} onChange={(e) => maj({ noires: Number(e.target.value) })}>
-              {Array.from({ length: figureTangram(r.figure).pieces.length - 1 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
-            </Select>
-          </Field>
-        )}
         {modele && (
           <>
             <Coche on={!!r.petit} onChange={(petit) => maj({ petit })}
@@ -94,8 +86,6 @@ export function TangramTab() {
           <Input value={r.titre ?? ""} placeholder={titreTangram(r)} onChange={(e) => maj({ titre: e.target.value })} />
         </Field>
         <Boutons atelier="tangram" titre={titre} html={html} style={style} peut onTirage={tirage ? () => setGraine(graineAuHasard()) : undefined} />
-        <AideEnLigne libelle="📚 La séquence du tangram"><p>La séquence de grande section du manuel du CRPE — « Le tangram : reconnaître les formes, reproduire des
-          figures (GS) » — dit, séance par séance, quels modèles faire ici.</p></AideEnLigne>
       </>}
       droite={<ApercuFeuille html={html} style={style} />}
     />

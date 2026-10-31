@@ -106,7 +106,7 @@ export function MesuresTab() {
           {exercice === "mesurer" && <Coche on={r.encadrer} libelle="Encadrer entre deux centimètres (CE1)" onChange={(v) => maj({ encadrer: v })} />}
           {exercice === "mesurer" && <Coche on={r.obliques} libelle="Des segments dans tous les sens" onChange={(v) => maj({ obliques: v })} />}
         </>}
-        {exercice !== "perimetreCompas" && exercice !== "bienMesurer" && exercice !== "regleU" && (
+        {exercice !== "perimetreCompas" && exercice !== "regleU" && (
           <Field label="Combien">
             <Input type="number" min={1} max={12} value={r.combien} onChange={(e) => maj({ combien: borne(e.target.value, 1, 12, 6) })} style={{ width: 80 }} />
           </Field>

@@ -19,9 +19,7 @@
 // Ce que les programmes laissent libre, d'autres textes d'Éduscol le datent
 // parfois : le tableau de progression d'un livret, les guides du CP et du CE1,
 // les repères annuels de 2019. Ils ne viennent qu'en dernier, et les repères de
-// 2019, d'avant les programmes de 2024, le disent dans leur citation. Une
-// séquence tirée d'un manuel que l'enseignant a fourni prend la période que
-// ce manuel lui donne, cité de même.
+// 2019, d'avant les programmes de 2024, le disent dans leur citation.
 
 /** Les niveaux pour lesquels une séquence peut être pensée. */
 export const NIVEAUX_DE_PROGRAMMATION = ["PS", "MS", "GS", "CP", "CE1", "CE2", "CM1", "CM2"] as const;
@@ -52,8 +50,6 @@ const GUIDE_MATHS_CP = "Guide « Pour enseigner les nombres, le calcul et la ré
 const GUIDE_LECTURE_CP = "Guide « Pour enseigner la lecture et l'écriture au CP » (Éduscol, 2019)";
 const GUIDE_LECTURE_CE1 = "Guide « Pour enseigner la lecture et l'écriture au CE1 » (Éduscol, 2019)";
 const citeLeGuide = (guide: string, phrase: string) => `${guide} : « ${phrase} »`;
-/** Une séquence tirée d'un manuel de l'enseignant : le manuel dit lui-même quand elle se fait. */
-const citeLeManuel = (manuel: string, phrase: string) => `Manuel ${manuel} : « ${phrase} »`;
 /** Les repères annuels de 2019 ont précédé les programmes de 2024 : la citation le dit. */
 const citeLesReperesDe2019 = (classe: string, phrase: string) =>
   `Repères annuels de progression en mathématiques du cycle 2 (Éduscol, 2019 — d'avant les programmes de 2024), ${classe} : « ${phrase} »`;
@@ -84,30 +80,9 @@ const PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
     raison: "Fiche Éduscol « Le temps de la République » (ressources d'accompagnement du cycle 3, mars 2016 ; programme de 2020) : « Le premier thème d'histoire de l'année de CM2 »" },
   "numeration-dizaine-cp": { periode: 1, raison: cite("CP", "L'aspect décimal (base dix) et l'aspect positionnel […] sont abordés dès la période 1 : les élèves comparent, dénombrent et constituent des collections organisées en groupes de dix unités et en unités isolées.") },
   "nombres-livret-cp-59": { periode: 2, raison: cite("CP", "Au plus tard en période 2, les élèves travaillent avec des quantités et des nombres allant jusqu'à cinquante-neuf.") },
-  // Les nombres de 10 à 20, d'après le manuel du CRPE de l'enseignant (voir demarcheDixAVingt.ts) : la période que le manuel donne à sa séance.
-  "nombres-10-20-cp": { periode: 2, niveau: "CP", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 43", "avec des élèves de CP en période 2") },
   // La soustraction posée du CE1 (voir sequenceSoustractionPosee.ts) : la période que le programme donne à son algorithme, sans
   // attendre que la compétence soit trouvée dans les référentiels.
   "soustraction-posee-ce1": { periode: 3, niveau: "CE1", raison: cite("CE1", "Un algorithme de la soustraction posée est introduit en période 3 au plus tard.") },
-  // La soustraction posée avec retenue, d'après le même manuel (voir demarcheSoustractionRetenue.ts).
-  "soustraction-retenue-ce1": { periode: 3, niveau: "CE1", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 56", "La séquence se situe en période 3") },
-  // Les autres sujets du même manuel (voir sequencesDuManuel.ts), quand il les date.
-  "technique-multiplication-ce2": { periode: 4, niveau: "CE2", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 63", "une classe de CE2 de 25 élèves en période 4") },
-  "formes-tangram-gs": { periode: 3, niveau: "GS", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 103", "la séance décrite se situe en période 3 de GS") },
-  "decomposition-additive-gs": { periode: 4, niveau: "GS", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 108", "un groupe de 12 élèves de GS en période 4") },
-  // Sur les périodes 3 et 4 : elle commence en période 3.
-  "division-euclidienne-cm1": { periode: 3, niveau: "CM1", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 90", "la séquence suivante pour les périodes 3 et 4") },
-  "fractions-simples-cm1": { periode: 1, niveau: "CM1", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 128", "Les fractions simples sont introduites en période 1.") },
-  // Un cours double : la même période au CM1 et au CM2.
-  "aires-comparer-cm1-cm2": { periode: 3, raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 159", "de 20 élèves (12 CM1 et 8 CM2) en période 3") },
-  "symetrie-axiale-ce2": { periode: 3, niveau: "CE2", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 175", "une classe de CE2 de 25 élèves, en période 3") },
-  // Sur les périodes 1 et 2, dit le manuel : elle commence en période 1.
-  "linearite-cm1": { periode: 1, niveau: "CM1", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 189", "qui se déroulera sur les périodes 1 et 2") },
-  "programme-construction-cm1": { periode: 5, niveau: "CM1", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 217", "Période : 5 – fin de l'année") },
-  // Le sujet dit la période 2 ; le manuel, en le traitant, la période 3.
-  "singapour-multiplicatifs-ce2": { periode: 3, niveau: "CE2", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 238", "Notre séance se situera en classe de CE2, en période 3") },
-  // Filée sur l'année ; sa séance détaillée, en période 2.
-  "compositions-etats-ce1": { periode: 2, niveau: "CE1", raison: citeLeManuel("« Réussir mon CRPE — Oral 2025-2026 » (Nathan), p. 203", "relevant des structures additives (addition/soustraction) en période 2") },
   "nombres-livret-cp-100": { periode: 3, raison: cite("CP", "Au plus tard en période 3, les élèves travaillent avec des quantités et des nombres allant jusqu'à cent.") },
   // Les nombres de la séquence du guide — 71 et 68 — vont jusqu'à cent.
   "comparer-nombres-cp": { periode: 3, raison: cite("CP", "Au plus tard en période 3, les élèves travaillent avec des quantités et des nombres allant jusqu'à cent.") },

@@ -2,9 +2,9 @@
 //
 // L'enseignant l'a demandé (31 octobre 2026) : sous le « ? » du titre de
 // chaque jeu, dire d'où il vient — « ça permet de voir que ça vient pas de
-// n'importe où ». Éduscol et les programmes officiels d'abord ; sinon le
-// manuel ou la méthode dont l'atelier vient vraiment ; quand rien ne
-// l'appuie, « Source inconnue ». Chaque source se retrouve dans le code de
+// n'importe où ». Éduscol et les programmes officiels d'abord ; sinon la
+// méthode dont l'atelier vient vraiment ; quand rien ne l'appuie, « Source
+// inconnue ». Chaque source se retrouve dans le code de
 // l'atelier — l'en-tête de son module, les références de ses feuilles, la
 // démarche qu'il sert — ou dans le texte officiel qu'elle cite. Le « ? » du
 // titre l'ajoute de lui-même (voir components/Aide.tsx).
@@ -13,7 +13,6 @@
 
 export const SOURCE_INCONNUE = "Source inconnue";
 
-const CRPE = "Manuel « Réussir mon CRPE » (Nathan)";
 const GUIDE_MATERNELLE_LECTURE = "Guide « Pour préparer l'apprentissage de la lecture et de l'écriture à l'école maternelle » (Éduscol, 2020)";
 const GUIDE_CP_NOMBRES = "guide « Pour enseigner les nombres, le calcul et la résolution de problèmes au CP » (Éduscol, 2021)";
 const MATHS_C2 = "Programme de mathématiques du cycle 2 (2024)";
@@ -98,24 +97,23 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
   partieTout: `${MATHS_C2} : « résoudre des problèmes additifs en une étape de type parties-tout » ; le schéma en barres de la séquence du livret `
     + "d'accompagnement de mathématiques CE1 (Éduscol, 2025).",
   multiplicatifs: `${MATHS_C2} : « résoudre des problèmes multiplicatifs de type parties-tout en une étape ».`,
-  problemesAides: `${CRPE}, sujet n° 13 : la séquence des problèmes additifs du CE1.`,
   problemesCM: `${MATHS_C3}.`,
   coloriage: `${SOURCE_INCONNUE}.`,
   collections: "Guide « La construction du nombre à l'école maternelle » (Éduscol, 2023) et livrets d'accompagnement « Avant 4 ans » et « À partir de "
     + "4 ans » (Éduscol, 2025) ; programme de l'école maternelle (2025).",
-  albumCalcul: `${CRPE}, sujet n° 6, « Décomposition additive GS », p. 116-118.`,
   problemeDuJour: "Programme de l'école maternelle (2025), « Utiliser les nombres pour résoudre des problèmes » ; livrets d'accompagnement « Avant 4 "
     + "ans », « À partir de 4 ans » et « À partir de 5 ans » (Éduscol, 2025) ; guide « La construction du nombre à l'école maternelle » (Éduscol, 2023).",
   motifs: "Livrets d'accompagnement de mathématiques de la maternelle (Éduscol, 2025), séquence 1 « Se familiariser avec les motifs organisés ».",
-  tangram: `${CRPE}, sujet n° 5, « Formes et grandeurs GS », p. 104-106 ; les figures sont de Maitrize.`,
+  tangram: "Programme de l'école maternelle (2025), « Explorer les solides et les formes planes » : « Reproduire des assemblages de solides (au "
+    + "maximum cinq) et de formes planes (au maximum 8) » ; les figures sont de Maitrize.",
 
   // ── Nombres ──
   nombres: "Livret d'accompagnement de mathématiques CP (Éduscol, 2025) : passer d'une représentation du nombre à une autre.",
   cubes: `${MATHS_C2} — « Connaitre et utiliser diverses représentations d'un nombre et passer de l'une à l'autre » — et ${GUIDE_CP_NOMBRES}.`,
-  billes: `${CRPE}, oral 2025-2026 : la séance 4 de la séquence « La connaissance des nombres de 10 à 20 », étendue jusqu'à 100 comme le prévoit le `
-    + "programme du CP.",
-  abaque: `${CRPE}, oral 2025-2026 : la séance 4 de la séquence « La connaissance des nombres de 10 à 20 ».`,
-  suiteNombres: `${CRPE}, oral 2025-2026 : la frise de la séance 4 de « La connaissance des nombres de 10 à 20 », étendue jusqu'à 100.`,
+  billes: `${MATHS_C2}, CP : « Comparer et dénombrer des collections en les organisant » ; « Connaitre la valeur des chiffres en fonction de leur `
+    + "position (unités, dizaines) ».",
+  abaque: `${MATHS_C2}, CP : « Connaitre la valeur des chiffres en fonction de leur position (unités, dizaines) ».`,
+  suiteNombres: `${MATHS_C2}, CP : « Connaitre la suite écrite et la suite orale des nombres jusqu'à cent ».`,
   demiDroite: `${MATHS_C2}, exemples de réussite : la demi-droite graduée.`,
   ordinaux: `${MATHS_C2}, exemples de réussite : les nombres ordinaux.`,
   comparer: `Programme de l'école maternelle (2025) et ${MATHS_C2.charAt(0).toLowerCase()}${MATHS_C2.slice(1)} ; ${GUIDE_CP_NOMBRES} ; au cours moyen, `
@@ -126,8 +124,10 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
   calcul: "Livrets d'accompagnement de mathématiques CE1 et CE2 (Éduscol, 2025) : les cartes pour mémoriser les tables, recto-verso pour se tester.",
   arbre: "Livret d'accompagnement de mathématiques CP (Éduscol, 2025) : l'arbre à calcul pour ajouter deux nombres.",
   posees: `${MATHS_C2} et ${GUIDE_CP_NOMBRES}.`,
-  rectangles: `${CRPE}, sujet n° 3, « Multiplication CE2 ».`,
-  calculCM: `Programme de mathématiques du cycle 3 (2025), « Les quatre opérations » ; avant la potence, la séquence de la division du ${CRPE.charAt(0).toLowerCase()}${CRPE.slice(1)}.`,
+  rectangles: `${MATHS_C2}, CE2 : « Poser et effectuer des multiplications d'un nombre à deux ou trois chiffres par un nombre à un ou deux `
+    + "chiffres » ; « Calculer le produit d'un nombre compris entre 11 et 99 par un nombre inférieur à 10 en décomposant le plus grand des deux "
+    + "facteurs en la somme de deux nombres (propriété de distributivité de la multiplication par rapport à l'addition) ».",
+  calculCM: "Programme de mathématiques du cycle 3 (2025), « Les quatre opérations ».",
   soustractionPosee: "Éduscol — fiches d'intervention des évaluations de début de CE2 (2026) et de CM1, fiches CE1 de mai 2020 — et programme de "
     + "mathématiques du cycle 2 (2024).",
   fractions: "Livrets d'accompagnement de mathématiques CE1 et CE2 (Éduscol, 2025) : le mémory et la bataille des fractions, la bande unité qu'on plie, "
@@ -139,12 +139,12 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
   heure: `${MATHS_C2} — lire l'heure, les durées — et programme de mathématiques du cycle 3 (2025) pour les durées.`,
   monnaie: `${MATHS_C2} ; ${GUIDE_CP_NOMBRES}, l'exemple de la monnaie.`,
   mesures: `${MATHS_C2} ; Éduscol, « Grandeurs et mesures au cycle 2 » (ressources 2016).`,
-  grandeursCM: `${MATHS_C3} ; pour les aires, la séquence du ${CRPE.charAt(0).toLowerCase()}${CRPE.slice(1)}.`,
+  grandeursCM: `${MATHS_C3}.`,
   geometrie: `${MATHS_C2} ; Éduscol, « Espace et géométrie au cycle 2 » (document d'accompagnement, 2002).`,
   solides: `${MATHS_C2} ; Éduscol, « Espace et géométrie au cycle 2 » (document d'accompagnement, 2002).`,
   deplacements: `${MATHS_C2} ; Éduscol, « Initiation à la programmation aux cycles 2 et 3 » (2016) — « La fusée », « La tournée du facteur » — et `
     + "« Espace et géométrie au cycle 2 » (2002).",
-  geometrieCM: `${MATHS_C3} ; le programme de construction de la séquence du ${CRPE.charAt(0).toLowerCase()}${CRPE.slice(1)}.`,
+  geometrieCM: `${MATHS_C3}.`,
   donnees: `${MATHS_C2} : l'enquête, le relevé, le tableau, le diagramme en barres.`,
 
   // ── Histoire-géographie ──

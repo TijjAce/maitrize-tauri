@@ -27,9 +27,6 @@ import { estUneDemarcheDesGrandeurs, planDesGrandeurs } from "./demarchesGrandeu
 import { estUneDemarcheDeGeometrie, planDeLaGeometrie } from "./demarchesGeometrie";
 import { estUneDemarcheDeDonnees, planDesDonnees } from "./demarchesDonnees";
 import { estUneDemarcheDuReperage, planDuReperage } from "./demarchesReperage";
-import { DEMARCHE_DIX_A_VINGT, estUneDemarcheDixAVingt, planDixAVingt } from "./demarcheDixAVingt";
-import { estUneDemarcheSoustractionRetenue, planSoustractionRetenue } from "./demarcheSoustractionRetenue";
-import { sequenceDuManuel } from "./sequencesDuManuel";
 import { estUneDemarcheDeFractions, planDesFractions } from "./fractionsDesLivrets";
 import { estUneDemarcheDeFrancais, planDuFrancais } from "./feuillesDuFrancais";
 import { estUneDemarcheDeLecture, planDeLaLecture } from "./demarchesLecture";
@@ -106,7 +103,6 @@ export function classeDe(niveau: string | null | undefined): Classe | null {
 
 /** Le niveau de l'atelier des cubes pour une séquence : les nombres du livret, ou ceux de la période au CP. */
 export function niveauDesCubes(demarcheId: string, ctx: ContexteFeuilles): IdNiveauCubes {
-  if (demarcheId === DEMARCHE_DIX_A_VINGT) return "cp-19";
   if (demarcheId === "nombres-livret-cp-59") return "cp-59";
   if (demarcheId === "nombres-livret-cp-100") return "cp-100";
   if (ctx.classe === "CE1") return "ce1";
@@ -176,9 +172,6 @@ function materielDuLivret(ctx: ContexteFeuilles, feuilles: FeuilleAFabriquer[]):
  * ateliers.
  */
 export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): PlanDesFeuilles | null {
-  // Les séquences d'après le manuel du CRPE de l'enseignant : leurs feuilles, dans leur module (voir sequencesDuManuel.ts).
-  const duManuel = sequenceDuManuel(demarcheId);
-  if (duManuel) return duManuel.plan(ctx);
   // Le calcul mental : les séquences des livrets, ou le procédé La Martinière (voir feuillesDuCalcul.ts).
   if (estUneDemarcheDeCalcul(demarcheId)) return planDuCalcul(demarcheId, ctx);
   // Les problèmes et les fractions des livrets (voir problemesDesLivrets.ts et fractionsDesLivrets.ts).
@@ -221,10 +214,6 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   if (estUneDemarcheDuVocabulaireCM(demarcheId)) return planDuVocabulaireCM(demarcheId, ctx);
   // L'histoire et la géographie du cours moyen : la frise, les documents, les tris, l'évaluation de chaque thème (voir cycle3HistoireGeo.ts).
   if (estUneDemarcheHistoireGeoCM(demarcheId)) return planHistoireGeoCM(demarcheId);
-  // Les nombres de 10 à 20, d'après le manuel du CRPE de l'enseignant : ses feuilles, et celle des cubes à la séance de la dizaine.
-  if (estUneDemarcheDixAVingt(demarcheId)) return planDixAVingt([feuilleDeCubes(1, "ecrire", cubesPour(demarcheId, ctx))]);
-  // La soustraction avec retenue, d'après le même manuel : ses feuilles, et celle des cubes à la remédiation — un nombre de plusieurs façons.
-  if (estUneDemarcheSoustractionRetenue(demarcheId)) return planSoustractionRetenue([feuilleDeCubes(3, "facons", cubesPour(demarcheId, ctx))]);
   if (!CLASSE_DES_DEMARCHES[demarcheId]) return null;
   // Grouper par dix, la centaine, le millier : les huit feuilles des cubes, de la grande collection à l'évaluation.
   if (demarcheId === "numeration-dizaine-cp" || demarcheId.startsWith("groupements-")) {

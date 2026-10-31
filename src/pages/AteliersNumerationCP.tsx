@@ -14,9 +14,8 @@ import {
 
 // ── Fabriquer › la numération au CP, en manipulant ────────────────────────
 //
-// Trois ateliers nés de la séquence « La connaissance des nombres de 10 à
-// 20 » : des billes et des calots, l'abaque à deux tiges, la suite des
-// nombres. Les nombres se choisissent de … à …, jusqu'à 100.
+// Trois ateliers : des billes et des calots, l'abaque à deux tiges, la suite
+// des nombres. Les nombres se choisissent de … à …, jusqu'à 100.
 
 /** « De … à … » : deux nombres, dans les bornes de l'exercice. */
 function Bornes({ de, a, min, max, onChange }: { de: number; a: number; min: number; max: number; onChange: (de: number, a: number) => void }) {
@@ -47,8 +46,7 @@ export function Choix<T extends string>({ liste, choisis, onChange }: { liste: {
   );
 }
 
-const EN_FAIRE_UNE_SEQUENCE = <AideEnLigne libelle="📚 En faire une séquence"><p>Une séquence part de sa compétence : Plan de travail › Nouvelle séquence, puis la compétence visée.
-  « La connaissance des nombres de 10 à 20 » prend ses feuilles ici.</p></AideEnLigne>;
+const EN_FAIRE_UNE_SEQUENCE = <AideEnLigne libelle="📚 En faire une séquence"><p>Une séquence part de sa compétence : Plan de travail › Nouvelle séquence, puis la compétence visée.</p></AideEnLigne>;
 
 // ── Billes et calots ──
 
@@ -64,15 +62,14 @@ export function BillesTab() {
     const suivant = EXERCICES_BILLES.find((e) => e.id === id)!;
     maj({ exercice: id, de: suivant.defaut[0], a: suivant.defaut[1], nombre: suivant.nombre.defaut });
   };
-  const mot = r.exercice === "compter" ? (r.a <= 10 ? "boîtes" : "cartes") : ex.nombre.mot;
+  const mot = r.exercice === "compter" && r.a <= 10 ? "boîtes" : ex.nombre.mot;
   return (
     <Colonnes
       gauche={<>
         <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
           Billes et calots
           <Aide titre="Billes et calots" vers="droite"><p>Des billes dispersées à compter, en faisant un paquet de dix ; deux tas qui font un nombre ;
-            un calot vaut dix billes : qui a gagné la partie ? D'après la séance 4 de la séquence « La connaissance des nombres de 10 à 20 »
-            (Réussir mon CRPE, oral 2025-2026, Nathan), étendue jusqu'à 100 comme le prévoit le programme du CP.</p></Aide>
+            un calot vaut dix billes : qui a gagné la partie ? Jusqu'à 100, comme le prévoit le programme du CP.</p></Aide>
         </h3>
         <Field label="Exercice">
           <Select value={r.exercice} onChange={(e) => changerDExercice(e.target.value as ExerciceBilles)}>
@@ -85,8 +82,7 @@ export function BillesTab() {
             onChange={(e) => maj({ nombre: Number(e.target.value) || ex.nombre.defaut })} />
         </Field>
         {r.exercice === "compter" && r.a > 10 && (
-          <AideEnLigne libelle="Les cartes"><p>Une carte par élève, à découper : chacun compte la sienne. De 17 à 19, ce sont les trois cartes du manuel — dix-neuf billes bleues, dix-huit rouges, dix-sept vertes.
-            Au corrigé, chaque paquet de dix est entouré.</p></AideEnLigne>
+          <AideEnLigne libelle="Le corrigé"><p>Au corrigé, chaque paquet de dix est entouré, jusqu'à 59.</p></AideEnLigne>
         )}
         {r.exercice === "partie" && <Coche on={r.regle} libelle="La règle « un calot vaut dix billes », dessinée en haut" onChange={(regle) => maj({ regle })} />}
         <Field label="Le titre">
@@ -114,8 +110,7 @@ export function AbaqueTab() {
         <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
           L'abaque
           <Aide titre="L'abaque à deux tiges" vers="droite"><p>Deux tiges de dix jetons au plus : les verts comptent les unités ; dix verts s'échangent contre un rouge,
-            qui va sur la tige des dizaines — c'est sa place qui fait la dizaine. Faire l'échange, lire l'abaque, dessiner les jetons d'un nombre.
-            D'après la séance 4 de la séquence « La connaissance des nombres de 10 à 20 » (Réussir mon CRPE, oral 2025-2026, Nathan).</p></Aide>
+            qui va sur la tige des dizaines — c'est sa place qui fait la dizaine. Faire l'échange, lire l'abaque, dessiner les jetons d'un nombre.</p></Aide>
         </h3>
         <Field label="Les exercices">
           <Choix<PartieAbaque> liste={PARTIES_ABAQUE} choisis={r.parties} onChange={(parties) => maj({ parties })} />
@@ -127,8 +122,7 @@ export function AbaqueTab() {
           </Field>
         )}
         {r.parties.includes("echange") && (
-          <AideEnLigne libelle="L'échange"><p>Jusqu'à 20, celui du manuel : dix jetons verts sur une tige, les autres sur l'autre, puis dix d'entre eux échangés contre un rouge.
-            Au-delà, la tige des unités est pleine, et d'autres jetons verts attendent à côté.</p></AideEnLigne>
+          <AideEnLigne libelle="L'échange"><p>La tige des unités est pleine, et d'autres jetons verts attendent à côté : dix d'entre eux s'échangent contre un rouge.</p></AideEnLigne>
         )}
         <Field label="Le titre">
           <Input value={r.titre} placeholder={titreAbaque(r)} onChange={(e) => maj({ titre: e.target.value })} />
@@ -155,8 +149,7 @@ export function SuiteNombresTab() {
         <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
           La suite des nombres
           <Aide titre="La suite des nombres" vers="droite"><p>La suite écrite et la suite orale des nombres : la frise à compléter, le nombre juste avant et juste après,
-            ranger et comparer — en chiffres, en mots, sur l'abaque, en calots —, le nom des nombres, les dizaines et les unités en barres et en cubes.
-            Quand la frise commence après une dizaine entière, la première est celle du manuel : il y manque les nombres en 7, 8, 9, qu'on entend dans dix-sept, dix-huit, dix-neuf.</p></Aide>
+            ranger et comparer — en chiffres, en mots, sur l'abaque, en calots —, le nom des nombres, les dizaines et les unités en barres et en cubes.</p></Aide>
         </h3>
         <Field label="Les exercices">
           <Choix<ExerciceSuite> liste={EXERCICES_SUITE} choisis={r.exercices} onChange={(exercices) => maj({ exercices })} />

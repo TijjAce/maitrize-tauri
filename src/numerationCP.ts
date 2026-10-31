@@ -1,22 +1,17 @@
 // La numération au CP, en manipulant : des billes et des calots, l'abaque à
 // deux tiges, la suite des nombres. Trois ateliers de Fabriquer — « Billes
-// et calots », « L'abaque », « La suite des nombres » — dont la séquence « La
-// connaissance des nombres de 10 à 20 » (voir demarcheDixAVingt.ts) prend
-// ses feuilles, à ses réglages : chacune se rouvre dans son atelier.
-//
-// Les supports viennent de la séance 4 de cette séquence, d'après un manuel
-// de préparation au CRPE que l'enseignant a fourni : des cartes de billes
-// dispersées à dénombrer, de trois couleurs ; des billes et des calots — un
-// calot vaut dix billes — pour savoir qui a gagné la partie ; l'abaque à deux
-// tiges, où dix jetons verts s'échangent contre un rouge, posé sur la tige
-// des dizaines ; la frise à compléter. Les ateliers les étendent jusqu'à 100,
-// que le CP atteint en période 3, et à ce qui les prépare : les nombres
-// jusqu'à 9 et leurs décompositions. Les nombres sont tirés au sort ; le
-// corrigé suit, sur sa page.
+// et calots », « L'abaque », « La suite des nombres » —, jusqu'à 100, que le
+// CP atteint en période 3, et ce qui les prépare : les nombres jusqu'à 9 et
+// leurs décompositions. Des billes dispersées à dénombrer en faisant des
+// paquets de dix ; des billes et des calots — un calot vaut dix billes —
+// pour savoir qui a gagné la partie ; l'abaque à deux tiges, où dix jetons
+// verts s'échangent contre un rouge, posé sur la tige des dizaines ; la
+// frise à compléter. Les nombres sont tirés au sort ; le corrigé suit, sur sa
+// page.
 //
 // La feuille est souvent photocopiée en noir et blanc : une bille garde son
 // reflet, le calot est plus gros et porte sa spirale, le jeton rouge a un
-// bord épais — et c'est la tige qui dit la dizaine, comme le veut la séance.
+// bord épais — et c'est la tige qui dit la dizaine.
 
 import { feuille } from "./cartesImprimables";
 import { REGLAGES_CUBES } from "./cubesNumeration";
@@ -25,21 +20,18 @@ import { entier } from "./nombres";
 import { nombreEnLettres } from "./nombresEnLettres";
 
 const NOIR = "#1c2233", BLEU = "#2f6fd1";
-interface Couleur { nom: string; hex: string }
-const BLEUES: Couleur = { nom: "bleues", hex: "#4a86e8" };
-const ROUGES: Couleur = { nom: "rouges", hex: "#e05252" };
-const VERTES: Couleur = { nom: "vertes", hex: "#38a169" };
-const COULEURS = [BLEUES, ROUGES, VERTES];
+/** Les billes : bleues, rouges, vertes. */
+const BILLE_BLEUE = "#4a86e8", BILLE_ROUGE = "#e05252", BILLE_VERTE = "#38a169";
+const COULEURS = [BILLE_BLEUE, BILLE_ROUGE, BILLE_VERTE];
 const JETON_ROUGE = "#e05252", JETON_VERT = "#38a169";
 
 const PROGRAMME = '<span class="reference">Programme de mathématiques du cycle 2, 2024.</span>';
-const MANUEL = `<span class="reference">D'après Réussir mon CRPE, oral 2025-2026 (Nathan), p. 40-43.</span>`;
-const entete = (titre: string, consigne: string, source: string) => `<div class="titre">${titre}</div>
+const entete = (titre: string, consigne: string) => `<div class="titre">${titre}</div>
   <div class="sous">Prénom : ........................................ Date : ........................</div>
-  <div class="regle">${consigne} ${source}</div>`;
+  <div class="regle">${consigne} ${PROGRAMME}</div>`;
 /** Une feuille et son corrigé, sur sa page. */
-const page = (titre: string, consigne: string, corps: (corr: boolean) => string, source = PROGRAMME) =>
-  `<div class="page">${entete(titre, consigne, source)}${corps(false)}</div>`
+const page = (titre: string, consigne: string, corps: (corr: boolean) => string) =>
+  `<div class="page">${entete(titre, consigne)}${corps(false)}</div>`
   + `<div class="page corrige"><div class="titre">${titre} — corrigé</div>${corps(true)}</div>`;
 const BLANC = '<span class="dv-blanc"></span>';
 /** La réponse : un blanc pour l'élève, en gras au corrigé. */
@@ -241,14 +233,14 @@ function svgJeu(j: Jeu, { parRang = 20, calotsParRang = 10, echelle = 1 } = {}):
   for (let c = 0; c < j.calots; c++) morceaux.push(calot(0.6 + R + (c % calotsParRang) * pasCalot, yc + Math.floor(c / calotsParRang) * pasCalot, R));
   const finCalots = 0.6 + Math.min(j.calots, calotsParRang) * pasCalot;
   const x0 = j.calots ? finCalots + 1 : 0.6, y0 = (h - hBilles) / 2 + r;
-  for (let k = 0; k < j.billes; k++) morceaux.push(bille(x0 + (k % parRang) * pas + r, y0 + Math.floor(k / parRang) * pas, r, BLEUES.hex));
+  for (let k = 0; k < j.billes; k++) morceaux.push(bille(x0 + (k % parRang) * pas + r, y0 + Math.floor(k / parRang) * pas, r, BILLE_BLEUE));
   return svg(j.billes ? x0 + Math.min(j.billes, parRang) * pas : finCalots, h, morceaux.join(""), echelle);
 }
 
 /** La règle du jeu, dessinée : un calot vaut dix billes. */
 function regleDuCalot(): string {
   const r = 2.6, pas = 6.3, R = 4.4;
-  const billes = de(0, 9).map((k) => bille(19 + k * pas + r, 5, r, BLEUES.hex)).join("");
+  const billes = de(0, 9).map((k) => bille(19 + k * pas + r, 5, r, BILLE_BLEUE)).join("");
   return `<div class="dv-regle-jeu">${svg(19 + 10 * pas + 1, 10, calot(R + 0.6, 5, R) + `<text x="13" y="6.6" font-size="5" font-weight="800" text-anchor="middle" fill="${NOIR}">=</text>` + billes)}<span>Un calot vaut dix billes.</span></div>`;
 }
 
@@ -261,34 +253,20 @@ const enCalots = (v: number): Jeu => ({ calots: Math.floor(v / 10), billes: v % 
 const unCalotDefait = (v: number): Jeu => (v >= 10 ? { calots: Math.floor(v / 10) - 1, billes: (v % 10) + 10 } : enCalots(v));
 
 /**
- * Les parties, de la plus simple à la plus fine. De 10 à 20, celles du
- * manuel : un calot et des billes contre plus de billes que d'objets chez
- * l'autre — le calot gagne quand même —, des billes seules qui l'emportent,
- * deux joueurs qui ont chacun un calot, puis vingt. Sinon : les calots et les
- * billes au plus juste, puis un joueur qui a défait un calot en dix billes —
- * plus d'objets, et pourtant pas forcément plus de billes. Qui est A, qui est
- * B : au hasard.
+ * Les parties, de la plus simple à la plus fine : les calots et les billes
+ * au plus juste, puis un joueur qui a défait un calot en dix billes — plus
+ * d'objets, et pourtant pas forcément plus de billes. Qui est A, qui est B :
+ * au hasard.
  */
 function parties(alea: () => number, de0: number, a0: number, combien: number): Partie[] {
   const liste: Partie[] = [];
-  if (de0 <= 10 && a0 === 20) {
-    const a = entier(alea, 5, 9);
-    const u = entier(alea, 2, 6);
-    const [v, w] = melanger(alea, de(1, 9)).slice(0, 2);
-    liste.push(
-      [{ calots: 1, billes: a }, { calots: 0, billes: 9 + a }],
-      [{ calots: 0, billes: 10 + u + entier(alea, 1, 9 - u) }, { calots: 1, billes: u }],
-      [{ calots: 1, billes: v }, { calots: 1, billes: w }],
-      [{ calots: 2, billes: 0 }, alea() < 0.5 ? { calots: 0, billes: 19 } : { calots: 1, billes: 9 }],
-    );
-  }
-  for (let i = liste.length; i < combien; i++) {
+  for (let i = 0; i < combien; i++) {
     const [v, w] = tirer(alea, de0, a0, 2).sort((x, y) => y - x);
     // v > w : au plus juste ; puis le plus petit en billes, qui a plus d'objets et perd ; puis le plus grand en billes.
     const sorte = i % 3;
     liste.push(sorte === 0 ? [enCalots(v), enCalots(w)] : sorte === 1 ? [enCalots(v), unCalotDefait(w)] : [unCalotDefait(v), enCalots(w)]);
   }
-  return liste.slice(0, combien).map(([x, y]) => (alea() < 0.5 ? [x, y] : [y, x]));
+  return liste.map(([x, y]) => (alea() < 0.5 ? [x, y] : [y, x]));
 }
 
 const lettre = (l: string, gagne = false) => `<span class="dv-lettre${gagne ? " dv-gagne" : ""}">${l}</span>`;
@@ -386,7 +364,7 @@ export type ExerciceBilles = "compter" | "paquets" | "deux" | "partie";
 export const EXERCICES_BILLES: {
   id: ExerciceBilles; libelle: string; min: number; max: number; defaut: [number, number]; nombre: { min: number; defaut: number; mot: string };
 }[] = [
-  { id: "compter", libelle: "Combien de billes ? — une collection dispersée", min: 3, max: 99, defaut: [17, 19], nombre: { min: 1, defaut: 3, mot: "collections" } },
+  { id: "compter", libelle: "Combien de billes ? — une collection dispersée", min: 3, max: 99, defaut: [12, 19], nombre: { min: 1, defaut: 3, mot: "collections" } },
   { id: "paquets", libelle: "Des paquets de dix — entourer, puis écrire le nombre", min: 11, max: 59, defaut: [12, 19], nombre: { min: 1, defaut: 3, mot: "collections" } },
   { id: "deux", libelle: "Deux tas — « … et … font … »", min: 2, max: 10, defaut: [6, 9], nombre: { min: 2, defaut: 4, mot: "lignes" } },
   { id: "partie", libelle: "Qui a gagné ? — un calot vaut dix billes", min: 10, max: 99, defaut: [10, 20], nombre: { min: 1, defaut: 4, mot: "parties" } },
@@ -405,7 +383,7 @@ export interface ReglagesBilles {
 
 export const REGLAGES_BILLES: ReglagesBilles = { titre: "", exercice: "partie", de: 10, a: 20, nombre: 4, regle: true };
 
-/** Ce qui tient sur la page : neuf petites boîtes jusqu'à 10, trois cartes jusqu'à 20, deux au-delà ; huit lignes ; cinq parties, quatre passé 20. */
+/** Ce qui tient sur la page : neuf petites boîtes jusqu'à 10, trois collections jusqu'à 20, deux au-delà ; huit lignes ; cinq parties, quatre passé 20. */
 export const nombreMax = (exercice: ExerciceBilles, a: number) =>
   exercice === "compter" ? (a <= 10 ? 9 : a <= 20 ? 3 : 2) : exercice === "paquets" ? (a <= 20 ? 3 : 2) : exercice === "deux" ? 8 : a <= 20 ? 5 : 4;
 
@@ -436,30 +414,29 @@ function svgDeuxGroupes(a: number, b: number): string {
   const r = 2.6, pas = 6.4, l = 5 * pas;
   const groupe = (n: number, x0: number, hex: string) =>
     de(0, n - 1).map((i) => bille(x0 + (i % 5) * pas + r + 0.6, 3.4 + Math.floor(i / 5) * pas, r, hex)).join("");
-  return svg(2 * l + 7, 13.2, groupe(a, 0, BLEUES.hex)
-    + `<line x1="${n2(l + 3.5)}" y1="0.4" x2="${n2(l + 3.5)}" y2="12.8" stroke="${NOIR}" stroke-width="0.4" stroke-dasharray="1 1"/>` + groupe(b, l + 7, ROUGES.hex));
+  return svg(2 * l + 7, 13.2, groupe(a, 0, BILLE_BLEUE)
+    + `<line x1="${n2(l + 3.5)}" y1="0.4" x2="${n2(l + 3.5)}" y2="12.8" stroke="${NOIR}" stroke-width="0.4" stroke-dasharray="1 1"/>` + groupe(b, l + 7, BILLE_ROUGE));
 }
 
-/** Combien de billes ? Jusqu'à 10, de petites boîtes ; au-delà, des cartes d'une couleur chacune — à découper : chaque élève reçoit la sienne. */
+/** Combien de billes ? Jusqu'à 10, de petites boîtes ; au-delà, des collections dispersées, chacune dans son cadre et de sa couleur. */
 function compter(r: ReglagesBilles, alea: () => number, titre: string): string {
   if (r.a <= 10) {
-    const boites = tirer(alea, r.de, r.a, r.nombre).map((n, i) => ({ n, hex: COULEURS[i % 3].hex, pts: disperser(alea, n, 3.8, 46.2, 3.8, 24.2, 8.6) }));
+    const boites = tirer(alea, r.de, r.a, r.nombre).map((n, i) => ({ n, hex: COULEURS[i % 3], pts: disperser(alea, n, 3.8, 46.2, 3.8, 24.2, 8.6) }));
     return page(titre, "Je compte les billes de chaque boîte. J'écris le nombre dessous.", (corr) =>
       `<div class="dv-boites">${boites.map((b) => `<div class="dv-boite">${svg(50, 28, b.pts.map((p) => bille(p.x, p.y, 2.8, b.hex)).join(""))}`
         + `<div class="dv-ligne">${rep(corr, b.n)}</div></div>`).join("")}</div>`);
   }
-  // Du plus grand au plus petit : de 17 à 19, les trois cartes du manuel — dix-neuf billes bleues, dix-huit rouges, dix-sept vertes.
-  const cartes = tirer(alea, r.de, r.a, r.nombre).sort((x, y) => y - x).map((n, i) => ({ c: COULEURS[i % 3], col: collection(alea, n) }));
-  return page(titre, "Je compte les billes de ma carte. J'écris combien il y en a.", (corr) => cartes.map(({ c, col }) =>
-    `<div class="dv-carte"><div class="dv-carte-titre">Les billes ${c.nom}</div>${svgCollection(col, c.hex, corr)}`
-    + `<div class="dv-ligne">Il y a ${rep(corr, col.n)} billes ${c.nom}.${corr && col.n >= 10 ? ` ${majuscule(dizainesEtUnites(col.n))}.` : ""}</div></div>`).join(""),
-  r.de === 17 && r.a === 19 ? MANUEL : PROGRAMME);
+  const couleurs = melanger(alea, COULEURS);
+  const collections = tirer(alea, r.de, r.a, r.nombre).map((n, i) => ({ hex: couleurs[i % 3], col: collection(alea, n) }));
+  return page(titre, "Je compte les billes de chaque cadre. J'écris combien il y en a.", (corr) => collections.map(({ hex, col }) =>
+    `<div class="dv-bloc"><div class="dv-cadre">${svgCollection(col, hex, corr)}</div>`
+    + `<div class="dv-ligne">Il y a ${rep(corr, col.n)} billes.${corr && col.n >= 10 ? ` ${majuscule(dizainesEtUnites(col.n))}.` : ""}</div></div>`).join(""));
 }
 
 /** Des paquets de dix : entourer, compter ce qui reste, écrire le nombre — dans un tableau, qui ne laisse pas deviner combien de paquets. */
 function paquets(r: ReglagesBilles, alea: () => number, titre: string): string {
   const couleurs = melanger(alea, COULEURS);
-  const collections = tirer(alea, r.de, r.a, r.nombre).map((n, i) => ({ hex: couleurs[i % 3].hex, col: collection(alea, n) }));
+  const collections = tirer(alea, r.de, r.a, r.nombre).map((n, i) => ({ hex: couleurs[i % 3], col: collection(alea, n) }));
   const tableau = (n: number, corr: boolean) => `<table class="dv-tableau"><tr><th>paquets de dix</th><th>billes seules</th><th>billes en tout</th></tr>`
     + `<tr><td>${rep(corr, Math.floor(n / 10))}</td><td>${rep(corr, n % 10)}</td><td>${rep(corr, n)}</td></tr></table>`;
   return page(titre, "J'entoure des paquets de dix billes. Je compte les billes qui restent seules. J'écris combien il y a de billes en tout.", (corr) =>
@@ -475,8 +452,7 @@ function deuxTas(r: ReglagesBilles, alea: () => number, titre: string): string {
 function quiAGagne(r: ReglagesBilles, alea: () => number, titre: string): string {
   const liste = parties(alea, r.de, r.a, r.nombre);
   return page(titre, "Un calot vaut dix billes. J'écris combien de billes chaque joueur a gagnées. J'entoure la lettre du gagnant.", (corr) =>
-    (r.regle ? regleDuCalot() : "") + liste.map((p, i) => htmlPartie(liste.length > 1 ? `Partie ${i + 1}` : "", p, corr)).join(""),
-  r.de <= 10 && r.a === 20 ? MANUEL : PROGRAMME);
+    (r.regle ? regleDuCalot() : "") + liste.map((p, i) => htmlPartie(liste.length > 1 ? `Partie ${i + 1}` : "", p, corr)).join(""));
 }
 
 /** La feuille de l'atelier « Billes et calots », et son corrigé. */
@@ -525,19 +501,17 @@ export function reglagesAbaqueSurs(brut: Partial<ReglagesAbaque> | null | undefi
 export const titreAbaque = (_r: ReglagesAbaque) => "L'abaque à deux tiges";
 
 /**
- * La feuille de l'atelier « L'abaque », et son corrigé. L'échange, jusqu'à
- * 20, est celui du manuel : dix-neuf jetons verts rangés dix et neuf sur les
- * deux tiges, puis dix d'entre eux échangés contre un rouge. Au-delà, dix
- * jetons verts remplissent la tige des unités, et d'autres attendent à côté.
+ * La feuille de l'atelier « L'abaque », et son corrigé. L'échange : dix
+ * jetons verts remplissent la tige des unités, d'autres attendent à côté ;
+ * dix d'entre eux s'échangent contre un rouge.
  */
 export function htmlAbaque(brut: Partial<ReglagesAbaque>, graine: number): string {
   const r = reglagesAbaqueSurs(brut);
   const alea = hasard(graine);
   const titre = r.titre.trim() || titreAbaque(r);
-  const commeLeManuel = r.a <= 20;
-  const n = commeLeManuel ? entier(alea, Math.max(11, r.de), Math.min(19, r.a)) : entier(alea, Math.max(10, r.de), r.a);
-  const avant: [Jeton[], Jeton[]] = commeLeManuel ? [verts(10), verts(n - 10)] : [Array<Jeton>(Math.floor(n / 10) - 1).fill("rouge"), verts(10)];
-  const pile = commeLeManuel ? 0 : n % 10;
+  const n = entier(alea, Math.max(10, r.de), r.a);
+  const avant: [Jeton[], Jeton[]] = [Array<Jeton>(Math.floor(n / 10) - 1).fill("rouge"), verts(10)];
+  const pile = n % 10;
   const aLire = tirer(alea, r.de, r.a, r.nombre);
   const autres = de(r.de, r.a).filter((x) => !aLire.includes(x));
   const aDessiner = autres.length >= r.nombre ? melanger(alea, autres).slice(0, r.nombre) : tirer(alea, r.de, r.a, r.nombre);
@@ -549,7 +523,7 @@ export function htmlAbaque(brut: Partial<ReglagesAbaque>, graine: number): strin
   };
   const consigne = (p: PartieAbaque) => PARTIES_ABAQUE.find((x) => x.id === p)!.consigne;
   return feuille(page(titre, "Je regarde la place des jetons : à gauche les dizaines, à droite les unités.",
-    (corr) => r.parties.map((p, i) => exo(i + 1, consigne(p), contenu[p](corr))).join(""), commeLeManuel ? MANUEL : PROGRAMME), "dv");
+    (corr) => r.parties.map((p, i) => exo(i + 1, consigne(p), contenu[p](corr))).join("")), "dv");
 }
 
 // ── L'atelier « La suite des nombres » ────────────────────────────────────
@@ -608,19 +582,11 @@ function representer(n: number, sorte: Representation): string {
   }
 }
 
-/**
- * Les frises : vingt nombres qui se suivent, ou moins s'il n'y en a pas
- * autant. La première, quand elle commence après une dizaine entière, est
- * celle du manuel : les nombres en 7, 8, 9 et la dizaine qui suit manquent
- * — on les entend dans dix-sept, dix-huit, dix-neuf.
- */
+/** Les frises : vingt nombres qui se suivent, ou moins s'il n'y en a pas autant. */
 function frises(alea: () => number, r: ReglagesSuite): { debut: number; fin: number; trous: number[] }[] {
   const longueur = Math.min(20, r.a - r.de + 1);
   const debuts = de(r.de, r.a - longueur + 1);
-  const commeLeManuel = longueur === 20 ? debuts.filter((s) => s % 10 === 1) : [];
-  const premiere = commeLeManuel.length ? commeLeManuel[Math.floor(alea() * commeLeManuel.length)] : null;
-  return [6, 6, 8, 10].map((combien, i) => {
-    if (i === 0 && premiere !== null) return { debut: premiere, fin: premiere + 19, trous: [6, 7, 8, 9, 16, 17, 18].map((k) => premiere + k) };
+  return [6, 6, 8, 10].map((combien) => {
     const debut = debuts[Math.floor(alea() * debuts.length)];
     return { debut, fin: debut + longueur - 1, trous: trousDeLaFrise(alea, debut, debut + longueur - 1, Math.min(combien, longueur - 2)) };
   });
@@ -662,38 +628,7 @@ export function htmlSuite(brut: Partial<ReglagesSuite>, graine: number): string 
   const consigne = (e: ExerciceSuite) => EXERCICES_SUITE.find((x) => x.id === e)!.consigne;
   const seul = r.exercices.length === 1;
   return feuille(page(titre, seul ? consigne(r.exercices[0]) : "Je fais les exercices dans l'ordre.",
-    (corr) => r.exercices.map((e, i) => (seul ? `<div class="dv-exo">${contenu[e](corr)}</div>` : exo(i + 1, consigne(e), contenu[e](corr)))).join(""),
-    r.de <= 1 && r.a === 20 && r.exercices.includes("manquants") ? MANUEL : PROGRAMME), "dv");
-}
-
-// ── L'évaluation de la séquence ───────────────────────────────────────────
-
-/** L'évaluation de la séquence « La connaissance des nombres de 10 à 20 » : tout ce qu'elle a travaillé, sur une feuille. */
-export function htmlEvaluationDixAVingt(graine: number): string {
-  const alea = hasard(graine);
-  const col = collection(alea, entier(alea, 15, 19));
-  const abaques = tirer(alea, 10, 20, 3);
-  const [partie] = parties(alea, 10, 20, 1);
-  const trous = trousDeLaFrise(alea, 1, 20, 7);
-  // À dicter : un de 17 à 19, un de 11 à 16, dix ou vingt, et un autre.
-  const dictee = (() => {
-    const a = entier(alea, 17, 19), b = entier(alea, 11, 16), c = alea() < 0.5 ? 10 : 20;
-    const d = melanger(alea, de(11, 19).filter((x) => x !== a && x !== b))[0];
-    return melanger(alea, [a, b, c, d]);
-  })();
-  const noms = melanger(alea, [...melanger(alea, de(11, 16)).slice(0, 2), ...melanger(alea, de(17, 19)).slice(0, 2)]);
-  const droite = melanger(alea, noms);
-  const titre = "Évaluation — les nombres de 10 à 20";
-  return feuille(page(titre, "Je fais les exercices dans l'ordre. Je relis mes réponses.", (corr) => exo(1, "Je compte les billes. J'écris combien il y en a.",
-    `<div class="dv-cadre">${svgCollection(col, VERTES.hex, corr)}</div><div class="dv-ligne">Il y a ${rep(corr, col.n)} billes.</div>`)
-    + exo(2, "J'écris le nombre de chaque abaque.",
-      `<div class="dv-abaques dv-trois">${abaques.map((x) => `<div>${svgAbaque(jetonsDe(x))}<div class="dv-ligne">${rep(corr, x)}</div></div>`).join("")}</div>`)
-    + exo(3, "Un calot vaut dix billes. J'écris combien de billes chaque joueur a gagnées. J'entoure la lettre du gagnant.", htmlPartie("", partie, corr))
-    + exo(4, "J'écris les nombres qui manquent sur la frise.", frise(1, 20, trous, corr))
-    + exo(5, "J'écris en chiffres les nombres que j'entends.",
-      (corr ? `<div class="dv-adulte">À dicter : ${dictee.map(nombreEnLettres).join(", ")}.</div>` : "")
-        + `<div class="dv-dictee">${dictee.map((x) => `<span>${corr ? x : ""}</span>`).join("")}</div>`)
-    + exo(6, "Je relie chaque nom à son nombre.", relier(noms, droite, corr))), "dv");
+    (corr) => r.exercices.map((e, i) => (seul ? `<div class="dv-exo">${contenu[e](corr)}</div>` : exo(i + 1, consigne(e), contenu[e](corr)))).join("")), "dv");
 }
 
 export const STYLE_NUMERATION_CP = `
@@ -711,8 +646,6 @@ export const STYLE_NUMERATION_CP = `
   .feuille.dv .dv-boite { border: 1.2px solid #c4c9d6; border-radius: 3mm; padding: 1.5mm; text-align: center; break-inside: avoid; page-break-inside: avoid; }
   .feuille.dv .dv-boite svg, .feuille.dv .dv-abaques svg { margin: 0 auto; }
   .feuille.dv .dv-rang { display: flex; align-items: center; gap: 6mm; margin: 0 0 3mm; break-inside: avoid; page-break-inside: avoid; }
-  .feuille.dv .dv-carte { border: 1.5px dashed #9aa0b4; border-radius: 2mm; padding: 2mm 3mm; margin: 0 0 3mm; break-inside: avoid; page-break-inside: avoid; }
-  .feuille.dv .dv-carte-titre { font-size: 14px; font-weight: 800; margin: 0 0 1mm; }
   .feuille.dv .dv-regle-jeu { display: flex; align-items: center; gap: 4mm; border: 1.2px solid #cfd4e2; border-radius: 3mm; padding: 2mm 3mm; margin: 0 0 4mm;
     font-size: 14px; font-weight: 700; background: #f7f8fc; break-inside: avoid; page-break-inside: avoid; }
   .feuille.dv .dv-partie { border: 1.2px solid #c4c9d6; border-radius: 3mm; padding: 2mm 3mm; margin: 0 0 3mm; break-inside: avoid; page-break-inside: avoid; }
@@ -724,7 +657,6 @@ export const STYLE_NUMERATION_CP = `
   .feuille.dv .dv-echange { display: flex; align-items: center; gap: 4mm; margin: 0 0 2mm; }
   .feuille.dv .dv-abaques { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm 3mm; text-align: center; }
   .feuille.dv .dv-abaques .dv-ligne { line-height: 1.6; margin: 0.5mm 0 0; }
-  .feuille.dv .dv-abaques.dv-trois { grid-template-columns: repeat(3, 1fr); }
   .feuille.dv table.dv-frise, .feuille.dv table.dv-tableau { width: auto; }
   .feuille.dv .dv-frise { border-collapse: collapse; margin: 0 auto 4mm; font-size: 14px; }
   .feuille.dv .dv-frise.dv-frise-cent { font-size: 12px; }
@@ -758,8 +690,4 @@ export const STYLE_NUMERATION_CP = `
   .feuille.dv .dv-a-ranger { display: flex; gap: 4mm; font-size: 16px; font-weight: 700; }
   .feuille.dv .dv-cases { display: flex; gap: 1.5mm; }
   .feuille.dv .dv-case { display: inline-block; width: 11mm; height: 9mm; line-height: 9mm; border: 1.2px solid #1c2233; text-align: center; font-weight: 700; color: #2f6fd1; }
-  .feuille.dv .dv-dictee { display: flex; gap: 6mm; margin: 0 0 2mm 4mm; }
-  .feuille.dv .dv-dictee span { display: flex; align-items: center; justify-content: center; width: 20mm; height: 13mm; border: 1.2px solid #1c2233; border-radius: 2mm;
-    font-weight: 800; font-size: 18px; color: #2f6fd1; }
-  .feuille.dv .dv-adulte { font-size: 12px; color: #687087; margin: 0 0 2mm 4mm; }
 `;

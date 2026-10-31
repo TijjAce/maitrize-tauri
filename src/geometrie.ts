@@ -350,11 +350,10 @@ const CE_QUI_NE_VA_PAS: Record<PaireSymetrique, string> = {
 };
 
 /**
- * Des paires de figures de part et d'autre d'un axe tracé, comme la séance de
- * la symétrie du manuel du CRPE de l'enseignant : certaines symétriques,
- * d'autres non — la figure glissée ou tournée au lieu d'être retournée, mal
- * placée, un sommet mal reporté. Des figures loin de l'axe, et d'autres qui le
- * touchent.
+ * Des paires de figures de part et d'autre d'un axe tracé : certaines
+ * symétriques, d'autres non — la figure glissée ou tournée au lieu d'être
+ * retournée, mal placée, un sommet mal reporté. Des figures loin de l'axe, et
+ * d'autres qui le touchent.
  */
 function feuilleSymetriques(r: ReglagesGeometrie, graine: number): string {
   const alea = hasard(graine);

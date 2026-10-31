@@ -120,9 +120,6 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     const colonne = (t: typeof tableau, cle: string) => t.flatMap((b) => b.lignes).map((l) => l.cases.findIndex((c) => c.some((s) => s.cle === cle))).find((i) => i >= 0);
     expect(colonne(tableau, "numeration-dizaine-cp:CP")).toBe(0);
     expect(colonne(tableau, "nombres-livret-cp-59:CP")).toBe(1);
-    // Les nombres de 10 à 20, d'après le manuel du CRPE de l'enseignant : en période 2, juste sous les nombres jusqu'à 59.
-    const periode2 = tableau.flatMap((b) => b.lignes).find((l) => l.domaine.id === "nombres")!.cases[1].map((s) => s.cle);
-    expect(periode2.indexOf("nombres-10-20-cp:CP")).toBe(periode2.indexOf("nombres-livret-cp-59:CP") + 1);
     expect(colonne(tableau, "nombres-livret-cp-100:CP")).toBe(2);
     expect(colonne(tableau, "heure-cp:CP")).toBe(5);
     // Glissée en période 4 par l'enseignant, elle y va.
@@ -147,9 +144,8 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(placees.length).toBeGreaterThanOrEqual(83);
     for (const { s, repere } of placees) {
       expect(repere!.periode, s.cle).toBeGreaterThanOrEqual(1);
-      // Une fiche thématique d'Éduscol aussi : celle du premier thème d'histoire du CM2, programme de 2020 ; et le manuel du CRPE de
-      // l'enseignant, pour la séquence qui en vient.
-      expect(repere!.raison, s.cle).toMatch(/^(Programme|Livret|Guide|Repères|Fiche|Manuel) .+ : « .+ »/);
+      // Une fiche thématique d'Éduscol aussi : celle du premier thème d'histoire du CM2, programme de 2020.
+      expect(repere!.raison, s.cle).toMatch(/^(Programme|Livret|Guide|Repères|Fiche) .+ : « .+ »/);
     }
     const de = (cle: string) => reperes.find((x) => x.s.cle === cle)?.repere?.periode;
     expect(de("egalites-fractions-ce2:CE2")).toBe(1);
@@ -212,7 +208,7 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(nomSansClasse("Les accents (CP, CE1, CE2)")).toBe("Les accents");
     expect(nomSansClasse("Paléolithique et Néolithique (CE2, période 1)")).toBe("Paléolithique et Néolithique (CE2, période 1)");
     expect(nomDansLeDossier("Le Vilain Petit Canard (GS) : des synonymes")).toBe("Le Vilain Petit Canard : des synonymes");
-    expect(nomDansLeDossier("Le tangram : reproduire des figures (GS)")).toBe("Le tangram : reproduire des figures");
+    expect(nomDansLeDossier("Le problème du jour : partager (GS)")).toBe("Le problème du jour : partager");
     expect(nomDansLeDossier("Pair ou impair (CE1)")).toBe("Pair ou impair");
   });
 
@@ -239,7 +235,7 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
         ouvertes++;
       });
       // Les feuilles de la séquence restent toutes, dans leur ordre, après les fiches du calcul mental : en tête quand Maitrize les
-      // ajoute, dans chaque séance quand la séquence les pose elle-même (la soustraction avec retenue du manuel du CRPE).
+      // ajoute, dans chaque séance quand la séquence les pose elle-même.
       const sesFiches = s.demarche.seances.every((x) => x.phases[0]?.phase === PHASE_LA_MARTINIERE);
       const fiches = tout.demarche.seances.filter((x) => !estLaSeanceDesMots(x)).length;
       const reste = sesFiches ? tout.plan.feuilles.filter((f) => f.atelier !== "martiniere") : tout.plan.feuilles.slice(fiches);
@@ -394,8 +390,8 @@ describe("les séquences toutes faites de la maternelle, un dossier par section 
   it("rangent chaque séquence de maternelle à ses sections ; les méthodologies restent dans la bibliothèque", () => {
     expect(maternelle.map((s) => s.cle).sort()).toEqual([
       "vilain-petit-canard-ms:MS", "vilain-petit-canard-gs:GS", "phonologie:MS", "phonologie:GS",
-      "collections-maternelle:PS", "collections-maternelle:MS", "collections-maternelle:GS", "decomposition-additive-gs:GS",
-      "probleme-du-jour-maternelle:PS", "probleme-du-jour-maternelle:MS", "probleme-du-jour-maternelle:GS", "formes-tangram-gs:GS",
+      "collections-maternelle:PS", "collections-maternelle:MS", "collections-maternelle:GS",
+      "probleme-du-jour-maternelle:PS", "probleme-du-jour-maternelle:MS", "probleme-du-jour-maternelle:GS",
       "chronologie-maternelle:PS", "chronologie-maternelle:MS", "chronologie-maternelle:GS",
     ].sort());
     for (const id of ["maternelle-modalites", "categoriser-maternelle"]) expect(maternelle.some((s) => s.demarche.id === id), id).toBe(false);
@@ -405,25 +401,16 @@ describe("les séquences toutes faites de la maternelle, un dossier par section 
     }
   });
 
-  it("prennent la période du manuel quand il la donne, sinon celle que Maitrize suggère d'après le programme de l'école maternelle", () => {
+  it("prennent la période que Maitrize suggère d'après le programme de l'école maternelle, qui n'en donne aucune", () => {
     for (const s of maternelle) {
-      const repere = repereDeLaDemarche(s.demarche.id, s.classe);
-      const proposee = periodeProposee(s.demarche.id, s.classe);
-      if (repere) {
-        expect(repere.raison, s.cle).toMatch(/^Manuel « Réussir mon CRPE/);
-        expect(proposee, s.cle).toBeNull();
-        continue;
-      }
+      expect(repereDeLaDemarche(s.demarche.id, s.classe), s.cle).toBeNull();
       // Chaque suggestion s'appuie sur une phrase du programme, citée.
-      expect(proposee?.raison, s.cle).toMatch(/^Suggestion de Maitrize : ni le programme ni les guides ne la datent\. [A-ZÀ-Ý].* « .+ ».*\.$/);
+      expect(periodeProposee(s.demarche.id, s.classe)?.raison, s.cle).toMatch(/^Suggestion de Maitrize : ni le programme ni les guides ne la datent\. [A-ZÀ-Ý].* « .+ ».*\.$/);
     }
     const cles = new Set(maternelle.map((s) => s.cle));
     for (const section of SECTIONS) for (const id of Object.keys(PERIODES_PROPOSEES_EN_MATERNELLE[section])) expect(cles.has(`${id}:${section}`), `${id}:${section}`).toBe(true);
-    // Les collections avant le problème du jour, qui demande de savoir « déterminer les quantités » ; le tangram et l'album à calculer
-    // aux périodes du manuel.
+    // Les collections avant le problème du jour, qui demande de savoir « déterminer les quantités ».
     for (const section of SECTIONS) expect(de(`collections-maternelle:${section}`)!, section).toBeLessThan(de(`probleme-du-jour-maternelle:${section}`)!);
-    expect(de("formes-tangram-gs:GS")).toBe(3);
-    expect(de("decomposition-additive-gs:GS")).toBe(4);
     // La soustraction posée du CE1, en période 3, sans attendre les référentiels.
     expect(repereDeLaDemarche(DEMARCHE_SOUSTRACTION_POSEE.id, "CE1")).toMatchObject({ periode: 3, raison: expect.stringMatching(/période 3 au plus tard/) });
   });
@@ -434,7 +421,7 @@ describe("les séquences toutes faites de la maternelle, un dossier par section 
     expect(gs.map((b) => b.discipline)).toEqual(["Le langage oral et écrit", "Les premiers outils mathématiques", "Se repérer dans le temps et l'espace"]);
     expect(gs.flatMap((b) => b.lignes.map((l) => l.domaine.nom))).toEqual([
       "Acquérir le langage oral", "Se préparer à apprendre à lire", "Découvrir les nombres", "Utiliser les nombres pour résoudre des problèmes",
-      "Explorer les solides et les formes planes", "Se repérer dans le temps",
+      "Se repérer dans le temps",
     ]);
     for (const section of SECTIONS) {
       const tableau = tableauDesSequences(maternelle.filter((s) => s.classe === section), periode);

@@ -21,7 +21,7 @@ import { hasard, melanger } from "./hasard";
 export type Classe = "CP" | "CE1" | "CE2";
 export type Grandeur = "longueur" | "masse" | "contenance";
 export type ExerciceMesures =
-  | "mesurer" | "tracer" | "comparerSegments" | "comparerObjets" | "mesurerU" | "bienMesurer" | "plusLongCourt" | "regleU"
+  | "mesurer" | "tracer" | "comparerSegments" | "comparerObjets" | "mesurerU" | "plusLongCourt" | "regleU"
   | "unites" | "estimer" | "convertir" | "comparerMesures"
   | "perimetre" | "perimetreCompas" | "balances" | "pesees" | "ordonner" | "verres";
 
@@ -29,7 +29,6 @@ export const EXERCICES_MESURES: { id: ExerciceMesures; libelle: string; grandeur
   { id: "comparerObjets", libelle: "Comparer des objets : les crayons", grandeurs: ["longueur"] },
   { id: "comparerSegments", libelle: "Comparer des segments, sans règle", grandeurs: ["longueur"] },
   { id: "plusLongCourt", libelle: "Tracer plus long, plus court (CP, CE1)", grandeurs: ["longueur"] },
-  { id: "bienMesurer", libelle: "Qui a bien mesuré ? Crayons et gommes (CP, CE1)", grandeurs: ["longueur"] },
   { id: "mesurerU", libelle: "Mesurer avec une unité U (CP, CE1)", grandeurs: ["longueur"] },
   { id: "regleU", libelle: "Graduer sa règle en U (CP, CE1)", grandeurs: ["longueur"] },
   { id: "mesurer", libelle: "Mesurer des segments avec la règle", grandeurs: ["longueur"] },
@@ -197,12 +196,10 @@ function feuilleComparerObjets(r: ReglagesMesures, graine: number): string {
 
 // ── Avant la règle : une unité choisie (CP, CE1) ──────────────────────────
 //
-// La séquence des longueurs du manuel du CRPE de l'enseignant (« Réussir mon
-// CRPE », Nathan, sujet n° 9) ne montre pas la règle graduée : elle naît de ce
-// qu'il faut pour bien mesurer — une même unité, partir de l'origine, des
-// unités bout à bout, sans trou. On trace plus long ou plus court, on voit
-// pourquoi des mesures ne s'accordent pas, on mesure avec une unité U, puis on
-// gradue sa propre règle en U.
+// Avant de montrer la règle graduée, ce qu'il faut pour bien mesurer : une
+// même unité, partir de l'origine, des unités bout à bout, sans trou. On trace
+// plus long ou plus court, on mesure avec une unité U, puis on gradue sa
+// propre règle en U.
 
 /** L'unité U, en millimètres : la même sur toutes les feuilles, pour que celle de carton serve partout. */
 export const UNITE_U = 15;
@@ -245,55 +242,6 @@ function feuilleMesurerU(r: ReglagesMesures, graine: number): string {
   const corrige = `<div class="page corrige"><div class="titre">Mesurer avec l'unité U — corrigé</div><div class="me-liste">${segments.map((s, i) => ligne(s, i, true)).join("")}</div>`
     + `<div class="me-corrige"><b>${ordre.map((s) => s.l).join(" &lt; ")}</b></div></div>`;
   return `<div class="page">${tete}${unitesADecouper(6)}<div class="me-liste">${segments.map((s, i) => ligne(s, i, false)).join("")}</div>${reponse}</div>${corrige}`;
-}
-
-/** Ce qu'un enfant a fait en mesurant le bureau. */
-type FaconDeMesurer = "juste" | "decale" | "trous";
-const POURQUOI: Record<FaconDeMesurer, (unite: string) => string> = {
-  juste: (u) => `Oui : il part du bord du bureau, et ses ${u}s sont bout à bout, sans trou.`,
-  decale: (u) => `Non : il ne part pas du bord du bureau, et il le dépasse ; il compte un ${u} de trop.`,
-  trous: (u) => `Non : il laisse des trous entre ses ${u}s ; il en compte trop peu.`,
-};
-
-/** Une gomme ou un crayon, couché, de `l` millimètres, à partir de `x`. */
-const uniteSvg = (unite: "crayon" | "gomme", x: number, l: number) => (unite === "crayon"
-  ? `<rect x="${x.toFixed(2)}" y="1" width="${(l - 4).toFixed(2)}" height="4" fill="#f0c24b" stroke="${NOIR}" stroke-width="0.3"/><path d="M${(x + l - 4).toFixed(2)} 1 L${(x + l).toFixed(2)} 3 L${(x + l - 4).toFixed(2)} 5 Z" fill="#f4dcb5" stroke="${NOIR}" stroke-width="0.3"/>`
-  : `<rect x="${(x + 0.3).toFixed(2)}" y="1" width="${(l - 0.6).toFixed(2)}" height="4" rx="0.8" fill="#f2a7b8" stroke="${NOIR}" stroke-width="0.3"/><rect x="${(x + l * 0.55).toFixed(2)}" y="1" width="${(l * 0.3).toFixed(2)}" height="4" fill="#7fb2e5" stroke="${NOIR}" stroke-width="0.3"/>`);
-
-/**
- * Quatre bureaux pareils, mesurés par quatre enfants : deux avec des crayons,
- * deux avec des gommes. L'un part à côté du bord et dépasse, l'autre laisse des
- * trous ; on compte ce que chacun a trouvé, et l'on dit pourquoi les mesures ne
- * s'accordent pas — la séance 2 du manuel.
- */
-function feuilleBienMesurer(_r: ReglagesMesures, graine: number): string {
-  const alea = hasard(graine);
-  const crayon = 20, gomme = 10, n = entre(alea, 6, 8), L = n * crayon;
-  const enfants = melanger(alea, [
-    { unite: "crayon" as const, facon: "juste" as FaconDeMesurer }, { unite: "crayon" as const, facon: "decale" as FaconDeMesurer },
-    { unite: "gomme" as const, facon: "juste" as FaconDeMesurer }, { unite: "gomme" as const, facon: "trous" as FaconDeMesurer },
-  ]);
-  const x0 = 4;
-  const dessin = (e: (typeof enfants)[number]) => {
-    const l = e.unite === "crayon" ? crayon : gomme;
-    // Juste : bout à bout depuis le bord ; à côté du bord : un de plus, qui dépasse ; avec des trous : plus espacés, moins nombreux.
-    const pas = e.facon === "trous" ? l * 1.6 : l;
-    const depart = e.facon === "decale" ? x0 + l * 0.4 : x0;
-    const combien = e.facon === "juste" ? L / l : e.facon === "decale" ? L / l + 1 : Math.floor((L - l) / pas) + 1;
-    const unites = Array.from({ length: combien }, (_, k) => uniteSvg(e.unite, depart + k * pas, l)).join("");
-    const w = x0 + L + l * 1.6 + 4;
-    return { combien, svg: `<svg viewBox="0 0 ${w.toFixed(2)} 16" width="${w.toFixed(2)}mm" height="16mm"><g transform="translate(0 0)">${unites}</g>`
-      + `<rect x="${x0}" y="7" width="${L}" height="8" fill="#c8a27a" stroke="${NOIR}" stroke-width="0.35"/></svg>` };
-  };
-  const dessins = enfants.map(dessin);
-  const bloc = (e: (typeof enfants)[number], i: number, corrige: boolean) => `<div class="me-serie"><div class="me-serie-titre">Enfant ${LETTRES[i]} — avec des ${e.unite}s</div>${dessins[i].svg}`
-    + (corrige ? `<div class="me-rep">Il trouve <b>${dessins[i].combien} ${e.unite}s</b>. ${POURQUOI[e.facon](e.unite)}</div>`
-      : `<div class="me-rep">Il trouve <span class="me-blanc"></span> ${e.unite}s. A-t-il bien mesuré ? <b>oui</b> / <b>non</b>. Pourquoi : <span class="me-blanc me-blanc-large"></span><span class="me-blanc me-blanc-large"></span></div>`) + "</div>";
-  const fin = (corrige: boolean) => `<div class="me-phrase">Le même bureau mesure ${corrige ? `<b>${n} crayons</b>` : '<span class="me-blanc"></span> crayons'} ou ${corrige ? `<b>${2 * n} gommes</b>` : '<span class="me-blanc"></span> gommes'} : `
-    + `${corrige ? "une autre unité donne un autre nombre ; plus l'unité est petite, plus on en compte." : "pourquoi deux nombres ? <span class=\"me-blanc me-blanc-large\"></span>"}</div>`;
-  const tete = entete("Qui a bien mesuré ?", "Quatre enfants ont mesuré le même bureau. Pour chacun, je compte ce qu'il a trouvé. Je dis s'il a bien mesuré, et pourquoi.", BIEN_MESURER);
-  return `<div class="page">${tete}${enfants.map((e, i) => bloc(e, i, false)).join("")}${fin(false)}</div>`
-    + `<div class="page corrige"><div class="titre">Qui a bien mesuré ? — corrigé</div>${enfants.map((e, i) => bloc(e, i, true)).join("")}${fin(true)}</div>`;
 }
 
 /** Un segment tracé, et, à partir d'un point, un segment plus long, puis un plus court, à tracer ; au corrigé, un exemple de chacun. */
@@ -865,7 +813,7 @@ function feuilleVerres(r: ReglagesMesures, graine: number): string {
 export function htmlMesures(r: ReglagesMesures, graine: number): string {
   const f: Record<ExerciceMesures, (r: ReglagesMesures, g: number) => string> = {
     mesurer: feuilleMesurer, tracer: feuilleTracer, comparerSegments: feuilleComparerSegments, comparerObjets: feuilleComparerObjets,
-    mesurerU: feuilleMesurerU, bienMesurer: feuilleBienMesurer, plusLongCourt: feuillePlusLongCourt, regleU: feuilleRegleU,
+    mesurerU: feuilleMesurerU, plusLongCourt: feuillePlusLongCourt, regleU: feuilleRegleU,
     perimetre: feuillePerimetre, perimetreCompas: feuillePerimetreCompas, balances: feuilleBalances, pesees: feuillePesees,
     unites: feuilleUnites, estimer: feuilleEstimer, convertir: feuilleConvertir, comparerMesures: feuilleComparerMesures,
     ordonner: feuilleOrdonner, verres: feuilleVerres,

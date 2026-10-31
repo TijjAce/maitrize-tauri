@@ -5,7 +5,7 @@ import { useReglages } from "../components/useMemoire";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { graineAuHasard } from "../hasard";
 import { useGraine } from "../modifierFeuille";
-import { Boutons, Coche, Colonnes } from "./AteliersLangage";
+import { Boutons, Colonnes } from "./AteliersLangage";
 import {
   EXERCICES_RECTANGLES, OBJETS_EN_RECTANGLE, REGLAGES_RECTANGLES, STYLE_RECTANGLES, htmlRectangles, reglagesRectanglesSurs, titreRectangles,
   type ExerciceRectangles, type ObjetsEnRectangle, type ReglagesRectangles, type TablePythagore,
@@ -14,8 +14,7 @@ import {
 // ── Fabriquer › multiplier en rectangles ──────────────────────────────────
 //
 // Le sens de la multiplication posée : des objets rangés en rectangle, un
-// quadrillage qu'on coupe aux dizaines, un grand rectangle à découper, la
-// table de Pythagore.
+// quadrillage qu'on coupe aux dizaines, la table de Pythagore.
 
 /** Un nombre de 2 à 60, ou rien pour le tirer au sort. Ce qu'on tape reste affiché — le « 1 » de 15 — ; les réglages relus l'écartent s'il est trop petit. */
 function Nombre({ libelle, valeur, onChange }: { libelle: string; valeur: number; onChange: (n: number) => void }) {
@@ -39,9 +38,8 @@ export function RectanglesTab() {
       gauche={<>
         <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
           Multiplier en rectangles
-          <Aide titre="Multiplier en rectangles" vers="droite"><p>Ce qui donne son sens à la multiplication posée, d'après la séquence de la multiplication du manuel
-            « Réussir mon CRPE » (Nathan) : des objets rangés en rectangle — 26 rangées de 15 choux, coupées en 26 × 10 et 26 × 5 —, un quadrillage qu'on
-            coupe le long des lignes, aux dizaines, un grand rectangle à découper en quatre morceaux, et la table de Pythagore. La feuille laisse chercher ;
+          <Aide titre="Multiplier en rectangles" vers="droite"><p>Ce qui donne son sens à la multiplication posée : des objets rangés en rectangle, qu'on coupe
+            après dix colonnes, un quadrillage qu'on coupe le long des lignes, aux dizaines, et la table de Pythagore. La feuille laisse chercher ;
             le corrigé coupe le rectangle et écrit les produits.</p></Aide>
         </h3>
         <Field label="Exercice">
@@ -64,15 +62,11 @@ export function RectanglesTab() {
           </Field>
         )}
         {quadrillage && (
-          <>
-            <Field label="Au corrigé, le quadrillage coupé">
-              <Select value={r.morceaux ?? 2} onChange={(e) => maj({ morceaux: Number(e.target.value) as 2 | 4 })}>
-                <option value={2}>en deux, aux dizaines d'un côté</option><option value={4}>en quatre, aux dizaines des deux côtés</option>
-              </Select>
-            </Field>
-            <Coche on={!!r.aDecouper} onChange={(aDecouper) => maj({ aDecouper })}
-              libelle="Le rectangle seul, à découper — le plus grand possible sur la page, pour le couper en morceaux par groupe." />
-          </>
+          <Field label="Au corrigé, le quadrillage coupé">
+            <Select value={r.morceaux ?? 2} onChange={(e) => maj({ morceaux: Number(e.target.value) as 2 | 4 })}>
+              <option value={2}>en deux, aux dizaines d'un côté</option><option value={4}>en quatre, aux dizaines des deux côtés</option>
+            </Select>
+          </Field>
         )}
         {r.exercice === "pythagore" && (
           <Field label="La table">
@@ -85,8 +79,7 @@ export function RectanglesTab() {
           <Input value={r.titre ?? ""} placeholder={titreRectangles(r)} onChange={(e) => maj({ titre: e.target.value })} />
         </Field>
         <Boutons atelier="rectangles" titre={titre} html={html} style={STYLE_RECTANGLES} peut onTirage={() => setGraine(graineAuHasard())} />
-        <AideEnLigne libelle="📚 En faire une séquence"><p>Une séquence part de sa compétence : Plan de travail › Nouvelle séquence, puis la compétence visée.
-          La séquence de la multiplication du manuel du CRPE (CE2) prend ses feuilles ici.</p></AideEnLigne>
+        <AideEnLigne libelle="📚 En faire une séquence"><p>Une séquence part de sa compétence : Plan de travail › Nouvelle séquence, puis la compétence visée.</p></AideEnLigne>
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_RECTANGLES} />}
     />

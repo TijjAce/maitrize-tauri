@@ -78,7 +78,7 @@ export interface ProblemeCM {
   enonce: string; calcul: string; phrase: string; schema?: Schema; tableau?: TableauProportion;
   /** Une question qui se répond par oui ou non, puis par une raison : pas de cadre de recherche ni de calcul. */
   ouiNon?: true;
-  /** L'histoire qu'il raconte — des billes, un trésor, des rubans — : une même feuille évite de la répéter. */
+  /** L'histoire qu'il raconte — des billes, des macarons, des rubans — : une même feuille évite de la répéter. */
   contexte?: string;
 }
 
@@ -697,12 +697,10 @@ function identifierProportionnalite(alea: () => number): ProblemeCM {
 }
 
 /**
- * Compléter un tableau de proportionnalité, comme l'évaluation de la
- * séquence de la proportionnalité du manuel du CRPE de l'enseignant : le prix
- * d'un objet est donné, on cherche celui de 2, 5, 10, 20 objets — et, une
- * fois, combien d'objets pour un prix. Ou, sans le prix d'un seul, deux
- * colonnes connues — 3 kg pour 6 €, 5 kg pour 10 € — d'où l'on tire les
- * autres en ajoutant ou en multipliant.
+ * Compléter un tableau de proportionnalité : le prix d'un objet est donné,
+ * on cherche celui de plusieurs — et, une fois, combien d'objets pour un
+ * prix. Ou, sans le prix d'un seul, deux colonnes connues, d'où l'on tire
+ * les autres en ajoutant ou en multipliant.
  */
 function tableauProportionnalite(alea: () => number, r: ReglagesProblemesCM): ProblemeCM {
   const situations: { lignes: [string, string]; une: (u: number) => string; deux: (a: number, va: number, b: number, vb: number) => string; u: number[] }[] = [
@@ -730,7 +728,7 @@ function tableauProportionnalite(alea: () => number, r: ReglagesProblemesCM): Pr
     };
   }
   // Deux colonnes connues, sans le prix d'un seul : ajouter, multiplier.
-  const [a, b] = choisir(alea, [[2, 3], [3, 5], [2, 5], [4, 6], [3, 4], [5, 6]] as const);
+  const [a, b] = choisir(alea, [[2, 3], [2, 5], [4, 6], [3, 4], [5, 6]] as const);
   const voulus = melanger(alea, [a + b, 2 * a, 10 * a, 2 * b, 10 * b, 3 * a, a + 2 * b].filter((x, i, t) => x !== a && x !== b && t.indexOf(x) === i)).slice(0, 4).sort((x, y) => x - y);
   const pourquoi = (x: number) => {
     if (x === a + b) return `${x} = ${a} + ${b} : ${n(a * u)} + ${n(b * u)} = ${n(x * u)}`;
@@ -747,14 +745,13 @@ function tableauProportionnalite(alea: () => number, r: ReglagesProblemesCM): Pr
 
 /**
  * Partager quand ça ne tombe pas juste : la valeur d'une part, ou le nombre
- * de parts, et ce qui reste — 75 = 4 × 18 + 3. La séquence de la division
- * du manuel du CRPE de l'enseignant y conduit, avant la potence.
+ * de parts, et ce qui reste — 86 = 4 × 21 + 2 —, avant la potence.
  */
 function partageReste(alea: () => number, r: ReglagesProblemesCM): ProblemeCM {
   const cm2 = r.classe === "CM2";
   const k = entier(alea, 3, 9), q = entier(alea, cm2 ? 12 : 8, cm2 ? 150 : 45), reste = entier(alea, 1, k - 1), t = k * q + reste;
   const egalite = `${n(t)} = ${k} × ${q} + ${reste}`;
-  switch (entier(alea, 0, 3)) {
+  switch (entier(alea, 0, 2)) {
     case 0:
       return {
         enonce: `${k} enfants se partagent équitablement ${n(t)} billes. Combien de billes chacun reçoit-il ? Combien en reste-t-il ?`,
@@ -764,11 +761,6 @@ function partageReste(alea: () => number, r: ReglagesProblemesCM): ProblemeCM {
       return {
         enonce: `Un pâtissier range ${n(t)} macarons dans des boîtes de ${k}. Combien de boîtes remplit-il ? Combien de macarons restent hors des boîtes ?`,
         calcul: egalite, phrase: `Il remplit ${q} boîtes ; ${reste} macaron${reste > 1 ? "s restent" : " reste"} hors des boîtes.`, contexte: "macarons",
-      };
-    case 2:
-      return {
-        enonce: `${k} pirates se partagent à parts égales un trésor de ${n(t)} pièces d'or. Combien de pièces chaque pirate reçoit-il ? Combien en reste-t-il ?`,
-        calcul: egalite, phrase: `Chaque pirate reçoit ${q} pièces d'or ; il en reste ${reste}.`, contexte: "pirates",
       };
     default:
       return {
@@ -780,16 +772,16 @@ function partageReste(alea: () => number, r: ReglagesProblemesCM): ProblemeCM {
 
 /**
  * Des données décimales : des longueurs mises bout à bout, des masses, des
- * prix. Les parties décimales n'ont pas toujours la même longueur — 12,76 m
- * et 8,9 m, comme le grillage du manuel du CRPE de l'enseignant —, et un
- * prix a deux chiffres après la virgule, le zéro qui compte compris.
+ * prix. Les parties décimales n'ont pas toujours la même longueur — 2,45 m
+ * et 1,3 m —, et un prix a deux chiffres après la virgule, le zéro qui
+ * compte compris.
  */
 function decimaux(alea: () => number, r: ReglagesProblemesCM): ProblemeCM {
   const p = quelquun(alea);
   // En centièmes ou en millièmes entiers, pour que les calculs tombent juste.
   const centiemes = (min: number, max: number) => { const x = entier(alea, min, max); return x % 10 ? x : x + entier(alea, 1, 9); };
   const dixiemes = (min: number, max: number) => { const x = entier(alea, min, max); return x % 10 ? x : x + 1; };
-  switch (entier(alea, 0, 4)) {
+  switch (entier(alea, 0, 3)) {
     case 0: {
       const a = centiemes(105, 290) / 100, b = dixiemes(3, 19) / 10;
       const [objets, un, autre, de] = choisir(alea, [["rubans", "L'un", "l'autre", "de ruban"], ["planches", "L'une", "l'autre", "de planche"], ["tuyaux", "L'un", "l'autre", "de tuyau"]] as const);
@@ -813,35 +805,26 @@ function decimaux(alea: () => number, r: ReglagesProblemesCM): ProblemeCM {
         calcul: `${e2(livre)} + ${e2(cahier)} = ${e2(livre + cahier)}`, phrase: `${p.nom} doit payer ${eu(livre + cahier)}.`, schema: parties((livre + cahier) / 100, livre / 100, cahier / 100, "tout"), contexte: "prix",
       };
     }
-    case 3: {
+    default: {
       const billet = choisir(alea, [20, 50]) * 100, prix = entier(alea, 405, billet / 2 + 900);
       return {
         enonce: `${p.nom} paie un jeu de ${eu(prix)} avec un billet de ${eu(billet)}. Combien la marchande lui rend-elle ?`,
         calcul: `${e2(billet)} − ${e2(prix)} = ${e2(billet - prix)}`, phrase: `La marchande lui rend ${eu(billet - prix)}.`, schema: parties(billet / 100, prix / 100, (billet - prix) / 100, "b"), contexte: "rendre",
       };
     }
-    default: {
-      // Le tour d'un jardin rectangulaire : la longueur et la largeur n'ont pas le même nombre de décimales.
-      const L = centiemes(905, 1890) / 100, l = dixiemes(41, 89) / 10, demi = L + l;
-      return {
-        enonce: `Un jardin rectangulaire mesure ${nd(L)} m de long et ${nd(l)} m de large. Quelle longueur de grillage faut-il pour en faire tout le tour ?`,
-        calcul: `${nd(L)} + ${nd(l)} = ${nd(demi)} ; ${nd(demi)} + ${nd(demi)} = ${nd(2 * demi)}`, phrase: `Il faut ${nd(2 * demi)} m de grillage.`, contexte: "grillage",
-      };
-    }
   }
 }
 
 /**
- * Des fractions, comme la séance de découverte de la séquence des fractions du
- * manuel du CRPE de l'enseignant : un partage dont le reste se partage — trois
- * baguettes pour quatre, c'est 3/4 de baguette chacun ; cinq, c'est 1 + 1/4 — ;
- * une fraction d'une quantité — les 3/4 d'une tablette de 24 carrés, 18 carrés.
+ * Des fractions : un partage dont le reste se partage — trois pizzas pour
+ * quatre, c'est 3/4 de pizza chacun ; cinq, c'est 1 + 1/4 — ; une fraction
+ * d'une quantité — les 3/4 de 32 billes, 24 billes.
  */
 function fractions(alea: () => number): ProblemeCM {
   if (alea() < 0.5) {
     const amis = choisir(alea, [2, 3, 4, 5, 8]);
     const [pluriel, singulier, coupe, le] = choisir(alea, [
-      ["baguettes", "baguette", "coupée", "la"], ["pizzas", "pizza", "coupée", "la"], ["gâteaux", "gâteau", "coupé", "le"], ["galettes", "galette", "coupée", "la"],
+      ["pizzas", "pizza", "coupée", "la"], ["gâteaux", "gâteau", "coupé", "le"], ["galettes", "galette", "coupée", "la"],
     ] as const);
     let nombre = entier(alea, 1, 2 * amis + 1);
     if (nombre % amis === 0) nombre += 1;
@@ -866,15 +849,8 @@ function fractions(alea: () => number): ProblemeCM {
   const Les = (n: number, d: number) => les(n, d).charAt(0).toUpperCase() + les(n, d).slice(1);
   // Une part, puis autant de parts que le numérateur.
   const etapes = (q: number, n: number, d: number) => `1/${d} de ${q}, c'est ${q} ÷ ${d} = ${q / d}${n > 1 ? ` ; ${n}/${d}, c'est ${n} × ${q / d} = ${n * (q / d)}` : ""}`;
-  switch (entier(alea, 0, 3)) {
+  switch (entier(alea, 0, 2)) {
     case 0: {
-      const q = den * entier(alea, 3, 8);
-      return {
-        enonce: `Une tablette de chocolat a ${q} carrés. Combien de carrés font ${les(num, den)} de la tablette ?`,
-        calcul: etapes(q, num, den), phrase: `${Les(num, den)} de la tablette ${num > 1 ? "font" : "fait"} ${num * unite(q)} carrés.`, contexte: "chocolat",
-      };
-    }
-    case 1: {
       const q = den * entier(alea, 4, 12);
       return {
         enonce: `${p.nom} a ${q} billes. ${p.Il} en donne ${les(num, den)} à sa cousine. Combien de billes donne-t-${p.il} ?`,
@@ -882,7 +858,7 @@ function fractions(alea: () => number): ProblemeCM {
         phrase: `${p.nom} donne ${num * unite(q)} billes.`, contexte: "billes",
       };
     }
-    case 2: {
+    case 1: {
       // Une heure, ce sont 60 minutes : des dénominateurs qui divisent 60.
       const [n2, d2] = 60 % den === 0 ? [num, den] : choisir(alea, [[3, 4], [1, 4], [2, 3], [1, 3]] as const);
       return {

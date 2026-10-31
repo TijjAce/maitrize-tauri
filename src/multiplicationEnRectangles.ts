@@ -1,12 +1,10 @@
 // Multiplier en rectangles : ce qui donne son sens à la multiplication posée.
 //
-// La séquence de la multiplication du manuel du CRPE de l'enseignant (« Réussir
-// mon CRPE », Nathan, sujet n° 3, « Multiplication CE2 ») construit la technique
-// sur ses propriétés, avec deux représentations : des objets rangés en
-// rectangle — 26 rangées de 15 choux, coupées en 26 × 10 et 26 × 5 — et le
-// quadrillage — 34 × 23 carreaux, puis un rectangle de 54 sur 36 coupé en
-// quatre morceaux aux dizaines. Et la table de Pythagore, affichée pour qui ne
-// sait pas encore ses tables, ou à compléter.
+// La technique s'appuie sur la distributivité, que deux représentations
+// montrent : des objets rangés en rectangle, qu'on coupe après dix colonnes,
+// et le quadrillage, qu'on coupe aux dizaines, d'un côté ou des deux. Et la
+// table de Pythagore, affichée pour qui ne sait pas encore ses tables, ou à
+// compléter.
 //
 // Les nombres se choisissent, ou se tirent au sort. La feuille de l'élève
 // laisse chercher, sans imposer le découpage ; le corrigé coupe le rectangle
@@ -25,10 +23,10 @@ export const EXERCICES_RECTANGLES: { id: ExerciceRectangles; libelle: string }[]
   { id: "pythagore", libelle: "La table de Pythagore" },
 ];
 
-export type ObjetsEnRectangle = "choux" | "chaises" | "pommiers" | "tulipes";
+export type ObjetsEnRectangle = "chaises" | "pommiers" | "tulipes";
 export const OBJETS_EN_RECTANGLE: { id: ObjetsEnRectangle; libelle: string }[] = [
-  { id: "choux", libelle: "les choux du maraîcher" }, { id: "chaises", libelle: "les chaises d'une salle" },
-  { id: "pommiers", libelle: "les pommiers d'un verger" }, { id: "tulipes", libelle: "les tulipes d'un jardin" },
+  { id: "chaises", libelle: "les chaises d'une salle" }, { id: "pommiers", libelle: "les pommiers d'un verger" },
+  { id: "tulipes", libelle: "les tulipes d'un jardin" },
 ];
 
 /** La table de Pythagore : remplie, pour l'afficher ; trouée ; ou vide, à remplir. */
@@ -44,8 +42,6 @@ export interface ReglagesRectangles {
   objets?: ObjetsEnRectangle;
   /** Le quadrillage, au corrigé : coupé aux dizaines des lignes seulement, en deux morceaux, ou des deux côtés, en quatre. */
   morceaux?: 2 | 4;
-  /** Le quadrillage seul, le plus grand possible, à découper : sans question. */
-  aDecouper?: boolean;
   pythagore?: TablePythagore;
   titre?: string;
 }
@@ -70,7 +66,7 @@ export function reglagesRectanglesSurs(brut: Partial<ReglagesRectangles> | null 
 /** Le titre d'une feuille qu'on n'a pas nommée. */
 export function titreRectangles(r: ReglagesRectangles): string {
   if (r.exercice === "pythagore") return "La table de Pythagore";
-  if (r.exercice === "quadrillage") return r.aDecouper ? "Un rectangle à découper" : "Combien de carreaux ?";
+  if (r.exercice === "quadrillage") return "Combien de carreaux ?";
   return "Combien en tout ?";
 }
 
@@ -80,8 +76,8 @@ const NOIR = "#1c2233", ROUGE = "#d33a32", GRIS = "#b9c2d6";
 const f2 = (x: number) => Number(x.toFixed(2));
 
 /**
- * Les rangées et ce que contient chacune : ceux qu'on a choisis ; sinon, de 21 à 29 rangées de 11 à 19 objets, comme les choux,
- * et un quadrillage de 21 à 29 lignes de 21 à 39 carreaux, comme 34 × 23.
+ * Les rangées et ce que contient chacune : ceux qu'on a choisis ; sinon, de 21 à 29 rangées de 11 à 19 objets, et un
+ * quadrillage de 21 à 29 lignes de 21 à 39 carreaux.
  */
 function nombres(r: ReglagesRectangles, alea: () => number): [number, number] {
   const rangees = r.rangees || entier(alea, 21, 29);
@@ -108,7 +104,7 @@ function produits(lignes: number, colonnes: number, quatre: boolean): { calcul: 
 function objetsSvg(rangees: number, par: number, objets: ObjetsEnRectangle, corrige: boolean): string {
   const s = Math.min(4.6, 130 / par, 120 / rangees), m = 2;
   const w = par * s + 2 * m, h = rangees * s + 2 * m;
-  const couleur = { choux: "#4caf50", chaises: "#d9822b", pommiers: "#c0392b", tulipes: "#d63384" }[objets];
+  const couleur = { chaises: "#d9822b", pommiers: "#c0392b", tulipes: "#d63384" }[objets];
   const un = (x: number, y: number) => (objets === "chaises"
     ? `<rect x="${f2(x - s * 0.32)}" y="${f2(y - s * 0.32)}" width="${f2(s * 0.64)}" height="${f2(s * 0.64)}" rx="${f2(s * 0.12)}" fill="${couleur}" stroke="${NOIR}" stroke-width="0.15"/>`
     : `<circle cx="${f2(x)}" cy="${f2(y)}" r="${f2(s * 0.36)}" fill="${couleur}" stroke="${NOIR}" stroke-width="0.15"/>`);
@@ -122,13 +118,13 @@ function objetsSvg(rangees: number, par: number, objets: ObjetsEnRectangle, corr
 }
 
 /** Un quadrillage de `colonnes` × `lignes` carreaux, à la plus grande taille qui tienne ; au corrigé, les coupures aux dizaines. */
-function quadrillageSvg(colonnes: number, lignes: number, largeurMax: number, hauteurMax: number, corrige: boolean, quatre: boolean, aDecouper: boolean): string {
+function quadrillageSvg(colonnes: number, lignes: number, largeurMax: number, hauteurMax: number, corrige: boolean, quatre: boolean): string {
   const pas = Math.min(5, largeurMax / colonnes, hauteurMax / lignes), m = 1.5;
   const w = colonnes * pas + 2 * m, h = lignes * pas + 2 * m;
   let corps = "";
   for (let i = 0; i <= colonnes; i++) corps += `<line x1="${f2(m + i * pas)}" y1="${m}" x2="${f2(m + i * pas)}" y2="${f2(m + lignes * pas)}" stroke="${GRIS}" stroke-width="0.22"/>`;
   for (let j = 0; j <= lignes; j++) corps += `<line x1="${m}" y1="${f2(m + j * pas)}" x2="${f2(m + colonnes * pas)}" y2="${f2(m + j * pas)}" stroke="${GRIS}" stroke-width="0.22"/>`;
-  corps += `<rect x="${m}" y="${m}" width="${f2(colonnes * pas)}" height="${f2(lignes * pas)}" fill="none" stroke="${NOIR}" stroke-width="${aDecouper ? 0.5 : 0.4}"${aDecouper ? ' stroke-dasharray="3 1.5"' : ""}/>`;
+  corps += `<rect x="${m}" y="${m}" width="${f2(colonnes * pas)}" height="${f2(lignes * pas)}" fill="none" stroke="${NOIR}" stroke-width="0.4"/>`;
   if (corrige) {
     const coupe = (x1: number, y1: number, x2: number, y2: number) => `<line x1="${f2(x1)}" y1="${f2(y1)}" x2="${f2(x2)}" y2="${f2(y2)}" stroke="${ROUGE}" stroke-width="0.7"/>`;
     if (lignes > 10 && lignes % 10) corps += coupe(m, m + Math.floor(lignes / 10) * 10 * pas, m + colonnes * pas, m + Math.floor(lignes / 10) * 10 * pas);
@@ -140,7 +136,6 @@ function quadrillageSvg(colonnes: number, lignes: number, largeurMax: number, ha
 // ── Les énoncés ───────────────────────────────────────────────────────────
 
 const ENONCES: Record<ObjetsEnRectangle, { enonce: (r: number, p: number) => string; reponse: (n: string) => string }> = {
-  choux: { enonce: (r, p) => `Un maraîcher a fait ${r} rangées de choux, avec ${p} choux dans chaque rangée. Combien de choux y a-t-il dans son champ ?`, reponse: (n) => `Il y a ${n} choux dans le champ.` },
   chaises: { enonce: (r, p) => `Dans une salle de spectacle, il y a ${r} rangées de ${p} chaises. Combien de chaises y a-t-il dans la salle ?`, reponse: (n) => `Il y a ${n} chaises dans la salle.` },
   pommiers: { enonce: (r, p) => `Dans un verger, on a planté ${r} rangées de ${p} pommiers. Combien de pommiers y a-t-il dans le verger ?`, reponse: (n) => `Il y a ${n} pommiers dans le verger.` },
   tulipes: { enonce: (r, p) => `Une jardinière a planté ${r} rangées de ${p} tulipes. Combien de tulipes a-t-elle plantées ?`, reponse: (n) => `Elle a planté ${n} tulipes.` },
@@ -170,17 +165,9 @@ export function htmlRectangles(r: ReglagesRectangles, graine: number): string {
     const [lignes, colonnes] = nombres(r, alea);
     const quatre = r.morceaux === 4;
     const { calcul } = produits(lignes, colonnes, quatre);
-    if (r.aDecouper) {
-      // Le rectangle seul, à découper : couché ou debout, comme il est le plus grand.
-      const debout = lignes > colonnes;
-      corps = `<div class="mr-decoupe">${debout ? quadrillageSvg(colonnes, lignes, 180, 225, false, quatre, true) : quadrillageSvg(lignes, colonnes, 180, 225, false, quatre, true)}</div>`;
-      regle = `Je découpe le rectangle le long du trait. Il a ${fr(colonnes)} carreaux d'un côté et ${fr(lignes)} de l'autre. Je trouve combien il a de carreaux, en le coupant le long des lignes.`;
-      corrige = `<p class="mr-solution">${escapeHtml(calcul)}</p>${debout ? quadrillageSvg(colonnes, lignes, 150, 200, true, quatre, false) : quadrillageSvg(lignes, colonnes, 150, 200, true, quatre, false)}`;
-    } else {
-      regle = "Je trouve combien le quadrillage a de carreaux, sans les compter un à un. Je peux le couper le long des lignes, et calculer chaque morceau.";
-      corps = `<p class="mr-enonce">Ce quadrillage a ${fr(colonnes)} carreaux de long et ${fr(lignes)} carreaux de large. Combien a-t-il de carreaux ?</p>${quadrillageSvg(colonnes, lignes, 180, 130, false, quatre, false)}${CADRE}`;
-      corrige = `${quadrillageSvg(colonnes, lignes, 180, 130, true, quatre, false)}<p class="mr-solution">${escapeHtml(calcul)}</p>`;
-    }
+    regle = "Je trouve combien le quadrillage a de carreaux, sans les compter un à un. Je peux le couper le long des lignes, et calculer chaque morceau.";
+    corps = `<p class="mr-enonce">Ce quadrillage a ${fr(colonnes)} carreaux de long et ${fr(lignes)} carreaux de large. Combien a-t-il de carreaux ?</p>${quadrillageSvg(colonnes, lignes, 180, 130, false, quatre)}${CADRE}`;
+    corrige = `${quadrillageSvg(colonnes, lignes, 180, 130, true, quatre)}<p class="mr-solution">${escapeHtml(calcul)}</p>`;
   } else {
     const [rangees, par] = nombres(r, alea);
     const objets = r.objets ?? choisir(alea, OBJETS_EN_RECTANGLE).id;
@@ -207,7 +194,6 @@ export const STYLE_RECTANGLES = `
   .feuille.mr .mr-reponse { display: flex; gap: 2mm; align-items: flex-end; font-size: 14px; }
   .feuille.mr .mr-trait { flex: 1; border-bottom: 1px dotted #9aa0b4; height: 5mm; }
   .feuille.mr .mr-solution { font-size: 14px; line-height: 1.55; margin: 2mm 0 3mm; }
-  .feuille.mr .mr-decoupe { display: flex; justify-content: center; }
   .feuille.mr .mr-pythagore { width: auto; margin: 4mm auto; border-collapse: collapse; font-size: 17px; }
   .feuille.mr .mr-pythagore th, .feuille.mr .mr-pythagore td { width: 14mm; height: 13mm; padding: 0; border: 1px solid #9aa0b4; text-align: center; font-size: 18px; }
   .feuille.mr .mr-pythagore th { background: #f0f2f8; font-weight: 800; }

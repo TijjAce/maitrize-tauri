@@ -392,7 +392,7 @@ const EXERCICES = ["gr-sous-titre", "ec-sous-titre", "ol-sous-titre", "fc-consig
   "nc-consigne", "gr-consigne", "al-consigne", "ge-consigne", "do-consigne", "gm-consigne", "ew-sous-titre",
   // L'histoire-géographie du cours moyen : les exercices de l'évaluation.
   "hg-consigne",
-  // La demi-droite graduée et les nombres ordinaux du cycle 2 : les exercices des évaluations ; les nombres de 10 à 20 au CP.
+  // La demi-droite graduée et les nombres ordinaux du cycle 2 : les exercices des évaluations ; la numération du CP en manipulant.
   "rp-consigne", "dv-consigne",
   // Les générateurs que l'enseignant fait faire à l'IA.
   "gp-consigne"];

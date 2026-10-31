@@ -846,7 +846,7 @@ mod tests {
         let d = dossier();
         let c = base(&d.join("ici.sqlite3"), "A");
         c.execute_batch(
-            "INSERT INTO settings (cle, valeur) VALUES ('manuel:m1', '{\"titre\":\"Réussir mon CRPE\"}');
+            "INSERT INTO settings (cle, valeur) VALUES ('manuel:m1', '{\"titre\":\"Mon manuel de maths\"}');
              INSERT INTO settings (cle, valeur) VALUES ('generateurs:perso', '[{\"id\":\"g1\"}]');
              INSERT INTO referentiels (id, nom, est_integre, date_ajout) VALUES ('r-perso', 'Mon référentiel', 0, '2026-10-01');
              INSERT INTO referentiels (id, nom, est_integre, date_ajout) VALUES ('r-app', 'Programme', 1, '2026-10-01');",
@@ -866,7 +866,7 @@ mod tests {
         assert_eq!((de("referentiels").revenues, de("referentiels").changees), (1, 0), "{ecarts:?}");
 
         revenir_a(&c, &d.join("alors.sqlite3"), &d.join("Corbeille"), &d.join("Fichiers")).unwrap();
-        assert!(reglage(&c, "manuel:m1").is_some_and(|v| v.contains("CRPE")));
+        assert!(reglage(&c, "manuel:m1").is_some_and(|v| v.contains("Mon manuel de maths")));
         assert_eq!(reglage(&c, "generateurs:perso").as_deref(), Some("[{\"id\":\"g1\"}]"));
         let nom = |id: &str| -> Option<String> { c.query_row("SELECT nom FROM referentiels WHERE id = ?1", [id], |r| r.get(0)).ok() };
         assert_eq!(nom("r-perso").as_deref(), Some("Mon référentiel"));
