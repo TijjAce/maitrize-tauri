@@ -9,6 +9,12 @@
 // corpus — le refaire, tirer d'autres mots, réécrire les phrases, ajouter ou
 // retirer un mot. Il répond en une ou deux phrases, et propose la suite.
 //
+// Puis « enlève le reste pour ne laisser que le chatbot » (le même jour) : la
+// fiche n'a plus que lui. Il mène donc aussi le projet — cocher une étape,
+// dire où en est le projet, réécrire une phrase — et dit, quand on le lui
+// demande, ce que l'écran ne montre plus : le moment, les étapes, les mots.
+// En s'ouvrant, il dit où en est un projet commencé.
+//
 // Mistral répond par un objet JSON, relu ici avec méfiance : ce qui ne se lit
 // pas ne change rien. Un prénom d'élève tapé dans la conversation part masqué
 // et revient ici (confidentialite.ts).
@@ -18,7 +24,7 @@ import { normaliser } from "./competencesTravaillees";
 import { pseudonymiserTout, restaurer } from "./confidentialite";
 import { corpusDe, texteDuCorpus } from "./corpusProjet";
 import { nomsAMasquer } from "./nomsAMasquer";
-import { MOIS, ecrireEtapes, lireEtapes, nomDuMois, placer, semainesDuMois } from "./projets";
+import { ETATS, MOIS, avancement, ecrireEtapes, etatDeduit, lireEtapes, nomDuMois, placer, semainesDuMois, type Etat } from "./projets";
 
 /** Ce que l'assistant fait du corpus : tout refaire, tirer d'autres mots, réécrire les phrases. */
 export type ActionCorpus = "preparer" | "mots" | "phrases";
@@ -40,51 +46,88 @@ export interface ReponseAssistant {
   corpus?: ActionCorpus;
   motsAjoutes?: string[];
   motsRetires?: string[];
+  /** Toutes les phrases du corpus, quand l'enseignant en change une. */
+  phrases?: string[];
+  /** Les numéros des étapes faites, ou à refaire, comptés à partir de 1. */
+  cocher?: number[];
+  decocher?: number[];
+  /** Où en est le projet, dit par l'enseignant ; les étapes cochées le corrigent encore (voir `etatDeduit`). */
+  etat?: Etat;
 }
 
 const ETAPES_MAX = 8;
 const MOTS_MAX = 20;
+const PHRASES_MAX = 12;
+/** Ce que l'assistant lit du corpus : assez pour le redire. */
+const MOTS_LUS = 40, PHRASES_LUES = 10;
 
-/** Ce que l'assistant dit en ouvrant la fiche : raconter le projet, ou ce qu'on veut y changer. */
-export function accueilDuProjet(p: ProjetClasse): string {
+const combien = (n: number, mot: string) => `${n} ${mot}${n > 1 ? "s" : ""}`;
+const momentDe = (p: ProjetClasse, annee: string) => {
+  const semaine = semainesDuMois(annee, p.mois).find((s) => s.iso === p.semaine);
+  return `${nomDuMois(p.mois).toLowerCase()}, ${semaine ? `semaine du ${semaine.label}` : "tout le mois"}`;
+};
+
+/**
+ * Ce que l'assistant dit en ouvrant la fiche : raconter le projet, s'il est
+ * neuf ; sinon où il en est — l'écran n'a plus que lui —, et ce qu'on peut
+ * lui demander.
+ */
+export function accueilDuProjet(p: ProjetClasse, annee: string): string {
+  const etapes = lireEtapes(p.etapesJson);
   const vide = !p.titre.trim() || p.titre.trim() === "Nouveau projet";
-  if (vide && !lireEtapes(p.etapesJson).length) return "Racontez-moi votre projet : que voulez-vous faire avec la classe, et vers quand ?";
-  return `« ${p.titre.trim()} » : que voulez-vous changer ? Le moment, les étapes, les mots du projet…`;
+  if (vide && !etapes.length) return "Racontez-moi votre projet : que voulez-vous faire avec la classe, et vers quand ?";
+  const { faites, total } = avancement(etapes);
+  const c = corpusDe(p);
+  const ou = total ? `${combien(faites, "étape")} faite${faites > 1 ? "s" : ""} sur ${total}` : "pas encore d'étape";
+  const corpus = c.mots.length || c.phrases.length
+    ? `${c.mots.length ? combien(c.mots.length, "mot") : "pas encore de mot"}, ${c.phrases.length ? combien(c.phrases.length, "phrase") : "pas encore de phrase"}`
+    : "pas encore de mots";
+  return `« ${p.titre.trim() || "Sans titre"} » : ${momentDe(p, annee)} ; ${ou} ; ${corpus}. `
+    + "Que voulez-vous faire ? Cocher une étape, changer le moment, revoir les mots…";
 }
 
-/** La fiche telle que l'assistant la lit. */
+/** La fiche telle que l'assistant la lit : tout ce qu'il peut redire. */
 export function ficheDuProjet(p: ProjetClasse, annee: string): string {
-  const semaine = semainesDuMois(annee, p.mois).find((s) => s.iso === p.semaine);
   const etapes = lireEtapes(p.etapesJson);
   const c = corpusDe(p);
+  const etat = ETATS.find((e) => e.id === etatDeduit(p.etat, etapes))?.nom.toLowerCase() ?? "à faire";
   return [
     `Titre : ${p.titre.trim() || "(aucun)"}`,
     `Phrase qui dit le projet : ${p.descriptif.trim() || "(aucune)"}`,
-    `Moment : ${nomDuMois(p.mois).toLowerCase()}, ${semaine ? `semaine du ${semaine.label}` : "tout le mois"}`,
+    `Moment : ${momentDe(p, annee)}`,
+    `Où en est le projet : ${etat}`,
     `Étapes : ${etapes.length ? etapes.map((e, i) => `${i + 1}. ${e.texte}${e.faite ? " (faite)" : ""}`).join(" ; ") : "(aucune)"}`,
-    `Corpus : ${c.mots.length ? `${c.mots.length} mots (${c.mots.slice(0, 12).join(", ")}${c.mots.length > 12 ? "…" : ""})` : "pas encore de mots"}, `
-      + `${c.phrases.length} phrase${c.phrases.length > 1 ? "s" : ""}`,
+    `Mots : ${c.mots.length ? c.mots.slice(0, MOTS_LUS).join(", ") + (c.mots.length > MOTS_LUS ? `… (${c.mots.length} en tout)` : "") : "(pas encore)"}`,
+    `Phrases : ${c.phrases.length ? c.phrases.slice(0, PHRASES_LUES).map((x, i) => `${i + 1}. ${x}`).join(" ")
+      + (c.phrases.length > PHRASES_LUES ? ` … (${c.phrases.length} en tout)` : "") : "(pas encore)"}`,
   ].join("\n");
 }
 
 /** La consigne de l'assistant, avec la fiche telle qu'elle est et le jour. */
 export function consigneDeLAssistant(p: ProjetClasse, annee: string, aujourdhui: string): string {
   return [
-    "Tu es l'assistant de Maitrize qui aide un enseignant du premier degré à lancer un projet de classe. Tu mènes la conversation : "
-      + "une question à la fois, courte, et tu ranges dans la fiche du projet ce que l'enseignant dit ou accepte.",
+    "Tu es l'assistant de Maitrize qui aide un enseignant du premier degré à lancer, puis à mener, un projet de classe. L'enseignant "
+      + "ne voit pas la fiche : il n'a que toi. Tu mènes la conversation : une question à la fois, courte, et tu ranges dans la fiche "
+      + "ce que l'enseignant dit ou accepte ; quand tu changes quelque chose, dis-le.",
     "La fiche a : un titre court ; une phrase qui dit le projet, qu'on peut lire aux élèves ; le mois, de septembre à juin, et la semaine "
       + "si l'enseignant la donne ; trois à six étapes concrètes, au présent, qu'on cochera ; un corpus de mots et de phrases pour les "
       + "ateliers de lecture, qui se prépare tout seul à partir du titre.",
     "Ordre conseillé : comprendre le projet et lui donner un titre et sa phrase ; le moment ; proposer les étapes ; demander enfin si "
       + "les mots du projet conviennent.",
     "Réponds uniquement par un objet JSON : {\"reponse\": \"…\", \"titre\": \"…\", \"descriptif\": \"…\", \"mois\": \"11\", "
-      + "\"semaine\": \"AAAA-MM-JJ\", \"etapes\": [\"…\"], \"corpus\": \"preparer\", \"motsAjoutes\": [\"…\"], \"motsRetires\": [\"…\"]}.",
+      + "\"semaine\": \"AAAA-MM-JJ\", \"etapes\": [\"…\"], \"cocher\": [2], \"decocher\": [1], \"etat\": \"encours\", \"corpus\": \"preparer\", "
+      + "\"motsAjoutes\": [\"…\"], \"motsRetires\": [\"…\"], \"phrases\": [\"…\"]}.",
     "« reponse » est obligatoire : une ou deux phrases, en vouvoyant l'enseignant, qui disent ce que tu as rangé dans la fiche et posent "
       + "la question suivante. Les autres clés ne viennent que si elles changent quelque chose ; ne change rien que l'enseignant n'ait "
       + "demandé ou accepté, sauf pour proposer, au début, un titre, sa phrase et des étapes.",
     "« mois » : le numéro sur deux chiffres (09 à 12, 01 à 06). « semaine » : une date de la semaine voulue, ou \"\" pour tout le mois. "
       + "« etapes » : toutes les étapes, dans l'ordre. « corpus » : \"preparer\" pour refaire tout le corpus, \"mots\" pour tirer "
-      + "d'autres mots, \"phrases\" pour réécrire les phrases. « motsAjoutes », « motsRetires » : des mots du corpus, au singulier.",
+      + "d'autres mots, \"phrases\" pour réécrire les phrases. « motsAjoutes », « motsRetires » : des mots du corpus, au singulier. "
+      + "« phrases » : toutes les phrases du corpus, quand l'enseignant en change, en ajoute ou en retire une.",
+    "« cocher », « decocher » : les numéros des étapes faites, ou à refaire. « etat » : \"idee\" (à faire), \"encours\" (en cours) "
+      + "ou \"fait\" (terminé).",
+    "Quand l'enseignant demande le moment, les étapes, les mots, les phrases ou où en est le projet, réponds d'après la fiche, dans "
+      + "« reponse » : recopie ce qu'il demande, sans rien changer.",
     "N'écris aucun prénom d'élève dans la fiche. Les marqueurs [P1], [P2]… remplacent des prénoms : ne les recopie pas dans la fiche.",
     `Aujourd'hui : ${aujourdhui}. Année scolaire ${annee}.`,
     "La fiche du projet, telle qu'elle est :",
@@ -150,8 +193,27 @@ export function lireReponseAssistant(brut: string, annee: string, moisDuProjet: 
   const ajoutes = liste(o.motsAjoutes, MOTS_MAX, 40), retires = liste(o.motsRetires, MOTS_MAX, 40);
   if (ajoutes?.length) r.motsAjoutes = ajoutes;
   if (retires?.length) r.motsRetires = retires;
+  const phrases = liste(o.phrases, PHRASES_MAX, 200);
+  if (phrases?.length) r.phrases = phrases;
+  const cocher = numeros(o.cocher), decocher = numeros(o.decocher);
+  if (cocher) r.cocher = cocher;
+  if (decocher) r.decocher = decocher;
+  const etat = etatLu(o.etat);
+  if (etat) r.etat = etat;
   return r;
 }
+
+/** Des numéros d'étapes : des entiers de 1 au nombre d'étapes possible, chacun une fois. */
+function numeros(v: unknown): number[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const n = [...new Set(v.map((x) => Math.round(Number(x))).filter((x) => Number.isInteger(x) && x >= 1 && x <= ETAPES_MAX))];
+  return n.length ? n : undefined;
+}
+
+const ETATS_DITS: Record<string, Etat> = { idee: "idee", "a faire": "idee", encours: "encours", "en cours": "encours", fait: "fait", termine: "fait" };
+
+/** L'état dit par le modèle : « encours », « en cours », « terminé »… ; rien s'il ne se lit pas. */
+export const etatLu = (v: unknown): Etat | undefined => (typeof v === "string" ? ETATS_DITS[normaliser(v).replace(/[-_]/g, " ")] : undefined);
 
 /** La fiche avec ce que l'assistant a compris ; la même fiche s'il n'a rien changé. Une étape qu'il garde reste cochée. */
 export function appliquerLaReponse(p: ProjetClasse, r: ReponseAssistant): ProjetClasse {
@@ -160,10 +222,19 @@ export function appliquerLaReponse(p: ProjetClasse, r: ReponseAssistant): Projet
   if (r.descriptif) suite.descriptif = r.descriptif;
   if (r.mois && r.mois !== p.mois) suite = placer(suite, r.mois, r.semaine ?? "");
   else if (r.semaine !== undefined) suite.semaine = r.semaine;
+  let etapes = lireEtapes(p.etapesJson);
   if (r.etapes) {
-    const avant = lireEtapes(p.etapesJson);
-    suite.etapesJson = ecrireEtapes(r.etapes.map((texte) => ({ texte, faite: avant.some((e) => e.faite && normaliser(e.texte) === normaliser(texte)) })));
+    const avant = etapes;
+    etapes = r.etapes.map((texte) => ({ texte, faite: avant.some((e) => e.faite && normaliser(e.texte) === normaliser(texte)) }));
   }
+  if (r.cocher || r.decocher) {
+    etapes = etapes.map((e, i) => (r.cocher?.includes(i + 1) ? { ...e, faite: true } : r.decocher?.includes(i + 1) ? { ...e, faite: false } : e));
+  }
+  if (r.etapes || r.cocher || r.decocher) suite.etapesJson = ecrireEtapes(etapes);
+  // L'état suit les étapes cochées, sauf « terminé » dit par l'enseignant ; une étape qu'on décoche rouvre le projet terminé.
+  const base = r.etat ?? (r.decocher && p.etat === "fait" ? "encours" : p.etat);
+  if (r.etapes || r.cocher || r.decocher || r.etat) suite.etat = etatDeduit(base, etapes);
+  if (r.phrases) suite.phrases = texteDuCorpus(r.phrases);
   if (r.motsAjoutes || r.motsRetires) {
     const retires = new Set((r.motsRetires ?? []).map(normaliser));
     const mots = corpusDe(p).mots.filter((m) => !retires.has(normaliser(m)));
