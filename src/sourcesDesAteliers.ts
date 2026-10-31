@@ -45,7 +45,19 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
 
   // ── Sons et lecture ──
   sons: `${SOURCE_INCONNUE} pour la fiche ; l'ordre des sons est celui des méthodes syllabiques Pilotis et Lecture Piano.`,
-  lotoSyllabes: `${GUIDE_MATERNELLE_LECTURE}, qui nomme le loto des syllabes.`,
+  lotoSyllabes: `${GUIDE_MATERNELLE_LECTURE}, p. 23 : le « Loto » dont chaque case impose un nombre de syllabes.`,
+  // Les lotos des attaques, des rimes, des syllabes et des phonèmes (31 octobre 2026) : pages et phrases relues dans le guide.
+  lotoAttaques: `${GUIDE_MATERNELLE_LECTURE}, p. 12 — « segmenter une syllabe en attaque et en rime » — et p. 27, le « Loto des phonèmes ».`,
+  lotoRimes: `${GUIDE_MATERNELLE_LECTURE}, p. 12 et p. 24 : « trouve le mot qui finit comme… » ; programme de l'école maternelle (2025), à `
+    + "partir de 5 ans : « Repérer et produire des rimes et des assonances ».",
+  lotoSyllabesAttaque: `${GUIDE_MATERNELLE_LECTURE}, p. 24, le « Loto des syllabes » ; p. 23 : « La tâche est plus aisée lorsque la syllabe se `
+    + "situe au début ou à la fin du mot ».",
+  lotoSyllabesFin: `${GUIDE_MATERNELLE_LECTURE}, p. 24, le « Loto des syllabes » ; p. 23 : « La tâche est plus aisée lorsque la syllabe se `
+    + "situe au début ou à la fin du mot ».",
+  lotoPhonemesAttaque: `${GUIDE_MATERNELLE_LECTURE}, p. 27, le « Loto des phonèmes » ; p. 26 : « repérer le mot qui commence (ou se termine) par `
+    + "un phonème donné ».",
+  lotoPhonemesFin: `${GUIDE_MATERNELLE_LECTURE}, p. 27, le « Loto des phonèmes » ; p. 26 : « repérer le mot qui commence (ou se termine) par `
+    + "un phonème donné ».",
   dominos: `${GUIDE_MATERNELLE_LECTURE}, qui nomme le domino des syllabes.`,
   intrus: `${GUIDE_MATERNELLE_LECTURE}, qui nomme la chasse à l'intrus.`,
   paires: "Livret d'accompagnement « À partir de 5 ans » (Éduscol, 2025) — le jeu du trésor et le jeu du téléphone — ; programme de l'école "
