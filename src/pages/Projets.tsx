@@ -5,6 +5,9 @@ import { api, anneeScolaireActuelle, texteErreur } from "../api";
 import { Input, useAsync, useOngletDemande } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { accueilDuProjet, appliquerLaReponse, demanderALAssistant, type Replique } from "../assistantProjet";
+import {
+  ACCUEIL_DECOUVERTE, decouvrirLocalement, demanderALaDecouverte, ideesDeLaReponse, type ReponseDecouverte, type RepliqueDecouverte,
+} from "../decouverteProjets";
 import { useReglages } from "../components/useMemoire";
 import { decrireLeProjet, servicesCorpus } from "../components/ProjetDuMoment";
 import { DEMANDE_CORPUS } from "../corpusIa";
@@ -15,9 +18,8 @@ import { aUnCorpus, corpusDe, texteDuCorpus } from "../corpusProjet";
 import { graineAuHasard } from "../hasard";
 import { confirmer } from "../components/confirmer";
 import { openCtx } from "../components/ctxmenu";
-import { normaliser } from "../competencesTravaillees";
 import {
-  CATALOGUE, ETATS, MOIS, THEMES, avancement, chercherIdees, depuisIdee,
+  CATALOGUE, ETATS, MOIS, avancement, depuisIdee,
   etatDeduit, icoDuTheme, lireEtapes, moisCourant, nomDuMois, nomDuTheme, placer,
   projetVierge, semainesDuMois, type IdeeProjet, type ProjetClasse,
 } from "../projets";
@@ -27,9 +29,11 @@ import {
 // Deux temps, dans cet ordre : on choisit, puis on pose.
 //
 // En haut, l'année — dix mois, qu'on peut ouvrir semaine par semaine. En bas,
-// le catalogue : quatre-vingt-dix projets qu'on coche, par thème ou par
-// recherche. Dès qu'un projet est coché, chaque mois tend la main : « ＋ ici ».
-// C'est tout le geste — cocher, puis désigner le moment.
+// un assistant fait découvrir le catalogue, quatre-vingt-dix projets : on lui
+// dit ce qu'on cherche, il en propose, et leurs cartes n'apparaissent qu'à ce
+// moment-là (l'enseignant, 31 octobre 2026). Dès qu'un projet est coché,
+// chaque mois tend la main : « ＋ ici ». C'est tout le geste — cocher, puis
+// désigner le moment.
 
 const COULEUR_ETAT: Record<string, string> = {
   idee: "var(--text-2)", encours: "var(--accent)", fait: "#16a34a",
@@ -41,8 +45,6 @@ export default function Projets() {
   const annee = anneeScolaireActuelle();
   const { data: projets, reload } = useAsync(() => api.projetsList(), []);
   const [choisies, setChoisies] = React.useState<Set<string>>(new Set());
-  const [recherche, setRecherche] = React.useState("");
-  const [theme, setTheme] = React.useState<string>("");
   const [deplie, setDeplie] = React.useState<string>("");
   const [ouvert, setOuvert] = React.useState<string>("");
 
@@ -89,16 +91,10 @@ export default function Projets() {
     return suite;
   });
 
-  // Le catalogue montré : la recherche l'emporte sur le thème, qui l'emporte
-  // sur le tout-venant.
-  const vues = recherche.trim() ? chercherIdees(recherche, normaliser)
-    : theme ? CATALOGUE.filter((i) => i.theme === theme)
-    : CATALOGUE;
-
   const ceMois = moisCourant();
 
   return (
-    <Page titre="Projets" sous={`${CATALOGUE.length} projets à poser sur l'année — cochez, puis désignez le moment`}>
+    <Page titre="Projets" sous="Demandez un projet à l'assistant, cochez-le, puis désignez le moment">
       {/* ── L'année ── */}
       <div className="projets-annee">
         {MOIS.map((m) => {
@@ -156,38 +152,8 @@ export default function Projets() {
           onChange={(suite) => { void enregistrer(suite); }} onFermer={() => setOuvert("")} />
       )}
 
-      {/* ── Le catalogue ── */}
-      <div className="toolbar" style={{ margin: "18px 0 10px", flexWrap: "wrap" }}>
-        <Input value={recherche} placeholder="Chercher un projet (monnaie, sortie, écrire…)"
-          onChange={(e) => setRecherche(e.target.value)} style={{ flex: "1 1 220px", minWidth: 140 }} />
-        {choisies.size > 0 && (
-          <>
-            <span className="chip" style={{ fontSize: 12 }}>{choisies.size} choisi{choisies.size > 1 ? "s" : ""}</span>
-            <span className="meta" style={{ fontSize: 12 }}>→ cliquez sur un mois, ci-dessus</span>
-            <button className="btn ghost sm" onClick={() => setChoisies(new Set())}>Tout décocher</button>
-          </>
-        )}
-      </div>
-
-      {!recherche && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-          <button className={`btn sm${theme ? " ghost" : " primary"}`} onClick={() => setTheme("")}>Tous</button>
-          {THEMES.map((t) => (
-            <button key={t.id} className={`btn sm${theme === t.id ? " primary" : " ghost"}`}
-              onClick={() => setTheme(theme === t.id ? "" : t.id)}>{t.ico} {t.nom}</button>
-          ))}
-        </div>
-      )}
-
-      <div className="projets-grille">
-        {vues.map((i) => (
-          <CarteIdee key={i.id} idee={i} choisie={choisies.has(i.id)} deja={dejaPris.has(i.id)}
-            onBasculer={() => basculer(i.id)} />
-        ))}
-      </div>
-      {vues.length === 0 && (
-        <p className="meta" style={{ fontSize: 12.5 }}>Rien de ce côté-là — essayez un autre mot.</p>
-      )}
+      {/* ── Trouver un projet : l'assistant, et les projets qu'il propose ── */}
+      <DecouverteDesProjets choisies={choisies} deja={dejaPris} onBasculer={basculer} onToutDecocher={() => setChoisies(new Set())} />
     </Page>
   );
 }
@@ -236,6 +202,89 @@ function CarteIdee({ idee, choisie, deja, onBasculer }: {
         {icoDuTheme(idee.theme)} {nomDuTheme(idee.theme)} · plutôt en {nomDuMois(idee.mois).toLowerCase()} · {idee.etapes.length} étapes
       </div>
     </button>
+  );
+}
+
+/**
+ * L'assistant qui fait découvrir le catalogue : on lui dit ce qu'on cherche,
+ * il propose des projets, et leurs cartes n'apparaissent qu'alors ; on coche
+ * ceux qu'on veut poser, puis on clique sur un mois (voir
+ * decouverteProjets.ts). Sans clé Mistral, ou s'il ne répond pas, une
+ * recherche sur l'ordinateur répond à sa place.
+ */
+function DecouverteDesProjets({ choisies, deja, onBasculer, onToutDecocher }: {
+  choisies: Set<string>; deja: Set<string>; onBasculer: (id: string) => void; onToutDecocher: () => void;
+}) {
+  const [fil, setFil] = React.useState<RepliqueDecouverte[]>([{ role: "assistant", content: ACCUEIL_DECOUVERTE }]);
+  const [saisie, setSaisie] = React.useState("");
+  const [occupe, setOccupe] = React.useState(false);
+  const [proposes, setProposes] = React.useState<IdeeProjet[]>([]);
+  const [cle, setCle] = React.useState(false);
+  React.useEffect(() => {
+    api.settingGet("mistralApiKey").then((k) => setCle(!!k && k.trim().length > 0)).catch(() => setCle(false));
+  }, []);
+  const filRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => { const el = filRef.current; if (el) el.scrollTop = el.scrollHeight; }, [fil, occupe]);
+
+  const envoyer = async () => {
+    const texte = saisie.trim();
+    if (!texte || occupe) return;
+    const conversation: RepliqueDecouverte[] = [...fil, { role: "user", content: texte }];
+    setFil(conversation);
+    setSaisie("");
+    setOccupe(true);
+    let r: ReponseDecouverte;
+    try {
+      r = cle ? await demanderALaDecouverte(conversation, new Date().toLocaleDateString("fr-FR")) : decouvrirLocalement(texte);
+    } catch {
+      // L'IA ne répond pas : la recherche sur l'ordinateur prend le relais.
+      r = decouvrirLocalement(texte);
+    }
+    setFil((f) => [...f, { role: "assistant", content: r.reponse }]);
+    const idees = ideesDeLaReponse(r);
+    if (idees.length) setProposes(idees);
+    setOccupe(false);
+  };
+
+  return (
+    <div className="card" style={{ marginTop: 18 }}>
+      <h3 style={{ margin: "0 0 8px" }}>💬 Trouver un projet</h3>
+      <div className="projet-assistant">
+        <div className="projet-assistant-fil" ref={filRef} aria-live="polite">
+          {fil.map((m, i) => (
+            <div key={i} className={`projet-assistant-bulle ${m.role === "user" ? "moi" : "lui"}`}>{m.content}</div>
+          ))}
+          {occupe && <div className="projet-assistant-bulle lui en-cours" aria-label="L'assistant cherche">…</div>}
+        </div>
+        <div className="projet-assistant-saisie">
+          <Input value={saisie} autoComplete="off" placeholder="Ce que vous cherchez…" aria-label="Votre message à l'assistant des projets"
+            onChange={(e) => setSaisie(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void envoyer(); } }} />
+          <button type="button" className="btn primary" disabled={!saisie.trim() || occupe} onClick={() => { void envoyer(); }}>Envoyer</button>
+        </div>
+      </div>
+      {(proposes.length > 0 || choisies.size > 0) && (
+        <div className="toolbar" style={{ margin: "12px 0 8px", flexWrap: "wrap" }}>
+          {proposes.length > 0 && <span className="meta" style={{ fontSize: 12.5 }}>{proposes.length} projet{proposes.length > 1 ? "s proposés" : " proposé"}</span>}
+          {choisies.size > 0 && (
+            <>
+              <span className="chip" style={{ fontSize: 12 }}>{choisies.size} choisi{choisies.size > 1 ? "s" : ""}</span>
+              <span className="meta" style={{ fontSize: 12 }}>→ cliquez sur un mois, en haut</span>
+              <button className="btn ghost sm" onClick={onToutDecocher}>Tout décocher</button>
+            </>
+          )}
+          <div className="spacer" />
+          {proposes.length > 0 && <button className="btn ghost sm" onClick={() => setProposes([])}>Masquer</button>}
+        </div>
+      )}
+      {proposes.length > 0 && (
+        <div className="projets-grille">
+          {proposes.map((i) => (
+            <CarteIdee key={i.id} idee={i} choisie={choisies.has(i.id)} deja={deja.has(i.id)} onBasculer={() => onBasculer(i.id)} />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
