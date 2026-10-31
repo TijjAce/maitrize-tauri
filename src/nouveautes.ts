@@ -18,6 +18,22 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.40",
+    titre: "Des assistants pour les projets, les feuilles du cours moyen et de la grande section, et une progression par élève",
+    points: [
+      { quoi: "La fiche d'un projet n'a plus qu'un assistant : racontez-lui le projet, il pose une question à la fois et range ce qu'il comprend — le titre, le mois et la semaine, les étapes, les mots et les phrases. Il coche une étape (« l'étape 2 est faite »), dit où en est le projet et prépare les mots tout seul. Rouvert, il résume où vous en êtes. Il a besoin de la clé Mistral.", ou: "Projets › un projet de l'année" },
+      { quoi: "Pour trouver un projet, dites à « Trouver un projet » ce que vous cherchez — un thème, une envie, une saison : il propose quelques projets du catalogue et dit pourquoi, et leurs cartes n'apparaissent qu'alors. Cochez-les, puis cliquez sur un mois. Sans clé Mistral, une recherche sur l'ordinateur répond. Sur un grand écran, il se tient à côté du projet ouvert.", ou: "Projets › 💬 Trouver un projet" },
+      { quoi: "Quatre ateliers pour le cours moyen : « Le calcul », « Les problèmes », « Grandeurs et mesures » et « Espace et géométrie — CM1, CM2 ». Des divisions en ligne, rang par rang ou posées, des additions de décimaux ; des problèmes avec un reste, à données décimales, de proportionnalité ou de fractions ; des aires comparées sans mesurer, des pavages, le tableau des unités ; des programmes de construction à suivre, à vérifier sur quatre figures ou à remettre en ordre.", ou: "Fabriquer" },
+      { quoi: "Et ailleurs : « Multiplier en rectangles » (CE2), « Problèmes et outils d'aide » (CE1), « Symétriques ou non ? » et la symétrie sur papier uni, les longueurs avec une unité U avant la règle (CP-CE1), « Colorier une fraction » en partageant soi-même ; en grande section, « Le tangram » et « L'album à calculer ».", ou: "Fabriquer" },
+      { quoi: "Les séquences d'après le manuel du CRPE prennent ces feuilles : presque plus rien n'y est « à préparer », et chaque feuille se refait dans son atelier. Le logo de Maitrize marque les séquences travaillées en profondeur — celles du manuel, la soustraction posée du CE1 et l'histoire-géographie d'après Éduscol.", ou: "Fabriquer › 📚 Séquences toutes faites" },
+      { quoi: "Une progression par élève, comme la programmation : « 👧 Par élève (IME) », puis « + Élève ». Chaque tableau est celui de la classe, avec l'élève en tête à la place du niveau.", ou: "Organisation › Progression" },
+      { quoi: "« 🐾 Remplir « À savoir » » écrit pour chaque élève cinq points au plus, d'après ce que Maitrize sait de lui : la communication et le langage, le social, l'autonomie, le niveau, le comportement. Ni santé ni famille ; les noms partent masqués.", ou: "Organisation › Informations" },
+      { quoi: "Le déroulement d'un rituel s'écrit dans l'éditeur de Maitrize — titres, gras, listes, surlignage, une image collée — et s'affiche mis en forme dans le cahier journal, à l'impression aussi.", ou: "Planning › un créneau › 🔁 Un rituel" },
+      { quoi: "La télécommande crée une séquence ou une séance à la voix — « crée une séquence de sciences sur les volcans au CM1 en période 2 », « crée la séquence toute faite de la symétrie au CE2 » —, après un « oui » sur le téléphone ; « annule » la retire.", ou: "Réglages › Téléphone › Ouvrir la télécommande" },
+      { quoi: "Le tableau de bord réunit dans une carte les ateliers autonomes, les jeux éducatifs, les outils pour l'élève et l'affichage de classe, chacun avec son nombre. Dans ⌘K, un jeu trouvé s'ouvre à sa place sur le bureau. Les intitulés de l'emploi du temps ne se proposent plus quand on tape un créneau, ni dans les colonnes de la progression et de la programmation : des prénoms pouvaient y passer.", ou: "Tableau de bord · ⌘K · Organisation" },
+    ],
+  },
+  {
     version: "1.6.39",
     titre: "Treize séquences d'après le manuel du CRPE, la télécommande du tableau, et un partage WiFi plus sûr",
     points: [
