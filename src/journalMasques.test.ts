@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { aImprimer, basculerMasque, cleMasques, ecrireMasques, lireMasques, masqueJeu, masqueRituel, masqueSequence, masquesDesReglages } from "./journalMasques";
+import {
+  MASQUE_CRENEAU, aImprimer, basculerMasque, cleMasques, creneauMasque, ecrireMasques, lireMasques, masqueJeu, masqueRituel, masqueSequence, masquesDesReglages,
+} from "./journalMasques";
 
 describe("ce qu'on cite sans l'imprimer", () => {
   it("se garde par créneau, sous des clés qui disent quoi", () => {
@@ -37,5 +39,14 @@ describe("ce qu'on cite sans l'imprimer", () => {
     expect(aImprimer(jeux, (j) => masqueJeu(j.id), [])).toBe(jeux);
     const citations = [{ sequence: { id: "q1" }, seance: { id: "s2" } }, { sequence: { id: "q1" }, seance: null }];
     expect(aImprimer(citations, (c) => masqueSequence(c.sequence.id, c.seance?.id), ["sequence:q1|"])).toEqual([citations[0]]);
+  });
+
+  it("peut retirer un créneau entier, sans toucher à ses blocs", () => {
+    const masques = masquesDesReglages({ "journal:masques:c1": `["${MASQUE_CRENEAU}","jeu:j1"]`, "journal:masques:c2": '["jeu:j1"]' });
+    expect(creneauMasque(masques, "c1")).toBe(true);
+    // Un bloc masqué ne retire pas son créneau ; un créneau sans case cochée s'imprime.
+    expect(creneauMasque(masques, "c2")).toBe(false);
+    expect(creneauMasque(masques, "c3")).toBe(false);
+    expect(basculerMasque(masques.c1, MASQUE_CRENEAU)).toEqual(["jeu:j1"]);
   });
 });

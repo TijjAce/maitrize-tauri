@@ -1,0 +1,88 @@
+import { describe, it, expect } from "vitest";
+import type { Creneau, MaterielItem, Seance } from "./api";
+import {
+  FEUILLE_BANDES_MM, SCRIPTS_DES_BANDES, STYLE_BANDES, corpsDesBandes, creneauxEnBandes, estUnePause, heuresDeLaBande, pasDeLaBande,
+} from "./journeeEnBandes";
+import { documentImprimable } from "./print";
+
+const creneau = (id: string, heureDebut: string, heureFin: string, matiere: string, autre: Partial<Creneau> = {}): Creneau => ({
+  id, date: "2026-11-02", heureDebut, heureFin, matiere, couleur: "blue", seanceId: null, atelierId: null, espaceId: null,
+  elevesJson: "[]", nature: "classe", prevu: "", bilan: "", ...autre,
+});
+
+/** Une fiche faite par « En retard » pour un élève (prénoms inventés). */
+const fiche = (id: string, titre: string, prenom: string): MaterielItem => ({
+  id, titre: `${titre} — ${prenom}, 2 nov.`, descriptionMateriel: "", competenceId: "", competenceTitre: "", domaineTitre: "", sousDomaineTitre: "",
+  cycle: "", imagesJson: "[]", pdfsJson: '["fiche.pdf"]', dateCreation: "2026-11-01", seanceId: null, sequenceId: null, dossier: "",
+  videosJson: "[]", coffreJson: "[]", fabricationJson: JSON.stringify({ atelier: "x", eleve: { prenom, date: "2026-11-02" } }),
+} as MaterielItem);
+
+const seance = { id: "s1", titre: "Comparer des collections", sequenceId: "q1", competences: "[]" } as unknown as Seance;
+const phases = () => ["Je compte les objets", "Je compare avec mon voisin"];
+
+describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octobre 2026)", () => {
+  it("donne une bande à chaque créneau qu'on imprime, dans l'ordre des heures ; une pause vide n'en a pas", () => {
+    const jour = [
+      creneau("c3", "10:30", "10:45", "Récréation"),
+      creneau("c1", "08:30", "09:00", "Accueil", { prevu: "La date, l'appel" }),
+      creneau("c2", "09:00", "10:30", "Mathématiques"),
+      creneau("c4", "11:30", "13:30", "Cantine", { bilan: "Calme" }),
+      creneau("c5", "13:30", "14:00", "Sieste", { seanceId: "s1" }),
+    ];
+    // Un créneau d'enseignement sans rien d'écrit garde sa bande : sa matière y est dite.
+    expect(creneauxEnBandes(jour).map((c) => c.id)).toEqual(["c1", "c2", "c4", "c5"]);
+    expect(estUnePause("Récréation")).toBe(true);
+    expect(estUnePause("Français")).toBe(false);
+    expect(heuresDeLaBande(jour[1])).toBe("8h30 – 9h00");
+  });
+
+  it("dessine le déroulement des tablettes : le rituel d'abord, les phases de la séance, puis les fiches de chaque élève, à son prénom", () => {
+    const fiches = [fiche("f1", "Les pyramides de nombres", "Prénom-Un"), fiche("f2", "Les listes de mots qui se ressemblent", "Prénom-Deux")];
+    const c = creneau("c1", "09:00", "10:00", "Mathématiques", {
+      seanceId: "s1", prevu: "🔁 La date\n📄 Les pyramides de nombres — Prénom-Un, 2 nov.\n📄 Les listes de mots qui se ressemblent — Prénom-Deux, 2 nov.",
+    });
+    const pas = pasDeLaBande(c, seance, phases, fiches, "Nombres");
+    expect(pas.map((p) => [p.texte, p.rituel ?? false, p.fiche ?? false, p.eleve ?? ""])).toEqual([
+      ["La date", true, false, ""],
+      ["Je compte les objets", false, false, ""],
+      ["Je compare avec mon voisin", false, false, ""],
+      ["Les pyramides de nombres", false, true, "Prénom-Un"],
+      ["Les listes de mots qui se ressemblent", false, true, "Prénom-Deux"],
+    ]);
+    expect(pas[1].domaine).toBe("Nombres");
+    // Sans séance, les fiches suivent le rituel, comme sur la tablette de leur élève.
+    const sansSeance = pasDeLaBande(c, undefined, phases, fiches);
+    expect(sansSeance.map((p) => p.texte)).toEqual(["La date", "Les pyramides de nombres", "Les listes de mots qui se ressemblent"]);
+  });
+
+  it("donne une carte à un créneau qui n'a ni séance ni fiche : ses rituels, sinon sa matière", () => {
+    expect(pasDeLaBande(creneau("c1", "08:30", "09:00", "Accueil", { prevu: "🔁 L'appel\n🔁 La météo" }), undefined, phases, []))
+      .toEqual([{ texte: "L'appel · La météo", matiere: "Rituel", rituel: true }]);
+    expect(pasDeLaBande(creneau("c2", "11:00", "11:45", "EPS", { prevu: "Parcours" }), undefined, phases, []))
+      .toEqual([{ texte: "EPS", matiere: "", domaine: "EPS" }]);
+  });
+
+  it("met les bandes côte à côte, de même largeur, sur une seule page A4 en paysage", () => {
+    expect(STYLE_BANDES).toMatch(/@page \{ size: A4 landscape; margin: 8mm; \}/);
+    expect(STYLE_BANDES).toMatch(/\.bande \{ flex: 1 1 0; min-width: 0;/);
+    // La feuille tient dans les 281 × 194 mm que la page laisse entre ses marges.
+    expect(FEUILLE_BANDES_MM.largeur).toBeLessThanOrEqual(281);
+    expect(FEUILLE_BANDES_MM.hauteur).toBeLessThanOrEqual(194);
+    const corps = corpsDesBandes("Lundi 2 novembre 2026", [
+      { heures: "8h30 – 9h00", matiere: "Accueil", cadres: '<div class="at-etape dr-etape">Rituel</div>' },
+      { heures: "9h00 – 10h30", matiere: "Mathématiques", cadres: '<div class="at-etape dr-etape">Compter</div>' },
+    ]);
+    expect(corps.match(/class="bande"/g)).toHaveLength(2);
+    expect(corps).toContain('<span class="bande-heure">9h00 – 10h30</span><span class="bande-matiere">Mathématiques</span>');
+    expect(corps).toContain('<div class="dr"><div class="at-etape dr-etape">Compter</div></div>');
+    expect(corps).toMatch(/<div class="bandes-alerte" hidden>/);
+    expect(corpsDesBandes("Lundi", [])).toContain("Aucun créneau à imprimer ce jour-là.");
+    expect(corpsDesBandes("<b>x</b>", [{ heures: "<i>", matiere: "<u>", cadres: "" }])).not.toMatch(/<b>x<\/b>|<i>|<u>/);
+  });
+
+  it("n'exécute que son script, reconnu à son empreinte, tel quel dans la page imprimable", () => {
+    const page = documentImprimable("La journée", corpsDesBandes("Lundi", [{ heures: "8h30 – 9h00", matiere: "", cadres: "" }]), STYLE_BANDES);
+    const scripts = [...page.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+    expect(scripts).toEqual(SCRIPTS_DES_BANDES);
+  });
+});

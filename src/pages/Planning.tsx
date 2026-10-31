@@ -24,7 +24,8 @@ import { rendrePagesAImprimer } from "../pdfRendu";
 import { CLE_RITUELS, STYLE_RITUELS_IMPRIMES, avecRituels, deroulementEnHtml, lireRituels, rituelsCites, rituelsImprimes } from "../rituels";
 import { avecImages } from "../components/imagesTexte";
 import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
-import { aImprimer, masqueJeu, masqueRituel, masqueSequence, masquesDesReglages } from "../journalMasques";
+import { aImprimer, creneauMasque, masqueJeu, masqueRituel, masqueSequence, masquesDesReglages } from "../journalMasques";
+import { SCRIPTS_DES_BANDES, pageDeLaJourneeEnBandes } from "../journeeEnBandes";
 import { JOURS_DE_RECUL, STYLE_VEILLE, bilansDeLaVeilleHtml, veilleDe } from "../bilansVeille";
 import { niveauDeProgrammation } from "../programmation";
 import { EnRetard } from "../components/EnRetard";
@@ -244,16 +245,23 @@ export default function Planning() {
     : cap(ancre.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }));
 
   // Vue jour : rendu riche (grille horaire + contenu des séances) en HTML,
-  // ouvert dans le navigateur (imprimable / PDF natif via ⌘P).
-  const imprimerJourRiche = async (liste: Creneau[]) => {
-    const jourCreneaux = liste.filter((c) => c.date === iso(ancre)).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
-    const reImg = /\[img:([^\]]+)\]/g;
+  // ouvert dans le navigateur (imprimable / PDF natif via ⌘P). `enBandes` : la
+  // journée sur une seule page, chaque créneau en bande — son déroulement,
+  // comme sur les tablettes (voir journeeEnBandes.ts).
+  const imprimerJourRiche = async (liste: Creneau[], enBandes = false) => {
+    const reglages = await api.settingsAll().catch((): Record<string, string> => ({}));
+    // Ce que chaque créneau cite sans l'imprimer : la case cochée dans le journal ; et les créneaux qu'on n'imprime pas du tout.
+    const masques = masquesDesReglages(reglages);
+    const jourCreneaux = liste.filter((c) => c.date === iso(ancre) && !creneauMasque(masques, c.id)).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
     // Le matériel des séances : annoncé dans le créneau, joint à la suite, à son échelle.
     const materiels = await api.materielList().catch((): MaterielItem[] => []);
-    const reglages = await api.settingsAll().catch((): Record<string, string> => ({}));
+    if (enBandes) {
+      const seancesActuelles = await api.seancesList().catch(() => seances ?? []);
+      await api.ouvrirHtml(await pageDeLaJourneeEnBandes(titre, jourCreneaux, seancesActuelles, sequences ?? [], materiels), SCRIPTS_DES_BANDES);
+      return;
+    }
+    const reImg = /\[img:([^\]]+)\]/g;
     const echelles = echellesDesReglages(reglages);
-    // Ce que chaque créneau cite sans l'imprimer : la case cochée dans le journal.
-    const masques = masquesDesReglages(reglages);
     // Les rituels cités dans le prévu : leur déroulement s'imprime sous lui.
     const rituels = lireRituels(await api.settingGet(CLE_RITUELS).catch(() => null));
     // Le déroulement des rituels, mis en forme, ses images lues : il s'imprime tel qu'on l'a écrit.
@@ -452,20 +460,21 @@ export default function Planning() {
     await api.ouvrirHtml(html, SCRIPTS_DU_JOURNAL);
   };
 
-  // Impression du planning : jour = HTML riche ; semaine = PDF natif (Aperçu).
-  const imprimer = async () => {
+  // Impression du planning : jour = HTML riche, ou la journée en bandes ; semaine = PDF natif (Aperçu).
+  const imprimer = async (enBandes = false) => {
     // Ce qui vient d'être tapé dans le cahier journal, puis les créneaux tels
     // qu'ils sont en base : ceux chargés à l'ouverture ignoraient tout ce qui a
     // été écrit depuis — l'impression montrait des créneaux vides.
     await ecrireLeCahierJournal();
     const liste = await api.creneauxList(debut, fin).catch(() => creneaux ?? []);
     reload();
-    if (vue === "jour") { await imprimerJourRiche(liste); return; }
+    if (vue === "jour") { await imprimerJourRiche(liste, enBandes); return; }
     const materiels = await api.materielList().catch((): MaterielItem[] => []);
     const reglages = await api.settingsAll().catch((): Record<string, string> => ({}));
     const echelles = echellesDesReglages(reglages);
-    // Ce que chaque créneau cite sans l'imprimer : la case cochée dans le journal.
+    // Ce que chaque créneau cite sans l'imprimer : la case cochée dans le journal ; un créneau coché en entier ne s'imprime pas.
     const masques = masquesDesReglages(reglages);
+    const imprimes = liste.filter((c) => !creneauMasque(masques, c.id));
     const rituels = lireRituels(await api.settingGet(CLE_RITUELS).catch(() => null));
     const nettoie = (t: string) => (t || "").replace(/\[(img|cite):[^\]]+\]/g, "").replace(/\n{3,}/g, "\n\n").trim();
     const info = (c: Creneau) => {
@@ -500,14 +509,14 @@ export default function Planning() {
     const libelleJour = (d: Date) => d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
     const data = ds.map((d) => ({
       jour: libelleJour(d),
-      rangs: grouper(liste
+      rangs: grouper(imprimes
         .filter((c) => c.date === iso(d))
         .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut))
         .map(info)),
     }));
     // Le matériel des séances de la semaine, joint au PDF à la suite du journal.
     const annexes = annexesDesCreneaux(
-      liste.filter((c) => ds.some((d) => c.date === iso(d))), sequences ?? [], seances ?? [], materiels,
+      imprimes.filter((c) => ds.some((d) => c.date === iso(d))), sequences ?? [], seances ?? [], materiels,
       (c) => { const d = ds.find((x) => iso(x) === c.date); return d ? libelleJour(d) : ""; },
       echelles,
     );
@@ -544,7 +553,12 @@ export default function Planning() {
               style={cache ?? (deplacer ? { background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" } : undefined)}
               title={deplacer ? "Déplacement activé — glissez les créneaux. Cliquez pour désactiver." : "Activer le déplacement des créneaux par glisser-déposer"}>
               ✋ Déplacer</button>
-            <button className="btn" style={cache} disabled={surLeMois} aria-hidden={surLeMois} onClick={imprimer}>🖨 PDF</button>
+            {/* Le jour s'imprime en cahier journal, ou sur une seule page en bandes : le bouton propose les deux. */}
+            <button className="btn" style={cache} disabled={surLeMois} aria-hidden={surLeMois}
+              onClick={(e) => (vue === "jour" ? openCtx(e, [
+                { label: "Le cahier journal", icon: "📓", onClick: () => { void imprimer(); } },
+                { label: "La journée sur une page, en bandes", icon: "▥", onClick: () => { void imprimer(true); } },
+              ]) : void imprimer())}>🖨 PDF</button>
           </>;
         })()}
         <div className="seg">

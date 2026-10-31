@@ -22,6 +22,8 @@
 // rien. Rien ne repart qui n'a pas changé ; ici, rien ne se redessine non plus.
 
 import type { Creneau, MaterielItem, Seance, Sequence } from "./api";
+import type { Lexique } from "./caa";
+import type { RefPicto } from "./pictosAppoint";
 import { pdfsCites } from "./materielAImprimer";
 import { eleveDeLaFiche, lirePdfs, titreSansLEleve } from "./materielSeance";
 import { lireFabrication, MINUTEUR_MAX } from "./modifierFeuille";
@@ -155,6 +157,8 @@ export interface PasDuDeroulement {
   texte: string; matiere: string; domaine?: string; rituel?: boolean; fiche?: boolean;
   /** Une fiche faite d'un support de travail : sa photo, qui lui sert de picto (voir supportsDeTravail). */
   picto?: number;
+  /** Sur la journée imprimée en bandes, le prénom de l'élève d'une fiche : une tablette ne montre que les siennes (voir journeeEnBandes). */
+  eleve?: string;
 }
 
 /** Le domaine d'une séance, par sa première compétence — la sienne, sinon celle de sa séquence : le sous-domaine, sinon le domaine. */
@@ -409,12 +413,27 @@ async function avecSaVoix(page: string): Promise<string> {
 /** Les déroulements déjà dessinés, par leurs fiches : un créneau qui ne change pas ne se redessine pas. */
 const deroulementsDessines = new Map<string, string>();
 
+/** Les pictos que l'enseignant a choisis — matières, domaines —, les matières qu'il détaille par domaine, et les domaines de chacune. */
+export interface PictosDuDeroulement { choix: Lexique; parDomaine: Record<string, boolean>; domaines: Record<string, string[]> }
+
+/** Ces choix, lus une fois : ceux de la page CAA et de Réglages › Personnalisation. */
+export async function pictosDuDeroulement(): Promise<PictosDuDeroulement> {
+  const { api } = await import("./api");
+  const { CLE_MATIERES, CLE_PAR_DOMAINE, domainesParMatiere, lireParDomaine } = await import("./pictosMatieres");
+  const { lireLexique } = await import("./caa");
+  return {
+    choix: lireLexique(await api.settingGet(CLE_MATIERES).catch(() => "")),
+    parDomaine: lireParDomaine(await api.settingGet(CLE_PAR_DOMAINE).catch(() => "")),
+    domaines: domainesParMatiere(await api.referentielsList().catch(() => [])),
+  };
+}
+
 const echapper = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
 
 /** La flèche d'un cadre au suivant, de haut en bas. */
 const FLECHE_DU_DEROULEMENT = '<svg class="dr-fleche" viewBox="0 0 24 44" aria-hidden="true"><path d="M12 3v36M4 30l8 9 8-9" fill="none" stroke="#3a3a3a" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-const STYLE_DU_DEROULEMENT = `
+export const STYLE_DU_DEROULEMENT = `
   .page > .titre { font-size: 28px; font-weight: 800; text-align: center; margin: 4px 0 16px; }
   .dr { display: flex; flex-direction: column; align-items: center; }
   .dr-etape { display: flex; align-items: center; gap: 16px; width: 100%; max-width: 560px; box-sizing: border-box; padding: 12px 18px;
@@ -428,26 +447,14 @@ const STYLE_DU_DEROULEMENT = `
 `;
 
 /**
- * Le déroulement d'un créneau, pour les tablettes : le rituel, les phases de
- * sa séance, ses fiches, chacun dans son cadre — son picto, sa matière, son
- * nom (sans l'élève pour une fiche) —, reliés par des flèches, de haut en
- * bas. Chaque cadre est une étape : le téléphone les lit pour que la tablette
- * surligne où en est la classe.
+ * Les cadres d'un déroulement — chacun son picto, sa matière, son nom (sans
+ * l'élève pour une fiche) —, reliés par des flèches, de haut en bas ; et les
+ * pictos qu'ils montrent, pour la mention de leur banque. Ceux des tablettes,
+ * et ceux de la journée imprimée en bandes (voir journeeEnBandes.ts).
  */
-export async function pageDuDeroulement(etapes: PasDuDeroulement[]): Promise<string> {
-  const { api } = await import("./api");
-  const { documentImprimable } = await import("./print");
-  const { CLE_MATIERES, CLE_PAR_DOMAINE, domainesParMatiere, lireParDomaine, matiereDuNom, pictoDuDomaine, pictosProposes } = await import("./pictosMatieres");
-  const { lireLexique } = await import("./caa");
-  // Les pictos des matières et des domaines : ceux de la page CAA et de Réglages › Personnalisation, et les matières
-  // que l'enseignant détaille par domaine.
-  const choix = lireLexique(await api.settingGet(CLE_MATIERES).catch(() => ""));
-  const parDomaine = lireParDomaine(await api.settingGet(CLE_PAR_DOMAINE).catch(() => ""));
-  const domaines = domainesParMatiere(await api.referentielsList().catch(() => []));
-  // Les pictos choisis font partie de la page : un choix nouveau la redessine.
-  const cle = JSON.stringify([etapes, choix, parDomaine, domaines]);
-  const deja = deroulementsDessines.get(cle);
-  if (deja) return deja;
+export async function cadresDuDeroulement(etapes: PasDuDeroulement[], pictos: PictosDuDeroulement): Promise<{ html: string; refs: RefPicto[] }> {
+  const { matiereDuNom, pictoDuDomaine, pictosProposes } = await import("./pictosMatieres");
+  const { choix, parDomaine, domaines } = pictos;
   // Une fiche d'élève : sa matière, écrite au-dessus, et son domaine, retrouvés par sa sorte.
   const { domaineDeLaRecette, matiereDeLaRecette, recetteDuTitre } = await import("./fichesAutonomie");
   const pas = etapes.map((p) => {
@@ -462,6 +469,7 @@ export async function pageDuDeroulement(etapes: PasDuDeroulement[]): Promise<str
     return nom ? { nom, matiere: (p.fiche && p.matiere) || matiereDuNom(nom, domaines) } : null;
   });
   const images: (string | undefined)[] = pas.map(() => undefined);
+  const montres: RefPicto[] = [];
   try {
     const aProposer = [...new Set(cibles.flatMap((x) => (x ? [x.matiere ?? x.nom] : [])))];
     const proposes = await pictosProposes(aProposer).catch((): Record<string, number> => ({}));
@@ -469,13 +477,31 @@ export async function pageDuDeroulement(etapes: PasDuDeroulement[]): Promise<str
     const refs = cibles.map((x, i) => pas[i].picto ?? (x ? pictoDuDomaine(x.nom, x.matiere, choix, parDomaine, domaines, proposes) : null));
     const { chargerImages } = await import("./components/ChoixPicto");
     const dessins = await chargerImages([...new Set(refs.filter((r): r is number | string => r != null))], true);
-    refs.forEach((r, i) => { if (r != null) images[i] = dessins[r]; });
+    refs.forEach((r, i) => { if (r != null && dessins[r]) { images[i] = dessins[r]; montres.push(r); } });
   } catch { /* pas de banque : des cadres sans image */ }
-  const cadres = pas.map((e, i) => {
+  const html = pas.map((e, i) => {
     const image = images[i];
+    const dessus = [e.matiere, e.eleve].filter(Boolean).map((x) => echapper(x!)).join(" · ");
     return (i ? FLECHE_DU_DEROULEMENT : "") + `<div class="at-etape dr-etape">${image ? `<img src="${image}" alt="">` : '<span class="dr-vide"></span>'}`
-      + `<span class="dr-mots">${e.matiere ? `<span class="dr-matiere">${echapper(e.matiere)}</span>` : ""}<span class="at-texte">${echapper(e.texte)}</span></span></div>`;
+      + `<span class="dr-mots">${dessus ? `<span class="dr-matiere">${dessus}</span>` : ""}<span class="at-texte">${echapper(e.texte)}</span></span></div>`;
   }).join("");
+  return { html, refs: [...new Set(montres)] };
+}
+
+/**
+ * Le déroulement d'un créneau, pour les tablettes : le rituel, les phases de
+ * sa séance, ses fiches, chacun dans son cadre, reliés par des flèches, de
+ * haut en bas. Chaque cadre est une étape : le téléphone les lit pour que la
+ * tablette surligne où en est la classe.
+ */
+export async function pageDuDeroulement(etapes: PasDuDeroulement[]): Promise<string> {
+  const { documentImprimable } = await import("./print");
+  // Les pictos choisis font partie de la page : un choix nouveau la redessine.
+  const pictos = await pictosDuDeroulement();
+  const cle = JSON.stringify([etapes, pictos.choix, pictos.parDomaine, pictos.domaines]);
+  const deja = deroulementsDessines.get(cle);
+  if (deja) return deja;
+  const { html: cadres } = await cadresDuDeroulement(etapes, pictos);
   const page = documentImprimable(TITRE_DU_DEROULEMENT,
     `<div class="page"><div class="titre">${TITRE_DU_DEROULEMENT}</div><div class="dr">${cadres}</div></div>`, STYLE_DU_DEROULEMENT);
   const lue = await avecSaVoix(page);
