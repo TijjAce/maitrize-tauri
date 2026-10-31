@@ -51,6 +51,7 @@ import { ProblemeDuJourTab } from "./AtelierProblemeDuJour";
 import { SoustractionPoseeTab } from "./AtelierSoustractionPosee";
 import { SequencesToutesFaitesTab } from "./AtelierSequencesToutesFaites";
 import { LotoDesSonsTab } from "./AtelierLotosDesSons";
+import { PhrasesPuzzleTab } from "./AtelierPhrasesPuzzle";
 import { lotoDeLAtelier } from "../lotosDesSons";
 import { classeDuDossier } from "../sequencesToutesFaites";
 import { estUneSection } from "../sequencesDeMaternelle";
@@ -501,6 +502,7 @@ export default function Jeux() {
         : onglet === "motsMeles" ? <MotsMelesTab />
         : onglet === "cursive" ? <CursiveTab />
         : onglet === "phrases" ? <PhrasesTab />
+        : onglet === "phrasesPuzzle" ? avecPictos(<PhrasesPuzzleTab banque />)
         : onglet === "trous" ? <TrousTab />
         : onglet === "etiquettes" ? <EtiquettesTab banque={Boolean(etat?.installee)} />
         : onglet === "ombres" ? <OmbresTab banque={Boolean(etat?.installee)} />

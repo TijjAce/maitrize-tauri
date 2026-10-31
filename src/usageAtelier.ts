@@ -60,7 +60,7 @@ export const USAGE_PAR_DEFAUT: Record<string, Usage> = {
   fluence: "rituel", voixHaute: "entrainement", syllabaire: "rituel", lettres: "reinvestissement", gestes: "manipulation", motsGestes: "entrainement", syllabeManquante: "entrainement",
   // Lecture et écriture : on trie pour découvrir, on remet en ordre pour s'entraîner.
   comprehension: "entrainement", lecteur: "reinvestissement", orthographe: "entrainement", ecrire: "entrainement", grammaire: "entrainement", oral: "entrainement",
-  tri: "manipulation", phrases: "entrainement", trous: "manipulation", motsMeles: "reinvestissement", cursive: "entrainement",
+  tri: "manipulation", phrases: "entrainement", phrasesPuzzle: "manipulation", trous: "manipulation", motsMeles: "reinvestissement", cursive: "entrainement",
   // Mathématiques : le calcul mental est le rituel par excellence.
   martiniere: "rituel", compteEstBon: "rituel", pyramides: "entrainement", partieTout: "entrainement", multiplicatifs: "entrainement", problemesAides: "entrainement", problemesCM: "entrainement",
   coloriage: "reinvestissement", collections: "manipulation", albumCalcul: "manipulation", problemeDuJour: "rituel", motifs: "manipulation", tangram: "manipulation", nombres: "manipulation", cubes: "manipulation", billes: "manipulation", abaque: "manipulation", suiteNombres: "entrainement", demiDroite: "entrainement", ordinaux: "entrainement", comparer: "entrainement", calcul: "entrainement", arbre: "entrainement", posees: "entrainement", rectangles: "manipulation", calculCM: "entrainement",

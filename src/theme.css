@@ -2327,3 +2327,9 @@ table.doc-grille th { background: var(--panel-2); font-weight: 700; }
 /* Le son d'un mot, sous son image dans la liste : corrigé à la main, il se distingue. */
 .bm-compte.corrige { outline: 1px dashed currentColor; outline-offset: -1px; }
 .bm-son-champ { font: inherit; font-size: 11.5px; padding: 1px 4px; border: var(--bw) solid var(--accent); border-radius: 6px; background: var(--panel); color: var(--text); }
+
+/* Les phrases en puzzle : une liste par sorte de pièce, sa pastille aux couleurs du code de la phrase. */
+.pz-liste { display: grid; gap: 6px; margin-bottom: 12px; }
+.pz-liste-titre { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 13px; }
+.pz-pastille { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.pz-saisie { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: end; }

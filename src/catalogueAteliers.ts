@@ -5,7 +5,7 @@
 export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "vilainPetitCanard", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin", "lotoPhonemesAttaque", "lotoPhonemesFin", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
-  "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive",
+  "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "phrasesPuzzle", "trous", "motsMeles", "cursive",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "problemesAides", "problemesCM", "coloriage", "collections", "albumCalcul", "problemeDuJour", "motifs", "tangram", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "rectangles", "calculCM", "soustractionPosee", "sequencesPS", "sequencesMS", "sequencesGS", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "grandeursCM", "geometrie", "solides", "deplacements", "geometrieCM", "donnees", "numeration",
   "carteMentale", "taches",
   "sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction",
@@ -154,6 +154,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Des étiquettes à découper et le tableau où les ranger : être ou avoir, phrase ou pas, nom ou verbe. Le verbe en couleur pour qui en a besoin." },
       { id: "phrases", nom: "Phrases en désordre", icone: "✂️", cycles: "Cycle 2",
         quoi: "Les mots d'une phrase sur des étiquettes mélangées : on découpe, on remet en ordre, on colle." },
+      { id: "phrasesPuzzle", nom: "Les phrases en puzzle", icone: "🧩", pictos: true, cycles: "Cycles 1 et 2",
+        quoi: "Des pièces de puzzle — sujet, verbe, complément — avec leur image : elles ne s'emboîtent que dans l'ordre, et en changeant une pièce on fait une autre phrase." },
       { id: "trous", nom: "Texte à trous", icone: "🔳", cycles: "Cycles 2 et 3",
         quoi: "Des phrases dont on a retiré le verbe — être, avoir, ou le mot de votre choix : les étiquettes, de la taille des cases, s'essaient, se vérifient et se collent." },
       { id: "motsMeles", nom: "Mots mêlés", icone: "🔎", cycles: "Cycles 2 et 3",
@@ -329,7 +331,7 @@ export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[]
 export const PARTIES_DU_FRANCAIS: { id: string; nom: string; outils: Onglet[] }[] = [
   { id: "langage", nom: "Langage", outils: ["jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres"] },
   { id: "sons", nom: "Sons et lecture", outils: ["sons", "lotoSyllabes", "lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin", "lotoPhonemesAttaque", "lotoPhonemesFin", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante"] },
-  { id: "ecrit", nom: "Lecture et écriture", outils: ["comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "trous", "motsMeles", "cursive"] },
+  { id: "ecrit", nom: "Lecture et écriture", outils: ["comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "phrasesPuzzle", "trous", "motsMeles", "cursive"] },
 ];
 
 /** Les familles qui se découpent, et leurs parties. */
