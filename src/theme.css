@@ -1331,6 +1331,8 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 .aide-bulle p:last-child { margin-bottom: 0; }
 .aide-bulle ul { margin: 0 0 8px; padding-left: 18px; }
 .aide-bulle code { font-size: 11.5px; word-break: break-all; }
+/* D'où vient le jeu : la dernière ligne du « ? » du titre d'un atelier. */
+.aide-bulle p.aide-source { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); color: var(--text-2); font-size: 12px; }
 
 /* La transcription, dans les Réglages : un moteur par usage, puis les modèles. */
 .transcription-tete { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }

@@ -819,7 +819,10 @@ function Loto({ gen, atelier, etat, progression, onTelecharger }: {
       <div style={{ display: "grid", gridTemplateColumns: "minmax(260px, 340px) minmax(0, 1fr)", gap: 14, alignItems: "start" }}>
         {/* ── Trouver des images ── */}
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>1. Trouver des images</h3>
+          <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            1. Trouver des images
+            <Aide titre={gen.quoi} vers="droite"><p>{outilDe(atelier as Onglet)?.quoi}</p></Aide>
+          </h3>
           <div className="seg seg-carre" style={{ marginBottom: 10 }}>
             <button className={mode === "theme" ? "active" : ""} onClick={() => setMode("theme")}>📚 Thème</button>
             <button className={mode === "mots" ? "active" : ""} onClick={() => setMode("mots")}>✏️ Mots</button>

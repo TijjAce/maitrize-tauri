@@ -459,7 +459,10 @@ export function TriTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Les maisons du tri</h3>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Les maisons du tri
+          <Aide titre="Les maisons du tri" vers="droite"><p>Être ou avoir, phrase ou pas une phrase, nom ou verbe : on apprend une notion en triant. Les étiquettes à découper, puis le tableau des « maisons » où les poser, les coller ou les recopier.</p></Aide>
+        </h3>
         {/* Des plis : on ouvre ce qu'on règle, le reste se tait. */}
         <details className="pli" open>
           <summary>Les étiquettes <span className="meta">· {total} étiquettes, {maisons.length} maison{maisons.length > 1 ? "s" : ""}</span></summary>

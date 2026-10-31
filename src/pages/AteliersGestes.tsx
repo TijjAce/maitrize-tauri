@@ -1,4 +1,5 @@
 import React from "react";
+import { Aide } from "../components/Aide";
 import { Field, Input, Select, ouvrirOnglet } from "../components/ui";
 import { useMotsGardes, useReglages } from "../components/useMemoire";
 import { usePictoImages } from "../components/ChoixPicto";
@@ -47,7 +48,10 @@ export function GestesTab() {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Gestes Borel-Maisonny</h3>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Gestes Borel-Maisonny
+          <Aide titre="Gestes Borel-Maisonny" vers="droite"><p>Un geste pour chaque son, quelles que soient ses écritures : on « dit » un mot avec les mains avant de le lire. Les cartes des gestes, à découper ; vos images des gestes, apportées une fois, restent chez vous.</p></Aide>
+        </h3>
         <BanqueDeGestes banque={banque} />
         <Field label="Taille des cartes">
           <Select value={r.taille} onChange={(e) => maj({ taille: e.target.value as TailleCartes })}>
@@ -169,7 +173,10 @@ export function MotsEnGestesTab({ banque }: { banque: boolean }) {
   return (
     <Colonnes
       gauche={<>
-        <h3 style={{ marginTop: 0 }}>Mots codés en gestes</h3>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Mots codés en gestes
+          <Aide titre="Mots codés en gestes" vers="droite"><p>Des mots écrits en gestes Borel-Maisonny, un geste par son : à relier, à reconnaître ou à écrire.</p></Aide>
+        </h3>
         {gestes.pret && gestes.combien === 0 && (
           <p className="gb-alerte">
             Aucune image de geste pour l'instant : les mots s'écrivent avec les lettres à la place.{" "}
