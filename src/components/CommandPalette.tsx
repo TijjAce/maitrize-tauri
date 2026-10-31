@@ -198,12 +198,14 @@ const KIND_NOM: Record<string, string> = {
 export function allerVers(r: ResultatRecherche, nav: (to: string) => void) {
   const onglet = (page: string, tab: string) => setTimeout(() => ouvrirOnglet(page, tab), 140);
   switch (r.kind) {
-    // Tout ce qui vit sur le bureau s'y retrouve — dans son dossier, surligné.
+    // Tout ce qui vit sur le bureau s'y retrouve — dans son dossier, surligné — et s'ouvre : « que ça m'amène à l'endroit
+    // où le jeu est sur le bureau et que ça me l'ouvre » (l'enseignant, 31 octobre 2026). Une séquence se retrouve
+    // seulement : l'ouvrir quitterait le bureau.
     case "sequence": case "materiel": case "texte":
     case "atelier": case "espace": case "jeu": case "outil":
       nav("/plan");
       setTimeout(() => window.dispatchEvent(new CustomEvent(EVT_CHERCHER_BUREAU,
-        { detail: { id: r.id, titre: r.titre } })), 140);
+        { detail: { id: r.id, titre: r.titre, ...(r.kind === "sequence" ? {} : { ouvrir: true }) } })), 140);
       return;
     case "seance": return nav(`/seances/${r.id}`);
     case "creneau":

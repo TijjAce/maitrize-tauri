@@ -27,6 +27,8 @@ export interface DemandeBureau {
   dossier?: string;
   /** À défaut, le titre — une vieille demande, ou un élément disparu. */
   titre: string;
+  /** L'ouvrir une fois trouvé : ce que demande ⌘K — y aller, et l'ouvrir (l'enseignant, 31 octobre 2026). */
+  ouvrir?: boolean;
 }
 
 /** Une demande, quelle que soit la forme reçue (un titre suffisait avant). */
@@ -38,6 +40,7 @@ export function lireDemandeBureau(detail: unknown): DemandeBureau {
       id: typeof o.id === "string" ? o.id : undefined,
       dossier: typeof o.dossier === "string" ? o.dossier : undefined,
       titre: typeof o.titre === "string" ? o.titre : "",
+      ...(o.ouvrir === true ? { ouvrir: true } : {}),
     };
   }
   return { titre: "" };
