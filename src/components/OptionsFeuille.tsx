@@ -91,12 +91,19 @@ export function CasesFeuille() {
   if (!atelier || (!utiles.length && !connue)) return null;
   return (
     <div className="cases-feuille" role="group" aria-label="Ce qui s'imprime sur la feuille, et ce qui va aux tablettes">
-      <span className="meta">Sur la feuille :</span>
-      {utiles.map((c) => <Coche key={c.cle} c={c} options={options} changer={changer} />)}
-      {contenu.tablettes && <>
-        <span className="meta">Sur les tablettes :</span>
-        <Coche c={TABLETTES} options={options} changer={changer} />
-      </>}
+      {/* Chaque groupe sur sa ligne : dans une colonne étroite, « Sur les tablettes » ne se sépare plus de sa case. */}
+      {utiles.length > 0 && (
+        <span className="cases-feuille-groupe">
+          <span className="meta">Sur la feuille :</span>
+          {utiles.map((c) => <Coche key={c.cle} c={c} options={options} changer={changer} />)}
+        </span>
+      )}
+      {contenu.tablettes && (
+        <span className="cases-feuille-groupe">
+          <span className="meta">Sur les tablettes :</span>
+          <Coche c={TABLETTES} options={options} changer={changer} />
+        </span>
+      )}
       <PresentationFeuille atelier={atelier} />
     </div>
   );

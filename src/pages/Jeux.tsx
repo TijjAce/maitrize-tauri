@@ -50,6 +50,8 @@ import { CollectionsTab } from "./AteliersCollections";
 import { ProblemeDuJourTab } from "./AtelierProblemeDuJour";
 import { SoustractionPoseeTab } from "./AtelierSoustractionPosee";
 import { SequencesToutesFaitesTab } from "./AtelierSequencesToutesFaites";
+import { LotoDesSonsTab } from "./AtelierLotosDesSons";
+import { lotoDeLAtelier } from "../lotosDesSons";
 import { classeDuDossier } from "../sequencesToutesFaites";
 import { estUneSection } from "../sequencesDeMaternelle";
 import { MotifsTab } from "./AtelierMotifs";
@@ -504,6 +506,7 @@ export default function Jeux() {
         : onglet === "ombres" ? <OmbresTab banque={Boolean(etat?.installee)} />
         : onglet === "oeilDeLynx" ? <OeilDeLynxTab banque={Boolean(etat?.installee)} />
         : onglet === "lotoSyllabes" ? avecPictos(<LotoSyllabesTab banque />)
+        : lotoDeLAtelier(onglet) ? avecPictos(<LotoDesSonsTab key={onglet} banque unite={lotoDeLAtelier(onglet)!.unite} />)
         : onglet === "dominos" ? avecPictos(<DominosTab banque />)
         : onglet === "intrus" ? avecPictos(<IntrusTab banque />)
         : onglet === "categoriser" ? avecPictos(<CategoriserTab banque />)

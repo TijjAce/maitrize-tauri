@@ -7,6 +7,7 @@ import { chargerImages, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { ApercuExemple, useMotsExemple } from "../components/Exemple";
+import { AssistantDuLoto, questionDesCases, questionDesLegendes, questionDesPlanches } from "../components/AssistantDuLoto";
 import { MOTS_EXEMPLE } from "../exemplesDesAteliers";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
@@ -33,10 +34,10 @@ import { ETAPES, PERIODES, dejaVu, etapeVoisine, periodeDe, type EtapeCgp, type 
 // Chaque atelier : les réglages et les mots à gauche, la feuille à droite,
 // telle qu'elle s'imprimera.
 
-const ids = (mots: MotImage[]) => mots.map((m) => m.id).filter((x): x is number => x != null);
+export const ids = (mots: MotImage[]) => mots.map((m) => m.id).filter((x): x is number => x != null);
 
 /** Imprimer : on attend les images, puis on ouvre le document. */
-async function imprimer(atelier: string, titre: string, html: (images: Record<number, string>) => string, idsImages: number[], style: string) {
+export async function imprimer(atelier: string, titre: string, html: (images: Record<number, string>) => string, idsImages: number[], style: string) {
   try {
     const images = await chargerImages(idsImages);
     await imprimerAtelier(atelier, titre, html(images), STYLE_FEUILLE + style);
@@ -44,12 +45,12 @@ async function imprimer(atelier: string, titre: string, html: (images: Record<nu
 }
 
 /** La même feuille, en PDF sur le plan de travail. */
-async function bureau(atelier: string, titre: string, html: (images: Record<number, string>) => string, idsImages: number[], style: string) {
+export async function bureau(atelier: string, titre: string, html: (images: Record<number, string>) => string, idsImages: number[], style: string) {
   const images = await chargerImages(idsImages);
   return enregistrerSurLeBureau(atelier, titre, html(images), STYLE_FEUILLE + style);
 }
 
-function Colonnes({ gauche, droite }: { gauche: React.ReactNode; droite: React.ReactNode }) {
+export function Colonnes({ gauche, droite }: { gauche: React.ReactNode; droite: React.ReactNode }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 380px) 1fr", gap: 14, alignItems: "start" }}>
       <div className="card">{gauche}</div>
@@ -58,7 +59,7 @@ function Colonnes({ gauche, droite }: { gauche: React.ReactNode; droite: React.R
   );
 }
 
-function Boutons({ onTirage, onImprimer, onBureau, peut }: {
+export function Boutons({ onTirage, onImprimer, onBureau, peut }: {
   onTirage?: () => void; onImprimer: () => void; onBureau?: () => Promise<{ id: string; titre: string }>; peut: boolean;
 }) {
   return (
@@ -73,11 +74,11 @@ function Boutons({ onTirage, onImprimer, onBureau, peut }: {
   );
 }
 
-const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
+export const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string; onChange: (v: boolean) => void }) => (
   <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span><LibelleAvecAide libelle={libelle} /></span></label>
 );
 
-const Vide = ({ quoi }: { quoi: string }) => (
+export const Vide = ({ quoi }: { quoi: string }) => (
   <div className="card" style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.6 }}>{quoi}</div>
 );
 
@@ -95,6 +96,26 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
   const html = React.useMemo(() => htmlLotoSyllabes(planches, montres, images, r), [planches, montres, images, r]);
   // Un clic sur le compte le fait tourner : notre découpage n'est pas parole d'évangile.
   const tourner = (m: MotImage) => setMots(mots.map((x) => (x === m ? { ...x, syllabes: (nbSyllabes(x, r.ecrites) % r.maximum) + 1 } : x)));
+  // L'assistant : les mots — le projet, un thème, ses images —, puis les planches, les cases, les syllabes (31 octobre 2026).
+  const reglages = [
+    questionDesPlanches((planches) => maj({ planches })),
+    questionDesCases((cases) => maj({ cases })),
+    {
+      question: {
+        id: "maximum", puce: "Syllabes", titre: "Jusqu'à combien de syllabes ?",
+        choix: [
+          { id: "2", libelle: "Jusqu'à 2 syllabes", description: "pour les plus jeunes" },
+          { id: "3", libelle: "Jusqu'à 3 syllabes", description: "en maternelle" },
+          { id: "4", libelle: "Jusqu'à 4 syllabes", description: "ensuite" },
+        ],
+      },
+      repondre: (c: string) => { const n = Number(c) || 3; maj({ maximum: n }); return `Jusqu'à ${n} syllabes`; },
+    },
+    questionDesLegendes((legendes) => maj({ legendes })),
+  ];
+  const fin = !mots.length ? "Écrivez vos mots à gauche, ou choisissez-en : le loto se fait sous vos yeux."
+    : planches.length ? `C'est prêt : ${planches.length} planche${planches.length > 1 ? "s" : ""} de ${r.cases} cases, avec ${mots.length} mots.`
+      : `⚠️ Aucun de ces mots n'a de ${r.maximum} syllabes ou moins : ajoutez-en de plus courts.`;
   return (
     <Colonnes
       gauche={<>
@@ -121,9 +142,14 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
           onImprimer={() => imprimer("lotoSyllabes", "Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)}
           onBureau={() => bureau("lotoSyllabes", "Loto des syllabes", (im) => htmlLotoSyllabes(planches, mots, im, r), ids(mots), STYLE_JEUX_SONS)} />
       </>}
-      droite={planches.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
-        : planches.length ? <ApercuExemple onPrendre={() => setMots(montres)} departs={{ onMots: setMots, banque }}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
-        : <Vide quoi="Ajoutez des mots : le loto se fabrique avec les mots de la classe et leurs images." />}
+      droite={
+        <div className="loto-droite">
+          <AssistantDuLoto titre="Préparer le loto des syllabes" mots={mots} onMots={setMots} banque={banque} reglages={reglages} fin={fin} />
+          {planches.length && mots.length ? <ApercuFeuille html={html} style={STYLE_JEUX_SONS} />
+            : planches.length ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_JEUX_SONS} /></ApercuExemple>
+            : <Vide quoi="Ajoutez des mots : le loto se fabrique avec les mots de la classe et leurs images." />}
+        </div>
+      }
     />
   );
 }

@@ -150,7 +150,7 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
     <div>
       {aide && <p className="meta" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 0 }}>{aide}</p>}
       <Field label="Mes mots (un par ligne, ou séparés par des virgules)">
-        <Textarea value={texte} onChange={(e) => setTexte(e.target.value)} rows={3} placeholder={"bateau\nbanane\nballon"} />
+        <Textarea value={texte} onChange={(e) => setTexte(e.target.value)} rows={3} placeholder={"bateau\nbanane\nballon"} data-saisie-mots="" />
         {banque && (
           <p className="meta" style={{ fontSize: 12, margin: "4px 0 0", lineHeight: 1.45 }}>
             Un picto précis : son numéro après le mot (« graine 17183 »), celui que montre 🧩 Pictos. Une image ne convient pas ?

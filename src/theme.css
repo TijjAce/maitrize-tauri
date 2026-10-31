@@ -734,7 +734,8 @@ details.pli[open] { padding-bottom: 10px; }
 .options-feuille-titre { font-weight: 600; font-size: 13px; }
 .options-feuille .pb-coche { margin: 0; }
 /* Les mêmes cases, à côté des boutons d'impression. */
-.cases-feuille { display: flex; align-items: center; gap: 4px 14px; flex-wrap: wrap; margin-top: 10px; font-size: 12.5px; }
+.cases-feuille { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 10px; font-size: 12.5px; }
+.cases-feuille-groupe { display: flex; align-items: center; gap: 4px 14px; flex-wrap: wrap; }
 .cases-feuille .pb-coche { margin: 0; font-size: 12.5px; }
 /* Le mode dyslexique et le choix des images, à la suite des cases. */
 .presentation-feuille { display: inline-flex; align-items: center; gap: 4px 14px; flex-wrap: wrap; }
@@ -2295,3 +2296,28 @@ button.ph-chip:hover, button.ph-orga:hover { color: var(--accent); }
 table.doc-grille { width: 100%; margin: 6px 0 8px; border-collapse: collapse; font-size: inherit; }
 table.doc-grille th, table.doc-grille td { min-width: 3em; padding: 5px 8px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
 table.doc-grille th { background: var(--panel-2); font-weight: 700; }
+
+/* L'assistant des lotos : des questions une à une, des choix à cliquer (voir QuestionsGuidees). */
+.loto-droite { display: grid; gap: 10px; min-width: 0; }
+.qg { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: var(--bw) solid var(--border); border-radius: var(--r-carte); background: var(--panel); }
+.qg-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.qg-titre { font-weight: 700; font-size: 13.5px; }
+.qg-bulle { max-width: 92%; padding: 7px 11px; border-radius: 14px; font-size: 13px; line-height: 1.45; }
+.qg-question { align-self: flex-start; background: var(--panel-2); border-bottom-left-radius: 4px; }
+.qg-reponse { align-self: flex-end; background: var(--accent-soft); color: var(--accent); border: none; border-bottom-right-radius: 4px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-align: right; }
+.qg-reponse:hover { text-decoration: underline; }
+.qg-puce { display: inline-block; margin-right: 7px; padding: 0 7px; border: var(--bw) solid var(--border); border-radius: var(--r-pastille); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-2); vertical-align: 1px; }
+.qg-choix { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px; }
+.qg-carte { display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; align-content: start; padding: 8px 10px; border: var(--bw) solid var(--border); border-radius: var(--r-bouton); background: var(--panel); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.qg-carte:hover:not(:disabled) { border-color: var(--accent); }
+.qg-carte:disabled { opacity: .6; cursor: default; }
+.qg-numero { grid-row: span 2; min-width: 18px; color: var(--text-2); font-size: 12px; font-weight: 700; }
+.qg-libelle { font-size: 13px; font-weight: 600; }
+.qg-description { font-size: 12px; color: var(--text-2); line-height: 1.4; }
+.qg-autre { display: flex; gap: 6px; align-items: center; }
+.qg-autre .input { flex: 1; min-width: 0; }
+.qg-fin { font-weight: 600; }
+.qg-ferme { display: flex; justify-content: flex-end; }
+/* Le son d'un mot, sous son image dans la liste : corrigé à la main, il se distingue. */
+.bm-compte.corrige { outline: 1px dashed currentColor; outline-offset: -1px; }
+.bm-son-champ { font: inherit; font-size: 11.5px; padding: 1px 4px; border: var(--bw) solid var(--accent); border-radius: 6px; background: var(--panel); color: var(--text); }
