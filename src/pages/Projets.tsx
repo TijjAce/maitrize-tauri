@@ -49,6 +49,7 @@ export default function Projets() {
   const [ouvert, setOuvert] = React.useState<string>("");
 
   const miens = (projets ?? []).filter((p) => !p.annee || p.annee === annee);
+  const ouvertIci = ouvert ? miens.find((p) => p.id === ouvert) ?? null : null;
   const dejaPris = new Set(miens.map((p) => p.origine).filter(Boolean));
   // Depuis Fabriquer, « ✎ Le corpus » ouvre la fiche du projet suivi.
   useOngletDemande("projets", miens.map((p) => p.id), setOuvert);
@@ -146,14 +147,14 @@ export default function Projets() {
         })}
       </div>
 
-      {/* ── La fiche d'un projet posé ── */}
-      {ouvert && miens.some((p) => p.id === ouvert) && (
-        <FicheProjet key={ouvert} projet={miens.find((p) => p.id === ouvert)!} annee={annee}
-          onChange={(suite) => { void enregistrer(suite); }} onFermer={() => setOuvert("")} />
-      )}
-
-      {/* ── Trouver un projet : l'assistant, et les projets qu'il propose ── */}
-      <DecouverteDesProjets choisies={choisies} deja={dejaPris} onBasculer={basculer} onToutDecocher={() => setChoisies(new Set())} />
+      {/* ── La fiche d'un projet posé, et à côté, de quoi en trouver un autre (l'enseignant, 31 octobre 2026) ── */}
+      <div className={`projets-cote${ouvertIci ? " deux" : ""}`}>
+        {ouvertIci && (
+          <FicheProjet key={ouvert} projet={ouvertIci} annee={annee}
+            onChange={(suite) => { void enregistrer(suite); }} onFermer={() => setOuvert("")} />
+        )}
+        <DecouverteDesProjets choisies={choisies} deja={dejaPris} onBasculer={basculer} onToutDecocher={() => setChoisies(new Set())} />
+      </div>
     </Page>
   );
 }
@@ -247,7 +248,7 @@ function DecouverteDesProjets({ choisies, deja, onBasculer, onToutDecocher }: {
   };
 
   return (
-    <div className="card" style={{ marginTop: 18 }}>
+    <div className="card">
       <h3 style={{ margin: "0 0 8px" }}>💬 Trouver un projet</h3>
       <div className="projet-assistant">
         <div className="projet-assistant-fil" ref={filRef} aria-live="polite">
@@ -301,7 +302,7 @@ function FicheProjet({ projet, annee, onChange, onFermer }: {
 }) {
   const etat = etatDeduit(projet.etat, lireEtapes(projet.etapesJson));
   return (
-    <div className="card" style={{ marginTop: 14 }}>
+    <div className="card">
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <span style={{ fontSize: 18 }} title={ETATS.find((e) => e.id === etat)?.nom}>{ICO_ETAT[etat]}</span>
         <b style={{ flex: 1, minWidth: 0, fontSize: 15.5 }}>{projet.titre.trim() || "Nouveau projet"}</b>

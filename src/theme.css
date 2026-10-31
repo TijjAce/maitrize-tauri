@@ -559,6 +559,10 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
   padding: 5px 7px; font-size: 12px; }
 .projets-pastille:hover { border-color: var(--accent); }
 .projets-grille { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+/* La fiche d'un projet ouvert et « Trouver un projet », côte à côte ; l'un sous l'autre sur un écran étroit. */
+.projets-cote { margin-top: 14px; display: grid; gap: 14px; align-items: start; }
+.projets-cote.deux { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 900px) { .projets-cote.deux { grid-template-columns: minmax(0, 1fr); } }
 .projets-idee { text-align: left; padding: 10px 12px; cursor: pointer; border: 1px solid var(--border); }
 .projets-idee:hover { border-color: var(--accent); }
 .projets-idee.choisie { border-color: var(--accent); background: var(--accent-soft); }
