@@ -1187,9 +1187,9 @@ function layoutSlots(ss: Slot[]): Map<string, { lane: number; lanes: number }> {
   return res;
 }
 
-function SlotForm({ slot, onClose, onSave, onDelete, eleves, intitules }: {
+function SlotForm({ slot, onClose, onSave, onDelete, eleves }: {
   slot: Slot; onClose: () => void; onSave: (s: Slot) => void; onDelete: () => void;
-  eleves: Eleve[]; intitules: string[];
+  eleves: Eleve[];
 }) {
   const [s, setS] = React.useState<Slot>(slot);
   const up = (p: Partial<Slot>) => setS((c) => ({ ...c, ...p }));
@@ -1224,11 +1224,11 @@ function SlotForm({ slot, onClose, onSave, onDelete, eleves, intitules }: {
         <div className="field"><label>Début</label><Input type="time" value={s.heureDebut} onChange={(e) => up({ heureDebut: e.target.value })} /></div>
         <div className="field"><label>Fin</label><Input type="time" value={s.heureFin} onChange={(e) => up({ heureFin: e.target.value })} /></div>
       </div>
-      {/* Une matière ou un intitulé libre : les deux se proposent à la frappe. */}
+      {/* Une matière ou un intitulé libre, tapé sans saisie automatique : ni la liste des intitulés déjà donnés, ni celle du
+          navigateur (demande de l'enseignant, 31 octobre 2026). */}
       <div className="field"><label>Intitulé</label>
-        <Input list="edt-intitules" value={s.titre} placeholder="Français, Scolarité, Piscine, Atelier artistique…"
+        <Input value={s.titre} placeholder="Français, Scolarité, Piscine, Atelier artistique…" autoComplete="off"
           onChange={(e) => changerTitre(e.target.value)} />
-        <datalist id="edt-intitules">{[...new Set([...intitules, ...MATIERES])].map((t) => <option key={t} value={t} />)}</datalist>
       </div>
       <ChoixCouleur titre={s.titre} couleur={couleur} onChange={(c) => { setCouleur(c); setCouleurChoisie(true); }}
         portee={(t) => MATIERES.includes(t) ? `Pour toute la matière « ${t} », dans toute l'application.`
@@ -1567,7 +1567,6 @@ function EdtType({ annee, setAnnee }: AnneeProps) {
       </div>
 
       {edit && <SlotForm slot={edit} onClose={() => setEdit(null)} eleves={eleves ?? []}
-        intitules={[...new Set(slots.map((x) => x.titre).filter(Boolean))]}
         onSave={(s) => { upsert(s); setEdit(null); }} onDelete={() => { supprimer(edit.id); setEdit(null); }} />}
 
       {/* Bilan hebdomadaire vs volumes officiels */}
