@@ -25,7 +25,7 @@ import { CLE_RITUELS, STYLE_RITUELS_IMPRIMES, avecRituels, deroulementEnHtml, li
 import { avecImages } from "../components/imagesTexte";
 import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
 import { aImprimer, creneauMasque, masqueJeu, masqueRituel, masqueSequence, masquesDesReglages } from "../journalMasques";
-import { SCRIPTS_DES_BANDES, pageDeLaJourneeEnBandes } from "../journeeEnBandes";
+import { SCRIPTS_DES_BANDES, STYLE_BANDES_DU_JOURNAL, bandesDuJour, corpsDesBandes, pageDeLaJourneeEnBandes } from "../journeeEnBandes";
 import { JOURS_DE_RECUL, STYLE_VEILLE, bilansDeLaVeilleHtml, veilleDe } from "../bilansVeille";
 import { niveauDeProgrammation } from "../programmation";
 import { EnRetard } from "../components/EnRetard";
@@ -449,15 +449,22 @@ export default function Planning() {
     }
     // Le logo se réduit ici : sans lui, le pied garde l'adresse.
     const logo = await logoImprimable().catch(() => "");
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Planning — ${escapeHtml(titre)}</title><style>${css}</style></head>
+    // Puis la journée en bandes, regroupées sur une page — les cartes des tablettes, toutes de la même taille (demande de
+    // l'enseignant, 31 octobre 2026) —, avant le matériel. Sans bande, pas de page.
+    const seancesActuelles = await api.seancesList().catch(() => seances ?? []);
+    const duJour = await bandesDuJour(jourCreneaux, seancesActuelles, sequences ?? [], materiels).catch(() => ({ bandes: [], refs: [] }));
+    const pageDesBandes = duJour.bandes.length
+      ? corpsDesBandes(titre, duJour.bandes, mentionDesPictos(duJour.refs, "", "bandes-attribution"), "portrait") : "";
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Planning — ${escapeHtml(titre)}</title><style>${css}${pageDesBandes ? STYLE_BANDES_DU_JOURNAL : ""}</style></head>
       <body>${moletteDuJournalHtml()}<div class="journal"><h1>${escapeHtml(titre)}</h1><div class="sub">Cahier journal</div>
       ${bilansDeLaVeilleHtml(veille)}
       <div class="jour">${rangs || '<div class="row"><div style="padding:20px;color:#687087">Aucun créneau ce jour-là.</div></div>'}</div>
       ${mentionDesPictos([...new Set(pictosDuJournal)], "", "tp-attribution")}</div>
+      ${pageDesBandes}
       ${annexesHtml(rendues)}
       ${piedMaitrize(logo)}
       </body></html>`;
-    await api.ouvrirHtml(html, SCRIPTS_DU_JOURNAL);
+    await api.ouvrirHtml(html, pageDesBandes ? [...SCRIPTS_DU_JOURNAL, ...SCRIPTS_DES_BANDES] : SCRIPTS_DU_JOURNAL);
   };
 
   // Impression du planning : jour = HTML riche, ou la journée en bandes ; semaine = PDF natif (Aperçu).
