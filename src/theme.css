@@ -1224,6 +1224,7 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .stf-detail { margin: 12px 0 18px; scroll-margin-top: 125px; }
 .stf-option { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 0 0 10px; cursor: pointer; }
 .stf-periode { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13px; }
+.stf-ateliers { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; font-size: 13px; }
 .sp-feuille.sp-feuille-plus { cursor: default; border-style: dashed; color: var(--text-2); }
 .retard-eleve { padding: 10px 12px; margin-bottom: 8px; box-shadow: none; }
 .retard-eleve.exclu { opacity: .6; }

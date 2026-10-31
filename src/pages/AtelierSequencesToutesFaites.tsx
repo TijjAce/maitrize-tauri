@@ -6,12 +6,13 @@ import { seanceDeLaParole } from "../aidesDesSequences";
 import { Aide } from "../components/Aide";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import type { CompetenceSelectionnee } from "../components/CompetenceTree";
+import { chargerImages } from "../components/ChoixPicto";
 import { openCtx } from "../components/ctxmenu";
 import { toast } from "../components/Toaster";
-import { Empty, Field, Input, Modal, useAsync } from "../components/ui";
+import { Empty, Field, Input, Modal, ouvrirOnglet, useAsync } from "../components/ui";
 import { useMemoire } from "../components/useMemoire";
+import { nomDeLAtelier } from "../catalogueAteliers";
 import { resumeDuCadre } from "../demarches";
-import type { Classe } from "../feuillesDesSequences";
 import { graineAuHasard } from "../hasard";
 import { useGraine } from "../modifierFeuille";
 import { avecLaSeanceDesMots, estLaSeanceDesMots } from "../motsDesProblemes";
@@ -19,11 +20,13 @@ import { periodeProposee } from "../periodesProposees";
 import { lireProfils } from "../planDeLaClasse";
 import { graineDeLaFeuille } from "../sequenceSoustractionPosee";
 import { SENS_DU_LOGO, TRAVAILLEE_EN_PROFONDEUR, estApprofondie } from "../sequencesApprofondies";
+import { ateliersDesFeuilles, estUneSection, feuillesEnPictos, type AtelierDesFeuilles, type Section } from "../sequencesDeMaternelle";
 import {
-  CLE_PERIODES, COLONNES_DU_TABLEAU, PERIODES_DE_L_ANNEE, competenceDeLaDemarche, creerLaSequenceToutefaite, lirePeriodes, nomSansClasse,
+  CLE_PERIODES, COLONNES_DU_TABLEAU, PERIODES_DE_L_ANNEE, competenceDeLaDemarche, creerLaSequenceToutefaite, lirePeriodes, nomDansLeDossier,
   ouvreSurLeCalculMental, planToutFait, repereDeLaDemarche, sequencesToutesFaites, tableauDesSequences,
-  type ContexteDeLaClasse, type PlanToutFait, type SequenceToutefaite,
+  type ClasseDuDossier, type ContexteDeLaClasse, type PlanToutFait, type SequenceToutefaite,
 } from "../sequencesToutesFaites";
+import type { Images } from "../supportsVisuels";
 import { chargerVacances, periodeDuJour } from "../vacances";
 import { Colonnes } from "./AteliersMaths";
 
@@ -36,7 +39,9 @@ import { Colonnes } from "./AteliersMaths";
 // à l'autre de sa ligne — ou se range au clic droit — : c'est la
 // programmation de la classe. Celle qu'on choisit s'ouvre sous sa ligne :
 // ses séances, leurs feuilles, et à droite la feuille choisie telle qu'elle
-// s'imprimera, du même tirage que celle qu'on créera.
+// s'imprimera, du même tirage que celle qu'on créera. En maternelle, un
+// dossier par section (voir sequencesDeMaternelle.ts) : ses séquences
+// ouvrent aussi les ateliers où leurs feuilles se font une à une.
 
 const lirePlis = (brut: unknown): string[] => (Array.isArray(brut) ? brut.filter((x): x is string => typeof x === "string") : []);
 
@@ -59,7 +64,20 @@ const TYPE_SEQUENCE = "text/x-maitrize-sequence";
  */
 interface Infos { competence: CompetenceSelectionnee | null; periode: number | null; raison: string; proposee: boolean }
 
-export function SequencesToutesFaitesTab({ classe }: { classe: Classe }) {
+/** Ouvre un atelier de Fabriquer, réglé à la section de la séquence : ce qu'il gardait reste, sauf ce que la section change. */
+function ouvrirLAtelier(a: AtelierDesFeuilles, section: Section, competence: string) {
+  if (a.reglages) {
+    const cle = `fabriquer:${a.id}`;
+    try {
+      let avant: unknown = null;
+      try { avant = JSON.parse(localStorage.getItem(cle) ?? "null"); } catch { /* illisible : les réglages de la section suffisent */ }
+      localStorage.setItem(cle, JSON.stringify({ ...(avant && typeof avant === "object" ? avant : {}), ...a.reglages(section, competence) }));
+    } catch { /* stockage indisponible : l'atelier s'ouvre tel qu'il était */ }
+  }
+  ouvrirOnglet("jeux", a.id);
+}
+
+export function SequencesToutesFaitesTab({ classe }: { classe: ClasseDuDossier }) {
   const toutes = React.useMemo(() => sequencesToutesFaites().filter((s) => s.classe === classe), [classe]);
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const { data: reglages } = useAsync(() => api.settingsAll(), []);
@@ -143,6 +161,7 @@ export function SequencesToutesFaitesTab({ classe }: { classe: Classe }) {
                   <p>« Suggestion Maitrize » en haut d'une séquence : aucun texte ne la date. Maitrize lui suggère une période, ligne par ligne — du plus simple au plus complexe, du proche au lointain — et dit pourquoi au survol. La mention s'efface quand vous la rangez ailleurs.</p>
                   <p><img className="stf-logo-aide" src={logo} alt="" /> Le logo de Maitrize, en haut à droite d'une séquence : elle est travaillée en profondeur — {SENS_DU_LOGO}.</p>
                   <p>Un clic l'ouvre : ses séances, et toutes les feuilles que les ateliers en fabriquent.</p>
+                  {estUneSection(classe) && <p>En maternelle, le programme ne donne aucune période : il range ses objectifs par âge. Maitrize en suggère une d'après ce qu'il dit de l'ordre des apprentissages, citée au survol.</p>}
                 </Aide>
               </th>
               {colonnesVues.map(({ c }) => (
@@ -195,7 +214,7 @@ export function SequencesToutesFaitesTab({ classe }: { classe: Classe }) {
                                 onDragEnd={() => { setEnVol(""); setSurvol(""); }}>
                                 {estApprofondie(s.demarche.id) && <img className="stf-puce-logo" src={logo} alt={TRAVAILLEE_EN_PROFONDEUR} />}
                                 {infos.get(s.cle)?.proposee && choisies[s.cle] === undefined && <span className="stf-puce-suggestion">Suggestion Maitrize</span>}
-                                <span className="stf-puce-nom">{nomSansClasse(s.demarche.nom)}</span>
+                                <span className="stf-puce-nom">{nomDansLeDossier(s.demarche.nom)}</span>
                                 <span className="stf-puce-meta">{avecLaSeanceDesMots(s.demarche).seances.length} séances</span>
                               </button>
                             ))}
@@ -219,7 +238,7 @@ export function SequencesToutesFaitesTab({ classe }: { classe: Classe }) {
           })}
         </table>
       </div>
-      {!tableau.length && <Empty icone="📁" titre="Aucune séquence" sous={`Au ${classe}, aucune séquence n'est toute faite.`} />}
+      {!tableau.length && <Empty icone="📁" titre="Aucune séquence" sous={`${estUneSection(classe) ? "En" : "Au"} ${classe}, aucune séquence n'est toute faite.`} />}
     </>
   );
 }
@@ -232,8 +251,22 @@ function DetailDeLaSequence({ s, infos, periode, onPeriode, classeDuPlan, compet
   const haut = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => { haut.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, []);
   const [calculMental, setCalculMental] = React.useState(true);
-  const tout = React.useMemo(() => planToutFait(s.demarche, s.classe, periode, { calculMental, competence: infos?.competence?.competenceTitre, ...classeDuPlan }),
-    [s, periode, calculMental, infos, classeDuPlan]);
+  const competenceTitre = infos?.competence?.competenceTitre ?? "";
+  // En maternelle, les feuilles faites de pictogrammes attendent leurs images, comme dans la fiche d'une séquence.
+  const enPictos = React.useMemo(() => (estUneSection(s.classe) ? feuillesEnPictos(s.demarche.id, s.classe, competenceTitre) : null), [s, competenceTitre]);
+  const [images, setImages] = React.useState<Images | null>(null);
+  React.useEffect(() => {
+    setImages(null);
+    if (!enPictos) return;
+    let vivant = true;
+    chargerImages(enPictos.ids).then((i) => { if (vivant) setImages(i); }).catch(() => { if (vivant) setImages({}); });
+    return () => { vivant = false; };
+  }, [enPictos]);
+  const imagesEnAttente = Boolean(enPictos) && !images;
+  const tout = React.useMemo(() => planToutFait(s.demarche, s.classe, periode,
+    { calculMental, competence: competenceTitre, ...classeDuPlan, images: images ?? undefined }),
+  [s, periode, calculMental, competenceTitre, classeDuPlan, images]);
+  const ateliers = estUneSection(s.classe) ? ateliersDesFeuilles(s.demarche.id) : [];
   const [graine, setGraine] = useGraine();
   const cleDuPlan = `${periode}:${calculMental}`;
   const [feuilleChoisie, setFeuilleChoisie] = React.useState<{ cle: string; k: number }>({ cle: "", k: 0 });
@@ -249,7 +282,7 @@ function DetailDeLaSequence({ s, infos, periode, onPeriode, classeDuPlan, compet
       <Colonnes
         gauche={<>
           <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
-            <span>{nomSansClasse(s.demarche.nom)} — {s.classe}</span>
+            <span>{nomDansLeDossier(s.demarche.nom)} — {s.classe}</span>
             {estApprofondie(s.demarche.id) && <img className="stf-logo-titre" src={logo} alt={TRAVAILLEE_EN_PROFONDEUR} title={TRAVAILLEE_EN_PROFONDEUR} />}
             <Aide titre="D'où vient cette séquence" vers="droite">
               {estApprofondie(s.demarche.id) && <p><b>{TRAVAILLEE_EN_PROFONDEUR}</b> : {SENS_DU_LOGO}.</p>}
@@ -292,9 +325,21 @@ function DetailDeLaSequence({ s, infos, periode, onPeriode, classeDuPlan, compet
               </li>
             ))}
           </ol>
+          {ateliers.length > 0 && (
+            <div className="stf-ateliers">
+              <span className="meta">Ses feuilles, une à une :</span>
+              {ateliers.map((a) => (
+                <button key={a.id} type="button" className="btn ghost sm" onClick={() => ouvrirLAtelier(a, s.classe as Section, competenceTitre)}>
+                  {nomDeLAtelier(a.id)}
+                </button>
+              ))}
+            </div>
+          )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="btn" onClick={() => setGraine(graineAuHasard())}>🎲 Autre tirage</button>
-            <button className="btn primary" onClick={() => setEnSequence(true)}>📚 Créer la séquence</button>
+            {tout.plan.feuilles.length > 0 && <button className="btn" onClick={() => setGraine(graineAuHasard())}>🎲 Autre tirage</button>}
+            <button className="btn primary" onClick={() => setEnSequence(true)} disabled={imagesEnAttente}>
+              {imagesEnAttente ? "Chargement des pictogrammes…" : "📚 Créer la séquence"}
+            </button>
           </div>
         </>}
         droite={apercu ? <ApercuFeuille html={apercu.html} style={apercu.style} /> : null}
@@ -309,7 +354,7 @@ function DetailDeLaSequence({ s, infos, periode, onPeriode, classeDuPlan, compet
 
 /** Avant de créer : le titre, la compétence visée — celle du programme —, et les aides à la tâche. */
 function CreerLaSequence({ tout, classe, periode, graine, competence, competenceCherchee, onClose }: {
-  tout: PlanToutFait; classe: Classe; periode: number; graine: number;
+  tout: PlanToutFait; classe: ClasseDuDossier; periode: number; graine: number;
   competence: CompetenceSelectionnee | null; competenceCherchee: boolean; onClose: () => void;
 }) {
   const navigate = useNavigate();

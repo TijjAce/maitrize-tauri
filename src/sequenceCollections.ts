@@ -15,10 +15,11 @@ import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 import { STYLE_FEUILLE } from "./cartesImprimables";
 import { NIVEAUX, type Niveau } from "./categoriser";
 import {
-  JUSQUA, REPERES, STYLE_COLLECTIONS, cequiManque, htmlCollections, nomDeLaForme, situationDe,
+  JUSQUA, REGLAGES_COLLECTIONS, REPERES, STYLE_COLLECTIONS, cequiManque, htmlCollections, nomDeLaForme, reglagesDuNiveau, reglagesSurs, situationDe,
   type Forme, type Images, type ReglagesCollections,
 } from "./collections";
 import { demarcheDe, seancesDuCadre } from "./demarches";
+import type { PlanDesFeuilles } from "./feuillesDesSequences";
 import { graineAuHasard, hasard } from "./hasard";
 import { poserDansUneSeance } from "./impressionAtelier";
 import { noteDuMaterielDesCompetences } from "./materielDeClasse";
@@ -78,6 +79,28 @@ export function materielDesSeances(r: ReglagesCollections): string[] {
       : "Des jetons ou des cubes à la place des figurines ; les fiches à ronds ; un autre contexte : mettre la table, distribuer les pinceaux.",
     "La grille d'observation ; pour chaque élève observé, une boîte, une fiche et la réserve éloignée.",
   ];
+}
+
+/** Les réglages de l'atelier à une section : ceux qui changent avec l'âge — les quantités, la situation du livret —, les autres par défaut. */
+export const reglagesDeLaSection = (n: Niveau): ReglagesCollections => reglagesSurs({ ...REGLAGES_COLLECTIONS, niveau: n, ...reglagesDuNiveau(n) });
+
+/**
+ * Les feuilles et le matériel de la séquence, pour le dossier de sa section
+ * dans Fabriquer : les mêmes que depuis l'atelier, chacune dans sa séance,
+ * avec ce qu'il faut pour la refaire dans l'atelier. Les images sont celles
+ * de la situation (`idsDesImages`), déjà chargées.
+ */
+export function planDesCollections(r: ReglagesCollections, images: Images): PlanDesFeuilles {
+  return {
+    feuilles: feuillesPour(r).map((f) => ({
+      seance: f.seance, atelier: "collections", titre: titreDeLaFeuille(f),
+      fabriquer: (graine: number) => {
+        const reglages = reglagesDeLaFeuille(r, f);
+        return { html: htmlCollections(reglages, images, hasard(graine)), style: STYLE_FEUILLE + STYLE_COLLECTIONS, refaire: { collections: reglages } };
+      },
+    })),
+    materiel: materielDesSeances(r),
+  };
 }
 
 /** Le titre proposé : « Construire des collections : le dortoir des oursons (MS) ». */

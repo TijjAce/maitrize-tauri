@@ -51,6 +51,7 @@ import { ProblemeDuJourTab } from "./AtelierProblemeDuJour";
 import { SoustractionPoseeTab } from "./AtelierSoustractionPosee";
 import { SequencesToutesFaitesTab } from "./AtelierSequencesToutesFaites";
 import { classeDuDossier } from "../sequencesToutesFaites";
+import { estUneSection } from "../sequencesDeMaternelle";
 import { MotifsTab } from "./AtelierMotifs";
 import { SuitesTab } from "./AteliersSuites";
 import { VilainPetitCanardTab } from "./AtelierVilainPetitCanard";
@@ -120,8 +121,11 @@ export function chercherAteliers(
  */
 type Rangement = "famille" | "competence" | "sequences";
 
-/** Les séquences toutes faites, en deux groupes : du CP au CE2, et en maternelle. */
-const SEQUENCES_DE_MATERNELLE = SEQUENCES_TOUTES_FAITES.filter((o) => /cycle 1/i.test(o.cycles ?? ""));
+/** Les séquences toutes faites, en deux groupes : du CP au CM2, et en maternelle — un dossier par section. */
+const SEQUENCES_DE_MATERNELLE = SEQUENCES_TOUTES_FAITES.filter((o) => {
+  const classe = classeDuDossier(o.id);
+  return classe ? estUneSection(classe) : /cycle 1/i.test(o.cycles ?? "");
+});
 const SEQUENCES_DE_L_ECOLE = SEQUENCES_TOUTES_FAITES.filter((o) => !SEQUENCES_DE_MATERNELLE.includes(o));
 /** Ce que compte un groupe : « 3 dossiers, 1 séquence ». */
 const compteDesSequences = (outils: Outil[]) => {
@@ -364,8 +368,8 @@ export default function Jeux() {
         </div>
         {rangement === "sequences" ? (
           [
-            { cle: "sequences:ecole", icone: "📁", titre: "Du CP au CM2", aide: "Un dossier par classe, en tableau période par période ; et la soustraction posée du CE1.", outils: SEQUENCES_DE_L_ECOLE },
-            { cle: "sequences:maternelle", icone: "🧸", titre: "Maternelle", aide: "Des séquences de la PS à la GS, avec leurs pictogrammes.", outils: SEQUENCES_DE_MATERNELLE },
+            { cle: "sequences:ecole", icone: "📁", titre: "Du CP au CM2", aide: "Un dossier par classe, en tableau période par période.", outils: SEQUENCES_DE_L_ECOLE },
+            { cle: "sequences:maternelle", icone: "🧸", titre: "Maternelle", aide: "Un dossier par section, en tableau période par période, avec leurs pictogrammes.", outils: SEQUENCES_DE_MATERNELLE },
           ].filter((g) => g.outils.length > 0).map((g) => (
             <section key={g.cle} className="famille-catalogue">
               <PliDuCatalogue ouvert={!plis.includes(g.cle)} onBasculer={(o) => plier(g.cle, !o)}
