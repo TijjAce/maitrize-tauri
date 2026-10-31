@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { Creneau, MaterielItem, Seance } from "./api";
+import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import {
   FEUILLE_BANDES_MM, FEUILLE_BANDES_PORTRAIT_MM, LARGEUR_BANDE_MM, SCRIPTS_DES_BANDES, STYLE_BANDES, STYLE_BANDES_DU_JOURNAL, STYLE_PAGE_BANDES,
   corpsDesBandes, creneauxEnBandes, estUnePause, heuresDeLaBande, largeurDesBandes, pasDeLaBande,
@@ -61,6 +61,15 @@ describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octob
       .toEqual([{ texte: "L'appel · La météo", matiere: "Rituel", rituel: true }]);
     expect(pasDeLaBande(creneau("c2", "11:00", "11:45", "EPS", { prevu: "Parcours" }), undefined, phases, []))
       .toEqual([{ texte: "EPS", matiere: "", domaine: "EPS" }]);
+  });
+
+  it("montre la séance que le prévu cite par sa ligne 📚, et les jeux de la ludothèque qu'il nomme, comme les tablettes", () => {
+    // Le créneau de l'enseignant (31 octobre 2026) : une séance citée sans être posée, puis un jeu ; la bande ne montrait que sa matière.
+    const sequence = { id: "q1", titre: "Comparer des quantités", competences: "[]" } as unknown as Sequence;
+    const oie = { id: "j1", titre: "jeu de l’oie" } as Jeu;
+    const c = creneau("c1", "14:10", "15:00", "Mathématiques", { prevu: "📚 Comparer des quantités · séance 1 : Comparer des collections\njeu de l’oie" });
+    expect(pasDeLaBande(c, undefined, phases, [], "", [sequence], [{ ...seance, numero: 1 } as Seance], [oie]).map((p) => p.texte))
+      .toEqual(["Rituel", "Je compte les objets", "Je compare avec mon voisin", "Jeu de l’oie"]);
   });
 
   it("met les bandes côte à côte, regroupées, d'une largeur fixe, sur une seule page A4 en paysage", () => {
