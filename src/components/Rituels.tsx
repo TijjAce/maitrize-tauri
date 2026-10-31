@@ -1,11 +1,16 @@
 import React from "react";
 import { api } from "../api";
-import { Field, Input, Modal, Textarea } from "./ui";
+import { Field, Input, Modal } from "./ui";
 import { toast, toastAnnulable } from "./Toaster";
 import { confirmer } from "./confirmer";
-import { CLE_RITUELS, EVT_RITUELS, ecrireRituels, lireRituels, nouveauRituel, trierRituels, type Rituel } from "../rituels";
+import {
+  CLE_RITUELS, EVT_RITUELS, deroulementEnHtml, deroulementEnTexte, ecrireRituels, lireRituels, nouveauRituel, trierRituels, type Rituel,
+} from "../rituels";
 import { masqueRituel } from "../journalMasques";
+import { avecSourcesImages, imagesDuTexte } from "../texteRiche";
 import { CaseImpression } from "./MasquesDuJournal";
+import { EditeurRiche } from "./EditeurRiche";
+import { chargerImage } from "./imagesTexte";
 
 // Les rituels, côté écran : la liste partagée, le formulaire, le choix
 // depuis le journal, et les rituels cités sous un prévu.
@@ -44,27 +49,34 @@ export function useRituels(): { rituels: Rituel[]; enregistrer: (r: Rituel) => v
   return { rituels, enregistrer, supprimer };
 }
 
-/** Le formulaire d'un rituel : un titre, un déroulement, une durée. */
+/**
+ * Le formulaire d'un rituel : un titre, un déroulement, une durée. Le
+ * déroulement s'écrit dans l'éditeur mis en forme, pour bien dire ce qu'on
+ * veut pour chaque élève (demande de l'enseignant, 31 octobre 2026).
+ */
 export function RituelForm({ rituel, nouveau, onClose, onEnregistrer }: {
   rituel: Rituel; nouveau: boolean; onClose: () => void; onEnregistrer: (r: Rituel) => void;
 }) {
   const [r, setR] = React.useState(rituel);
+  // L'éditeur part du déroulement mis en forme ; un ancien texte brut y devient des paragraphes.
+  const [depart] = React.useState(() => deroulementEnHtml(rituel));
   const valider = () => {
     if (!r.titre.trim()) { toast("Donnez un titre au rituel.", { icone: "ℹ️" }); return; }
     onEnregistrer({ ...r, titre: r.titre.trim() });
     onClose();
   };
   return (
-    <Modal titre={nouveau ? "🔁 Nouveau rituel" : `🔁 ${rituel.titre}`} onClose={onClose}
+    <Modal titre={nouveau ? "🔁 Nouveau rituel" : `🔁 ${rituel.titre}`} onClose={onClose} large
       footer={<><button className="btn" onClick={onClose}>Annuler</button><button className="btn primary" onClick={valider}>Enregistrer</button></>}>
       <p className="meta" style={{ marginTop: 0, fontSize: 12.5, lineHeight: 1.5 }}>
         Ce qui revient chaque jour : la date, l'appel, le calcul mental. Écrit une fois, posé d'un clic dans le cahier journal.
       </p>
       <Field label="Titre"><Input autoFocus value={r.titre} onChange={(e) => setR({ ...r, titre: e.target.value })} placeholder="La date, L'appel, Le mot du jour…" /></Field>
-      <Field label="Déroulement">
-        <Textarea value={r.deroulement} rows={6} onChange={(e) => setR({ ...r, deroulement: e.target.value })}
-          placeholder={"Ce qu'on fait, et qui fait quoi :\nPointage du jour de la semaine : Amédée, Lucille…\nÉcrire la date : Eliot, Jules…"} />
-      </Field>
+      <div className="field">
+        <label>Déroulement</label>
+        <EditeurRiche valeur={depart} onChange={(deroulement) => setR((x) => ({ ...x, deroulement }))} minHauteur="32vh"
+          placeholder="Ce qu'on fait, et qui fait quoi : un groupe par élève, l'aide de chacun, le matériel…" />
+      </div>
       <Field label="Durée habituelle (minutes, facultatif)">
         <Input type="number" min={0} max={120} value={r.duree || ""} style={{ width: 100 }}
           onChange={(e) => setR({ ...r, duree: Math.max(0, Math.min(120, Number(e.target.value) || 0)) })} />
@@ -96,7 +108,7 @@ export function ChoixRituel({ onChoisir, onClose }: { onChoisir: (r: Rituel) => 
             <button type="button" className="man-ouvrir" onClick={() => onChoisir(r)} title="Poser ce rituel dans le prévu">
               <b>{r.titre}</b>
               <span className="meta" style={{ whiteSpace: "pre-line" }}>
-                {[r.duree ? `${r.duree} min` : "", r.deroulement.trim().split("\n")[0]?.slice(0, 90)].filter(Boolean).join(" · ")}
+                {[r.duree ? `${r.duree} min` : "", deroulementEnTexte(r).split("\n")[0]?.slice(0, 90)].filter(Boolean).join(" · ")}
               </span>
             </button>
             <button type="button" className="btn ghost sm" aria-label={`Modifier ${r.titre}`} onClick={() => setEdite({ rituel: r, nouveau: false })}>✏️</button>
@@ -130,9 +142,30 @@ export function RituelsCites({ rituels, onModifier, masques, onMasquer }: {
             {onMasquer && <CaseImpression masque={Boolean(masques?.includes(masqueRituel(r.id)))} onChange={() => onMasquer(masqueRituel(r.id))} />}
             <button type="button" className="btn ghost sm" onClick={() => onModifier(r)} aria-label={`Modifier ${r.titre}`}>✏️</button>
           </div>
-          {r.deroulement.trim() && <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.45, marginTop: 4 }}>{r.deroulement.trim()}</div>}
+          <DeroulementRiche rituel={r} />
         </div>
       ))}
     </div>
   );
+}
+
+/** Le déroulement mis en forme, sous le prévu : tel qu'on l'a écrit, ses images lues sur l'ordinateur. */
+function DeroulementRiche({ rituel }: { rituel: Rituel }) {
+  const html = React.useMemo(() => deroulementEnHtml(rituel), [rituel]);
+  // Tant que les images ne sont pas lues, elles ne se montrent pas : jamais d'image cassée.
+  const [affiche, setAffiche] = React.useState(() => avecSourcesImages(html, () => undefined));
+  React.useEffect(() => {
+    let vivant = true;
+    setAffiche(avecSourcesImages(html, () => undefined));
+    const noms = imagesDuTexte(html);
+    if (noms.length) {
+      Promise.all(noms.map((n) => chargerImage(n).then((src) => [n, src] as const).catch(() => [n, undefined] as const))).then((lues) => {
+        const sources = new Map(lues);
+        if (vivant) setAffiche(avecSourcesImages(html, (n) => sources.get(n)));
+      });
+    }
+    return () => { vivant = false; };
+  }, [html]);
+  if (!deroulementEnTexte(rituel) && !imagesDuTexte(html).length) return null;
+  return <div className="rituel-deroulement" dangerouslySetInnerHTML={{ __html: affiche }} />;
 }

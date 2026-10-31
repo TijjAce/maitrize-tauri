@@ -21,7 +21,8 @@ import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
 import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
 import { annexesDesCreneaux, annexesHtml, echellesDesReglages, moletteDuJournalHtml, octetsDeBase64, SCRIPTS_DU_JOURNAL, STYLE_ANNEXES, titresDuMateriel, type AnnexeRendue } from "../materielAImprimer";
 import { rendrePagesAImprimer } from "../pdfRendu";
-import { CLE_RITUELS, avecRituels, lireRituels, rituelsCites, rituelsImprimes } from "../rituels";
+import { CLE_RITUELS, STYLE_RITUELS_IMPRIMES, avecRituels, deroulementEnHtml, lireRituels, rituelsCites, rituelsImprimes } from "../rituels";
+import { avecImages } from "../components/imagesTexte";
 import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
 import { aImprimer, masqueJeu, masqueRituel, masqueSequence, masquesDesReglages } from "../journalMasques";
 import { JOURS_DE_RECUL, STYLE_VEILLE, bilansDeLaVeilleHtml, veilleDe } from "../bilansVeille";
@@ -255,6 +256,8 @@ export default function Planning() {
     const masques = masquesDesReglages(reglages);
     // Les rituels cités dans le prévu : leur déroulement s'imprime sous lui.
     const rituels = lireRituels(await api.settingGet(CLE_RITUELS).catch(() => null));
+    // Le déroulement des rituels, mis en forme, ses images lues : il s'imprime tel qu'on l'a écrit.
+    const deroulementsImprimes = new Map(await Promise.all(rituels.map(async (r) => [r.id, await avecImages(deroulementEnHtml(r))] as const)));
     // Les bilans du dernier jour de classe : écrits le soir, relus le matin, en tête du journal.
     const veille = veilleDe(
       await api.creneauxList(iso(plusJours(ancre, -JOURS_DE_RECUL)), iso(plusJours(ancre, -1))).catch((): Creneau[] => []),
@@ -364,7 +367,8 @@ export default function Planning() {
         c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt prevu">${rendreCell(c.prevu.trim())}</div>` : "",
         reglesImprimees(aImprimer(jeuxCites(`${c.prevu ?? ""}\n${sansMarqueurs(s?.deroulement ?? "")}`, jeux), (j) => masqueJeu(j.id), masques[c.id] ?? [])),
         sequencesImprimees(aImprimer(sequencesCitees(c.prevu ?? "", sequences ?? [], seances ?? []), (x) => masqueSequence(x.sequence.id, x.seance?.id), masques[c.id] ?? []), seances ?? []),
-        rituelsImprimes(aImprimer(rituelsCites(c.prevu ?? "", rituels), (r) => masqueRituel(r.id), masques[c.id] ?? [])),
+        rituelsImprimes(aImprimer(rituelsCites(c.prevu ?? "", rituels), (r) => masqueRituel(r.id), masques[c.id] ?? []),
+          (r) => deroulementsImprimes.get(r.id) ?? deroulementEnHtml(r)),
         c.bilan?.trim() ? `<div class="f"><span class="fl">Fait · bilan :</span></div><div class="txt">${escapeHtml(c.bilan.trim())}</div>` : "",
       ].join("");
       return `<div class="col">${head}${body ? `<div class="body">${body}</div>` : ""}</div>`;
@@ -415,6 +419,7 @@ export default function Planning() {
       @media print{@page{margin:11mm}}
       ${STYLE_REGLES}
       ${STYLE_SEQUENCES}
+      ${STYLE_RITUELS_IMPRIMES}
       ${STYLE_PIED}
       ${STYLE_ANNEXES}
       ${STYLE_VEILLE}
