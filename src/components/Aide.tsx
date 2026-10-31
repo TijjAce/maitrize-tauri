@@ -1,4 +1,6 @@
 import React from "react";
+import { sourceDeLAtelier } from "../sourcesDesAteliers";
+import { AtelierContext } from "./AtelierContext";
 
 // Un « ? » qui ouvre l'explication, à côté de ce qu'elle explique.
 //
@@ -7,6 +9,17 @@ import React from "react";
 // pose la question. On le range derrière ce bouton plutôt que de l'étaler
 // sous le réglage. La bulle paraît au survol, le temps qu'on la lise ; un
 // clic la garde ouverte, un clic ailleurs ou Échap la referme.
+//
+// Le « ? » du titre d'un atelier de Fabriquer dit aussi d'où vient le jeu
+// (demande de l'enseignant, 31 octobre 2026) : sa source, en dernière ligne
+// (voir sourcesDesAteliers.ts). C'est le « ? » du premier titre de la page,
+// dedans ou juste après.
+
+/** Le « ? » est-il celui du titre de la page — dans le premier titre, ou juste après lui ? */
+function estDuTitre(ancre: HTMLElement | null): boolean {
+  const titre = ancre?.closest("h3") ?? (ancre?.previousElementSibling?.tagName === "H3" ? ancre.previousElementSibling : null);
+  return !!titre && titre.closest(".content")?.querySelector("h3") === titre;
+}
 
 /** La bande où une bulle reste lisible : la fenêtre, réduite au premier conteneur qui défile ou coupe ce qui dépasse. */
 function bandeVisible(depuis: HTMLElement): { gauche: number; droite: number } {
@@ -34,6 +47,9 @@ export function Aide({ titre, children, vers = "gauche" }: {
   const ancre = React.useRef<HTMLSpanElement>(null);
   const bulle = React.useRef<HTMLDivElement>(null);
   const minuteur = React.useRef<number | undefined>(undefined);
+  const atelier = React.useContext(AtelierContext);
+  // L'ancre est posée dès le premier rendu : quand la bulle s'ouvre, on sait si c'est le « ? » du titre de l'atelier.
+  const source = ouvert && atelier && estDuTitre(ancre.current) ? sourceDeLAtelier(atelier) : null;
 
   // Un peu d'attente avant d'ouvrir, un peu avant de fermer : passer dessus ne l'ouvre pas, et l'on a le temps d'aller lire la bulle.
   const survoler = (oui: boolean) => {
@@ -71,7 +87,12 @@ export function Aide({ titre, children, vers = "gauche" }: {
     <span className="aide-ancre" ref={ancre} onMouseEnter={() => survoler(true)} onMouseLeave={() => survoler(false)}>
       <button type="button" className="aide-bouton" aria-expanded={ouvert} aria-label={`En savoir plus : ${titre}`}
         onClick={() => setEpinglee(!epinglee)} onFocus={() => setSurvol(true)} onBlur={() => setSurvol(false)}>?</button>
-      {ouvert && <div ref={bulle} className={`aide-bulle${vers === "droite" ? " vers-droite" : ""}`} role="dialog" aria-label={titre}>{children}</div>}
+      {ouvert && (
+        <div ref={bulle} className={`aide-bulle${vers === "droite" ? " vers-droite" : ""}`} role="dialog" aria-label={titre}>
+          {children}
+          {source && <p className="aide-source">{source}</p>}
+        </div>
+      )}
     </span>
   );
 }
