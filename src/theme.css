@@ -2344,3 +2344,18 @@ table.doc-grille th { background: var(--panel-2); font-weight: 700; }
 .pz-liste-titre { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 13px; }
 .pz-pastille { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .pz-saisie { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: end; }
+
+/* Élèves › Évaluations › Grilles des séquences : les observables en lignes, les élèves en colonnes ; un clic donne le niveau (voir GrillesDesSequences). */
+.go-feuilles { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; }
+.go-feuilles .chip { cursor: pointer; border: none; font: inherit; font-size: 12.5px; }
+.go-ecran { overflow-x: auto; border: var(--bw) solid var(--border); border-radius: var(--r-carte); background: var(--panel); }
+.go-ecran table { border-collapse: collapse; min-width: 100%; }
+.go-ecran th, .go-ecran td { border: 1px solid var(--border); padding: 6px 8px; font-size: 13px; }
+.go-ecran thead th { background: var(--panel-2); font-weight: 600; white-space: nowrap; position: sticky; top: 0; z-index: 2; }
+.go-ecran td.go-ecran-obs { min-width: 260px; max-width: 440px; line-height: 1.4; background: var(--panel); position: sticky; left: 0; z-index: 1; }
+.go-ecran td.go-ecran-obs b { color: var(--text-2); margin-right: 6px; }
+.go-ecran td.go-ecran-case { padding: 0; text-align: center; min-width: 72px; }
+.go-ecran-case button { width: 100%; min-height: 42px; border: none; background: transparent; color: var(--text); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.go-ecran-case button:hover { background: var(--panel-2); }
+.go-ecran-case .go-pastille { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+.go-ecran-case em { font-style: normal; font-weight: 800; margin-left: 4px; color: var(--text-2); }

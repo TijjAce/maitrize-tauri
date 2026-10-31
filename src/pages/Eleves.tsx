@@ -22,6 +22,7 @@ const ageDe = (e: Eleve) => {
 import { ChipObservation, ChoixTypeObservation, couleurObservation } from "../components/TypeObservation";
 import { DossierTab } from "./DossierEleve";
 import { EvaluationDiagnostiqueTab } from "./EvaluationDiagnostique";
+import { GrillesDesSequences } from "./GrillesDesSequences";
 import syntheseDomaines from "../data/syntheseGS.json";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import { SyntheseEleveTab } from "./SyntheseEleve";
@@ -33,10 +34,10 @@ import { lireJson, modifierLeDocument } from "../documentDeLEleve";
 
 const ELEVES_TABS = ["liste", "dossier", "observations", "evaluations", "papiers", "dispositifs"] as const;
 /** Ce qu'affiche l'onglet Évaluations : le sommatif (évaluations notées, synthèse GS) ou le diagnostique (grilles d'observation). */
-type VueEvaluation = "notees" | "gs" | "diagnostique";
+type VueEvaluation = "notees" | "grilles" | "gs" | "diagnostique";
 /** Les deux natures de l'évaluation, et leurs vues : on choisit la nature, ses vues apparaissent dessous. */
 const NATURES_EVALUATION: { id: "sommative" | "diagnostique"; nom: string; vues: [VueEvaluation, string][] }[] = [
-  { id: "sommative", nom: "Sommative", vues: [["notees", "🔢 Évaluations notées"], ["gs", "🎓 Synthèse GS"]] },
+  { id: "sommative", nom: "Sommative", vues: [["notees", "🔢 Évaluations notées"], ["grilles", "📋 Grilles des séquences"], ["gs", "🎓 Synthèse GS"]] },
   { id: "diagnostique", nom: "Diagnostique", vues: [["diagnostique", "🔍 Grilles d'observation"]] },
 ];
 /** Le Dossier, ou sa Synthèse : la synthèse vit avec le dossier de l'élève (demande de l'enseignant, octobre 2026). */
@@ -50,7 +51,7 @@ export default function Eleves() {
   // Ce qu'une pièce du dossier demande d'ouvrir : le PPI parmi les dispositifs,
   // une grille d'observation. L'onglet le lit en s'ouvrant, puis on l'oublie :
   // y revenir autrement repart de son premier écran.
-  const [piece, setPiece] = React.useState<{ dispositif?: string; grille?: string }>({});
+  const [piece, setPiece] = React.useState<{ dispositif?: string; grille?: string; sequence?: string }>({});
   React.useEffect(() => { setPiece({}); }, [onglet]);
   useOngletDemande("eleves", ELEVES_TABS, setOnglet, (demande) => {
     // Synthèse et synthèse GS vivent dans l'évaluation sommative : les liens
@@ -59,6 +60,12 @@ export default function Eleves() {
     if (demande === "syntheseEleve") { setOnglet("dossier"); setVueDossier("synthese"); return; }
     // Le PPI et le GEVA-Sco vivent parmi les dispositifs.
     if (demande === "ppi" || demande === "gevasco") { setPiece({ dispositif: demande }); setOnglet("dispositifs"); return; }
+    // La grille d'observables d'une séquence, depuis sa page.
+    if (demande.startsWith("grille-sequence:")) {
+      setPiece({ sequence: demande.slice("grille-sequence:".length) });
+      setOnglet("evaluations"); setVueEvaluation("grilles");
+      return;
+    }
     if (demande.startsWith("evaldiag:")) {
       setPiece({ grille: demande.slice("evaldiag:".length) });
       setOnglet("evaluations"); setVueEvaluation("diagnostique");
@@ -83,7 +90,7 @@ export default function Eleves() {
         {vueDossier === "dossier" ? <DossierTab /> : <SyntheseEleveTab />}
       </>)}
       {onglet === "observations" && <Observations />}
-      {onglet === "evaluations" && <Evaluations vue={vueEvaluation} setVue={setVueEvaluation} grille={piece.grille} />}
+      {onglet === "evaluations" && <Evaluations vue={vueEvaluation} setVue={setVueEvaluation} grille={piece.grille} sequence={piece.sequence} />}
       {onglet === "papiers" && <Papiers />}
       {onglet === "dispositifs" && <DispositifsTab dispositif={piece.dispositif} />}
     </Page>
@@ -310,7 +317,7 @@ function Observations() {
 // sait faire en arrivant ; le sommatif fait le point sur ce qui est acquis —
 // épreuves notées ou par compétences, et synthèse officielle des acquis de
 // fin de GS. La synthèse rédigée d'après le suivi vit dans le Dossier.
-function Evaluations({ vue, setVue, grille }: { vue: VueEvaluation; setVue: (v: VueEvaluation) => void; grille?: string }) {
+function Evaluations({ vue, setVue, grille, sequence }: { vue: VueEvaluation; setVue: (v: VueEvaluation) => void; grille?: string; sequence?: string }) {
   const { data: evals, reload } = useAsync(() => api.evaluationsList(), []);
   const [edit, setEdit] = React.useState<Evaluation | null>(null);
   const [notes, setNotes] = React.useState<Evaluation | null>(null);
@@ -342,6 +349,7 @@ function Evaluations({ vue, setVue, grille }: { vue: VueEvaluation; setVue: (v: 
       </div>
 
       {vue === "diagnostique" && <EvaluationDiagnostiqueTab grille={grille} />}
+      {vue === "grilles" && <GrillesDesSequences sequence={sequence} />}
       {vue === "gs" && <SyntheseGS />}
       {vue === "notees" && ((evals?.length ?? 0) === 0 ? <Empty icone="📊" titre="Aucune évaluation" /> :
         evals!.map((ev) => (

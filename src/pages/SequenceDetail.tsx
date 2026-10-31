@@ -11,7 +11,7 @@ import { useSuiviSequences } from "../components/useSuiviSequences";
 import { BadgeSuivi } from "../components/SuiviSequence";
 import { avancement, dateCourte, jourProche, libelleDuPassage, libelleDuSuivi } from "../suiviSequences";
 import { EVT_JOUR } from "../components/CommandPalette";
-import { Modal, Stars, Empty, Confirm, useAsync } from "../components/ui";
+import { Modal, Stars, Empty, Confirm, ouvrirOnglet, useAsync } from "../components/ui";
 import { CompetenceSelectionnee, labelCourt } from "../components/CompetenceTree";
 import { estManuelle } from "../sousCompetences";
 import { genreDeSupport, lireRenvoi } from "../supportsDeSeance";
@@ -160,6 +160,8 @@ export default function SequenceDetail() {
         <button className="btn" onClick={supprimerSequence} aria-label="Supprimer la séquence">🗑</button>
         <button className="btn" onClick={() => imprimerSequence(seq, seances ?? [])}>🖨 Imprimer / PDF</button>
         <button className="btn" onClick={() => exporterSequence(seq, seances ?? [])}>⬇️ Exporter</button>
+        {/* Sa grille d'observables, pour l'évaluation sommative : l'objectif de chaque séance, un élève par colonne (voir GrillesDesSequences). */}
+        <button className="btn" title="La grille d'observables de la séquence, dans Élèves › Évaluations" onClick={() => { nav("/eleves"); setTimeout(() => ouvrirOnglet("eleves", `grille-sequence:${seq.id}`), 140); }}>📋 Grille</button>
         <button className="btn primary" onClick={() => { const neuve = nouvelleSeance(seq.id, next); nav(`/seances/${neuve.id}`, { state: { nouvelle: neuve } }); }}>+ Séance</button>
       </>}>
       <div className="card" style={{ marginBottom: 18, borderTop: `3px solid ${teinteSequence(seq)}` }}>
