@@ -696,6 +696,12 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .non-imprime .case-impression { color: var(--text); font-weight: 600; }
 /* Un rituel cité sous le prévu du journal : la même carte qu'une règle de jeu, en vert. */
 .regle-app.rituel-app { border-color: color-mix(in srgb, #0f9d58 28%, var(--border)); background: color-mix(in srgb, #0f9d58 6%, var(--panel)); }
+/* Le déroulement d'un rituel, mis en forme dans son éditeur : des paragraphes et des listes serrés, des images à leur mesure. */
+.rituel-deroulement { font-size: 13px; line-height: 1.45; margin-top: 4px; overflow-wrap: anywhere; }
+.rituel-deroulement p, .rituel-deroulement h1, .rituel-deroulement h2, .rituel-deroulement h3 { margin: 0 0 4px; }
+.rituel-deroulement h1 { font-size: 16px; } .rituel-deroulement h2 { font-size: 14.5px; } .rituel-deroulement h3 { font-size: 13.5px; }
+.rituel-deroulement ul, .rituel-deroulement ol { margin: 2px 0 4px; padding-left: 18px; }
+.rituel-deroulement img { max-height: 140px; max-width: 100%; border-radius: 6px; }
 /* Les maisons du tri : une maison, son titre et ses étiquettes. */
 .tri-maison { border-left: 3px solid var(--border); padding-left: 8px; margin: 0 0 10px; display: flex; flex-direction: column; gap: 5px; }
 .tri-aide { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 2px 0 8px 24px; }

@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { avecRituels, ecrireRituels, ligneDeRituel, lireRituels, nouveauRituel, rituelsCites, rituelsImprimes, titresDesRituels, trierRituels } from "./rituels";
+import {
+  STYLE_RITUELS_IMPRIMES, avecRituels, deroulementEnTexte, ecrireRituels, ligneDeRituel, lireRituels, nouveauRituel, rituelsCites, rituelsImprimes,
+  titresDesRituels, trierRituels,
+} from "./rituels";
 
 const date = { id: "r1", titre: "La date", deroulement: "Pointage du jour : Amédée, Lucille.\nÉcrire la date : Eliot, Jules.", duree: 10 };
 const appel = { id: "r2", titre: "L'appel", deroulement: "", duree: 0 };
@@ -33,11 +36,26 @@ describe("les rituels", () => {
   it("s'impriment sous le prévu avec leur déroulement, et se rangent par titre", () => {
     const html = rituelsImprimes([date, appel]);
     expect(html).toContain('<div class="sequence-citee-titre">🔁 La date<span class="sequence-citee-infos"> · 10 min</span></div>');
-    expect(html).toContain('<div class="sequence-citee-texte">Pointage du jour : Amédée, Lucille.\nÉcrire la date : Eliot, Jules.</div>');
+    // Un déroulement d'avant, en texte brut, s'imprime en paragraphe.
+    expect(html).toContain('<div class="sequence-citee-texte rituel-texte"><p>Pointage du jour : Amédée, Lucille.<br>Écrire la date : Eliot, Jules.</p></div>');
     // Sans déroulement ni durée : le titre seul.
     expect(html).toContain('<div class="sequence-citee rituel-cite"><div class="sequence-citee-titre">🔁 L&#39;appel</div></div>');
     expect(rituelsImprimes([])).toBe("");
     expect(trierRituels([date, appel]).map((r) => r.titre)).toEqual(["L'appel", "La date"]);
+  });
+
+  it("gardent la mise en forme de leur éditeur, nettoyée, et en donnent le texte lisible", () => {
+    const misEnForme = { ...date, deroulement: '<h3>Différencier</h3><ul><li><b>Pointer</b> le jour : Amédée</li><li>Écrire la date : Eliot</li></ul>'
+      + '<script>alert(1)</script><p onclick="x()">Fin.</p>' };
+    const html = rituelsImprimes([misEnForme]);
+    expect(html).toContain('<div class="sequence-citee-texte rituel-texte"><h3>Différencier</h3><ul><li><b>Pointer</b> le jour : Amédée</li>');
+    expect(html).not.toContain("script");
+    expect(html).not.toContain("onclick");
+    expect(deroulementEnTexte(misEnForme)).toBe("Différencier\n• Pointer le jour : Amédée\n• Écrire la date : Eliot\nFin.");
+    expect(avecRituels("🔁 La date", [misEnForme])).toBe("🔁 La date\nLa date : Différencier\n• Pointer le jour : Amédée\n• Écrire la date : Eliot\nFin.");
+    // Le journal y met ses images : le déroulement à imprimer est le sien.
+    expect(rituelsImprimes([misEnForme], () => "<p>avec images</p>")).toContain('<div class="sequence-citee-texte rituel-texte"><p>avec images</p></div>');
+    expect(STYLE_RITUELS_IMPRIMES).toContain(".rituel-texte { white-space: normal; }");
   });
 
   it("suivent le prévu sur le PDF de la semaine, en texte", () => {

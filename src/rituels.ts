@@ -9,13 +9,20 @@
 // le papier, comme pour une séquence citée.
 //
 // Les rituels vivent dans un réglage partagé entre les ordinateurs.
+//
+// Le déroulement s'écrit dans un éditeur mis en forme — titres, gras, listes,
+// surlignage, une image collée —, pour bien dire ce qu'on veut pour chaque
+// élève (l'enseignant, 31 octobre 2026). Il se garde en HTML ; un déroulement
+// d'avant, en texte brut, se lit en paragraphes. Le PDF de la semaine, qui
+// n'a que du texte, en prend le texte lisible.
 
 import { escapeHtml } from "./print";
+import { texteBrut, versHtml } from "./texteRiche";
 
 export interface Rituel {
   id: string;
   titre: string;
-  /** Le déroulement, tel qu'on le lit en classe — avec la différenciation par élève s'il y a lieu. */
+  /** Le déroulement, tel qu'on le lit en classe — avec la différenciation par élève s'il y a lieu ; mis en forme (HTML), ou texte brut. */
   deroulement: string;
   /** La durée habituelle, en minutes ; 0 quand on ne la note pas. */
   duree: number;
@@ -85,19 +92,36 @@ export function titresDesRituels(texte: string): string[] {
   return sortie;
 }
 
-/** Les rituels cités, imprimés sous le prévu — comme les séquences citées. */
-export function rituelsImprimes(rituels: Rituel[]): string {
+/** Le déroulement mis en forme, nettoyé : ses images restent des fichiers de Maitrize, à lire avant d'imprimer. */
+export const deroulementEnHtml = (r: Rituel) => versHtml(r.deroulement);
+
+/** Le déroulement en texte lisible, nettoyé d'abord : pour un aperçu, ou le PDF de la semaine. */
+export const deroulementEnTexte = (r: Rituel) => texteBrut(versHtml(r.deroulement)).trim();
+
+/**
+ * Les rituels cités, imprimés sous le prévu — comme les séquences citées.
+ * `html` donne le déroulement à imprimer ; le journal y a déjà mis les images.
+ */
+export function rituelsImprimes(rituels: Rituel[], html: (r: Rituel) => string = deroulementEnHtml): string {
   if (!rituels.length) return "";
   return `<div class="sequences-citees rituels-cites">${rituels.map((r) =>
     `<div class="sequence-citee rituel-cite"><div class="sequence-citee-titre">🔁 ${escapeHtml(r.titre)}`
     + (r.duree ? `<span class="sequence-citee-infos"> · ${r.duree} min</span>` : "") + `</div>`
-    + (r.deroulement.trim() ? `<div class="sequence-citee-texte">${escapeHtml(r.deroulement.trim())}</div>` : "")
+    + (deroulementEnTexte(r) || /<img\b/i.test(r.deroulement) ? `<div class="sequence-citee-texte rituel-texte">${html(r)}</div>` : "")
     + `</div>`).join("")}</div>`;
 }
 
+/** Un déroulement mis en forme, sur le papier : des paragraphes et des listes serrés, des images à leur mesure. */
+export const STYLE_RITUELS_IMPRIMES = `
+  .rituel-texte { white-space: normal; }
+  .rituel-texte p, .rituel-texte h1, .rituel-texte h2, .rituel-texte h3 { margin: 0 0 3px; }
+  .rituel-texte ul, .rituel-texte ol { margin: 2px 0 3px; padding-left: 16px; }
+  .rituel-texte img { max-height: 32mm; max-width: 100%; }
+`;
+
 /** Sur le PDF de la semaine, où le prévu n'est que du texte : le déroulement de chaque rituel cité, à sa suite. */
 export function avecRituels(prevu: string, rituels: Rituel[]): string {
-  const cites = rituelsCites(prevu, rituels).filter((r) => r.deroulement.trim());
+  const cites = rituelsCites(prevu, rituels).filter((r) => deroulementEnTexte(r));
   if (!cites.length) return prevu;
-  return `${prevu.replace(/\s+$/, "")}\n${cites.map((r) => `${r.titre} : ${r.deroulement.trim()}`).join("\n")}`;
+  return `${prevu.replace(/\s+$/, "")}\n${cites.map((r) => `${r.titre} : ${deroulementEnTexte(r)}`).join("\n")}`;
 }
