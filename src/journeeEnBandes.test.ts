@@ -19,7 +19,6 @@ const fiche = (id: string, titre: string, prenom: string): MaterielItem => ({
 } as MaterielItem);
 
 const seance = { id: "s1", titre: "Comparer des collections", sequenceId: "q1", competences: "[]" } as unknown as Seance;
-const phases = () => ["Je compte les objets", "Je compare avec mon voisin"];
 
 describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octobre 2026)", () => {
   it("donne une bande à chaque créneau qu'on imprime, dans l'ordre des heures ; une pause vide n'en a pas", () => {
@@ -37,39 +36,39 @@ describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octob
     expect(heuresDeLaBande(jour[1])).toBe("8h30 – 9h00");
   });
 
-  it("dessine le déroulement des tablettes : le rituel d'abord, les phases de la séance, puis les fiches de chaque élève, à son prénom", () => {
+  it("dessine le déroulement des tablettes : le rituel d'abord, la séance, puis les fiches de chaque élève, à son prénom", () => {
     const fiches = [fiche("f1", "Les pyramides de nombres", "Prénom-Un"), fiche("f2", "Les listes de mots qui se ressemblent", "Prénom-Deux")];
     const c = creneau("c1", "09:00", "10:00", "Mathématiques", {
       seanceId: "s1", prevu: "🔁 La date\n📄 Les pyramides de nombres — Prénom-Un, 2 nov.\n📄 Les listes de mots qui se ressemblent — Prénom-Deux, 2 nov.",
     });
-    const pas = pasDeLaBande(c, seance, phases, fiches, "Nombres");
+    const pas = pasDeLaBande(c, seance, fiches, "Nombres");
     expect(pas.map((p) => [p.texte, p.rituel ?? false, p.fiche ?? false, p.eleve ?? ""])).toEqual([
       ["La date", true, false, ""],
-      ["Je compte les objets", false, false, ""],
-      ["Je compare avec mon voisin", false, false, ""],
+      ["Comparer des collections", false, false, ""],
       ["Les pyramides de nombres", false, true, "Prénom-Un"],
       ["Les listes de mots qui se ressemblent", false, true, "Prénom-Deux"],
     ]);
     expect(pas[1].domaine).toBe("Nombres");
     // Sans séance, les fiches suivent le rituel, comme sur la tablette de leur élève.
-    const sansSeance = pasDeLaBande(c, undefined, phases, fiches);
+    const sansSeance = pasDeLaBande(c, undefined, fiches);
     expect(sansSeance.map((p) => p.texte)).toEqual(["La date", "Les pyramides de nombres", "Les listes de mots qui se ressemblent"]);
   });
 
   it("donne une carte à un créneau qui n'a ni séance ni fiche : ses rituels, sinon sa matière", () => {
-    expect(pasDeLaBande(creneau("c1", "08:30", "09:00", "Accueil", { prevu: "🔁 L'appel\n🔁 La météo" }), undefined, phases, []))
+    expect(pasDeLaBande(creneau("c1", "08:30", "09:00", "Accueil", { prevu: "🔁 L'appel\n🔁 La météo" }), undefined, []))
       .toEqual([{ texte: "L'appel · La météo", matiere: "Rituel", rituel: true }]);
-    expect(pasDeLaBande(creneau("c2", "11:00", "11:45", "EPS", { prevu: "Parcours" }), undefined, phases, []))
+    expect(pasDeLaBande(creneau("c2", "11:00", "11:45", "EPS", { prevu: "Parcours" }), undefined, []))
       .toEqual([{ texte: "EPS", matiere: "", domaine: "EPS" }]);
   });
 
-  it("montre la séance que le prévu cite par sa ligne 📚, et les jeux de la ludothèque qu'il nomme, comme les tablettes", () => {
+  it("montre la séance que le prévu cite par sa ligne 📚, puis les jeux de la ludothèque qu'il nomme, une carte chacun, comme les tablettes", () => {
     // Le créneau de l'enseignant (31 octobre 2026) : une séance citée sans être posée, puis un jeu ; la bande ne montrait que sa matière.
-    const sequence = { id: "q1", titre: "Comparer des quantités", competences: "[]" } as unknown as Sequence;
+    // « Le rituel, puis une séance de maths, et encore une séance de maths » : le jeu prend la matière de la séance.
+    const sequence = { id: "q1", titre: "Comparer des quantités", matiere: "Mathématiques", competences: "[]" } as unknown as Sequence;
     const oie = { id: "j1", titre: "jeu de l’oie" } as Jeu;
     const c = creneau("c1", "14:10", "15:00", "Mathématiques", { prevu: "📚 Comparer des quantités · séance 1 : Comparer des collections\njeu de l’oie" });
-    expect(pasDeLaBande(c, undefined, phases, [], "", [sequence], [{ ...seance, numero: 1 } as Seance], [oie]).map((p) => p.texte))
-      .toEqual(["Rituel", "Je compte les objets", "Je compare avec mon voisin", "Jeu de l’oie"]);
+    expect(pasDeLaBande(c, undefined, [], "", [sequence], [{ ...seance, numero: 1 } as Seance], [oie]).map((p) => [p.matiere, p.texte]))
+      .toEqual([["", "Rituel"], ["Mathématiques", "Comparer des collections"], ["Mathématiques", "Jeu de l’oie"]]);
   });
 
   it("met les bandes côte à côte, regroupées, d'une largeur fixe, sur une seule page A4 en paysage", () => {

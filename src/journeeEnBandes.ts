@@ -1,10 +1,9 @@
 // La journée sur une seule page, en bandes (demande de l'enseignant, 31 octobre 2026).
 //
 // Chaque créneau qu'on imprime y est une bande : son déroulement tel que les
-// tablettes le montrent — le rituel d'abord, puis les phases de ses séances,
-// ses jeux et les fiches de ses élèves, chacun dans sa carte avec son picto et sa
-// matière, reliés par des flèches (voir journalTelephone.ts) —, l'heure en
-// tête. Un créneau coché « ne pas imprimer » n'y est pas ; une pause où rien
+// tablettes le montrent — le rituel d'abord, puis ses séances, ses jeux et
+// les fiches de ses élèves, chacun dans sa carte avec son picto et sa matière,
+// reliés par des flèches (voir journalTelephone.ts) —, l'heure en tête. Un créneau coché « ne pas imprimer » n'y est pas ; une pause où rien
 // n'est écrit non plus.
 //
 // Puis, à sa demande : « les bandes comme ça » — les cartes de la colonne des
@@ -21,7 +20,7 @@
 import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import {
   aFaireDuCreneau, cadresDuDeroulement, domaineDeLaSeance, elevesDuCreneau, estUneFicheDEleve, pasDuDeroulement, pictosDuDeroulement,
-  STYLE_DU_DEROULEMENT, type EtapesDeLaSeance, type PasDuDeroulement,
+  STYLE_DU_DEROULEMENT, type PasDuDeroulement,
 } from "./journalTelephone";
 import { mentionDesPictos, type RefPicto } from "./pictosAppoint";
 import { STYLE_PIED, documentImprimable, escapeHtml, logoImprimable, piedMaitrize } from "./print";
@@ -47,18 +46,18 @@ export const heuresDeLaBande = (c: Pick<Creneau, "heureDebut" | "heureFin">): st
 
 /**
  * Le déroulement d'un créneau sur sa bande : celui des tablettes — le rituel
- * d'abord, puis les phases de ses séances, posée ou citées au prévu, et ses
- * jeux —, puis les fiches et les séances de chacun de ses élèves, son prénom
- * avec la matière (une tablette ne montre que les siennes ; la page, toutes).
- * Sans séance, ni jeu, ni fiche, une seule carte : ses rituels s'il en cite,
- * sinon sa matière.
+ * d'abord, puis ses séances, posée ou citées au prévu, et ses jeux, une carte
+ * chacun —, puis les fiches et les séances de chacun de ses élèves, son
+ * prénom avec la matière (une tablette ne montre que les siennes ; la page,
+ * toutes). Sans séance, ni jeu, ni fiche, une seule carte : ses rituels s'il
+ * en cite, sinon sa matière.
  */
 export function pasDeLaBande(
-  c: Pick<Creneau, "prevu" | "matiere">, seance: Seance | undefined, etapesDe: EtapesDeLaSeance, fiches: MaterielItem[], domaineDeSeance = "",
+  c: Pick<Creneau, "prevu" | "matiere">, seance: Seance | undefined, fiches: MaterielItem[], domaineDeSeance = "",
   sequences: Sequence[] = [], seances: Seance[] = [], jeux: Jeu[] = [],
 ): PasDuDeroulement[] {
   const eleves = elevesDuCreneau(aFaireDuCreneau(c, fiches, sequences, seances));
-  const deroulementDe = (eleve?: string) => pasDuDeroulement(c, seance, etapesDe, fiches, domaineDeSeance, eleve, sequences, seances, jeux);
+  const deroulementDe = (eleve?: string) => pasDuDeroulement(c, seance, fiches, domaineDeSeance, eleve, sequences, seances, jeux);
   // Le début, commun à tous : celui de la classe ; sans séance, le rituel par lequel commence celui de chaque élève.
   const debut = (eleves.length ? deroulementDe(eleves[0]) : deroulementDe()).filter((p) => !p.fiche);
   const leurs = eleves.flatMap((eleve) => deroulementDe(eleve).filter((p) => p.fiche).map((p) => ({ ...p, eleve })));
@@ -195,7 +194,6 @@ export function corpsDesBandes(titre: string, bandes: Bande[], fin = "", format:
 export async function bandesDuJour(
   creneaux: Creneau[], seances: Seance[], sequences: Sequence[], materiel: MaterielItem[], jeux: Jeu[] = [],
 ): Promise<{ bandes: Bande[]; refs: RefPicto[] }> {
-  const { etapesDeLaSeance } = await import("./aidesALaTache");
   const pictos = await pictosDuDeroulement();
   const fiches = materiel.filter(estUneFicheDEleve);
   const bandes: Bande[] = [];
@@ -203,7 +201,7 @@ export async function bandesDuJour(
   for (const c of creneauxEnBandes(creneaux)) {
     const seance = c.seanceId ? seances.find((s) => s.id === c.seanceId) : undefined;
     const domaine = seance ? domaineDeLaSeance(seance, sequences.find((q) => q.id === seance.sequenceId)) : "";
-    const { html, refs } = await cadresDuDeroulement(pasDeLaBande(c, seance, etapesDeLaSeance, fiches, domaine, sequences, seances, jeux), pictos);
+    const { html, refs } = await cadresDuDeroulement(pasDeLaBande(c, seance, fiches, domaine, sequences, seances, jeux), pictos);
     bandes.push({ heures: heuresDeLaBande(c), matiere: c.matiere ?? "", cadres: html });
     montres.push(...refs);
   }
