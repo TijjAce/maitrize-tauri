@@ -1,69 +1,21 @@
 import React from "react";
-import { api } from "../api";
-import { EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
-import { MOTS_PAR_THEME, themesDeDepart, type ThemeDeDepart } from "../departsEnUnClic";
-import { melanger } from "../hasard";
 import { pictosDesMots } from "../mesPictos";
 import type { MotImage } from "../jeuxSons";
-import { uneImageParMot } from "../loto";
-import { BoutonMesImages } from "./MesImages";
-import { useProjetDuMoment } from "./ProjetDuMoment";
-import { toast } from "./Toaster";
-import { useAsync } from "./ui";
 
 // L'exemple d'un générateur : tant que l'atelier est vide, l'aperçu montre
 // une vraie feuille, faite d'un exemple — ce que donnera la feuille une fois
 // remplie (voir exemplesDesAteliers.ts). Un bandeau le dit ; « Partir de cet
 // exemple » le fait entrer dans l'atelier, et rien d'autre ne l'y fait entrer.
 
-/** Ce qu'un atelier à mots offre de plus sous l'exemple : partir d'un thème, du projet ou de ses images, d'un clic. */
-export interface Departs {
-  onMots: (mots: MotImage[]) => void;
-  /** La banque de pictogrammes est là : les thèmes peuvent se piocher. */
-  banque: boolean;
-}
-
-/** L'aperçu d'un exemple, sous son bandeau. */
-export function ApercuExemple({ children, onPrendre, departs }: { children: React.ReactNode; onPrendre?: () => void; departs?: Departs }) {
+/** L'aperçu d'un exemple, sous son bandeau. Pour partir d'un thème, du projet ou de ses images, l'assistant de l'atelier pose la question (voir AssistantDesMots). */
+export function ApercuExemple({ children, onPrendre }: { children: React.ReactNode; onPrendre?: () => void }) {
   return (
     <div className="apercu-exemple">
       <div className="apercu-exemple-bandeau">
         <span className="apercu-exemple-titre">Exemple</span>
         {onPrendre && <button type="button" className="btn sm" onClick={onPrendre}>Partir de cet exemple</button>}
       </div>
-      {departs && <DepartsEnUnClic {...departs} />}
       {children}
-    </div>
-  );
-}
-
-/** Démarrer en un clic : des thèmes adaptés à la classe, les mots du projet du moment, ses images (voir departsEnUnClic.ts). */
-function DepartsEnUnClic({ onMots, banque }: Departs) {
-  const { data: niveauClasse } = useAsync(() => api.settingGet("niveauClasse").catch(() => null), []);
-  const { projet, corpus } = useProjetDuMoment();
-  const [occupe, setOccupe] = React.useState(false);
-  const remplir = async (lire: () => Promise<MotImage[]>) => {
-    setOccupe(true);
-    try {
-      const mots = await lire();
-      if (mots.length) onMots(mots);
-      else toast("Rien à prendre ici pour l'instant.", { icone: "ℹ️" });
-    } catch (e) { toast(String(e), { icone: "⚠️" }); } finally { setOccupe(false); }
-  };
-  const piocher = (t: ThemeDeDepart) => remplir(async () => {
-    const vivier = await api.arasaacSelection([t.categorie], EXCLUES_PAR_DEFAUT, false, 0, 1);
-    return melanger(Math.random, uneImageParMot(vivier).map((x) => x.picto)).slice(0, MOTS_PAR_THEME).map((p) => ({ id: p.id, mot: p.mot }));
-  });
-  return (
-    <div className="apercu-exemple-departs">
-      <span className="meta">Ou partir de</span>
-      {banque && niveauClasse !== undefined && themesDeDepart(niveauClasse).map((t) => (
-        <button key={t.categorie} type="button" className="btn sm" disabled={occupe} onClick={() => void piocher(t)}>{t.icone} {t.libelle}</button>
-      ))}
-      {projet && corpus.mots.length > 0 && (
-        <button type="button" className="btn sm" disabled={occupe} onClick={() => void remplir(() => motsAvecImages(corpus.mots))}>📌 {projet.titre}</button>
-      )}
-      <BoutonMesImages disabled={occupe} onImages={(images) => { if (images.length) onMots(images.map((i) => ({ id: i.id, mot: i.mot }))); }}>🖼 Mes images</BoutonMesImages>
     </div>
   );
 }

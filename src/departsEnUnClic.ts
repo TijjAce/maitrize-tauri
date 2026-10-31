@@ -1,6 +1,7 @@
-// Démarrer en un clic (choisi par l'enseignant le 25 octobre 2026) : sur l'aperçu d'exemple d'un atelier à mots,
-// quelques départs tout prêts — des thèmes de la banque d'images adaptés à la classe, les mots du projet du
-// moment, ses propres images. Un clic remplit la liste, et la vraie feuille paraît ; rien n'entre sans ce clic.
+// Démarrer en un clic (choisi par l'enseignant le 25 octobre 2026) : quelques départs tout prêts pour un atelier
+// à mots — des thèmes de la banque d'images adaptés à la classe, les mots du projet du moment, ses propres images.
+// D'abord une bande sous l'aperçu d'exemple ; depuis le 31 octobre 2026, la première question de l'assistant de
+// l'atelier (voir AssistantDesMots). Un clic remplit la liste, et la vraie feuille paraît ; rien n'entre sans ce clic.
 
 import { lireNiveaux } from "./classe";
 

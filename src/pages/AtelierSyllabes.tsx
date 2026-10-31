@@ -8,6 +8,7 @@ import { usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { ApercuExemple, useMotsExemple } from "../components/Exemple";
+import { AssistantDesMots, FIN_SANS_MOTS, type QuestionDeReglage } from "../components/AssistantDesMots";
 import { MOTS_A_SYLLABES } from "../exemplesDesAteliers";
 import { useBanqueDeGestes } from "../components/BanqueDeGestes";
 import type { MotImage } from "../jeuxSons";
@@ -220,6 +221,47 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
   };
   const deja = React.useMemo(() => new Set(mots.map((m) => ecritureDuMot(m.mot))), [mots]);
 
+  // L'assistant (31 octobre 2026) : les syllabes d'abord — les mots en dépendent —, puis les mots, la mise en page, les mots à écrire.
+  const proposees = [...new Set([r.syllabes.trim(), "ma, mi, mu", "pa, pi, pu", "la, li, lu", "ra, ri, ru"].filter(Boolean))].slice(0, 4);
+  const avant: QuestionDeReglage[] = [{
+    question: {
+      id: "syllabes", puce: "Syllabes", titre: "Quelles syllabes l'élève doit-il retrouver ?",
+      choix: proposees.map((x) => ({ id: x, libelle: x })), autre: { placeholder: "D'autres syllabes : to, ti, ta" },
+    },
+    repondre: (c, texte) => { const x = (texte ?? c).trim(); maj({ syllabes: x }); return x; },
+  }];
+  const reglages: QuestionDeReglage[] = [
+    {
+      question: {
+        id: "colonnes", puce: "Dessins", titre: "Combien de dessins par rangée ?",
+        choix: [
+          { id: "4", libelle: "Quatre", description: "douze mots sur une page" },
+          { id: "3", libelle: "Trois", description: "des cases plus larges" },
+        ],
+      },
+      repondre: (c) => { maj({ colonnes: c === "3" ? 3 : 4 }); return c === "3" ? "Trois par rangée" : "Quatre par rangée"; },
+    },
+    {
+      question: {
+        id: "aEcrire", puce: "À écrire", titre: "Combien de mots à écrire en entier, sous leur dessin ?",
+        choix: [{ id: "0", libelle: "Aucun", description: "seulement la syllabe qui manque" }, { id: "2", libelle: "Deux" }, { id: "3", libelle: "Trois" }],
+        autre: { placeholder: `Un autre nombre, jusqu'à ${MOTS_A_ECRIRE_MAX}`, nombre: { min: 0, max: MOTS_A_ECRIRE_MAX } },
+      },
+      repondre: (c, texte) => {
+        const n = borne(texte ?? c, 0, MOTS_A_ECRIRE_MAX);
+        maj({ aEcrire: n });
+        return n ? `${n} mot${n > 1 ? "s" : ""} à écrire` : "Aucun mot à écrire";
+      },
+    },
+  ];
+  const autresSources = banque && cibles.length ? [{
+    id: "banque", libelle: `🔎 Des mots avec ${cibles.join(", ")}`, description: "ceux de la banque où l'on entend ces syllabes, à choisir",
+    choisir: () => setRecherche(true),
+  }] : [];
+  const fin = !mots.length ? FIN_SANS_MOTS
+    : prets.length ? `C'est prêt : ${prets.length} mot${prets.length > 1 ? "s" : ""}, ${feuilles} feuille${feuilles > 1 ? "s" : ""} avec le corrigé.`
+      : "⚠️ Aucun de ces mots n'a ces syllabes et un dessin : prenez ceux de la banque qui les ont.";
+
   return (
     <>
       <Colonnes
@@ -328,9 +370,15 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
           <Boutons atelier="syllabeManquante" titre="La syllabe qui manque" html={html} style={STYLE_GESTES + STYLE_SYLLABES} peut={mots.length > 0 && prets.length > 0}
             onTirage={() => setGraine(graineAuHasard())} />
         </>}
-        droite={!mots.length && prets.length
-          ? <ApercuExemple onPrendre={() => setMots(montres)} departs={{ onMots: setMots, banque }}><ApercuFeuille html={html} style={STYLE_GESTES + STYLE_SYLLABES} /></ApercuExemple>
-          : <ApercuFeuille html={html} style={STYLE_GESTES + STYLE_SYLLABES} />}
+        droite={
+          <div className="loto-droite">
+            <AssistantDesMots titre="Préparer la syllabe qui manque" mots={mots} onMots={setMots} banque={banque}
+              avant={avant} reglages={reglages} autresSources={autresSources} fin={fin} />
+            {!mots.length && prets.length
+              ? <ApercuExemple onPrendre={() => setMots(montres)}><ApercuFeuille html={html} style={STYLE_GESTES + STYLE_SYLLABES} /></ApercuExemple>
+              : <ApercuFeuille html={html} style={STYLE_GESTES + STYLE_SYLLABES} />}
+          </div>
+        }
       />
       {recherche && <MotsDeLaBanque cibles={cibles} deja={deja} onClose={() => setRecherche(false)} onAjouter={ajouterDeLaBanque} />}
       {aRedessiner != null && mots[aRedessiner] && (
