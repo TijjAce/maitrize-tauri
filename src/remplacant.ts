@@ -9,6 +9,9 @@ import { echapper } from "./texteRiche";
 import { JOURS_EDT, type SlotEdt } from "./organisation";
 import { CONTACTS, REPERES, type Etablissement } from "./etablissement";
 
+/** Un point de ce qu'il faut savoir d'un élève — « Communication / langage », « Social »… — et sa phrase (voir aSavoirDesEleves.ts). */
+export interface PointASavoir { point: string; texte: string }
+
 export interface DonneesClasse {
   ecole: string;
   enseignant: string;
@@ -18,7 +21,8 @@ export interface DonneesClasse {
   /** La structure, en toutes lettres ; vide en classe ordinaire (voir classe.ts). */
   structure: string;
   annee: string;
-  eleves: { id: string; nom: string; niveau: string; dispositifs: string[]; axe: string }[];
+  /** `aSavoir` : ce que l'agent en a tiré ; sans lui, la case « À savoir » reprend le dernier axe de travail. */
+  eleves: { id: string; nom: string; niveau: string; dispositifs: string[]; axe: string; aSavoir?: PointASavoir[] }[];
   edt: SlotEdt[];
   ateliers: { titre: string; matiere: string }[];
   espaces: { titre: string; description: string }[];
@@ -90,11 +94,35 @@ export function avecEmploiDuTempsAJour(html: string, d: DonneesClasse): string {
   return html;
 }
 
+/** La case « À savoir » : chaque point en gras, une ligne chacun ; sinon le dernier axe de travail. */
+const caseASavoir = (e: DonneesClasse["eleves"][number]) => (e.aSavoir?.length
+  ? e.aSavoir.map((p) => `<b>${echapper(p.point)}</b> : ${echapper(p.texte)}`).join("<br>")
+  : echapper(e.axe));
+
 export function blocEleves(d: DonneesClasse): string {
   if (!d.eleves.length) return `<h2>Les élèves</h2><p>${aCompleter}</p>`;
   return `<h2>Les élèves</h2><table><thead><tr><th>Élève</th><th>Niveau</th><th>Dispositifs</th><th>À savoir</th></tr></thead><tbody>`
-    + d.eleves.map((e) => `<tr><td>${echapper(e.nom)}</td><td>${echapper(e.niveau)}</td><td>${echapper(e.dispositifs.join(", "))}</td><td>${echapper(e.axe)}</td></tr>`).join("")
+    + d.eleves.map((e) => `<tr><td>${echapper(e.nom)}</td><td>${echapper(e.niveau)}</td><td>${echapper(e.dispositifs.join(", "))}</td><td>${caseASavoir(e)}</td></tr>`).join("")
     + `</tbody></table>`;
+}
+
+/**
+ * La feuille avec le tableau des élèves refait — quand l'agent vient de
+ * remplir « À savoir » (aSavoirDesEleves.ts). Le tableau qui suit le titre
+ * « Les élèves », ou le « … » laissé à compléter, est remplacé ; sous un titre
+ * suivi d'un texte de l'enseignant, le tableau vient juste après le titre, et
+ * le texte reste. Sans ce titre, le bloc s'ajoute à la fin.
+ */
+export function avecElevesAJour(html: string, d: DonneesClasse): string {
+  const nouveau = blocEleves(d);
+  for (const m of html.matchAll(/<h2\b[^>]*>((?:(?!<\/h2>)[\s\S])*)<\/h2>/gi)) {
+    if (!/^les élèves/i.test(texteDuHtml(m[1]))) continue;
+    const debut = m.index ?? 0;
+    const apresTitre = debut + m[0].length;
+    const suite = html.slice(apresTitre).match(/^\s*(?:<table\b[\s\S]*?<\/table>|<p\b[^>]*>\s*(?:…|&hellip;)\s*<\/p>)/i);
+    return html.slice(0, debut) + nouveau + html.slice(apresTitre + (suite ? suite[0].length : 0));
+  }
+  return html + nouveau;
 }
 
 export function blocDeroulement(): string {

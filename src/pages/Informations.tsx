@@ -1,5 +1,7 @@
 import React from "react";
-import { api, Texte, newId, nowIso, TYPE_AXE } from "../api";
+import { api, Texte, newId, nowIso, texteErreur, TYPE_AXE } from "../api";
+import { redigerASavoir } from "../aSavoirDesEleves";
+import { isoJour } from "../dates";
 import { Empty, useAsync } from "../components/ui";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
@@ -12,7 +14,9 @@ import { avecImages } from "../components/imagesTexte";
 import { documentRempli } from "../dossier";
 import { organisationPour } from "../organisation";
 import { structureDe } from "../classe";
-import { BLOCS_REMPLACANT, DOSSIER_INFORMATIONS, avecEmploiDuTempsAJour, feuilleRemplacant, type DonneesClasse } from "../remplacant";
+import {
+  BLOCS_REMPLACANT, DOSSIER_INFORMATIONS, avecElevesAJour, avecEmploiDuTempsAJour, feuilleRemplacant, type DonneesClasse, type PointASavoir,
+} from "../remplacant";
 import { lireEtablissement } from "../etablissement";
 
 // ── Organisation → Informations ────────────────────────────────────────────
@@ -131,6 +135,11 @@ function EditeurFeuille({ feuille, annee, onEnregistre, onDupliquer, onSupprimer
 }) {
   const { titre, setTitre, contenu, setContenu, etat, sauver, version } = useTexteAutosave(feuille, onEnregistre);
   const editeur = React.useRef<EditeurRicheHandle>(null);
+  // Le contenu le plus récent — ce qu'on tape pendant que l'agent lit compte —, et de quoi redessiner l'éditeur quand on le remplace.
+  const dernier = React.useRef(contenu);
+  dernier.current = contenu;
+  const [rendu, setRendu] = React.useState(0);
+  const remplacer = (html: string) => { setContenu(html); setRendu((r) => r + 1); };
   // L'emploi du temps de la feuille suit celui d'Organisation : refait à l'ouverture, avant que l'éditeur ne la montre.
   const [depart, setDepart] = React.useState<string | null>(null);
   React.useEffect(() => {
@@ -162,6 +171,38 @@ function EditeurFeuille({ feuille, annee, onEnregistre, onDupliquer, onSupprimer
     })));
   };
 
+  // « À savoir » par l'agent (demande de l'enseignant, 31 octobre 2026) : un élève après l'autre, il lit ce qu'on sait de lui
+  // — sa synthèse d'abord — et en tire cinq phrases au plus ; le tableau des élèves est refait, et « Annuler » le remet.
+  const [agent, setAgent] = React.useState<{ fait: number; total: number } | null>(null);
+  const arreter = React.useRef(false);
+  const remplirASavoir = async () => {
+    arreter.current = false;
+    try {
+      const [d, tous] = await Promise.all([lireDonneesClasse(annee), api.elevesList()]);
+      const debut = `${annee.slice(0, 4)}-08-01`, fin = isoJour(new Date());
+      const points = new Map<string, PointASavoir[]>();
+      setAgent({ fait: 0, total: d.eleves.length });
+      for (const [i, e] of d.eleves.entries()) {
+        if (arreter.current) break;
+        const eleve = tous.find((x) => x.id === e.id);
+        if (eleve) points.set(e.id, await redigerASavoir({ eleve, autresEleves: tous.filter((x) => x.id !== e.id).map((x) => x.nom), debut, fin }));
+        setAgent({ fait: i + 1, total: d.eleves.length });
+      }
+      const remplis = d.eleves.filter((e) => points.get(e.id)?.length).length;
+      if (!remplis) {
+        toast("L'agent n'a rien trouvé à dire : écrivez d'abord des observations, ou la synthèse des élèves.", { icone: "🐾", duree: 6000 });
+        return;
+      }
+      const avant = dernier.current;
+      remplacer(avecElevesAJour(avant, { ...d, eleves: d.eleves.map((e) => (points.get(e.id)?.length ? { ...e, aSavoir: points.get(e.id) } : e)) }));
+      toastAnnulable(`« À savoir » rempli par l'agent pour ${remplis} élève${remplis > 1 ? "s" : ""}. Relisez avant d'imprimer.`, () => remplacer(avant), "🐾");
+    } catch (err) {
+      toast(`L'agent n'a pas pu remplir « À savoir » : ${texteErreur(err)}`, { icone: "⚠️", duree: 6000 });
+    } finally {
+      setAgent(null);
+    }
+  };
+
   const imprimer = async () => {
     await sauver();
     printHTML(titre || "Informations", await avecImages(nettoyerHtml(contenu)),
@@ -176,12 +217,23 @@ function EditeurFeuille({ feuille, annee, onEnregistre, onDupliquer, onSupprimer
         <input className="input" value={titre} onChange={(e) => setTitre(e.target.value)} aria-label="Titre de la feuille"
           style={{ flex: "1 1 260px", fontSize: 16, fontWeight: 700 }} />
         <span style={{ fontSize: 12, color: etat === "erreur" ? "var(--danger, #c0392b)" : "var(--text-2)" }}>{LIBELLE_ENREGISTREMENT[etat]}</span>
+        {agent ? (
+          <>
+            <span className="meta" role="status">🐾 L'agent lit… {agent.fait}/{agent.total}</span>
+            <button className="btn sm" onClick={() => { arreter.current = true; }}>Arrêter</button>
+          </>
+        ) : (
+          <button className="btn" onClick={() => { void remplirASavoir(); }}
+            title="L'agent lit ce qu'on sait de chaque élève, sa synthèse d'abord, et remplit « À savoir » : communication et langage, social, autonomie, niveau, comportement — cinq phrases au plus">
+            🐾 Remplir « À savoir »
+          </button>
+        )}
         <button className="btn" onClick={imprimer}>🖨 Imprimer</button>
         <button className="btn ghost" onClick={onDupliquer} title="Dupliquer">📑</button>
         <button className="btn ghost" onClick={onSupprimer} title="Supprimer" aria-label="Supprimer la feuille">🗑</button>
       </div>
       {depart === null ? <div style={{ minHeight: "58vh" }} /> : (
-        <EditeurRiche key={version} ref={editeur} valeur={version ? contenu : depart} onChange={setContenu} minHauteur="58vh"
+        <EditeurRiche key={`${version}:${rendu}`} ref={editeur} valeur={version || rendu ? contenu : depart} onChange={setContenu} minHauteur="58vh"
           placeholder="Écrivez, ou « Insérer » pour reprendre l'emploi du temps, les élèves…"
           outils={<button type="button" className="btn sm" onMouseDown={(e) => e.preventDefault()} onClick={inserer}>📥 Insérer ▾</button>} />
       )}
