@@ -170,7 +170,7 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
             <input type="checkbox" checked={projetCoche} disabled={occupe}
               ref={(el) => { if (el) el.indeterminate = presentsDuProjet > 0 && !projetCoche; }}
               onChange={(e) => basculerProjet(e.target.checked)} />
-            <span>📌 Les mots du projet « {projet.titre} » ({corpus.mots.length})</span>
+            <span>Les mots du projet « {projet.titre} » ({corpus.mots.length})</span>
           </label>
         )}
       </Field>
