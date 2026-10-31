@@ -699,7 +699,6 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 /* Les maisons du tri : une maison, son titre et ses étiquettes. */
 .tri-maison { border-left: 3px solid var(--border); padding-left: 8px; margin: 0 0 10px; display: flex; flex-direction: column; gap: 5px; }
 .tri-aide { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 2px 0 8px 24px; }
-.tri-fiche { margin: 4px 0 8px; font-size: 13px; }
 /* Les plis d'un atelier : on ouvre ce qu'on règle. Un trait les sépare, pour s'y retrouver d'un coup d'œil. */
 details.pli { border-top: 1px solid var(--border); padding: 2px 0; }
 details.pli > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap;
@@ -709,7 +708,6 @@ details.pli > summary::before { content: "▸"; color: var(--text-2); width: 14p
 details.pli[open] > summary::before { transform: rotate(90deg); }
 details.pli > summary .meta { font-weight: 500; font-size: 12px; }
 details.pli[open] { padding-bottom: 10px; }
-.tri-fiche summary { cursor: pointer; font-weight: 600; color: var(--text-2); padding: 4px 0; }
 /* Le calcul mental : les objectifs du programme, rangés par rubrique. */
 .fn-rubrique { margin: 0 0 8px; }
 .fn-rubrique-titre { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--text-2); margin: 6px 0 3px; }
@@ -755,18 +753,9 @@ details.pli[open] { padding-bottom: 10px; }
 .projet-atelier select { max-width: 280px; }
 .projet-atelier-aide { font-size: 12px; }
 .projet-ligne { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 8px; font-size: 12.5px; }
-.corpus-projet-colonnes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.corpus-themes { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 2px 0 10px; }
-.corpus-themes .bm-chip { padding: 3px 6px 3px 10px; font-size: 12.5px; }
-.corpus-statut { font-size: 12.5px; line-height: 1.5; margin: 8px 0 0; }
-@media (max-width: 720px) { .corpus-projet-colonnes { grid-template-columns: 1fr; } }
-/* Le corpus d'un projet, replié : ses boutons sous les mots, ses réglages dans un repli à part (Projets.tsx). */
-.corpus-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 4px; }
-.corpus-reglages { margin: 8px 0 2px; }
-.corpus-reglages > summary { cursor: pointer; font-size: 12.5px; color: var(--text-2); padding: 2px 0 6px; }
-/* La fiche d'un projet : l'assistant sous le titre, un fil de bulles et un champ ; le moment sur une ligne qu'on déplie. */
-.projet-assistant { border: 1px solid var(--border); border-radius: 12px; background: var(--panel-2); padding: 8px; margin: 0 0 10px; }
-.projet-assistant-fil { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; padding: 2px 2px 8px; }
+/* La fiche d'un projet : son assistant seul, sous le titre — un fil de bulles et un champ (Projets.tsx). */
+.projet-assistant { border: 1px solid var(--border); border-radius: 12px; background: var(--panel-2); padding: 8px; }
+.projet-assistant-fil { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; padding: 2px 2px 8px; }
 .projet-assistant-bulle { max-width: 85%; padding: 7px 11px; border-radius: 12px; font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; }
 .projet-assistant-bulle.lui { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); }
 .projet-assistant-bulle.moi { align-self: flex-end; background: var(--accent-soft); }
@@ -774,8 +763,6 @@ details.pli[open] { padding-bottom: 10px; }
 .projet-assistant-bulle.en-cours { color: var(--text-2); }
 .projet-assistant-saisie { display: flex; gap: 6px; }
 .projet-assistant-saisie .input { flex: 1; min-width: 0; }
-.projet-quand { margin: 8px 0; font-size: 13px; }
-.projet-quand > summary { cursor: pointer; font-weight: 600; color: var(--text-2); padding: 4px 0; }
 /* Dans l'atelier des phrases en désordre : demander des phrases à l'IA. */
 .ia-phrases { margin: 8px 0 10px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 10px; background: var(--panel-2); }
 /* Dans le bandeau d'un atelier : la consigne de la feuille, à réécrire. */

@@ -2,26 +2,24 @@ import React from "react";
 import { supprimerLeProjet } from "../suppressionsAnnulables";
 import { Page } from "../App";
 import { api, anneeScolaireActuelle, texteErreur } from "../api";
-import { Field, Input, Select, Textarea, TextareaAuto, useAsync, useOngletDemande } from "../components/ui";
-import { toast, toastAnnulable } from "../components/Toaster";
-import { Aide } from "../components/Aide";
-import { accueilDuProjet, appliquerLaReponse, demanderALAssistant, type ActionCorpus, type Replique } from "../assistantProjet";
+import { Input, useAsync, useOngletDemande } from "../components/ui";
+import { toast } from "../components/Toaster";
+import { accueilDuProjet, appliquerLaReponse, demanderALAssistant, type Replique } from "../assistantProjet";
 import { useReglages } from "../components/useMemoire";
 import { decrireLeProjet, servicesCorpus } from "../components/ProjetDuMoment";
 import { DEMANDE_CORPUS } from "../corpusIa";
 import {
-  corpusParLIa, preparerLeCorpus, reserverLaPreparation, resumeDeLaPreparation, themesProposables, titreExploitable,
+  corpusParLIa, preparerLeCorpus, reserverLaPreparation, resumeDeLaPreparation, titreExploitable,
 } from "../corpusAuto";
-import { aUnCorpus, corpusDe, resumeDuCorpus, texteDuCorpus } from "../corpusProjet";
-import { libelleCategorie } from "../data/categoriesArasaac";
+import { aUnCorpus, corpusDe, texteDuCorpus } from "../corpusProjet";
 import { graineAuHasard } from "../hasard";
 import { confirmer } from "../components/confirmer";
 import { openCtx } from "../components/ctxmenu";
 import { normaliser } from "../competencesTravaillees";
 import {
-  CATALOGUE, ETATS, MOIS, THEMES, avancement, chercherIdees, depuisIdee, ecrireEtapes,
+  CATALOGUE, ETATS, MOIS, THEMES, avancement, chercherIdees, depuisIdee,
   etatDeduit, icoDuTheme, lireEtapes, moisCourant, nomDuMois, nomDuTheme, placer,
-  projetVierge, semainesDuMois, type Etape, type IdeeProjet, type ProjetClasse,
+  projetVierge, semainesDuMois, type IdeeProjet, type ProjetClasse,
 } from "../projets";
 
 // ── Les projets de classe ─────────────────────────────────────────────────
@@ -155,8 +153,7 @@ export default function Projets() {
       {/* ── La fiche d'un projet posé ── */}
       {ouvert && miens.some((p) => p.id === ouvert) && (
         <FicheProjet key={ouvert} projet={miens.find((p) => p.id === ouvert)!} annee={annee}
-          onChange={(suite) => { void enregistrer(suite); }}
-          onFermer={() => setOuvert("")} onSupprimer={() => { void supprimer(miens.find((p) => p.id === ouvert)!); }} />
+          onChange={(suite) => { void enregistrer(suite); }} onFermer={() => setOuvert("")} />
       )}
 
       {/* ── Le catalogue ── */}
@@ -243,109 +240,63 @@ function CarteIdee({ idee, choisie, deja, onBasculer }: {
 }
 
 /**
- * Le projet posé qu'on ouvre. L'assistant d'abord, sous le titre : on lui
- * raconte le projet, il remplit la fiche. Le reste se lit d'un coup d'œil et
- * se déplie quand on veut le changer à la main : « cette fenêtre elle est trop
- * complexe […] on s'y perd » (l'enseignant, 31 octobre 2026).
+ * Le projet posé qu'on ouvre : son titre et son assistant, rien d'autre. On
+ * lui raconte le projet, il le monte — le titre, la phrase, le moment, les
+ * étapes, les mots — puis le mène : cocher une étape, dire où en est le
+ * projet, redire les mots. « Enlève le reste pour ne laisser que le chatbot »
+ * (l'enseignant, 31 octobre 2026). Un projet se retire de l'année depuis sa
+ * pastille.
  */
-function FicheProjet({ projet, annee, onChange, onFermer, onSupprimer }: {
-  projet: ProjetClasse; annee: string;
-  onChange: (p: ProjetClasse) => void; onFermer: () => void; onSupprimer: () => void;
+function FicheProjet({ projet, annee, onChange, onFermer }: {
+  projet: ProjetClasse; annee: string; onChange: (p: ProjetClasse) => void; onFermer: () => void;
 }) {
-  const etapes = lireEtapes(projet.etapesJson);
-  const etat = etatDeduit(projet.etat, etapes);
-  const majEtapes = (suite: Etape[]) =>
-    onChange({ ...projet, etapesJson: ecrireEtapes(suite), etat: etatDeduit(projet.etat, suite) });
-  const semaine = semainesDuMois(annee, projet.mois).find((s) => s.iso === projet.semaine);
-  const corpus = React.useRef<CorpusHandle>(null);
-
+  const etat = etatDeduit(projet.etat, lireEtapes(projet.etapesJson));
   return (
     <div className="card" style={{ marginTop: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <span style={{ fontSize: 18 }}>{ICO_ETAT[etat]}</span>
-        <Input value={projet.titre} placeholder="Titre du projet" style={{ flex: 1 }}
-          onChange={(e) => onChange({ ...projet, titre: e.target.value })} />
+        <span style={{ fontSize: 18 }} title={ETATS.find((e) => e.id === etat)?.nom}>{ICO_ETAT[etat]}</span>
+        <b style={{ flex: 1, minWidth: 0, fontSize: 15.5 }}>{projet.titre.trim() || "Nouveau projet"}</b>
         <button className="btn ghost sm" onClick={onFermer} aria-label="Fermer">✕</button>
       </div>
-
-      <AssistantDuProjet projet={projet} annee={annee} onChange={onChange} onCorpus={(quoi) => { void corpus.current?.preparer(quoi); }} />
-
-      <TextareaAuto value={projet.descriptif} minHauteur={44} placeholder="De quoi s'agit-il, en une phrase ?"
-        onChange={(e) => onChange({ ...projet, descriptif: e.target.value })} />
-
-      <details className="projet-quand">
-        <summary>📅 {nomDuMois(projet.mois)} · {semaine ? `semaine du ${semaine.label}` : "tout le mois"}</summary>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "6px 0" }}>
-          {MOIS.map((m) => (
-            <button key={m.num} type="button" className={`btn sm${projet.mois === m.num ? " primary" : " ghost"}`}
-              onClick={() => onChange(placer(projet, m.num, ""))}>{m.abrege}</button>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
-          <span className="meta" style={{ fontSize: 12, alignSelf: "center" }}>Semaine :</span>
-          <button type="button" className={`btn sm${projet.semaine ? " ghost" : " primary"}`}
-            onClick={() => onChange({ ...projet, semaine: "" })}>tout le mois</button>
-          {semainesDuMois(annee, projet.mois).map((s) => (
-            <button key={s.iso} type="button" className={`btn sm${projet.semaine === s.iso ? " primary" : " ghost"}`}
-              onClick={() => onChange({ ...projet, semaine: s.iso })}>{s.label}</button>
-          ))}
-        </div>
-      </details>
-
-      {etapes.map((e, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <input type="checkbox" checked={e.faite} aria-label={e.texte}
-            onChange={() => majEtapes(etapes.map((x, j) => (j === i ? { ...x, faite: !x.faite } : x)))} />
-          <Input value={e.texte} style={{ flex: 1, minWidth: 0, textDecoration: e.faite ? "line-through" : undefined }}
-            onChange={(ev) => majEtapes(etapes.map((x, j) => (j === i ? { ...x, texte: ev.target.value } : x)))} />
-          <button className="btn ghost sm" aria-label="Retirer cette étape"
-            onClick={() => { const avant = etapes; majEtapes(etapes.filter((_, j) => j !== i)); toastAnnulable("Étape retirée.", () => majEtapes(avant)); }}>✕</button>
-        </div>
-      ))}
-      <button className="btn ghost sm" style={{ marginTop: 4 }}
-        onClick={() => majEtapes([...etapes, { texte: "", faite: false }])}>＋ Étape</button>
-
-      <CorpusDuProjet ref={corpus} projet={projet} onChange={onChange} />
-
-      <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 12, flexWrap: "wrap" }}>
-        <div className="seg" role="group" aria-label="Où en est le projet">
-          {ETATS.map((x) => (
-            <button key={x.id} className={etat === x.id ? "active" : ""}
-              onClick={() => onChange({ ...projet, etat: x.id })}>{x.nom}</button>
-          ))}
-        </div>
-        <div className="spacer" style={{ flex: 1 }} />
-        <button className="btn ghost sm" onClick={onSupprimer}>🗑 Retirer de l'année</button>
-      </div>
+      <AssistantDuProjet projet={projet} annee={annee} onChange={onChange} />
     </div>
   );
 }
 
+/** Une bulle du fil : une réplique, ou ce que l'assistant dit de lui-même — les mots préparés, une erreur. */
+type Bulle = Replique & { erreur?: boolean; note?: boolean };
+
 /**
- * L'assistant du projet : un petit fil de bulles et un champ. On lui raconte
- * le projet ; il range dans la fiche ce qu'il en comprend — le titre, la
- * phrase, le moment, les étapes, les mots (voir assistantProjet.ts). Le fil
- * ne se garde pas : chaque ouverture de la fiche repart de l'accueil.
+ * L'assistant du projet : un fil de bulles et un champ. On lui raconte le
+ * projet ; il range dans la fiche ce qu'il en comprend (voir
+ * assistantProjet.ts) et prépare les mots et les phrases du projet. Le fil ne
+ * se garde pas : chaque ouverture de la fiche repart de l'accueil, qui dit où
+ * en est le projet.
  */
-function AssistantDuProjet({ projet, annee, onChange, onCorpus }: {
-  projet: ProjetClasse; annee: string; onChange: (p: ProjetClasse) => void; onCorpus: (quoi: ActionCorpus) => void;
-}) {
-  const [fil, setFil] = React.useState<(Replique & { erreur?: boolean })[]>(() => [{ role: "assistant", content: accueilDuProjet(projet) }]);
+function AssistantDuProjet({ projet, annee, onChange }: { projet: ProjetClasse; annee: string; onChange: (p: ProjetClasse) => void }) {
+  const [fil, setFil] = React.useState<Bulle[]>(() => [{ role: "assistant", content: accueilDuProjet(projet, annee) }]);
   const [saisie, setSaisie] = React.useState("");
   const [occupe, setOccupe] = React.useState(false);
   const [cle, setCle] = React.useState<boolean | null>(null);
   React.useEffect(() => {
     api.settingGet("mistralApiKey").then((k) => setCle(!!k && k.trim().length > 0)).catch(() => setCle(false));
   }, []);
+  // La fiche la plus récente : celle que l'assistant vient d'écrire, ou celle qui arrive d'ailleurs — jamais une plus
+  // vieille, le temps que l'enregistrement revienne.
   const projetRef = React.useRef(projet);
-  projetRef.current = projet;
+  const recue = React.useRef(projet);
+  if (projet !== recue.current) { recue.current = projet; projetRef.current = projet; }
+  const changer = React.useCallback((p: ProjetClasse) => { projetRef.current = p; onChange(p); }, [onChange]);
+  const dire = React.useCallback((texte: string, erreur = false) => setFil((f) => [...f, { role: "assistant", content: texte, note: true, erreur }]), []);
+  const preparer = usePreparationDuCorpus(projetRef, projet, changer, dire);
   const filRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => { const el = filRef.current; if (el) el.scrollTop = el.scrollHeight; }, [fil, occupe]);
 
   const envoyer = async () => {
     const texte = saisie.trim();
     if (!texte || occupe) return;
-    const conversation: Replique[] = [...fil.filter((m) => !m.erreur).map(({ role, content }) => ({ role, content })), { role: "user", content: texte }];
+    // Ce qui part : les répliques, sans les erreurs ni ce que l'assistant a dit de lui-même.
+    const conversation: Replique[] = [...fil.filter((m) => !m.erreur && !m.note).map(({ role, content }) => ({ role, content })), { role: "user", content: texte }];
     setFil((f) => [...f, { role: "user", content: texte }]);
     setSaisie("");
     setOccupe(true);
@@ -353,10 +304,9 @@ function AssistantDuProjet({ projet, annee, onChange, onCorpus }: {
       const r = await demanderALAssistant(projetRef.current, annee, conversation, new Date().toLocaleDateString("fr-FR"));
       const avant = projetRef.current;
       const apres = appliquerLaReponse(avant, r);
-      if (apres !== avant) onChange(apres);
-      // Sans mots ni phrases, ils se préparent tout seuls dès que le titre est posé : rien à demander de plus.
-      if (r.corpus && aUnCorpus(avant)) onCorpus(r.corpus);
+      if (apres !== avant) changer(apres);
       setFil((f) => [...f, { role: "assistant", content: r.reponse }]);
+      if (r.corpus) void preparer(r.corpus === "preparer" ? "tout" : r.corpus);
     } catch (e) {
       setFil((f) => [...f, { role: "assistant", content: `Je n'ai pas pu répondre : ${texteErreur(e)}`, erreur: true }]);
     } finally {
@@ -385,212 +335,73 @@ function AssistantDuProjet({ projet, annee, onChange, onCorpus }: {
   );
 }
 
-/**
- * Un champ du corpus : ce qu'on tape s'enregistre une demi-seconde après la
- * dernière lettre, ou en quittant le champ. Enregistrer à chaque frappe
- * relisait la fiche et renvoyait le curseur en fin de texte — sur dix lignes
- * de mots, on ne s'y retrouvait plus.
- */
-function ChampCorpus({ valeur, onChange, ...props }: { valeur: string; onChange: (v: string) => void } & Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChange">) {
-  const [brouillon, setBrouillon] = React.useState(valeur);
-  const minuterie = React.useRef<number | null>(null);
-  const onChangeRef = React.useRef(onChange);
-  onChangeRef.current = onChange;
-  // Ce qui arrive d'ailleurs — l'IA, l'autre ordinateur — remplace le brouillon, sauf pendant qu'on tape.
-  React.useEffect(() => { if (minuterie.current === null) setBrouillon(valeur); }, [valeur]);
-  const enregistrer = (v: string) => { minuterie.current = null; onChangeRef.current(v); };
-  const taper = (v: string) => {
-    setBrouillon(v);
-    if (minuterie.current !== null) window.clearTimeout(minuterie.current);
-    minuterie.current = window.setTimeout(() => enregistrer(v), 500);
-  };
-  const poser = () => {
-    if (minuterie.current === null) return;
-    window.clearTimeout(minuterie.current);
-    enregistrer(brouillon);
-  };
-  // Fermer la fiche pendant qu'on tape n'en perd pas la fin.
-  const brouillonRef = React.useRef(brouillon);
-  brouillonRef.current = brouillon;
-  React.useEffect(() => () => {
-    if (minuterie.current !== null) { window.clearTimeout(minuterie.current); onChangeRef.current(brouillonRef.current); }
-  }, []);
-  return <Textarea {...props} value={brouillon} onChange={(e) => taper(e.target.value)} onBlur={poser} />;
-}
-
-/** Ce que l'assistant du projet demande au corpus : le refaire, d'autres mots, d'autres phrases. */
-interface CorpusHandle { preparer: (quoi: ActionCorpus) => Promise<void> }
+const combien = (n: number, mot: string) => `${n} ${mot}${n > 1 ? "s" : ""}`;
 
 /**
- * Les mots et les phrases du projet : ce que les ateliers de Fabriquer
- * prennent tant qu'il est en cours.
- *
- * Le corpus se prépare tout seul dès que le projet a un titre : les mots dans
- * la banque ARASAAC de cet ordinateur — ils ont une image, rien ne part —,
- * les phrases par l'IA, avec ces mots. Puis tout se change : les thèmes où
- * piocher, le tirage, les phrases, ou les mots à la main — ou en le demandant
- * à l'assistant. Changer de thèmes ou de nombre de mots refait le tirage tout
- * seul. Replié : les mots et les phrases, et les boutons qui les refont ; les
- * réglages du tirage dans un repli à part.
+ * Les mots et les phrases du projet, préparés par l'assistant — ils n'ont
+ * plus de panneau : tout seuls dès que le projet a un titre, une fois ; puis
+ * quand l'enseignant le demande — tout refaire, d'autres mots, d'autres
+ * phrases. Les mots viennent de la banque ARASAAC de cet ordinateur, pour
+ * qu'ils aient une image ; les phrases, de l'IA, avec ces mots : ce sont eux
+ * que les ateliers de Fabriquer prennent tant que le projet est en cours. Ce
+ * qui se passe se dit en bulles (`dire`).
  */
-const CorpusDuProjet = React.forwardRef<CorpusHandle, { projet: ProjetClasse; onChange: (p: ProjetClasse) => void }>(function CorpusDuProjet({ projet, onChange }, ref) {
-  const corpus = corpusDe(projet);
-  const vide = !aUnCorpus(projet);
-  const [demande, majDemande] = useReglages("corpusIa", DEMANDE_CORPUS);
-  /** Les thèmes ARASAAC où l'on pioche : devinés à la préparation, puis ceux qu'on a choisis ; null tant qu'on ne sait pas. */
-  const [themes, setThemes] = React.useState<string[] | null>(null);
-  const { data: categories } = useAsync(() => servicesCorpus.banqueInstallee().then((ok) => (ok ? servicesCorpus.categories() : [])), []);
-  const proposables = React.useMemo(() => themesProposables(categories ?? []), [categories]);
-  const [occupe, setOccupe] = React.useState<"" | "tout" | "mots" | "phrases">("");
-  const [statut, setStatut] = React.useState("");
-  const projetRef = React.useRef(projet);
-  projetRef.current = projet;
+function usePreparationDuCorpus(projetRef: React.MutableRefObject<ProjetClasse>, projet: ProjetClasse,
+  changer: (p: ProjetClasse) => void, dire: (texte: string, erreur?: boolean) => void) {
+  const [demande] = useReglages("corpusIa", DEMANDE_CORPUS);
+  /** Les thèmes ARASAAC où l'on pioche : devinés à la première préparation, gardés pour les tirages suivants. */
+  const themes = React.useRef<string[] | undefined>(undefined);
+  const occupe = React.useRef(false);
 
-  /**
-   * Prépare tout, tire d'autres mots, ou fait réécrire les phrases.
-   * `autresQueCeux` : le tirage écarte les mots déjà là — c'est ce qu'on
-   * demande au dé, pas à un changement de thèmes.
-   */
-  const preparer = React.useCallback(async (quoi: "tout" | "mots" | "phrases", choisis?: string[], autresQueCeux = true) => {
-    setOccupe(quoi);
-    setStatut(quoi === "tout" ? "Le corpus se prépare : les mots dans la banque ARASAAC, les phrases par l'IA…"
-      : quoi === "mots" ? "Un autre tirage dans la banque…" : "Le modèle écrit les phrases avec les mots du corpus…");
+  const preparer = React.useCallback(async (quoi: "tout" | "mots" | "phrases") => {
+    if (occupe.current) { dire("Je prépare déjà les mots du projet : un instant."); return; }
+    occupe.current = true;
+    const p = projetRef.current;
+    // Rien encore : on prépare tout, et la préparation automatique ne la refera pas.
+    const q = aUnCorpus(p) ? quoi : "tout";
+    if (q === "tout") reserverLaPreparation(p.id, p.titre, true);
+    dire(q === "tout" ? "Je prépare les mots et les phrases du projet : les mots dans la banque d'images de cet ordinateur, les phrases par l'IA…"
+      : q === "mots" ? "Je tire d'autres mots dans la banque d'images…" : "J'écris d'autres phrases avec les mots du projet…");
     try {
-      const p = projetRef.current;
-      if (quoi === "phrases") {
+      if (q === "phrases") {
         const c = await corpusParLIa(decrireLeProjet(p), { ...demande, mots: 0, avec: corpusDe(p).mots }, servicesCorpus);
-        if (!c.phrases.length) { setStatut("Le modèle n'a rien proposé de lisible ; réessayez."); return; }
-        onChange({ ...p, phrases: texteDuCorpus(c.phrases) });
-        setStatut(`${c.phrases.length} phrases écrites par l'IA avec les mots du corpus. Relisez, retirez ce qui ne convient pas.`);
+        if (!c.phrases.length) { dire("Le modèle n'a rien proposé de lisible : redemandez-moi d'autres phrases.", true); return; }
+        changer({ ...projetRef.current, phrases: texteDuCorpus(c.phrases) });
+        dire(`Voici ${combien(c.phrases.length, "phrase")}, écrites avec les mots du projet :\n${c.phrases.join("\n")}`);
         return;
       }
-      const d = quoi === "mots" ? { ...demande, phrases: 0 } : demande;
-      const r = await preparerLeCorpus(decrireLeProjet(p), d, servicesCorpus, graineAuHasard(), choisis,
-        quoi === "mots" && autresQueCeux ? corpusDe(p).mots : []);
-      if (r.themes.length) setThemes(r.themes);
-      else if (choisis) setThemes(choisis);
-      const suite = { ...projetRef.current };
+      const d = q === "mots" ? { ...demande, phrases: 0 } : demande;
+      const r = await preparerLeCorpus(decrireLeProjet(p), d, servicesCorpus, graineAuHasard(), themes.current, q === "mots" ? corpusDe(p).mots : []);
+      if (r.themes.length) themes.current = r.themes;
+      const avant = projetRef.current;
+      const suite = { ...avant };
       if (r.mots.length) suite.mots = texteDuCorpus(r.mots);
-      if (quoi === "tout" && r.phrases.length) suite.phrases = texteDuCorpus(r.phrases);
-      if (suite.mots !== p.mots || suite.phrases !== p.phrases) onChange(suite);
-      setStatut(resumeDeLaPreparation(r, d));
+      if (q === "tout" && r.phrases.length) suite.phrases = texteDuCorpus(r.phrases);
+      if (suite.mots !== avant.mots || suite.phrases !== avant.phrases) changer(suite);
+      const c = corpusDe(suite);
+      dire([
+        resumeDeLaPreparation(r, d),
+        r.mots.length ? `Les mots : ${c.mots.join(", ")}.` : "",
+        q === "tout" && r.phrases.length ? `Les phrases :\n${r.phrases.join("\n")}` : "",
+      ].filter(Boolean).join("\n"));
     } catch (e) {
-      setStatut("Préparation impossible : " + texteErreur(e));
-    } finally { setOccupe(""); }
-  }, [demande, onChange]);
+      dire("Je n'ai pas pu préparer les mots : " + texteErreur(e), true);
+    } finally {
+      occupe.current = false;
+    }
+  }, [demande, changer, dire, projetRef]);
 
-  // L'assistant du projet s'en sert : refaire tout le corpus, tirer d'autres mots, réécrire les phrases.
-  React.useImperativeHandle(ref, () => ({
-    preparer: (quoi: ActionCorpus) => preparer(quoi === "preparer" ? "tout" : quoi, themes ?? undefined),
-  }), [preparer, themes]);
-
-  // Sans corpus, il se prépare tout seul — une fois le titre posé, et une seule fois.
+  // Sans mots ni phrases, ils se préparent tout seuls — une fois le titre posé, et une seule fois.
   const preparerRef = React.useRef(preparer);
   preparerRef.current = preparer;
+  const vide = !aUnCorpus(projet);
   React.useEffect(() => {
     if (!vide || !titreExploitable(projet.titre)) return;
     const t = window.setTimeout(() => {
-      if (reserverLaPreparation(projet.id, projet.titre, true)) void preparerRef.current("tout");
+      if (!occupe.current && reserverLaPreparation(projet.id, projet.titre, true)) void preparerRef.current("tout");
     }, 1200);
     return () => window.clearTimeout(t);
   }, [projet.id, projet.titre, vide]);
 
-  // Changer de thèmes ou de nombre de mots refait le tirage tout seul, sans
-  // passer par le dé. Un seul tirage pour plusieurs changements d'affilée ; et
-  // jamais deux à la fois — celui qui arrive attend la fin du précédent.
-  const tirage = React.useRef<number | null>(null);
-  const occupeRef = React.useRef(occupe);
-  occupeRef.current = occupe;
-  const tirerBientot = (choisisApres: string[] | undefined) => {
-    if (tirage.current !== null) window.clearTimeout(tirage.current);
-    tirage.current = null;
-    // Sans plus aucun thème, on garde les mots : il n'y a plus où piocher.
-    if (choisisApres && !choisisApres.length) return;
-    const lancer = () => {
-      if (occupeRef.current) { tirage.current = window.setTimeout(lancer, 500); return; }
-      tirage.current = null;
-      void preparerRef.current("mots", choisisApres, false);
-    };
-    tirage.current = window.setTimeout(lancer, 700);
-  };
-  React.useEffect(() => () => { if (tirage.current !== null) window.clearTimeout(tirage.current); }, []);
-  const changerThemes = (suite: string[]) => { setThemes(suite); tirerBientot(suite); };
-
-  const choisis = themes ?? [];
-  return (
-    <details className="tri-fiche corpus-projet">
-      <summary>📌 Les mots et les phrases du projet · {resumeDuCorpus(corpus)}{occupe ? " · en préparation…" : ""}</summary>
-      <div className="corpus-projet-colonnes">
-        <Field label="Les mots, un par ligne">
-          <ChampCorpus rows={8} valeur={projet.mots} onChange={(mots) => onChange({ ...projet, mots })} placeholder={"citrouille\nsoupe\nlouche…"} aria-label="Les mots du projet" />
-        </Field>
-        <Field label="Les phrases, une par ligne">
-          <ChampCorpus rows={8} valeur={projet.phrases} onChange={(phrases) => onChange({ ...projet, phrases })} placeholder={"Nous coupons la citrouille.\nLa soupe est chaude."} aria-label="Les phrases du projet" />
-        </Field>
-      </div>
-      <div className="corpus-actions">
-        <button type="button" className="btn sm" disabled={!!occupe} onClick={() => void preparer("mots", themes ?? undefined)}
-          title="Un autre tirage dans les thèmes choisis : il remplace les mots">
-          {occupe === "mots" ? "Tirage…" : "🎲 D'autres mots"}
-        </button>
-        <button type="button" className="btn sm" disabled={!!occupe} onClick={() => void preparer("phrases")}
-          title="Le modèle réécrit les phrases avec les mots du corpus : elles remplacent celles-ci">
-          {occupe === "phrases" ? "Le modèle écrit…" : "✨ D'autres phrases"}
-        </button>
-        {vide && (
-          <button type="button" className="btn sm primary" disabled={!!occupe} onClick={() => void preparer("tout", themes ?? undefined)}>
-            {occupe === "tout" ? "Préparation…" : "⚙️ Préparer le corpus"}
-          </button>
-        )}
-        <Aide titre="Les mots et les phrases du projet" vers="droite">
-          <p>Ils nourrissent les ateliers de Fabriquer tant que le projet est en cours : mots mêlés, phrases en désordre, maisons du tri, loto,
-            étiquettes.</p>
-          <p>Ils se préparent tout seuls dès que le projet a un titre — les mots dans la banque ARASAAC de cet ordinateur, pour qu'ils aient une
-            image ; les phrases par l'IA, avec ces mots — et se changent autant qu'on veut : à la main, avec ces boutons, ou en le demandant à
-            l'assistant du projet.</p>
-          <p>Seul le projet part vers l'IA, sans prénom d'élève.</p>
-        </Aide>
-      </div>
-      <details className="corpus-reglages">
-        <summary>⚙️ Réglages</summary>
-        {(proposables.length > 0 || choisis.length > 0) && (
-          <div className="corpus-themes" role="group" aria-label="Les thèmes ARASAAC où piocher les mots">
-            <span className="meta">Thèmes ARASAAC :</span>
-            {choisis.map((t) => (
-              <span key={t} className="bm-chip">
-                <span className="bm-mot">{libelleCategorie(t)}</span>
-                <button type="button" className="bm-x" aria-label={`Retirer le thème ${libelleCategorie(t)}`}
-                  onClick={() => { const avant = choisis; changerThemes(choisis.filter((x) => x !== t)); toastAnnulable(`Thème « ${libelleCategorie(t)} » retiré.`, () => changerThemes(avant)); }}>×</button>
-              </span>
-            ))}
-            {!choisis.length && <span className="meta">aucun pour l'instant</span>}
-            {proposables.length > 0 && (
-              <Select value="" aria-label="Ajouter un thème ARASAAC" style={{ maxWidth: 220 }}
-                onChange={(e) => { if (e.target.value) changerThemes([...choisis, e.target.value]); }}>
-                <option value="">＋ un thème…</option>
-                {proposables.filter((c) => !choisis.includes(c.nom)).map((c) => (
-                  <option key={c.nom} value={c.nom}>{libelleCategorie(c.nom)} ({c.nombre})</option>
-                ))}
-              </Select>
-            )}
-          </div>
-        )}
-        <div className="corpus-themes" role="group" aria-label="Combien de mots et de phrases">
-          <span className="meta">Combien :</span>
-          <Select value={demande.mots} aria-label="Nombre de mots" style={{ width: 110 }}
-            onChange={(e) => { majDemande({ mots: Number(e.target.value) }); tirerBientot(themes ?? undefined); }}>
-            {[8, 12, 16, 24, 32].map((n) => <option key={n} value={n}>{n} mots</option>)}
-          </Select>
-          <Select value={demande.phrases} onChange={(e) => majDemande({ phrases: Number(e.target.value) })} aria-label="Nombre de phrases" style={{ width: 130 }}>
-            <option value={0}>pas de phrase</option>
-            {[4, 6, 8, 10].map((n) => <option key={n} value={n}>{n} phrases</option>)}
-          </Select>
-          <Select value={demande.cycle} onChange={(e) => majDemande({ cycle: Number(e.target.value) as 2 | 3 })} aria-label="Cycle des phrases" style={{ width: 100 }}>
-            <option value={2}>Cycle 2</option><option value={3}>Cycle 3</option>
-          </Select>
-        </div>
-      </details>
-      {statut && <p className="meta corpus-statut" aria-live="polite">{statut}</p>}
-    </details>
-  );
-});
+  return preparer;
+}

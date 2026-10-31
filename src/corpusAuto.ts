@@ -266,23 +266,23 @@ export async function preparerLeCorpus(
   return { mots, phrases, themes: origineMots === "banque" ? themes : [], origineMots, choisisParLIa, sansIa };
 }
 
-/** Ce qu'on dit de la préparation, en une ligne. */
+/** Ce que l'assistant du projet dit de la préparation, en une bulle : il répond à ce qu'on lui demande ensuite. */
 export function resumeDeLaPreparation(r: CorpusPrepare, d: DemandeCorpus): string {
   const avecPhrases = d.phrases > 0;
   const phrases = !avecPhrases ? "" : r.phrases.length ? `${r.phrases.length} phrases écrites par l'IA avec ces mots`
-    : r.sansIa ? "les phrases attendent l'IA (Réglages › Mistral)" : "l'IA n'a pas donné de phrase lisible";
+    : r.sansIa ? "les phrases attendent l'IA (Réglages › Assistant IA)" : "l'IA n'a pas donné de phrase lisible";
   if (r.origineMots === "banque") {
     const dou = r.themes.length ? ` (${r.themes.map(libelleCategorie).join(", ")})` : " (les pictogrammes qui portent les mots du projet)";
     const comment = r.choisisParLIa ? `choisis par l'IA parmi ceux de la banque ARASAAC${dou}`
       : r.sansIa ? `tirés au hasard dans la banque ARASAAC${dou} — l'IA n'est pas réglée, elle ne les a pas choisis pour le projet`
       : `pris dans la banque ARASAAC${dou}`;
-    return `${r.mots.length} mots ${comment}${phrases ? `, ${phrases}` : ""}. Relisez, retirez ce qui ne convient pas.`;
+    return `${r.mots.length} mots ${comment}${phrases ? `, ${phrases}` : ""}. Dites-moi ce qu'il faut retirer ou ajouter.`;
   }
-  if (r.origineMots === "ia") return `Pas de thème pour ce projet dans la banque ARASAAC : ${r.mots.length} mots${r.phrases.length ? ` et ${r.phrases.length} phrases` : ""} écrits par l'IA. Relisez, retirez ce qui ne convient pas.`;
+  if (r.origineMots === "ia") return `Pas de thème pour ce projet dans la banque ARASAAC : ${r.mots.length} mots${r.phrases.length ? ` et ${r.phrases.length} phrases` : ""} écrits par l'IA. Dites-moi ce qu'il faut retirer ou ajouter.`;
   if (d.mots <= 0) return phrases ? `${phrases.charAt(0).toUpperCase()}${phrases.slice(1)}.` : "Rien à écrire.";
   return r.sansIa
-    ? "Rien trouvé dans la banque ARASAAC pour ce projet, et l'IA n'est pas réglée : écrivez les mots, ou choisissez un thème."
-    : "Rien trouvé dans la banque ARASAAC pour ce projet, et l'IA n'a rien proposé de lisible : écrivez les mots, ou choisissez un thème.";
+    ? "Rien trouvé dans la banque ARASAAC pour ce projet, et l'IA n'est pas réglée : dites-moi les mots que vous voulez, je les ajoute."
+    : "Rien trouvé dans la banque ARASAAC pour ce projet, et l'IA n'a rien proposé de lisible : dites-moi les mots que vous voulez, je les ajoute.";
 }
 
 // ── Une seule préparation automatique ─────────────────────────────────────
