@@ -79,30 +79,45 @@ export default function Dashboard() {
     return texte.charAt(0).toUpperCase() + texte.slice(1);
   };
 
-  // Les fiches, sorte par sorte, pas seulement les ateliers (demande de l'enseignant, 31 octobre 2026).
-  const duGenre = (genre: string) => (outilsClasse ?? []).filter((o) => o.genre === genre).length;
   const stats = [
     { label: "Séquences", val: sequences?.length ?? 0, ico: "📚", to: "/plan" },
-    { label: "Ateliers autonomes", val: ateliers?.length ?? 0, ico: "🧩", to: "/ateliers" },
-    { label: "Jeux éducatifs", val: jeux?.length ?? 0, ico: "🎲", to: "/ateliers" },
-    { label: "Outils pour l'élève", val: duGenre("outil"), ico: "📏", to: "/ateliers" },
-    { label: "Affichage de classe", val: duGenre("affichage"), ico: "🖼", to: "/ateliers" },
     { label: "Élèves", val: eleves?.length ?? 0, ico: "👧", to: "/eleves" },
   ];
+  // Les fiches, sorte par sorte, dans une seule carte, chacune avec son logo en petit — pas seulement les ateliers
+  // (demande de l'enseignant, 31 octobre 2026).
+  const duGenre = (genre: string) => (outilsClasse ?? []).filter((o) => o.genre === genre).length;
+  const fiches = [
+    { label: "Ateliers autonomes", val: ateliers?.length ?? 0, ico: "🧩" },
+    { label: "Jeux éducatifs", val: jeux?.length ?? 0, ico: "🎲" },
+    { label: "Outils pour l'élève", val: duGenre("outil"), ico: "📏" },
+    { label: "Affichage de classe", val: duGenre("affichage"), ico: "🖼" },
+  ];
+  const carte = (s: typeof stats[number]) => (
+    <div key={s.label} className="card" style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }} onClick={() => nav(s.to)}>
+      <div style={{ fontSize: 30 }}>{s.ico}</div>
+      <div>
+        <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1 }}>{s.val}</div>
+        <div style={{ color: "var(--text-2)", fontSize: 13 }}>{s.label}</div>
+      </div>
+    </div>
+  );
 
   return (
     <Page titre={nom ? `Bonjour ${nom}` : "Tableau de bord"} sous={new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}>
       <BandeauSync />
-      <div className="grid cols" style={{ marginBottom: 22, gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))" }}>
-        {stats.map((s) => (
-          <div key={s.label} className="card" style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }} onClick={() => nav(s.to)}>
-            <div style={{ fontSize: 30 }}>{s.ico}</div>
-            <div>
-              <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1 }}>{s.val}</div>
-              <div style={{ color: "var(--text-2)", fontSize: 13 }}>{s.label}</div>
+      <div className="grid cols" style={{ marginBottom: 22 }}>
+        {carte(stats[0])}
+        <div className="card" style={{ cursor: "pointer", gridColumn: "span 2", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 18px", alignContent: "center" }}
+          onClick={() => nav("/ateliers")} title="Les fiches de la classe">
+          {fiches.map((f) => (
+            <div key={f.label} style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+              <span style={{ fontSize: 18 }}>{f.ico}</span>
+              <b style={{ fontSize: 18, lineHeight: 1, minWidth: "1.1em" }}>{f.val}</b>
+              <span style={{ color: "var(--text-2)", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.label}</span>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        {carte(stats[1])}
       </div>
 
       <div className="row" style={{ alignItems: "flex-start" }}>
