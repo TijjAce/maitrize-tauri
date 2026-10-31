@@ -27,7 +27,7 @@ import {
   anneeScolaireDe, creneauRempli, htmlEmploiDuTemps, htmlPeriode, htmlProgrammation, htmlSemaineDuJournal, lundiDe,
   type LigneProgrammation, type TableauDePeriode, type TableauDeProgrammation,
 } from "./organisationHtml";
-import { lireEtat } from "./progressionAnnuelle";
+import { estUnEleve, idDeLEleve, lireEtat } from "./progressionAnnuelle";
 import { estALaClasse, teintesDesLignes } from "./programmationAnnuelle";
 import { htmlParEleve, lire as lireProgrammationIme } from "./programmationIme";
 import type { SlotEdt } from "./organisation";
@@ -95,8 +95,11 @@ export function planDuTravail(d: DonneesTravail): PlanDeCopie {
 
   // ── Élèves : un dossier chacun ──
   const parNom = [...d.eleves].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+  // Le dossier de chaque élève : sa progression de l'année y va aussi (plus bas, avec l'organisation).
+  const dossierDe = new Map<string, { dossier: string; nom: string }>();
   for (const e of parNom) {
     const dossier = noms.reserver(PARTIE_ELEVES, nomSur(e.nom, "Élève"), "");
+    dossierDe.set(e.id, { dossier, nom: e.nom });
     const siens = {
       commentaires: d.commentaires.filter((c) => c.eleveId === e.id),
       notes: d.notes.filter((n) => n.eleveId === e.id),
@@ -126,7 +129,7 @@ export function planDuTravail(d: DonneesTravail): PlanDeCopie {
   const periodes = new Map<string, ProgressionAnnuelle[]>();
   for (const p of d.progressions) {
     const e = lireEtat(p);
-    if (!e.colonnes.length) continue;
+    if (!e.colonnes.length || estUnEleve(p.niveau)) continue;
     const cle = `${p.annee}|${p.periode}`;
     periodes.set(cle, [...(periodes.get(cle) ?? []), p]);
   }
@@ -143,6 +146,18 @@ export function planDuTravail(d: DonneesTravail): PlanDeCopie {
     page(`${PARTIE_ORGANISATION}/Progression ${annee}`, `Période ${periode}`,
       `progression|${cle}|${JSON.stringify(ranges.map((p) => [p.niveau, p.colonnesJson, p.cellulesJson, p.seancesJson ?? ""]))}|${JSON.stringify(cite)}`,
       `Progression ${annee} P${periode}`, () => htmlPeriode(annee, Number(periode), tableaux, [], nomSeance));
+  }
+  // La progression d'un élève va dans son dossier, une page par période ; celle d'un élève parti ne se copie plus.
+  for (const p of d.progressions) {
+    const id = idDeLEleve(p.niveau ?? "");
+    const sien = id === null ? undefined : dossierDe.get(id);
+    const e = lireEtat(p);
+    if (!sien || !e.colonnes.length) continue;
+    const tableau: TableauDePeriode = { niveau: "", colonnes: e.colonnes.map((c) => ({ ...c, teinte: teinteDe(c) })), cellules: e.cellules, seances: e.seances };
+    const cite = Object.values(e.seances).flat().map(nomSeance);
+    page(sien.dossier, `Progression ${p.annee} P${p.periode}`,
+      `progression-eleve|${p.annee}|${p.periode}|${JSON.stringify([p.colonnesJson, p.cellulesJson, p.seancesJson ?? ""])}|${JSON.stringify(cite)}`,
+      `Progression ${p.annee} P${p.periode} — ${sien.nom}`, () => htmlPeriode(p.annee, p.periode, [tableau], [], nomSeance));
   }
   // Celles des collègues ne sont pas le travail de l'enseignant.
   for (const p of d.programmations) {

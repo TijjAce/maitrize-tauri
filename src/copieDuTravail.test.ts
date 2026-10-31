@@ -79,6 +79,28 @@ describe("la copie du travail", () => {
     }
   });
 
+  it("range la progression d'un élève dans son dossier, pas avec celle de la classe", () => {
+    const d = vide();
+    d.eleves = [eleve("e1", "Élève Un")];
+    const prog = (niveau: string, texte: string): ProgressionAnnuelle => ({
+      id: niveau, annee: "2026-2027", periode: 2, niveau,
+      colonnesJson: JSON.stringify([{ id: "c1", titre: "Lecture", couleur: "blue" }]), cellulesJson: JSON.stringify({ w1_c1: texte }),
+    });
+    d.progressions = [prog("", "Albums"), prog("eleve:e1", "Les sons [a]"), prog("eleve:parti", "Rien")];
+    const plan = planDuTravail(d);
+    const chemins = plan.fichiers.map((f) => f.chemin);
+    expect(chemins).toContain("Élèves/Élève Un/Progression 2026-2027 P2.html");
+    expect(chemins).toContain("Organisation/Progression 2026-2027/Période 2.html");
+    // Celle d'un élève parti ne se copie plus.
+    expect(chemins.filter((c) => c.includes("Progression"))).toHaveLength(2);
+    const creer = (chemin: string) => { const f = plan.fichiers.find((x) => x.chemin === chemin)!; return f.source.genre === "contenu" ? f.source.creer() : ""; };
+    expect(creer("Élèves/Élève Un/Progression 2026-2027 P2.html")).toContain("Les sons [a]");
+    const classe = creer("Organisation/Progression 2026-2027/Période 2.html");
+    expect(classe).toContain("Albums");
+    expect(classe).not.toContain("Les sons");
+    expect(classe).not.toContain("eleve:");
+  });
+
   it("fait une page par semaine du cahier journal, rangée par année scolaire, et recopie le coffre", () => {
     const d = vide();
     d.creneaux = [

@@ -7,6 +7,12 @@
 // valent pour tous, et restent là où elles étaient. Un niveau vaut pour toute
 // l'année : il a son tableau à chaque période. Dans les cases, on place aussi
 // les séances des séquences créées.
+//
+// Chaque élève peut aussi avoir la sienne : « le suivi par élève doit être
+// hyper individualisé » (l'enseignant, 31 octobre 2026). C'est le même
+// tableau, l'élève en tête à la place du niveau. Elle se range comme celle
+// d'un niveau, sous la clé « eleve:<identifiant> » : la base n'a rien à
+// apprendre, et un élève renommé garde la sienne.
 
 import type { ProgressionAnnuelle } from "./api";
 import type { PeriodeDeClasse } from "./vacances";
@@ -145,14 +151,43 @@ export const cleNiveauAjoute = (annee: string, niveau: string) => `${annee}|${ni
  * l'école. Chacun a son tableau à chaque période.
  */
 export function niveauxDeLaProgression(ordre: string[], liste: ProgressionAnnuelle[], annee: string, ajoutes: string[]): string[] {
-  const vus = new Set(liste.filter((p) => p.annee === annee && (p.niveau ?? "") !== "" && remplie(p)).map((p) => p.niveau));
+  const vus = new Set(liste.filter((p) => p.annee === annee && (p.niveau ?? "") !== "" && !estUnEleve(p.niveau) && remplie(p)).map((p) => p.niveau));
   for (const k of ajoutes) {
     const [a, n] = k.split("|");
-    if (a === annee && n) vus.add(n);
+    if (a === annee && n && !estUnEleve(n)) vus.add(n);
   }
   const rang = (n: string) => { const i = ordre.indexOf(n); return i < 0 ? ordre.length : i; };
   return [...vus].sort((a, b) => rang(a) - rang(b) || a.localeCompare(b, "fr"));
 }
+
+// ── Une progression par élève ─────────────────────────────────────────────
+
+const PREFIXE_ELEVE = "eleve:";
+
+/** La clé de la progression d'un élève, à la place du niveau. */
+export const cleDeLEleve = (id: string) => `${PREFIXE_ELEVE}${id}`;
+export const estUnEleve = (niveau: string | null | undefined) => (niveau ?? "").startsWith(PREFIXE_ELEVE);
+export const idDeLEleve = (niveau: string): string | null => (estUnEleve(niveau) ? niveau.slice(PREFIXE_ELEVE.length) : null);
+
+/** Ce que dit la tête d'un tableau : le niveau — vide pour la classe —, ou le nom de l'élève ; « Élève retiré » s'il n'est plus là. */
+export const nomDuTableau = (eleves: { id: string; nom: string }[]) => (niveau: string): string => {
+  const id = idDeLEleve(niveau);
+  return id === null ? niveau : eleves.find((e) => e.id === id)?.nom ?? "Élève retiré";
+};
+
+/** Les élèves de l'année qui ont une progression, et ceux qu'on vient d'ajouter par « + Élève », dans l'ordre de leur nom. */
+export function elevesDeLaProgression(eleves: { id: string; nom: string }[], liste: ProgressionAnnuelle[], annee: string, ajoutes: string[]): string[] {
+  const vus = new Set(liste.filter((p) => p.annee === annee && estUnEleve(p.niveau) && remplie(p)).map((p) => p.niveau));
+  for (const k of ajoutes) {
+    const [a, n] = k.split("|");
+    if (a === annee && estUnEleve(n)) vus.add(n);
+  }
+  const nom = nomDuTableau(eleves);
+  return [...vus].sort((a, b) => nom(a).localeCompare(nom(b), "fr"));
+}
+
+/** L'ordre des tableaux des élèves, à part de celui de la classe et de ses niveaux : ↑ ↓ de l'un ne défait pas l'autre. */
+export const cleOrdreDesEleves = (annee: string) => `ordreDesEleves:${annee}`;
 
 /**
  * Le tableau sans niveau se montre s'il a quelque chose dans l'année, ou
@@ -236,9 +271,12 @@ export interface SourceDeColonnes { libelle: string; colonnes: Colonne[] }
 /**
  * Les colonnes qu'une progression vide peut reprendre : celles de la période
  * la plus proche du même niveau, puis celles d'un autre niveau à la même
- * période. Les cases ne suivent pas : on reprend la forme, pas le contenu.
+ * période — la classe d'abord, puis ses niveaux ; un élève, ensuite, pour la
+ * progression d'un autre élève, jamais pour celle de la classe. Les cases ne
+ * suivent pas : on reprend la forme, pas le contenu. `nom` dit d'où.
  */
-export function sourcesDeColonnes(liste: ProgressionAnnuelle[], annee: string, niveau: string, periode: number): SourceDeColonnes[] {
+export function sourcesDeColonnes(liste: ProgressionAnnuelle[], annee: string, niveau: string, periode: number,
+  nom: (niveau: string) => string = (n) => n): SourceDeColonnes[] {
   const avecColonnes = liste.filter((p) => p.annee === annee && lireEtat(p).colonnes.length > 0);
   // Elle a déjà les siennes : rien à reprendre.
   if (avecColonnes.some((p) => (p.niveau ?? "") === niveau && p.periode === periode)) return [];
@@ -246,9 +284,10 @@ export function sourcesDeColonnes(liste: ProgressionAnnuelle[], annee: string, n
   const memeNiveau = avecColonnes.filter((p) => (p.niveau ?? "") === niveau && p.periode !== periode)
     .sort((a, b) => Math.abs(a.periode - periode) - Math.abs(b.periode - periode) || a.periode - b.periode)[0];
   if (memeNiveau) sources.push({ libelle: `P${memeNiveau.periode}`, colonnes: lireEtat(memeNiveau).colonnes });
-  const autreNiveau = avecColonnes.filter((p) => (p.niveau ?? "") !== niveau && p.periode === periode)
-    .sort((a, b) => (a.niveau === "" ? -1 : 0) - (b.niveau === "" ? -1 : 0))[0];
-  if (autreNiveau) sources.push({ libelle: autreNiveau.niveau || LA_CLASSE, colonnes: lireEtat(autreNiveau).colonnes });
+  const rang = (n: string) => (n === "" ? 0 : estUnEleve(n) ? 2 : 1);
+  const autreNiveau = avecColonnes.filter((p) => (p.niveau ?? "") !== niveau && p.periode === periode && (estUnEleve(niveau) || !estUnEleve(p.niveau)))
+    .sort((a, b) => rang(a.niveau ?? "") - rang(b.niveau ?? ""))[0];
+  if (autreNiveau) sources.push({ libelle: nom(autreNiveau.niveau ?? "") || LA_CLASSE, colonnes: lireEtat(autreNiveau).colonnes });
   return sources;
 }
 

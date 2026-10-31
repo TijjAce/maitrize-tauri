@@ -5,6 +5,7 @@ import {
   avecCase, casesDeLaColonne, copieDesColonnes, datesDeLaSemaine, deplacerColonne, enJson, lireEtat, memeEtat,
   nombreDeSemaines, progressionDe, remettreColonne, sansColonne, semainesDeLaPeriode, sourcesDeColonnes, titreConnu,
   titresProposes, LA_CLASSE, niveauxDeLaProgression, cleNiveauAjoute, tableauSansNiveau, avecSeances, ETAT_VIDE,
+  cleDeLEleve, cleOrdreDesEleves, elevesDeLaProgression, estUnEleve, idDeLEleve, nomDuTableau,
 } from "./progressionAnnuelle";
 
 const NIVEAUX = ["TPS", "PS", "MS", "GS", "CP", "CE1", "CE2", "CM1", "CM2"];
@@ -146,5 +147,47 @@ describe("l'ordre des tableaux de l'année", () => {
     expect(lireOrdreDesTableaux("pas du json")).toEqual([]);
     expect(lireOrdreDesTableaux(null)).toEqual([]);
     expect(cleOrdreDesTableaux("2026-2027")).toBe("ordreDesTableaux:2026-2027");
+  });
+});
+
+describe("la progression d'un élève", () => {
+  // Des noms inventés : jamais ceux d'une vraie classe.
+  const eleves = [{ id: "e2", nom: "Zoé Martin" }, { id: "e1", nom: "Abel Durand" }, { id: "e3", nom: "Léon Petit" }];
+  const colonnes = [{ id: "c", titre: "Lecture" }];
+
+  it("se range sous la clé de l'élève, à la place du niveau", () => {
+    expect(cleDeLEleve("e1")).toBe("eleve:e1");
+    expect(estUnEleve("eleve:e1")).toBe(true);
+    expect(estUnEleve("CP")).toBe(false);
+    expect(estUnEleve("")).toBe(false);
+    expect(idDeLEleve("eleve:e1")).toBe("e1");
+    expect(idDeLEleve("CP")).toBeNull();
+    const nom = nomDuTableau(eleves);
+    expect([nom("eleve:e2"), nom("CP"), nom(""), nom("eleve:parti")]).toEqual(["Zoé Martin", "CP", "", "Élève retiré"]);
+  });
+
+  it("les élèves de l'année : ceux qui ont une progression, et ceux qu'on vient d'ajouter, par ordre de nom", () => {
+    const liste = [
+      prog("2026-2027", cleDeLEleve("e2"), 1, colonnes), prog("2026-2027", cleDeLEleve("e3"), 1), // vide : pas encore
+      prog("2027-2028", cleDeLEleve("e3"), 2, colonnes), prog("2026-2027", "CP", 1, colonnes),
+    ];
+    expect(elevesDeLaProgression(eleves, liste, "2026-2027", [cleNiveauAjoute("2026-2027", cleDeLEleve("e1")), cleNiveauAjoute("2026-2027", "CE1")]))
+      .toEqual(["eleve:e1", "eleve:e2"]);
+    // Les niveaux de la classe ne comptent pas les élèves, ni l'inverse.
+    expect(niveauxDeLaProgression(NIVEAUX, liste, "2026-2027", [cleNiveauAjoute("2026-2027", cleDeLEleve("e1"))])).toEqual(["CP"]);
+    expect(tableauSansNiveau([prog("2026-2027", cleDeLEleve("e2"), 1, colonnes)], "2026-2027", [])).toBe(true);
+    // Leur ordre se garde à part.
+    expect(cleOrdreDesEleves("2026-2027")).not.toBe(cleOrdreDesTableaux("2026-2027"));
+  });
+
+  it("reprend les colonnes de la classe d'abord ; la classe ne reprend jamais celles d'un élève", () => {
+    const liste = [
+      prog("2026-2027", cleDeLEleve("e2"), 1, [{ id: "x", titre: "Autonomie" }]),
+      prog("2026-2027", "", 1, [{ id: "a", titre: "EPS" }]),
+    ];
+    const nom = nomDuTableau(eleves);
+    expect(sourcesDeColonnes(liste, "2026-2027", cleDeLEleve("e1"), 1, nom).map((s) => s.libelle)).toEqual([LA_CLASSE]);
+    expect(sourcesDeColonnes([liste[0]], "2026-2027", cleDeLEleve("e1"), 1, nom).map((s) => s.libelle)).toEqual(["Zoé Martin"]);
+    expect(sourcesDeColonnes([liste[0]], "2026-2027", "CP", 1, nom)).toEqual([]);
   });
 });

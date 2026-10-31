@@ -22,6 +22,7 @@ import {
   lireEtat, memeEtat, niveauxDeLaProgression, nombreDeSemaines, progressionDe, remettreColonne, remplie, sansColonne, semainesDeLaPeriode,
   tableauSansNiveau, cleOrdreDesTableaux, dansLOrdre, deplacerTableau, lireOrdreDesTableaux, renommerDansLOrdre,
   sourcesDeColonnes, titreConnu, titresProposes, type Colonne, type EtatProg, type GroupeDeTitres, type SemaineDeClasse, type SourceDeColonnes,
+  cleDeLEleve, cleOrdreDesEleves, elevesDeLaProgression, estUnEleve, nomDuTableau,
 } from "../progressionAnnuelle";
 import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree";
 import { choisirCouleurMatiere, teinteSequence } from "../api";
@@ -176,22 +177,47 @@ interface Cible { annee: string; niveau: string; periode: number }
 const cleCible = (c: Cible) => `${c.annee}|${c.niveau}|${c.periode}`;
 const lireCle = (k: string): Cible => { const [a, n, p] = k.split("|"); return { annee: a, niveau: n, periode: Number(p) }; };
 
+/** Où se garde le choix de la progression : la classe et ses niveaux, ou un tableau par élève. */
+const CLE_MODE_PROGRESSION = "progressionMode";
+
 function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
   const { data, reload } = useAsync(() => api.progressionsAnnuelleList(), []);
   const liste = React.useMemo(() => data ?? [], [data]);
   // Les séquences et leurs séances, qu'on place dans les cases.
   const { data: sequences } = useAsync(() => api.sequencesList(), []);
   const { data: seances } = useAsync(() => api.seancesList(), []);
+  const { data: eleves } = useAsync(() => api.elevesList(), []);
   const [periode, setPeriode] = React.useState(1);
-  // Les niveaux ajoutés à l'année par « + Niveau », le temps qu'ils reçoivent leur progression.
+  // Les niveaux — ou les élèves — ajoutés à l'année par « + Niveau », le temps qu'ils reçoivent leur progression.
   const [ajoutes, setAjoutes] = React.useState<string[]>([]);
   // Le tableau où l'on travaille : c'est lui que ⌘Z annule.
   const [actif, setActif] = React.useState("");
+  // La classe et ses niveaux, ou une progression par élève, comme la programmation : « le suivi par élève doit être hyper
+  // individualisé » (l'enseignant, 31 octobre 2026). Tant qu'on n'a rien choisi ici, c'est le choix de la programmation.
+  const [mode, setMode] = React.useState<"classe" | "eleves">("classe");
+  React.useEffect(() => {
+    api.settingsAll().then((r) => {
+      const choisi = r[CLE_MODE_PROGRESSION];
+      if (choisi === "classe" || choisi === "eleves") setMode(choisi);
+      else if (r[CLE_MODE_PROG] === "ime") setMode("eleves");
+    }).catch(() => {});
+  }, []);
+  const choisirMode = (m: "classe" | "eleves") => {
+    setMode(m);
+    setActif("");
+    api.settingSet(CLE_MODE_PROGRESSION, m).catch(() => {});
+  };
+  const parEleve = mode === "eleves";
   // Un niveau vaut pour l'année : il a son tableau à chaque période.
   const niveaux = niveauxDeLaProgression(NIVEAUX_SCOLAIRES, liste, annee, ajoutes);
   const avecClasse = tableauSansNiveau(liste, annee, niveaux);
   const libres = NIVEAUX_SCOLAIRES.filter((n) => !niveaux.includes(n));
-  const [ordre, changerOrdre] = useOrdreDesTableaux(annee);
+  // Les élèves aussi : leur nom en tête du tableau, à la place du niveau.
+  const parNom = React.useMemo(() => [...(eleves ?? [])].sort((a, b) => a.nom.localeCompare(b.nom, "fr")), [eleves]);
+  const nommer = React.useMemo(() => nomDuTableau(parNom), [parNom]);
+  const desEleves = elevesDeLaProgression(parNom, liste, annee, ajoutes);
+  const elevesLibres = parNom.filter((e) => !desEleves.includes(cleDeLEleve(e.id)));
+  const [ordre, changerOrdre] = useOrdreDesTableaux(annee, parEleve ? cleOrdreDesEleves(annee) : cleOrdreDesTableaux(annee));
 
   // Les titres proposés, et la couleur qu'ils donnent à leur colonne.
   const sources = useSourcesDeTitres();
@@ -205,15 +231,18 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
 
   // Ce que montre chaque tableau, pour imprimer la période entière.
   const etats = React.useRef(new Map<string, EtatProg>());
-  const tableaux = dansLOrdre([...(avecClasse ? [""] : []), ...niveaux], ordre);
+  const tableaux = parEleve ? dansLOrdre(desEleves, ordre) : dansLOrdre([...(avecClasse ? [""] : []), ...niveaux], ordre);
   const etatDe = (n: string) => etats.current.get(cleCible({ annee, niveau: n, periode })) ?? lireEtat(progressionDe(liste, annee, n, periode));
   const imprimer = () => imprimerProgression(annee, periode, tableaux.map((n) => {
     const e = etatDe(n);
-    return { niveau: n, colonnes: e.colonnes.map((c) => ({ ...c, teinte: teinte(c) })), cellules: e.cellules, seances: e.seances };
+    return { niveau: nommer(n), colonnes: e.colonnes.map((c) => ({ ...c, teinte: teinte(c) })), cellules: e.cellules, seances: e.seances };
   }), semainesCal, nomDeSeance(seances ?? []));
 
   const ajouterNiveau = (e: React.MouseEvent) => openCtx(e, libres.map((n) => ({
     label: n, onClick: () => { setAjoutes((a) => [...a, cleNiveauAjoute(annee, n)]); setActif(n); },
+  })));
+  const ajouterEleve = (e: React.MouseEvent) => openCtx(e, elevesLibres.map((x) => ({
+    label: x.nom, onClick: () => { const n = cleDeLEleve(x.id); setAjoutes((a) => [...a, cleNiveauAjoute(annee, n)]); setActif(n); },
   })));
   /** Donne au tableau `de` le niveau `vers`, pour toute l'année ; vide : sans niveau. */
   const changerNiveau = async (de: string, vers: string) => {
@@ -235,18 +264,23 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
       setAjoutes((a) => a.filter((k) => k !== cleNiveauAjoute(annee, n)));
       for (const x of avant) await api.progressionAnnuelleEcrire(annee, n, x.periode, enJson(x.etat), enJson(ETAT_VIDE));
       reload();
-      toastAnnulable(`${n} retiré de la progression ${annee}.`, async () => {
+      toastAnnulable(estUnEleve(n) ? `La progression de ${nommer(n)} est retirée de ${annee}.` : `${n} retiré de la progression ${annee}.`, async () => {
         for (const x of avant) await api.progressionAnnuelleEcrire(annee, n, x.periode, enJson(ETAT_VIDE), enJson(x.etat));
         setAjoutes((a) => [...a, cleNiveauAjoute(annee, n)]);
         reload();
       });
-    } catch (err) { toast(`Niveau non retiré : ${texteErreur(err)}`, { icone: "⚠️" }); }
+    } catch (err) { toast(`${estUnEleve(n) ? "Progression non retirée" : "Niveau non retiré"} : ${texteErreur(err)}`, { icone: "⚠️" }); }
   };
 
   return (
     <>
       <div className="toolbar">
         <AnneeSelect annee={annee} setAnnee={setAnnee} />
+        {/* La classe et ses niveaux, ou un tableau par élève : le même choix que la programmation. */}
+        <div className="seg">
+          <button className={parEleve ? "" : "active"} onClick={() => choisirMode("classe")}>Classe</button>
+          <button className={parEleve ? "active" : ""} onClick={() => choisirMode("eleves")}>👧 Par élève (IME)</button>
+        </div>
         {/* Les périodes, à côté de l'année (demande de l'enseignant, octobre 2026). */}
         <div className="prog-periodes">
           {[1, 2, 3, 4, 5].map((p) => <PeriodeChip key={p} p={p} selected={periode === p} onClick={() => setPeriode(p)} />)}
@@ -261,34 +295,41 @@ function ProgressionAnnuelleVue({ annee, setAnnee }: AnneeProps) {
         <SectionProgression key={n || "classe"} cible={{ annee, niveau: n, periode }} liste={liste} lecture={data} relire={reload}
           sources={sources} teinte={teinte} semainesCal={semainesCal} clavier={actif === n} onActif={() => setActif(n)}
           surEtat={(e) => etats.current.set(cleCible({ annee, niveau: n, periode }), e)}
-          sequences={sequences ?? []} seances={seances ?? []}
+          sequences={sequences ?? []} seances={seances ?? []} nommer={nommer}
+          niveauDesSeances={estUnEleve(n) ? parNom.find((e) => cleDeLEleve(e.id) === n)?.niveau : undefined}
           niveauUI={<>
-            <NiveauDuTableau niveau={n} libres={libres} sansNiveau={!avecClasse} quoi="cette progression"
-              onChanger={(vers) => { void changerNiveau(n, vers); }} onRetirer={n ? () => { void retirerNiveau(n); } : undefined} />
+            {estUnEleve(n)
+              ? <EleveDuTableau nom={nommer(n)} libres={elevesLibres}
+                onChanger={(id) => { void changerNiveau(n, cleDeLEleve(id)); }} onRetirer={() => { void retirerNiveau(n); }} />
+              : <NiveauDuTableau niveau={n} libres={libres} sansNiveau={!avecClasse} quoi="cette progression"
+                onChanger={(vers) => { void changerNiveau(n, vers); }} onRetirer={n ? () => { void retirerNiveau(n); } : undefined} />}
             <MonterDescendre n={n} tableaux={tableaux} onOrdre={changerOrdre} />
           </>} />
       ))}
+      {parEleve && !tableaux.length && <Empty icone="👧" titre="Aucune progression par élève" />}
       <div className="prog-ajout-niveau">
-        <button className="btn" onClick={ajouterNiveau} disabled={!libres.length} title="Ajouter à l'année la progression d'un niveau">+ Niveau</button>
+        {parEleve
+          ? <button className="btn" onClick={ajouterEleve} disabled={!elevesLibres.length} title="Ajouter à l'année la progression d'un élève">+ Élève</button>
+          : <button className="btn" onClick={ajouterNiveau} disabled={!libres.length} title="Ajouter à l'année la progression d'un niveau">+ Niveau</button>}
       </div>
     </>
   );
 }
 
-/** L'ordre des tableaux de l'année, enregistré à chaque ↑ ↓ (voir `cleOrdreDesTableaux`). */
-function useOrdreDesTableaux(annee: string): [string[], (suite: string[]) => void] {
+/** L'ordre des tableaux de l'année, enregistré à chaque ↑ ↓ (voir `cleOrdreDesTableaux`) ; celui des élèves a sa clé à lui. */
+function useOrdreDesTableaux(annee: string, cle = cleOrdreDesTableaux(annee)): [string[], (suite: string[]) => void] {
   const [ordre, setOrdre] = React.useState<string[]>([]);
   React.useEffect(() => {
     let vivant = true;
     setOrdre([]);
-    api.settingGet(cleOrdreDesTableaux(annee)).then((v) => { if (vivant) setOrdre(lireOrdreDesTableaux(v)); }).catch(() => {});
+    api.settingGet(cle).then((v) => { if (vivant) setOrdre(lireOrdreDesTableaux(v)); }).catch(() => {});
     return () => { vivant = false; };
-  }, [annee]);
+  }, [cle]);
   const changer = React.useCallback((suite: string[]) => {
     setOrdre(suite);
-    api.settingSet(cleOrdreDesTableaux(annee), JSON.stringify(suite))
+    api.settingSet(cle, JSON.stringify(suite))
       .catch((err) => toast(`Ordre des tableaux non enregistré : ${texteErreur(err)}`, { icone: "⚠️" }));
-  }, [annee]);
+  }, [cle]);
   return [ordre, changer];
 }
 
@@ -356,10 +397,29 @@ function NiveauDuTableau({ niveau, libres, sansNiveau, quoi, onChanger, onRetire
 }
 
 /**
- * Le tableau d'une progression : celle de la classe, ou d'un niveau ajouté à
- * la période. Il s'écrit par écart, comme tout ce qui se range en collection.
+ * L'élève d'un tableau de la progression par élève, en tête, à la place du
+ * niveau : on en change, ou on le retire de l'année.
  */
-function SectionProgression({ cible, liste, lecture, relire, sources, teinte, semainesCal, clavier, onActif, surEtat, niveauUI, sequences, seances }: {
+function EleveDuTableau({ nom, libres, onChanger, onRetirer }: {
+  nom: string; libres: Eleve[]; onChanger: (id: string) => void; onRetirer: () => void;
+}) {
+  const menu = (e: React.MouseEvent) => openCtx(e, [
+    ...(libres.length ? [{ label: "Changer d'élève", icon: "🔁", enfants: libres.map((x) => ({ label: x.nom, onClick: () => onChanger(x.id) })) }] : []),
+    { label: `Retirer ${nom} de l'année`, icon: "🗑", danger: true, sep: libres.length > 0, onClick: onRetirer },
+  ]);
+  return (
+    <button className="prog-niveau" onClick={menu} title="L'élève de cette progression : en changer, ou le retirer">
+      {nom}<span aria-hidden="true"> ▾</span>
+    </button>
+  );
+}
+
+/**
+ * Le tableau d'une progression : celle de la classe, d'un niveau ajouté à
+ * la période, ou d'un élève. Il s'écrit par écart, comme tout ce qui se range
+ * en collection.
+ */
+function SectionProgression({ cible, liste, lecture, relire, sources, teinte, semainesCal, clavier, onActif, surEtat, niveauUI, sequences, seances, nommer, niveauDesSeances }: {
   cible: Cible; liste: ProgressionAnnuelle[]; lecture: unknown; relire: () => void;
   sources: GroupeDeTitres[]; teinte: (c: Colonne) => string; semainesCal: SemaineDeClasse[];
   clavier: boolean; onActif: () => void; surEtat: (e: EtatProg) => void;
@@ -367,8 +427,13 @@ function SectionProgression({ cible, liste, lecture, relire, sources, teinte, se
   niveauUI: React.ReactNode;
   /** Les séquences et leurs séances, à placer dans les cases. */
   sequences: Sequence[]; seances: Seance[];
+  /** Ce que dit la tête d'un tableau — le nom d'un élève plutôt que sa clé —, pour celui-ci et pour ceux dont on reprend les colonnes. */
+  nommer?: (niveau: string) => string;
+  /** Le niveau dont les séances se proposent d'abord : celui de l'élève, pour sa progression. */
+  niveauDesSeances?: string;
 }) {
   const { annee, niveau, periode } = cible;
+  const nom = nommer ? nommer(niveau) : niveau;
   const cle = cleCible(cible);
   const prog = progressionDe(liste, annee, niveau, periode);
   const { present: etat, commit, defaireOuRemettre } = useCollectionParEcart<EtatProg>({
@@ -415,7 +480,7 @@ function SectionProgression({ cible, liste, lecture, relire, sources, teinte, se
     ]);
   };
   const setCase = (semaine: number, colonne: string, texte: string) => commit(avecCase(etat, semaine, colonne, texte));
-  const reprises = colonnes.length === 0 ? sourcesDeColonnes(liste, annee, niveau, periode) : [];
+  const reprises = colonnes.length === 0 ? sourcesDeColonnes(liste, annee, niveau, periode, nommer) : [];
   const reprendre = (src: SourceDeColonnes) => commit({ ...etat, colonnes: copieDesColonnes(src.colonnes, newId) });
 
   // ── Export / Import JSON (format compatible app native) ───────────────
@@ -427,10 +492,14 @@ function SectionProgression({ cible, liste, lecture, relire, sources, teinte, se
     const { colonnesJson, cellulesJson, seancesJson } = enJson(etat);
     const bundle = {
       version: 4, type: "progression", dateExport: new Date().toISOString(), appVersion: "tauri",
-      progressionsAnnuelles: [{ id: prog?.id ?? newId(), annee: "", periode, niveau, colonnesJSON: colonnesJson, cellulesJSON: cellulesJson, seancesJSON: seancesJson }],
+      // La clé d'un élève ne sort pas : le fichier se partage, et s'importe sur le tableau où on l'ouvre.
+      progressionsAnnuelles: [{
+        id: prog?.id ?? newId(), annee: "", periode, niveau: estUnEleve(niveau) ? "" : niveau,
+        colonnesJSON: colonnesJson, cellulesJSON: cellulesJson, seancesJSON: seancesJson,
+      }],
     };
     const d = isoJour(new Date());
-    telechargerTexte(`Progression_${annee}_${niveau || "classe"}_P${periode}_${d}.json`, JSON.stringify(bundle, null, 2));
+    telechargerTexte(`Progression_${annee}_${(nom || "classe").replace(/[/\\:*?"<>|]+/g, "-")}_P${periode}_${d}.json`, JSON.stringify(bundle, null, 2));
   };
   const importer = async (file: File) => {
     try {
@@ -461,11 +530,11 @@ function SectionProgression({ cible, liste, lecture, relire, sources, teinte, se
         <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: "none" }}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void importer(f); e.target.value = ""; }} />
         <button className="btn sm" onClick={ajouterCol}>+ Colonne</button>
-        <button className="btn sm ghost" aria-label={`Actions du tableau ${niveau || LA_CLASSE}`} onClick={menuTableau}>⋯</button>
+        <button className="btn sm ghost" aria-label={`Actions du tableau ${nom || LA_CLASSE}`} onClick={menuTableau}>⋯</button>
       </div>
       {colonnes.length === 0 ? (
         <div className="prog-vide">
-          <Empty icone="📅" titre={`${niveau ? `${niveau} · ` : ""}P${periode} : aucune colonne`} />
+          <Empty icone="📅" titre={`${nom ? `${nom} · ` : ""}P${periode} : aucune colonne`} />
           <div className="prog-vide-actions">
             {reprises.map((s) => (
               <button key={s.libelle} className="btn" onClick={() => reprendre(s)}>
@@ -502,7 +571,7 @@ function SectionProgression({ cible, liste, lecture, relire, sources, teinte, se
                     <td key={c.id} className="prog-case" style={{ "--couleur": teinte(c) } as React.CSSProperties}>
                       <div className="progm-case-haut un-bouton">
                         <CaseProgression valeur={cellules[cleCase(s.numero, c.id)] ?? ""} onChange={(v) => setCase(s.numero, c.id, v)}
-                          libelle={`${niveau ? `${niveau}, ` : ""}${c.titre}, semaine ${s.numero}`} />
+                          libelle={`${nom ? `${nom}, ` : ""}${c.titre}, semaine ${s.numero}`} />
                         {/* Au coin de la case, au survol : y placer des séances de ses séquences. */}
                         <div className="progm-coin">
                           <button className="progm-lier" title="Placer des séances" aria-label={`Placer des séances, ${c.titre}, semaine ${s.numero}`}
@@ -521,7 +590,7 @@ function SectionProgression({ cible, liste, lecture, relire, sources, teinte, se
       {editCol && <ColonneForm colonne={editCol.colonne} nouvelle={editCol.nouvelle} sources={sources} teinte={teinte}
         onClose={() => setEditCol(null)} onValider={validerCol} onSupprimer={editCol.nouvelle ? undefined : () => supprimerCol(editCol.colonne)} />}
       {placer && (
-        <ChoisirSeances titre={placer.colonne.titre} semaine={placer.semaine} niveau={niveau} periode={periode}
+        <ChoisirSeances titre={placer.colonne.titre} semaine={placer.semaine} niveau={niveauDesSeances ?? niveau} periode={periode}
           sequences={sequences} seances={seances} selection={placees[cleCase(placer.semaine, placer.colonne.id)] ?? []}
           onClose={() => setPlacer(null)}
           onValider={(ids) => { commit(avecSeances(etat, placer.semaine, placer.colonne.id, ids)); setPlacer(null); }} />
