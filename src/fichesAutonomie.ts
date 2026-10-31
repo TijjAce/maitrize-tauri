@@ -40,6 +40,7 @@ import type { SuiviSequence } from "./suiviSequences";
 import { ETAPES_CONSEILLEES, REGLAGES_SUITES, STYLE_SUITES, htmlSuites, suitesPour } from "./suitesImages";
 import { MOTIFS, REGLAGES_PAR_DEFAUT as REGLAGES_COLORIAGE, couleursDuMotif, fabriquerColoriage, feuilleDuColoriage, type Graphie, type ReglagesColoriage } from "./coloriageMagique";
 import { REGLAGES_CURSIVE, STYLE_CURSIVE, htmlEcritureCursive, modelesDeLEtape, type ReglagesCursive } from "./ecritureCursive";
+import { REGLAGES_MOTIFS, STYLE_MOTIFS, htmlMotifs, reglagesDuNiveau as motifsDuNiveau, type ReglagesMotifs } from "./motifs";
 // Mathématiques
 import { PART_A_REGROUPER, REGLAGES_CUBES, exercicesCubes, htmlCubes, reglagesCubesSurs, type IdNiveauCubes, type ReglagesCubes } from "./cubesNumeration";
 import { STYLE_SEQUENCE_CUBES, reglagesDeLaFeuille as feuilleDeCubes } from "./sequenceCubes";
@@ -53,12 +54,18 @@ import { REGLAGES_DEPLACEMENTS, STYLE_DEPLACEMENTS, htmlDeplacements } from "./d
 import { REGLAGES_HEURE, STYLE_DUREES, STYLE_HEURE, htmlAtelierHeure, type ReglagesHeure } from "./heure";
 import { REGLAGES_MONNAIE, STYLE_MONNAIE, htmlMonnaie } from "./monnaie";
 import { REGLAGES_MESURES, STYLE_MESURES, htmlMesures } from "./mesures";
+import { STYLE_REPERAGE, htmlReperage, type ReglagesReperage } from "./reperageNombres";
+import { STYLE_NUMERATION_CP, htmlSuite, type ReglagesSuite } from "./numerationCP";
+import { REGLAGES_DONNEES, STYLE_DONNEES, htmlDonnees, type ReglagesDonnees } from "./donnees";
+import { REGLAGES_ARBRE, REGLAGES_FRACTIONS, STYLE_JEUX_MATHS, additionsArbre, htmlArbreCalcul, htmlFractions, type ReglagesArbre, type ReglagesFractions } from "./jeuxMaths";
 // Français
 import { REGLAGES_MOTS_MELES, STYLE_MOTS_MELES, grilleMotsMeles, htmlMotsMeles } from "./motsMeles";
 import { REGLAGES_COMPREHENSION, STYLE_COMPREHENSION, htmlComprehension } from "./comprehension";
 import { REGLAGES_GRAMMAIRE, STYLE_GRAMMAIRE, htmlGrammaire, type ExerciceGrammaire } from "./grammaire";
 import { MOTS_FREQUENTS, PHRASES_DU_JOUR, REGLAGES_ORTHOGRAPHE, STYLE_ORTHOGRAPHE, htmlOrthographe } from "./orthographe";
 import { REGLAGES_ECRIRE, STYLE_ECRIRE, htmlEcrire } from "./ecrire";
+import { REGLAGES_PHRASES, STYLE_PHRASES, htmlPhrasesEnDesordre, phrasesEnDesordre } from "./phrasesEnDesordre";
+import { REGLAGES_TROUS, STYLE_TROUS, htmlTexteATrous } from "./texteATrous";
 import { etapeDeLaSequence, reglureDe } from "./feuillesDuFrancais";
 import { ETAPES, motsDe } from "./progressionCgp";
 
@@ -292,6 +299,27 @@ const GRAMMAIRE: Record<Elementaire, { exercice: ExerciceGrammaire; nom: string 
   CE2: { exercice: "classes", nom: "Les classes de mots" },
 };
 
+/**
+ * Compléter le motif de l'âge (demande de l'enseignant, 31 octobre 2026 : « ajoute plus d'ateliers autonomes ») :
+ * A BB en moyenne section, le motif qui grandit en grande — chaque case vide se dessine, sans rien à découper. Le
+ * fil à linge de la petite section et le modèle à reproduire se font avec l'enseignant : pas de fiche à faire seul.
+ */
+function motif(c: ContexteFiche, graine: number): FicheFabriquee {
+  const niveau = c.niveau as Maternelle;
+  const r: ReglagesMotifs = { ...REGLAGES_MOTIFS, niveau, ...motifsDuNiveau(niveau), exercice: "completer", decouper: false, autocorrective: false };
+  return commeLAtelier(htmlMotifs(r, {}, hasard(graine)), STYLE_FEUILLE + STYLE_MOTIFS, "motifs", r);
+}
+
+/** Des phrases à remettre dans l'ordre : celles du jour de la classe, les plus courtes au CP et au CE1 ; sans le corrigé, qui est pour l'enseignant. */
+function phrasesARanger(c: ContexteFiche, graine: number): FicheFabriquee {
+  const classe = elementaire(c.niveau);
+  const toutes = [...PHRASES_DU_JOUR[classe]].sort((a, b) => a.length - b.length);
+  const choisies = classe === "CE2" ? piocher(hasard(graine), toutes, 4) : toutes.slice(0, 4);
+  const r = { ...REGLAGES_PHRASES, phrases: choisies.join("\n"), lignes: true };
+  const html = htmlPhrasesEnDesordre(phrasesEnDesordre(choisies, graine), r).replace(/<div class="page corrige">[\s\S]*?<\/ol><\/div>/, "");
+  return commeLAtelier(html, STYLE_FEUILLE + STYLE_PHRASES, "phrases", r);
+}
+
 const C2: NiveauFiches[] = ["CP", "CE1", "CE2"];
 const DES_PERIODES = (de: number) => [1, 2, 3, 4, 5].filter((p) => p >= de);
 
@@ -299,6 +327,7 @@ export const RECETTES: RecetteDeFiche[] = [
   // ── Maternelle
   { id: "suite", atelier: "suites", nom: "Remets les images dans l'ordre", domaine: "temps", niveaux: ["PS", "MS", "GS"],
     fabriquer: (c, g, o) => suiteDImages(c, g, o) },
+  { id: "motif", atelier: "motifs", nom: "Complète le motif", domaine: "nombres", niveaux: ["MS", "GS"], fabriquer: (c, g) => motif(c, g) },
   { id: "coloriage-chiffres", atelier: "coloriage", nom: "Coloriage magique des chiffres", domaine: "nombres", niveaux: ["MS", "GS"],
     fabriquer: (c, g) => coloriageDesChiffres(c, g) },
   { id: "coloriage-lettres", atelier: "coloriage", nom: "Coloriage magique des lettres", domaine: "lettres", niveaux: ["GS"],
@@ -348,6 +377,38 @@ export const RECETTES: RecetteDeFiche[] = [
       const reglages = { ...REGLAGES_MESURES, exercice: "mesurer" as const, grandeur: "longueur" as const, classe: elementaire(c.niveau), combien: 6 };
       return commeLAtelier(htmlMesures(reglages, g), STYLE_FEUILLE + STYLE_MESURES, "mesures", reglages);
     } },
+  { id: "droite", atelier: "demiDroite", nom: "Placer des nombres sur la droite graduée", domaine: "maths", niveaux: C2,
+    fabriquer: (c, g) => {
+      const r: ReglagesReperage = { exercice: "dd-placer", classe: elementaire(c.niveau), titre: "" };
+      return commeLAtelier(htmlReperage(r, g), STYLE_FEUILLE + STYLE_REPERAGE, "demiDroite", r);
+    } },
+  { id: "ordinaux", atelier: "ordinaux", nom: "Premier, deuxième… les rangs", domaine: "maths", niveaux: ["CP", "CE1"],
+    fabriquer: (c, g) => {
+      const r: ReglagesReperage = { exercice: "ord-file", classe: c.niveau === "CE1" ? "CE1" : "CP", titre: "" };
+      return commeLAtelier(htmlReperage(r, g), STYLE_FEUILLE + STYLE_REPERAGE, "ordinaux", r);
+    } },
+  { id: "suite-nombres", atelier: "suiteNombres", nom: "La suite des nombres", domaine: "maths", niveaux: ["CP"],
+    fabriquer: (c, g) => {
+      // Les nombres de la période : jusqu'à vingt, puis cinquante-neuf, puis cent.
+      const r: ReglagesSuite = { titre: "", exercices: ["manquants", "voisins"], de: 1, a: c.periode <= 1 ? 20 : c.periode === 2 ? 59 : 100 };
+      return commeLAtelier(htmlSuite(r, g), STYLE_FEUILLE + STYLE_NUMERATION_CP, "suiteNombres", r);
+    } },
+  { id: "donnees", atelier: "donnees", nom: (c) => (c.niveau === "CP" ? "Le tableau des formes et des couleurs" : "Lire un diagramme en barres"),
+    domaine: "maths", niveaux: C2,
+    fabriquer: (c, g) => {
+      const r: ReglagesDonnees = { ...REGLAGES_DONNEES, exercice: c.niveau === "CP" ? "doubleEntree" : "lireDiagramme", classe: elementaire(c.niveau), combien: 6 };
+      return commeLAtelier(htmlDonnees(r, g), STYLE_FEUILLE + STYLE_DONNEES, "donnees", r);
+    } },
+  { id: "fractions", atelier: "fractions", nom: "Colorier des fractions", domaine: "maths", niveaux: ["CE1", "CE2"],
+    fabriquer: (c, g) => {
+      const r: ReglagesFractions = { ...REGLAGES_FRACTIONS, materiel: ["colorier"], denominateurs: c.niveau === "CE1" ? [2, 3, 4] : [2, 3, 4, 5, 6, 8, 10] };
+      return commeLAtelier(htmlFractions(r, g), STYLE_FEUILLE + STYLE_JEUX_MATHS, "fractions", r);
+    } },
+  { id: "arbre", atelier: "arbre", nom: "Les arbres de calcul", domaine: "maths", niveaux: ["CE1", "CE2"],
+    fabriquer: (c, g) => {
+      const r: ReglagesArbre = { ...REGLAGES_ARBRE, combien: 6, retenue: c.niveau === "CE1" ? "sans" : "mixte", aide: true };
+      return commeLAtelier(htmlArbreCalcul(additionsArbre(r, g), r), STYLE_FEUILLE + STYLE_JEUX_MATHS, "arbreCalcul", r);
+    } },
   // ── Français
   { id: "cursive", atelier: "cursive", nom: "Écriture cursive", domaine: "francais", niveaux: C2,
     fabriquer: (c, g) => c.niveau === "CP"
@@ -377,12 +438,20 @@ export const RECETTES: RecetteDeFiche[] = [
       const reglages = { ...REGLAGES_ECRIRE, exercice: "motsImposes" as const, classe: elementaire(c.niveau) };
       return commeLAtelier(htmlEcrire(reglages, g), STYLE_FEUILLE + STYLE_ECRIRE, "ecrire", reglages);
     } },
+  { id: "phrases-desordre", atelier: "phrases", nom: "Remets la phrase dans l'ordre", domaine: "francais", niveaux: C2, lecture: true,
+    fabriquer: (c, g) => phrasesARanger(c, g) },
+  { id: "etre-avoir", atelier: "trous", nom: "Être ou avoir ?", domaine: "francais", niveaux: ["CE1", "CE2"], lecture: true,
+    fabriquer: (_c, g) => commeLAtelier(htmlTexteATrous(REGLAGES_TROUS, g), STYLE_FEUILLE + STYLE_TROUS, "trous", REGLAGES_TROUS) },
 ];
 
 // Au CP, ce qui attend que le code soit bien avancé : un texte se lit seul à
 // partir de la troisième période, la grammaire de la quatrième ; la monnaie
 // vient en fin d'année.
-const PERIODES_DU_CP: Record<string, number[]> = { comprendre: DES_PERIODES(3), grammaire: DES_PERIODES(4), monnaie: DES_PERIODES(4) };
+const PERIODES_DU_CP: Record<string, number[]> = {
+  comprendre: DES_PERIODES(3), grammaire: DES_PERIODES(4), monnaie: DES_PERIODES(4),
+  // Des phrases à lire seul quand le code est avancé ; la droite graduée quand les nombres vont au-delà de vingt.
+  "phrases-desordre": DES_PERIODES(3), droite: DES_PERIODES(3),
+};
 
 /** La recette d'une fiche : l'une de la liste, ou l'un des supports de travail et des séances du jour. */
 export const recetteDe = (id: string, supports: readonly RecetteDeFiche[] = []) =>
@@ -502,6 +571,7 @@ export const MINUTEURS_DE_BASE: Record<string, number> = {
   "cubes-ecrire": 10, "cubes-dessiner": 10, comparer: 10, pyramides: 10, "coloriage-calcul": 20, posees: 15,
   reproduire: 15, fusee: 10, heure: 10, monnaie: 10, mesurer: 10,
   cursive: 10, "mots-meles": 15, comprendre: 15, grammaire: 10, listes: 10, "mots-imposes": 15,
+  motif: 10, droite: 10, ordinaux: 10, "suite-nombres": 10, donnees: 10, fractions: 10, arbre: 10, "phrases-desordre": 15, "etre-avoir": 10,
 };
 
 /** Où Réglages › En retard garde les temps changés : un réglage partagé avec l'autre ordinateur (préfixe « fabriquer: »). */
@@ -564,6 +634,15 @@ export const DOMAINE_DES_FICHES: Record<string, { matiere: string; domaine: stri
   grammaire: { matiere: "Français", domaine: "Grammaire et orthographe" },
   listes: { matiere: "Français", domaine: "Grammaire et orthographe" },
   "mots-imposes": { matiere: "Français", domaine: "Écriture" },
+  motif: { matiere: "Structurer sa pensée", domaine: "Acquérir les premiers outils mathématiques" },
+  droite: { matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" },
+  ordinaux: { matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" },
+  "suite-nombres": { matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" },
+  donnees: { matiere: "Mathématiques", domaine: "Organisation et gestion de données" },
+  fractions: { matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" },
+  arbre: { matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" },
+  "phrases-desordre": { matiere: "Français", domaine: "Lecture" },
+  "etre-avoir": { matiere: "Français", domaine: "Grammaire et orthographe" },
 };
 
 /** La matière d'une fiche, écrite au-dessus de son nom dans le déroulement. */
