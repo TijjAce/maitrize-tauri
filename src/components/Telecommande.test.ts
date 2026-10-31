@@ -108,11 +108,11 @@ describe("la fenêtre de la télécommande", () => {
 
   it("une séquence toute faite : celle que son titre nomme, à sa classe et sa période ; sinon il demande laquelle", async () => {
     const nav = vi.fn();
-    expect(await executer("Crée la séquence toute faite de la symétrie au CE2", nav))
-      .toMatchObject({ ok: false, fait: "Laquelle ? « La symétrie axiale », « La symétrie axiale : reconnaître et compléter une figure ». Dites quelques mots de son titre." });
-    const q = await executer("Crée la séquence toute faite de la technique de la multiplication au CE2", nav);
+    expect(await executer("Crée la séquence toute faite des longueurs au CE1", nav))
+      .toMatchObject({ ok: false, fait: "Laquelle ? « Mesurer, comparer, estimer des longueurs », « Les unités de longueur : m, cm, km ». Dites quelques mots de son titre." });
+    const q = await executer("Crée la séquence toute faite de la symétrie au CE2", nav);
     expect(q).toMatchObject({
-      ok: true, aConfirmer: expect.stringMatching(/^Créer la séquence toute faite « La technique de la multiplication, des paquets au quadrillage \(CE2\) » \(période 4\) : \d+ séances et leurs feuilles \?$/),
+      ok: true, aConfirmer: expect.stringMatching(/^Créer la séquence toute faite « La symétrie axiale \(CE2\) » \(période 5\) : \d+ séances et leurs feuilles \?$/),
     });
     expect(await decider(q.id!, false, nav)).toMatchObject({ fait: "Rien n'est créé." });
     expect(await executer("Crée la séquence toute faite des volcans", nav)).toMatchObject({ ok: false, fait: "Aucune séquence toute faite ne parle de « Les volcans »." });

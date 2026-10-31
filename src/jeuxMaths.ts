@@ -467,10 +467,9 @@ export function htmlOperationsSurFractions(r: ReglagesFractions, graine: number)
 
 // ── Colorier une fraction de formes non partagées ─────────────────────────
 //
-// La séance « Partager soi-même : coder et décoder » de la séquence des
-// fractions du manuel du CRPE de l'enseignant : aucune forme n'est partagée
-// d'avance ; on la partage soi-même en parts égales — en pliant, en traçant —,
-// puis on colorie. Pour 3/2 ou 5/4, une forme ne suffit pas.
+// Aucune forme n'est partagée d'avance : on la partage soi-même en parts
+// égales — en pliant, en traçant —, puis on colorie. Pour 3/2 ou 5/4, une
+// forme ne suffit pas.
 
 type FormeAPartager = "disque" | "carre" | "rectangle" | "triangle";
 const FORMES_A_PARTAGER: FormeAPartager[] = ["disque", "carre", "rectangle", "triangle"];

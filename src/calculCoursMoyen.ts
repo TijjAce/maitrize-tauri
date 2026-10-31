@@ -14,12 +14,11 @@
 // soustractions successives, et l'élève apprend à « abaisser » le chiffre
 // suivant. Les nombres sont tirés au sort ; le corrigé suit.
 //
-// Avant la potence, ce que la séquence de la division du manuel du CRPE de
-// l'enseignant fait faire : le quotient et le reste en ligne — 47 = 9 × 5 + 2
-// —, puis le partage rang par rang, les centaines d'abord, le matériel
-// dessiné à côté du tableau. Et, pour qui est prêt, un diviseur à deux
-// chiffres, au-delà du programme du CM1. C'est l'atelier « Le calcul — CM1,
-// CM2 » de Fabriquer : les feuilles des séquences s'y refont.
+// Avant la potence : le quotient et le reste en ligne — 38 = 7 × 5 + 3 —,
+// puis le partage rang par rang, les centaines d'abord, le matériel dessiné
+// à côté du tableau. Et, pour qui est prêt, un diviseur à deux chiffres,
+// au-delà du programme. C'est l'atelier « Le calcul — CM1, CM2 » de
+// Fabriquer : les feuilles des séquences s'y refont.
 
 import { feuille } from "./cartesImprimables";
 import { REGLAGES_CUBES, dessinerCubes } from "./cubesNumeration";
@@ -36,7 +35,7 @@ export const EXERCICES_CALCUL_CM: { id: ExerciceCalculCM; libelle: string }[] = 
   { id: "soustraction-decimaux", libelle: "Soustractions posées de décimaux" },
   { id: "multiplication-entiers", libelle: "Multiplications posées de deux entiers" },
   { id: "multiplication-decimal", libelle: "Multiplier un décimal par un entier" },
-  { id: "quotient-reste", libelle: "Le quotient et le reste, en ligne : 47 = 9 × … + …" },
+  { id: "quotient-reste", libelle: "Le quotient et le reste, en ligne : 38 = 7 × … + …" },
   { id: "division-partages", libelle: "Diviser par partages : centaines, dizaines, unités" },
   { id: "division-euclidienne", libelle: "Divisions euclidiennes, en potence" },
   { id: "division-decimale", libelle: "Divisions décimales, par un chiffre" },
@@ -56,20 +55,11 @@ export interface ReglagesCalculCM {
   dividende?: "entier" | "decimal";
   /**
    * Les chiffres du diviseur d'une division euclidienne : un, comme le
-   * programme du CM1 ; deux, comme 785 ÷ 25, au-delà — le manuel du CRPE de
-   * l'enseignant y va, pour qui est prêt.
+   * programme du CM1 ; deux, au-delà du programme, pour qui est prêt.
    */
   diviseur?: 1 | 2;
-  /** Les additions et soustractions de décimaux : des parties décimales de longueurs quelconques, ou toujours différentes, comme 12,47 + 2,7. */
-  decimales?: "melange" | "differentes";
   /** Les partages : le dividende dessiné en plaques, barres et cubes, à côté de son tableau. */
   materiel?: boolean;
-  /**
-   * Les divisions d'une évaluation : la première a un quotient qui commence
-   * au deuxième chiffre du dividende — 256 ÷ 9 —, la deuxième un zéro au
-   * quotient — 824 ÷ 4 —, les cas que le manuel du CRPE veut y voir.
-   */
-  difficultes?: boolean;
   titre?: string;
 }
 
@@ -139,11 +129,7 @@ function quadrillage(lignes: Ligne[], largeur: number): string {
 
 const vides = (n: number) => Array.from({ length: n }, () => "");
 
-interface Operation {
-  enLigne: string; reponse: string; exercice: string; corrige: string;
-  /** Une division : son quotient commence-t-il au deuxième chiffre du dividende ? A-t-il un zéro ? */
-  difficultes?: { premier: boolean; zero: boolean };
-}
+interface Operation { enLigne: string; reponse: string; exercice: string; corrige: string }
 
 /** Une addition ou une soustraction de décimaux, alignée sur la virgule. */
 function additionOuSoustraction(a: Dec, b: Dec, moins: boolean, posee: boolean): Operation {
@@ -279,7 +265,6 @@ function division(dividende: Dec, diviseur: number, decimalesDuQuotient: number,
     enLigne: `${ecrire(dividende)} ÷ ${diviseur}`,
     reponse: d ? ecrire(q) : `quotient ${fr(q.v)}, reste ${reste}`,
     exercice: rangees(false), corrige: rangees(true),
-    difficultes: { premier: premier > 0, zero: quotient.slice(1).includes(0) },
   };
 }
 
@@ -291,37 +276,17 @@ function unDecimal(alea: () => number, chiffresEntiers: number, decimales: numbe
   return { v, d: decimales };
 }
 
-/** Un décimal dont le dernier chiffre après la virgule n'est pas un zéro : il en montre bien `decimales`. */
-function decimalPlein(alea: () => number, chiffresEntiers: number, decimales: number): Dec {
-  const x = unDecimal(alea, chiffresEntiers, decimales);
-  return x.v % 10 ? x : { v: x.v + entier(alea, 1, 9), d: decimales };
-}
-
-/** Les parties décimales de deux longueurs différentes : un et deux chiffres, comme 12,47 + 2,7 ; au CM2, parfois trois. */
-const LONGUEURS_DIFFERENTES: Record<ReglagesCalculCM["classe"], [number, number][]> = {
-  CM1: [[2, 1], [1, 2]],
-  CM2: [[2, 1], [1, 2], [2, 1], [1, 2], [3, 1], [2, 3]],
-};
-
 function tirer(r: ReglagesCalculCM, alea: () => number): Operation | null {
   const cm1 = r.classe === "CM1";
   switch (r.exercice) {
     case "addition-decimaux":
     case "soustraction-decimaux": {
       const moins = r.exercice === "soustraction-decimaux";
-      let a: Dec, b: Dec;
-      if (r.decimales === "differentes") {
-        const [da, db] = choisir(alea, LONGUEURS_DIFFERENTES[r.classe]);
-        a = decimalPlein(alea, entier(alea, 1, cm1 ? 2 : 3), da);
-        b = decimalPlein(alea, entier(alea, 1, 2), db);
-      } else {
-        // Des décimaux qui n'ont pas toujours le même nombre de chiffres après la virgule : 12,5 + 3,75.
-        a = unDecimal(alea, entier(alea, 1, cm1 ? 3 : 4), entier(alea, 1, 2));
-        b = unDecimal(alea, entier(alea, 1, cm1 ? 2 : 3), entier(alea, 1, 2));
-      }
-      // Comparées en millièmes : trois chiffres après la virgule au plus.
-      if (moins && a.v * 10 ** (3 - a.d) <= b.v * 10 ** (3 - b.d)) [a, b] = [b, a];
-      if (moins && a.v * 10 ** (3 - a.d) === b.v * 10 ** (3 - b.d)) return null;
+      // Des décimaux qui n'ont pas toujours le même nombre de chiffres après la virgule : 12,5 + 3,75.
+      let a = unDecimal(alea, entier(alea, 1, cm1 ? 3 : 4), entier(alea, 1, 2));
+      let b = unDecimal(alea, entier(alea, 1, cm1 ? 2 : 3), entier(alea, 1, 2));
+      if (moins && a.v * 10 ** (2 - a.d) <= b.v * 10 ** (2 - b.d)) [a, b] = [b, a];
+      if (moins && a.v * 10 ** (2 - a.d) === b.v * 10 ** (2 - b.d)) return null;
       return additionOuSoustraction(a, b, moins, r.posees);
     }
     case "multiplication-entiers": {
@@ -338,7 +303,8 @@ function tirer(r: ReglagesCalculCM, alea: () => number): Operation | null {
     }
     case "division-euclidienne": {
       if (r.diviseur === 2) {
-        // Comme 785 ÷ 25 et 936 ÷ 12 ; pour qui est prêt, et au CM2, 7 805 ÷ 27. Le quotient a au moins deux chiffres.
+        // Un diviseur de 11 à 49, sans zéro à la fin ; un dividende de trois chiffres, parfois quatre — plus souvent au CM2. Le quotient a au
+        // moins deux chiffres.
         const diviseur = entier(alea, 11, 49);
         if (diviseur % 10 === 0) return null;
         const dividende = entier(alea, diviseur * 10, cm1 && alea() < 0.8 ? 999 : 9999);
@@ -414,9 +380,8 @@ function estimation(r: ReglagesCalculCM, alea: () => number): { calcul: string; 
 // ── Le quotient et le reste, en ligne ─────────────────────────────────────
 
 /**
- * Ce que la potence demande à chaque étape, en calcul en ligne : 47 = 9 × 5 + 2,
- * le plus grand produit de la table qui ne dépasse pas, et ce qui reste. Le
- * manuel du CRPE de l'enseignant en ouvre la séance du trésor des pirates.
+ * Ce que la potence demande à chaque étape, en calcul en ligne : 38 = 7 × 5 + 3,
+ * le plus grand produit de la table qui ne dépasse pas, et ce qui reste.
  */
 function quotientReste(alea: () => number): { a: number; b: number; q: number; r: number } | null {
   const b = entier(alea, 2, 9), q = entier(alea, 2, 10);
@@ -439,10 +404,9 @@ export interface Partage {
 }
 
 /**
- * Le partage d'un nombre, rang par rang, comme le trésor des pirates du
- * manuel du CRPE de l'enseignant : les centaines d'abord ; celles qui restent
- * font dix fois plus de dizaines, qui s'ajoutent aux dizaines qu'on voyait ;
- * puis les unités. La potence, avant la potence.
+ * Le partage d'un nombre, rang par rang : les centaines d'abord ; celles qui
+ * restent font dix fois plus de dizaines, qui s'ajoutent aux dizaines qu'on
+ * voyait ; puis les unités. La potence, avant la potence.
  */
 export function partager(dividende: number, diviseur: number): Partage {
   const chiffres = String(dividende).split("").map(Number);
@@ -456,7 +420,7 @@ export function partager(dividende: number, diviseur: number): Partage {
   return { dividende, diviseur, lignes };
 }
 
-/** Trois chiffres, comme 672 ÷ 4 et 841 ÷ 5 ; au CM2, parfois quatre. Un échange au moins : il reste des centaines ou des dizaines. */
+/** Trois chiffres ; au CM2, parfois quatre. Un échange au moins : il reste des centaines ou des dizaines. */
 function tirerPartage(r: ReglagesCalculCM, alea: () => number): Partage | null {
   const diviseur = entier(alea, 3, 9);
   const dividende = r.classe === "CM2" && alea() < 0.4 ? entier(alea, 1000, 9999) : entier(alea, 112, 999);
@@ -484,11 +448,11 @@ function htmlPartage(p: Partage, corrige: boolean, materiel: boolean): string {
 
 // ── La feuille ───────────────────────────────────────────────────────────
 
-const REGLE_QUOTIENT_RESTE = "Je cherche dans la table le plus grand produit qui ne dépasse pas le nombre : 9 × 5 = 45. J'écris ce qui reste : 47 − 45 = 2. "
+const REGLE_QUOTIENT_RESTE = "Je cherche dans la table le plus grand produit qui ne dépasse pas le nombre : 7 × 5 = 35. J'écris ce qui reste : 38 − 35 = 3. "
   + "Le reste est plus petit que le nombre de la table.";
 const REGLE_PARTAGES ="Je partage d'abord les centaines, puis les dizaines, puis les unités. Ce qui reste d'un rang, je l'échange : une centaine, c'est dix dizaines ; une dizaine, c'est dix unités. "
   + "J'écris l'égalité : le nombre partagé, c'est le nombre de parts fois la part de chacun, plus le reste.";
-const REGLE_DEUX_CHIFFRES = "J'écris à côté les produits du diviseur qui servent : pour 25, c'est 25, 50, 75, 100… Je cherche combien de fois le diviseur dans le premier morceau du dividende ; "
+const REGLE_DEUX_CHIFFRES = "J'écris à côté les produits du diviseur qui servent : pour 18, c'est 18, 36, 54, 72… Je cherche combien de fois le diviseur dans le premier morceau du dividende ; "
   + "je retranche ; j'abaisse le chiffre suivant, et je recommence. Le reste est plus petit que le diviseur.";
 
 const REGLES: Partial<Record<ExerciceCalculCM, string>> = {
@@ -538,13 +502,9 @@ export function htmlCalculCM(r: ReglagesCalculCM, graine: number): string {
   } else {
     const ops: Operation[] = [];
     const vues = new Set<string>();
-    // Une évaluation de la division : le quotient qui commence au deuxième chiffre, puis le zéro au quotient — tant qu'on en trouve.
-    const voulu = (i: number) => (r.exercice === "division-euclidienne" && r.difficultes ? (["premier", "zero"] as const)[i] : undefined);
     for (let garde = 0; ops.length < combien && garde < 600; garde++) {
       const o = tirer(r, alea);
       if (!o || vues.has(o.enLigne)) continue;
-      const v = voulu(ops.length);
-      if (v && garde < 500 && !o.difficultes?.[v]) continue;
       vues.add(o.enLigne);
       ops.push(o);
     }

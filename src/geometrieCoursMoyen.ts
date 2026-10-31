@@ -380,12 +380,11 @@ function programme(alea: Alea, r: ReglagesGeometrieCM): Bloc {
 
 // ── Lire un programme de construction ─────────────────────────────────────
 //
-// Ce que la séquence « Lire un programme de construction » du manuel du CRPE
-// de l'enseignant fait faire au CM1 : suivre un programme écrit en étapes,
-// avec ses points nommés ; reconnaître, parmi quatre figures, celle qu'il
-// construit — les trois autres ont chacune une erreur ; remettre ses consignes
-// dans l'ordre. Les figures sont en vraie grandeur, pour qu'on les vérifie
-// avec la règle, l'équerre et le compas.
+// Suivre un programme écrit en étapes, avec ses points nommés ; reconnaître,
+// parmi quatre figures, celle qu'il construit — les trois autres ont chacune
+// une erreur ; remettre ses consignes dans l'ordre. Les programmes et leurs
+// figures sont de Maitrize, en vraie grandeur, pour qu'on les vérifie avec la
+// règle, l'équerre et le compas.
 
 interface ProgrammeDeConstruction { etapes: string[]; juste: Trace; fausses: { trace: Trace; pourquoi: string }[] }
 

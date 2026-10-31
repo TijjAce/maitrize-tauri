@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  EXERCICES_BILLES, EXERCICES_SUITE, PARTIES_ABAQUE, htmlAbaque, htmlBilles, htmlEvaluationDixAVingt, htmlSuite, nombreMax,
+  EXERCICES_BILLES, EXERCICES_SUITE, PARTIES_ABAQUE, htmlAbaque, htmlBilles, htmlSuite, nombreMax,
   reglagesAbaqueSurs, reglagesBillesSurs, reglagesSuiteSurs, titreSuite, type ReglagesBilles,
 } from "./numerationCP";
 import { nombreEnLettres } from "./nombresEnLettres";
@@ -20,7 +20,6 @@ describe("les ateliers de la numération au CP : billes et calots, l'abaque, la 
       for (const e of EXERCICES_BILLES) for (const [de, a] of [e.defaut, [e.min, e.max], [e.max - 5, e.max]]) feuilles.push(billesDe({ exercice: e.id, de, a, nombre: 99 }, g));
       for (const [de, a] of [[10, 20], [1, 99], [40, 59], [60, 99]]) feuilles.push(htmlAbaque({ de, a, nombre: 8 }, g));
       for (const [de, a] of [[1, 20], [0, 100], [10, 16], [60, 99], [81, 100]]) feuilles.push(htmlSuite({ de, a, exercices: EXERCICES_SUITE.map((x) => x.id) }, g));
-      feuilles.push(htmlEvaluationDixAVingt(g));
     }
     for (const html of feuilles) {
       expect(html).not.toMatch(/NaN|undefined|Infinity|\[object/);
@@ -51,14 +50,16 @@ describe("les ateliers de la numération au CP : billes et calots, l'abaque, la 
 
   it("dessinent les collections comme on les compte : chaque bille à sa place, et autant que le corrigé le dit", () => {
     for (const g of [1, 2, 3, 4, 5, 6]) {
-      // Les trois cartes du manuel : dix-neuf bleues, dix-huit rouges, dix-sept vertes.
-      const cartes = eleve(billesDe({ exercice: "compter", de: 17, a: 19, nombre: 3 }, g)).split('class="dv-carte"').slice(1);
-      expect(cartes.map((c) => billes(c, 3).length)).toEqual([19, 18, 17]);
-      expect(cartes.map((c) => c.match(/Les billes (\w+)/)![1])).toEqual(["bleues", "rouges", "vertes"]);
+      // De 17 à 19, trois collections : chacune son nombre.
+      const cadres = eleve(billesDe({ exercice: "compter", de: 17, a: 19, nombre: 3 }, g)).split('class="dv-bloc"').slice(1);
+      expect(cadres.map((c) => billes(c, 3).length).sort((x, y) => x - y)).toEqual([17, 18, 19]);
       for (const [de, a] of [[12, 19], [21, 59], [60, 99]]) {
         const html = billesDe({ exercice: "compter", de, a, nombre: 2 }, g);
-        for (const c of eleve(html).split('class="dv-carte"').slice(1)) {
-          const n = Number(corrige(html).match(new RegExp(`Les billes ${c.match(/Les billes (\w+)/)![1]}[\\s\\S]*?<b class="dv-rep">(\\d+)<\\/b>`))![1]);
+        const nombres = [...corrige(html).matchAll(/Il y a <b class="dv-rep">(\d+)<\/b> billes/g)].map((m) => Number(m[1]));
+        const blocs = eleve(html).split('class="dv-bloc"').slice(1);
+        expect(blocs).toHaveLength(nombres.length);
+        for (const [k, c] of blocs.entries()) {
+          const n = nombres[k];
           const pts = billes(c, rayonDe(n));
           expect(pts.length).toBe(n);
           // Aucune bille n'en cache une autre.
@@ -134,13 +135,5 @@ describe("les ateliers de la numération au CP : billes et calots, l'abaque, la 
         }
       }
     }
-    // La première frise de 1 à 20 est celle du manuel : 7, 8, 9 et 17, 18, 19 à retrouver.
-    const premiere = eleve(htmlSuite({ de: 1, a: 20 }, 1)).match(/<table class="dv-frise">.*?<\/table>/)![0];
-    expect(premiere.replace(/<td class="dv-trou"><\/td>/g, " _ ").replace(/<[^>]+>/g, " ").trim().split(/\s+/).join(" "))
-      .toBe("1 2 3 4 5 6 _ _ _ _ 11 12 13 14 15 16 _ _ _ 20");
-    // Et de 21 à 40, la même : 27, 28, 29, 30, 37, 38, 39.
-    const ailleurs = eleve(htmlSuite({ de: 21, a: 40 }, 1)).match(/<table class="dv-frise">.*?<\/table>/)![0];
-    expect(ailleurs.replace(/<td class="dv-trou"><\/td>/g, " _ ").replace(/<[^>]+>/g, " ").trim().split(/\s+/).join(" "))
-      .toBe("21 22 23 24 25 26 _ _ _ _ 31 32 33 34 35 36 _ _ _ 40");
   });
 });

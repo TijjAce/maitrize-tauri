@@ -523,10 +523,11 @@ function aireConvertir(alea: Alea, r: ReglagesGrandeursCM): Bloc {
 
 // ── Comparer et paver, avant de mesurer ───────────────────────────────────
 //
-// Les séances de la séquence des aires du manuel du CRPE de l'enseignant :
-// comparer des surfaces sans les mesurer — les superposer, les découper et
-// recoller les morceaux —, puis les paver avec une surface de référence. Les
-// figures n'y montrent que leur contour ; le corrigé montre les morceaux.
+// « Comparer les aires de différentes figures planes », puis « déterminer des
+// aires » (programme du cycle 3, 2025) : comparer des surfaces sans les
+// mesurer — les superposer, les découper et recoller les morceaux —, puis les
+// paver avec une surface de référence. Les figures n'y montrent que leur
+// contour ; le corrigé montre les morceaux.
 
 /** Une pièce : ses sommets, en carreaux. */
 type Piece = [number, number][];
@@ -687,9 +688,9 @@ const PIECE_DE_REFERENCE: Record<SurfaceDeReference, Piece> = {
 };
 
 /**
- * Paver avec une surface de référence, comme les cartons de la séquence des
- * aires du manuel du CRPE : estimer combien de fois elle tient dans chaque
- * figure, la reporter sans trou ni chevauchement, compter, puis ranger.
+ * Paver avec une surface de référence : estimer combien de fois elle tient
+ * dans chaque figure, la reporter sans trou ni chevauchement, compter, puis
+ * ranger.
  */
 function aireReference(alea: Alea, r: ReglagesGrandeursCM): Bloc {
   const reference = r.reference ?? choisir(alea, SURFACES_DE_REFERENCE).id;
@@ -724,14 +725,14 @@ const TABLEAUX_D_UNITES: Record<GrandeurCM, { unites: string[]; base: string }> 
   contenance: { unites: ["hL", "daL", "L", "dL", "cL", "mL"], base: "L" },
 };
 
-/** Les mesures en deux unités, comme 12 m 76 cm : la grande, la petite ; au CM1, rien au-delà des centièmes de l'unité où l'on écrit. */
+/** Les mesures en deux unités, comme 3 m 45 cm : la grande, la petite ; au CM1, rien au-delà des centièmes de l'unité où l'on écrit. */
 const MESURES_EN_DEUX_UNITES: Record<GrandeurCM, { cm1: [string, string][]; cm2: [string, string][] }> = {
   longueur: { cm1: [["m", "cm"], ["m", "dm"], ["dam", "m"], ["m", "cm"]], cm2: [["m", "cm"], ["m", "mm"], ["km", "m"], ["cm", "mm"], ["m", "dm"]] },
   masse: { cm1: [["kg", "g"], ["kg", "hg"]], cm2: [["kg", "g"], ["kg", "g"], ["kg", "hg"]] },
   contenance: { cm1: [["L", "cL"], ["L", "dL"]], cm2: [["L", "cL"], ["L", "mL"], ["daL", "L"]] },
 };
 
-/** Écrire une mesure donnée en deux unités dans le tableau, un chiffre par colonne, puis à virgule dans l'unité du tableau : 12 m 76 cm = 12,76 m. */
+/** Écrire une mesure donnée en deux unités dans le tableau, un chiffre par colonne, puis à virgule dans l'unité du tableau : 3 m 45 cm = 3,45 m. */
 function tableauUnites(alea: Alea, r: ReglagesGrandeursCM): Bloc {
   const { unites, base } = TABLEAUX_D_UNITES[r.grandeur];
   const exp = (u: string) => UNITES[r.grandeur].find((x) => x.u === u)!.e;

@@ -32,10 +32,7 @@ describe("les quatre opérations, bâties sur le programme et les guides", () =>
   });
 
   it("disent leurs sources, et proposent la période que le programme donne", () => {
-    // Sauf la soustraction avec retenue, qui vient du manuel du CRPE de l'enseignant (voir demarcheSoustractionRetenue.test.ts).
-    for (const d of DEMARCHES_OPERATIONS.filter((x) => x.id !== "soustraction-retenue-ce1")) {
-      expect(d.source, d.id).toMatch(/^Bâtie sur le programme de mathématiques du cycle 2 \(2024\) et les guides Éduscol, à la demande de l'enseignant/);
-    }
+    for (const d of DEMARCHES_OPERATIONS) expect(d.source, d.id).toMatch(/^Bâtie sur le programme de mathématiques du cycle 2 \(2024\) et les guides Éduscol, à la demande de l'enseignant/);
     expect(demarcheDe("addition-posee-cp")!.source).toContain("Comment enseigner l'addition posée ?");
     const periode = (niveau: string, titre: string, id: string) => programmationProposee({ niveau, competenceTitre: titre }, id)!.periode;
     expect(periode("CP", "Poser et effectuer des additions en colonnes.", "addition-posee-cp")).toBe(4);

@@ -365,7 +365,7 @@ describe("créer à la voix, après un « oui » sur le téléphone (demande de 
   it("le jour dit devient une date ; un titre se retrouve par ses mots", () => {
     expect(["demain", "après-demain", "lundi", "vendredi", "aujourd'hui"].map((j) => jourDit(j, "2026-10-30")))
       .toEqual(["2026-10-31", "2026-11-01", "2026-11-02", "2026-11-06", "2026-10-30"]);
-    const titres = [{ titre: "La symétrie axiale : reconnaître et compléter une figure (CE2)", valeur: "a" }, { titre: "Les fractions (CE2)", valeur: "b" }];
+    const titres = [{ titre: "La symétrie axiale : compléter une figure sur quadrillage (CE2)", valeur: "a" }, { titre: "Les fractions (CE2)", valeur: "b" }];
     expect(nommesParmi("de la symétrie", titres)).toEqual(["a"]);
     expect(nommesParmi("les fraction", titres)).toEqual(["b"]);
     expect(nommesParmi("les volcans", titres)).toEqual([]);
