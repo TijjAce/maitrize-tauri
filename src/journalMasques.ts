@@ -5,7 +5,10 @@
 // papier, ce n'est pas toujours voulu : la règle d'un jeu qu'on connaît par
 // cœur, le déroulement d'une séance déjà imprimé la veille, et le cahier
 // journal fait dix pages. Une case par bloc, par créneau : ce qui est coché
-// reste sous les yeux à l'écran et ne s'imprime pas.
+// reste sous les yeux à l'écran et ne s'imprime pas. Et une case pour le
+// créneau entier (demande de l'enseignant, 31 octobre 2026) : coché, il ne
+// s'imprime pas du tout — ni dans le cahier journal, ni dans la journée sur
+// une page, en bandes (voir journeeEnBandes.ts).
 //
 // Ce qu'on masque se garde par créneau, dans un réglage partagé entre les
 // ordinateurs (préfixe « journal: »).
@@ -21,6 +24,12 @@ export const EVT_MASQUES = "maitrize:journal-masques";
 export const masqueJeu = (id: string) => `jeu:${id}`;
 export const masqueSequence = (sequenceId: string, seanceId?: string | null) => `sequence:${sequenceId}|${seanceId ?? ""}`;
 export const masqueRituel = (id: string) => `rituel:${id}`;
+/** Le créneau tout entier. */
+export const MASQUE_CRENEAU = "creneau";
+
+/** Vrai si l'on a coché « ne pas imprimer » sur le créneau lui-même. */
+export const creneauMasque = (masques: Record<string, readonly string[]>, creneauId: string): boolean =>
+  (masques[creneauId] ?? []).includes(MASQUE_CRENEAU);
 
 /** Les masques d'un créneau, tels qu'on peut s'y fier : des clés, sans doublon. */
 export function lireMasques(brut: string | null | undefined): string[] {

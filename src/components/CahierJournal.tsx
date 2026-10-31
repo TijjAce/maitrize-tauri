@@ -22,7 +22,8 @@ import { jeuxCites, nomSousLeCurseur, regleEcrite, sansMarqueurs } from "../jeux
 import { ChoixSequence, SequencesCitees } from "./SequencesCitees";
 import { ChoixRituel, RituelForm, RituelsCites, useRituels } from "./Rituels";
 import { IndicateurZoom, useZoomPince } from "./ZoomPince";
-import { useMasquesDuJournal } from "./MasquesDuJournal";
+import { CaseImpression, useMasquesDuJournal } from "./MasquesDuJournal";
+import { MASQUE_CRENEAU } from "../journalMasques";
 import { TapuscritVue, useTapuscritDuJournal } from "./Tapuscrit";
 import { lireConsignes } from "../tapuscrit";
 import { EVT_NOUVEAU_RITUEL, ligneDeRituel, nouveauRituel, rituelsCites, type Rituel } from "../rituels";
@@ -274,7 +275,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
   // ── Les séquences citées dans le prévu ──
   const [sequencePour, setSequencePour] = React.useState<Creneau | null>(null);
 
-  // ── Ce qu'on cite sans l'imprimer : une case par bloc, par créneau ──
+  // ── Ce qu'on cite sans l'imprimer : une case par bloc, par créneau ; et une pour le créneau entier ──
   const { masques, basculer: masquer } = useMasquesDuJournal();
   // Le tapuscrit de la séance sous le créneau, à l'impression : coché créneau par créneau.
   const tapuscrits = useTapuscritDuJournal();
@@ -462,8 +463,9 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
           const prenoms = ids.map((id) => eleves.find((e) => e.id === id)?.nom.split(" ")[0]).filter(Boolean);
           const reunion = natureDe(c) === "reunion";
           const etat = etats[c.id];
+          const nonImprime = (masques[c.id] ?? []).includes(MASQUE_CRENEAU);
           return (
-            <div key={c.id} className="card" style={{ padding: "10px 12px", borderLeft: `4px solid ${teinte}` }}>
+            <div key={c.id} className="card" style={{ padding: "10px 12px", borderLeft: `4px ${nonImprime ? "dashed" : "solid"} ${teinte}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
                 <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{c.heureDebut}–{c.heureFin}</span>
                 <span style={{ fontWeight: 600 }}>{c.matiere || "Créneau"}</span>
@@ -478,6 +480,8 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                   </label>
                 )}
                 {prenoms.length > 0 && <span style={{ fontSize: 12, color: "var(--text-2)" }}>👥 {prenoms.join(", ")}</span>}
+                <CaseImpression masque={nonImprime} onChange={() => masquer(c.id, MASQUE_CRENEAU)}
+                  titre="Coché : ce créneau reste à l'écran, mais ne s'imprime pas — ni dans le cahier journal, ni dans la journée en bandes" />
                 <span style={{ marginLeft: "auto", fontSize: 11, color: etat === "erreur" ? "#c0392b" : "var(--text-2)" }}>
                   {etat === "enregistrement" ? "Enregistrement…" : etat === "ok" ? "✓ Enregistré" : etat === "erreur" ? "Non enregistré" : ""}
                 </span>

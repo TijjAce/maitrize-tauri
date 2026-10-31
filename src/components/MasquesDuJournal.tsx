@@ -29,10 +29,12 @@ export function useMasquesDuJournal(): { masques: Record<string, string[]>; basc
   return { masques, basculer };
 }
 
-/** La petite case d'un bloc cité : cochée, le bloc reste à l'écran et ne s'imprime pas. */
-export function CaseImpression({ masque, onChange }: { masque: boolean; onChange: () => void }) {
+/** La petite case d'un bloc cité, ou du créneau entier : cochée, il reste à l'écran et ne s'imprime pas. */
+export function CaseImpression({ masque, onChange, titre = "Coché : ce bloc reste sous les yeux à l'écran, mais ne s'imprime pas dans le cahier journal" }: {
+  masque: boolean; onChange: () => void; titre?: string;
+}) {
   return (
-    <label className="case-impression" title="Coché : ce bloc reste sous les yeux à l'écran, mais ne s'imprime pas dans le cahier journal">
+    <label className="case-impression" title={titre}>
       <input type="checkbox" checked={masque} onChange={onChange} />
       <span>ne pas imprimer</span>
     </label>
