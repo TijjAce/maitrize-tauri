@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Demarche } from "./demarches";
 import { NOMBRES_DE_10_A_20 } from "./demarcheDixAVingt";
+import { DEMARCHES_HISTOIRE_GEO, SEQUENCES_D_EDUSCOL_2016 } from "./demarchesHistoireGeo";
 import { SOUSTRACTION_AVEC_RETENUE } from "./demarcheSoustractionRetenue";
 import { DEMARCHE_SOUSTRACTION_POSEE } from "./sequenceSoustractionPosee";
 import { estApprofondie } from "./sequencesApprofondies";
@@ -16,9 +17,11 @@ function detail(d: Demarche) {
 }
 
 describe("le logo de Maitrize sur les séquences travaillées en profondeur", () => {
-  const marquees: Demarche[] = [NOMBRES_DE_10_A_20, SOUSTRACTION_AVEC_RETENUE, ...SEQUENCES_DU_MANUEL.map((s) => s.demarche), DEMARCHE_SOUSTRACTION_POSEE];
+  const marquees: Demarche[] = [
+    NOMBRES_DE_10_A_20, SOUSTRACTION_AVEC_RETENUE, ...SEQUENCES_DU_MANUEL.map((s) => s.demarche), DEMARCHE_SOUSTRACTION_POSEE, ...SEQUENCES_D_EDUSCOL_2016,
+  ];
 
-  it("les séquences du manuel du CRPE et la soustraction posée du CE1 le portent", () => {
+  it("les séquences du manuel du CRPE, la soustraction posée du CE1 et l'histoire-géographie d'après Éduscol le portent", () => {
     for (const d of marquees) expect(estApprofondie(d.id), d.nom).toBe(true);
     const toutes = sequencesToutesFaites();
     expect(toutes.filter((s) => estApprofondie(s.demarche.id)).length).toBeGreaterThanOrEqual(12);
@@ -28,6 +31,15 @@ describe("le logo de Maitrize sur les séquences travaillées en profondeur", ()
       if (d.famille === "Maternelle") continue;
       expect(toutes.some((s) => s.demarche.id === d.id), d.nom).toBe(true);
     }
+  });
+
+  it("en histoire-géographie, celles qui suivent une séquence d'Éduscol de 2016 séance par séance ; pas celles bâties sur le programme", () => {
+    for (const d of DEMARCHES_HISTOIRE_GEO) {
+      const eduscol = d.source.startsWith("Éduscol, ressources 2016");
+      if (!eduscol) expect(estApprofondie(d.id), d.nom).toBe(false);
+      if (estApprofondie(d.id)) expect(d.source, d.nom).toMatch(/séquence au C[PE]|\(présentation et séances 1 à 5\)/i);
+    }
+    expect(SEQUENCES_D_EDUSCOL_2016).toHaveLength(6);
   });
 
   it("une séquence marquée dit, dans ses phases, ce que fait l'enseignant", () => {
