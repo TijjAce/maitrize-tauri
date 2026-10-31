@@ -57,6 +57,7 @@ const MR = await import("./multiplicationEnRectangles");
 const PA = await import("./problemesEtOutilsDAide");
 const TG = await import("./tangram");
 const AC = await import("./albumACalculer");
+const MO = await import("./motifs");
 const { hasard } = await import("./hasard");
 
 type Memoires = Record<string, any>;
@@ -77,6 +78,8 @@ const ATELIERS: Record<string, (m: Memoires, g: number) => string> = {
   martiniere: (m, g) => { const r = lu(REGLAGES_MARTINIERE, m.martiniere); return htmlMartiniere(calculsMartiniere(r, g), r); },
   calcul: (m, g) => { const r = lu(J.REGLAGES_CALCUL, m.cartesCalcul); return J.htmlCartesCalcul(J.cartesCalcul(r, g), r); },
   fractions: (m, g) => J.htmlFractions(lu(J.REGLAGES_FRACTIONS, m.fractions), g),
+  arbre: (m, g) => { const r = lu(J.REGLAGES_ARBRE, m.arbreCalcul); return J.htmlArbreCalcul(J.additionsArbre(r, g), r); },
+  motifs: (m, g) => MO.htmlMotifs(MO.reglagesMotifsSurs(lu(MO.REGLAGES_MOTIFS, m.motifs)), {}, hasard(g)),
   numeration: (m, g) => htmlNumeration(lu(REGLAGES_NUMERATION, m.numeration), g),
   posees: (m, g) => htmlOperationsPosees(lu(REGLAGES_POSEES, m.operationsPosees), g),
   pyramides: (m, g) => htmlPyramides(lu(REGLAGES_PYRAMIDES, m.pyramides), g),
