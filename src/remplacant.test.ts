@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  avecEmploiDuTempsAJour, blocClasse, blocContacts, blocEmploiDuTemps, blocEleves, blocMateriel, blocSecurite, feuilleRemplacant,
+  avecElevesAJour, avecEmploiDuTempsAJour, blocClasse, blocContacts, blocEmploiDuTemps, blocEleves, blocMateriel, blocSecurite, feuilleRemplacant,
   BLOCS_REMPLACANT, type DonneesClasse,
 } from "./remplacant";
 import { lireEtablissement } from "./etablissement";
@@ -111,3 +111,43 @@ describe("l'emploi du temps de la feuille suit celui d'Organisation", () => {
     expect(avecEmploiDuTempsAJour(sansTitre, donnees())).toBe(sansTitre);
   });
 });
+
+describe("« À savoir », rempli par l'agent", () => {
+  const avecPoints = () => donnees({
+    eleves: [
+      { id: "e1", nom: "Zénon Blanc", niveau: "GS", dispositifs: ["PPS"], axe: "Attendre son tour", aSavoir: [
+        { point: "Communication / langage", texte: "Montre les pictos du classeur pour demander." },
+        { point: "Comportement / régulation", texte: "Le coin calme l'apaise <vite>." },
+      ] },
+      { id: "e2", nom: "Amédée Roux", niveau: "CP", dispositifs: [], axe: "Lire son prénom" },
+    ],
+  });
+
+  it("met chaque point en gras, une ligne chacun ; sans agent, l'axe de travail reste", () => {
+    const html = blocEleves(avecPoints());
+    expect(html).toContain("<td><b>Communication / langage</b> : Montre les pictos du classeur pour demander.<br><b>Comportement / régulation</b> : Le coin calme l&#39;apaise &lt;vite&gt;.</td>");
+    expect(html).toContain("<td>Lire son prénom</td>");
+    expect(html).not.toContain("Attendre son tour");
+  });
+
+  it("refait le tableau sous « Les élèves », ou son « … », et rien d'autre", () => {
+    const avant = `<h1>Pour vous</h1><h2>Les élèves</h2><table><tbody><tr><td>ancien</td></tr></tbody></table><h2>Règles</h2><p>Mon texte.</p>`;
+    const apres = avecElevesAJour(avant, avecPoints());
+    expect(apres).toContain("<h1>Pour vous</h1>");
+    expect(apres).toContain("<h2>Règles</h2><p>Mon texte.</p>");
+    expect(apres).not.toContain("ancien");
+    expect(apres.match(/<h2>Les élèves<\/h2>/g)).toHaveLength(1);
+    expect(apres).toContain("Montre les pictos du classeur");
+    // Refaire une seconde fois ne change rien.
+    expect(avecElevesAJour(apres, avecPoints())).toBe(apres);
+    expect(avecElevesAJour("<h2>Les élèves</h2><p>…</p><p>Fin.</p>", avecPoints())).toMatch(/<\/table><p>Fin\.<\/p>$/);
+  });
+
+  it("garde le texte de l'enseignant sous le titre, et ajoute le bloc à la fin s'il n'y est pas", () => {
+    const sous = avecElevesAJour("<h2>Les élèves</h2><p>Ils arrivent à 9 h.</p>", avecPoints());
+    expect(sous).toMatch(/^<h2>Les élèves<\/h2><table>[\s\S]*<\/table><p>Ils arrivent à 9 h\.<\/p>$/);
+    const sans = avecElevesAJour("<h1>Pour vous</h1>", avecPoints());
+    expect(sans.startsWith("<h1>Pour vous</h1><h2>Les élèves</h2><table>")).toBe(true);
+  });
+});
+

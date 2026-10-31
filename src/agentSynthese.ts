@@ -171,20 +171,24 @@ export class AgentArrete extends Error {
   constructor() { super("L'agent s'est arrêté."); }
 }
 
+/** Ce que l'agent a lu d'un élève : ses écrits, du plus récent au plus ancien, le relevé de son suivi, ses plans ; et ce que chaque source a donné. */
+export interface LuSurLEleve { ecrits: Ecrit[]; suivi: string; plans: string; trouves: Record<string, number> }
+
 /**
- * Lance l'agent sur un élève : il lit chaque source, puis fait rédiger la
- * synthèse. `surAvancement` reçoit chaque pas ; `arrete` est lu entre deux
- * lectures, et avant de rendre la rédaction. `pas` : le temps que dure, au
- * moins, une lecture — assez pour qu'on voie le chat avancer.
+ * Lit tout ce que l'ordinateur sait d'un élève sur la période, source après
+ * source. `surAvancement` reçoit chaque pas ; `arrete` est lu entre deux
+ * lectures ; `pas` : le temps que dure, au moins, une lecture — assez pour
+ * qu'on voie le chat avancer. L'agent de synthèse s'en sert, et l'« À savoir »
+ * de la feuille du remplaçant (aSavoirDesEleves.ts).
  */
-export async function lancerLAgent(a: {
+export async function lireLEleve(a: {
   eleve: Pick<Eleve, "id" | "nom" | "niveau" | "nonVerbal">;
   autresEleves: string[];
-  debut: string; fin: string; periode: string;
-  surAvancement: (av: AvancementDeLAgent) => void;
+  debut: string; fin: string;
+  surAvancement?: (av: AvancementDeLAgent) => void;
   arrete?: () => boolean;
   pas?: number;
-}): Promise<{ redige: { bilan: string; sections: Partial<Record<Section, string>> }; lus: number }> {
+}): Promise<LuSurLEleve> {
   const trouves: Record<string, number> = {};
   const ecrits: Ecrit[] = [];
   let suivi = "";
@@ -245,17 +249,33 @@ export async function lancerLAgent(a: {
 
   for (let i = 0; i < ETAPES_DE_L_AGENT.length - 1; i++) {
     if (a.arrete?.()) throw new AgentArrete();
-    a.surAvancement({ etape: i, trouves: { ...trouves } });
+    a.surAvancement?.({ etape: i, trouves: { ...trouves } });
     const [n] = await Promise.all([lectures[ETAPES_DE_L_AGENT[i].id](), pause(a.pas ?? 350)]);
     trouves[ETAPES_DE_L_AGENT[i].id] = n;
   }
+  ecrits.sort((x, y) => y.date.localeCompare(x.date));
+  return { ecrits, suivi, plans: plans.join("\n"), trouves };
+}
+
+/**
+ * Lance l'agent sur un élève : il lit chaque source (`lireLEleve`), puis fait
+ * rédiger la synthèse. `arrete` est lu aussi avant de rendre la rédaction.
+ */
+export async function lancerLAgent(a: {
+  eleve: Pick<Eleve, "id" | "nom" | "niveau" | "nonVerbal">;
+  autresEleves: string[];
+  debut: string; fin: string; periode: string;
+  surAvancement: (av: AvancementDeLAgent) => void;
+  arrete?: () => boolean;
+  pas?: number;
+}): Promise<{ redige: { bilan: string; sections: Partial<Record<Section, string>> }; lus: number }> {
+  const { ecrits, suivi, plans, trouves } = await lireLEleve(a);
   if (a.arrete?.()) throw new AgentArrete();
   const rang = ETAPES_DE_L_AGENT.length - 1;
   a.surAvancement({ etape: rang, trouves: { ...trouves } });
-  ecrits.sort((x, y) => y.date.localeCompare(x.date));
   const redige = await redigerSyntheseSuivie({
     eleve: { id: a.eleve.id, nom: a.eleve.nom }, autresEleves: a.autresEleves,
-    ecrits, suivi, plans: plans.join("\n"), periode: a.periode,
+    ecrits, suivi, plans, periode: a.periode,
   });
   if (a.arrete?.()) throw new AgentArrete();
   trouves.redaction = Object.keys(redige.sections).length + (redige.bilan ? 1 : 0);
