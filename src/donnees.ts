@@ -29,7 +29,13 @@ export const EXERCICES_DONNEES: { id: ExerciceDonnees; libelle: string }[] = [
   { id: "problemes", libelle: "Des problèmes avec un tableau ou un diagramme (CE2)" },
 ];
 
-export interface ReglagesDonnees { exercice: ExerciceDonnees; classe: Classe; combien: number }
+export interface ReglagesDonnees {
+  exercice: ExerciceDonnees; classe: Classe; combien: number;
+  /** Le tableau à double entrée : la première ligne déjà faite, en modèle, au lieu de trois cases au hasard — l'évaluation avec aide. */
+  ligneModele?: boolean;
+  /** Le tableau à double entrée d'une évaluation : la case où l'enseignant note le niveau d'aide (« seul, sans support » n'est pas la seule preuve de maîtrise). */
+  niveauDAide?: boolean;
+}
 export const REGLAGES_DONNEES: ReglagesDonnees = { exercice: "lireDiagramme", classe: "CE1", combien: 6 };
 
 const NOIR = "#1c2233", GRIS = "#c4c9d6", BLEU = "#6fa8dc";
@@ -196,13 +202,21 @@ const formeEnCouleur = (f: (typeof FORMES_TABLEAU)[number], hex: string) => {
  * tableau à double entrée permettent d'identifier le contenu de la case
  * située à leur intersection ». Quelques cases sont déjà remplies.
  */
-function feuilleDoubleEntree(_r: ReglagesDonnees, graine: number): string {
+/** Les niveaux d'aide qu'on note à l'évaluation, du plus autonome au plus guidé. */
+export const NIVEAUX_D_AIDE = ["seul, sans support", "avec la ligne modèle", "avec les gommettes de départ", "avec un geste de l'adulte", "avec la main de l'adulte"];
+
+function feuilleDoubleEntree(r: ReglagesDonnees, graine: number): string {
   const alea = hasard(graine);
   const couleurs = COULEURS_TABLEAU.slice(0, 4);
-  const remplies = new Set(melanger(alea, FORMES_TABLEAU.flatMap((_, l) => couleurs.map((__, c) => `${l},${c}`))).slice(0, 3));
+  // Trois cases au hasard ; ou toute la première ligne, en modèle.
+  const remplies = new Set(r.ligneModele ? couleurs.map((_, c) => `0,${c}`)
+    : melanger(alea, FORMES_TABLEAU.flatMap((_, l) => couleurs.map((__, c) => `${l},${c}`))).slice(0, 3));
   const tableau = (tout: boolean) => `<table class="do-double"><tr><th></th>${couleurs.map((c) => `<th><span class="do-pastille" style="background:${c.hex}"></span>${c.nom}</th>`).join("")}</tr>
     ${FORMES_TABLEAU.map((f, l) => `<tr><th>${formeEnCouleur(f, "#ffffff")}<div>${f}</div></th>${couleurs.map((c, k) => `<td>${tout || remplies.has(`${l},${k}`) ? formeEnCouleur(f, c.hex) : ""}</td>`).join("")}</tr>`).join("")}</table>`;
-  return `<div class="page">${entete("Le tableau des formes et des couleurs", "Dans chaque case, dessine la forme de sa ligne, coloriée de la couleur de sa colonne. Trois cases sont déjà faites.")}${tableau(false)}</div>
+  const faites = r.ligneModele ? "La première ligne est faite : c'est le modèle." : "Trois cases sont déjà faites.";
+  const aide = r.niveauDAide
+    ? `<div class="do-aide"><b>Pour l'enseignant — le niveau d'aide :</b> ${NIVEAUX_D_AIDE.map((n) => `<span>☐ ${n}</span>`).join("")}</div>` : "";
+  return `<div class="page">${entete("Le tableau des formes et des couleurs", `Dans chaque case, dessine la forme de sa ligne, coloriée de la couleur de sa colonne. ${faites}`)}${tableau(false)}${aide}</div>
     <div class="page corrige"><div class="titre">Le tableau des formes et des couleurs — corrigé</div>${tableau(true)}</div>`;
 }
 
@@ -305,6 +319,8 @@ export const STYLE_DONNEES = `
   .feuille.do .do-corrige { font-size: 13px; line-height: 1.8; }
   .feuille.do .do-texte { font-size: 14px; line-height: 1.6; margin: 0 0 3mm; }
   .feuille.do .do-double { border-collapse: collapse; margin: 6mm auto; }
+  .feuille.do .do-aide { margin: 2mm auto 0; padding: 2mm 3mm; border: 1px dashed #c4c9d6; border-radius: 2mm; font-size: 11px; color: #4a5164; line-height: 1.8; }
+  .feuille.do .do-aide span { display: inline-block; margin-right: 4mm; white-space: nowrap; }
   .feuille.do .do-double th, .feuille.do .do-double td { border: 1.2px solid #1c2233; width: 30mm; height: 28mm; text-align: center; vertical-align: middle; font-size: 13px; }
   .feuille.do .do-double th svg, .feuille.do .do-double td svg { margin: 0 auto; }
   .feuille.do .do-pastille { display: block; width: 12mm; height: 6mm; margin: 0 auto 1mm; border: 1px solid #1c2233; border-radius: 1mm; }
