@@ -245,6 +245,8 @@ export default function PlanDeTravail() {
   const { enregistrer: enregistrerRituel } = useRituels();
 
   const [dossier, setDossier] = React.useState("");
+  // L'accueil renvoie ici pour les séquences en préparation, qu'il ne liste plus : le filtre suit sa demande.
+  const [etatFiltre, setEtatFiltre] = useEtatDuPlan();
   // L'élément que ⌘K vient de désigner : signalé quelques secondes, le temps
   // de poser l'œil dessus.
   const [surligne, setSurligne] = React.useState("");
@@ -306,12 +308,20 @@ export default function PlanDeTravail() {
   // Une demande arrivée avant que la liste soit relue — le bandeau « Voir »
   // d'une feuille qui vient d'être déposée — attend la liste, quelques secondes.
   const enAttente = React.useRef<{ demande: DemandeBureau; jusqua: number } | null>(null);
-  /** Désigne ce qu'on demande ; faux si l'élément n'est pas (encore) dans la liste. */
+  /** Ouvre un élément comme un double-clic : posé plus bas, après les fiches qu'il ouvre. */
+  const ouvrirRef = React.useRef<((e: Element) => void) | null>(null);
+  /**
+   * Désigne ce qu'on demande ; faux si l'élément n'est pas (encore) dans la
+   * liste. Le filtre d'un état — « En classe »… — ne montre que des
+   * séquences : il s'ôte, sans quoi rien ne se verrait. Demandé ouvert, il
+   * s'ouvre une fois montré.
+   */
   const designer = React.useCallback((demande: DemandeBureau): boolean => {
     // Un dossier demandé s'ouvre tel quel : il n'y a rien à désigner dedans.
     if (demande.dossier !== undefined) {
       setDossier(normaliser(demande.dossier));
       setQ("");
+      setEtatFiltre("");
       setSurligne("");
       return true;
     }
@@ -321,10 +331,13 @@ export default function PlanDeTravail() {
     if (!cible) return false;
     setDossier(normaliser(cible.dossier));
     setQ("");
+    setEtatFiltre("");
     setSurligne(cible.id);
-    window.setTimeout(() => setSurligne((s) => (s === cible.id ? "" : s)), 4000);
+    window.setTimeout(() => setSurligne((s) => (s === cible.id ? "" : s)), 6000);
+    // Le temps de le voir à sa place, dans son dossier ; puis il s'ouvre par-dessus.
+    if (demande.ouvrir) window.setTimeout(() => ouvrirRef.current?.(cible), 600);
     return true;
-  }, []);
+  }, [setEtatFiltre]);
   React.useEffect(() => {
     const chercher = (e: Event) => {
       const demande = lireDemandeBureau((e as CustomEvent).detail);
@@ -333,6 +346,7 @@ export default function PlanDeTravail() {
       // ancienne version : on cherche par le titre en attendant la liste.
       enAttente.current = { demande, jusqua: Date.now() + 8000 };
       setDossier("");
+      setEtatFiltre("");
       setQ(demande.titre);
     };
     window.addEventListener(EVT_CHERCHER_BUREAU, chercher);
@@ -425,10 +439,8 @@ export default function PlanDeTravail() {
   }, [couleursLues, materiels, sequences, textes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtre = q.trim().toLowerCase();
-  // Où en est chaque séquence, d'après le cahier journal ; et le filtre qui ne montre que celles d'un état.
+  // Où en est chaque séquence, d'après le cahier journal ; le filtre qui ne montre que celles d'un état est plus haut.
   const { suivis } = useSuiviSequences();
-  // L'accueil renvoie ici pour les séquences en préparation, qu'il ne liste plus : le filtre suit sa demande.
-  const [etatFiltre, setEtatFiltre] = useEtatDuPlan();
   const etatDe = (e: Element) => (e.genre === "sequence" ? suivis.get(e.id)?.etat : undefined);
   const dansLEtat = (e: Element, etat: EtatSequence) => etatDe(e) === etat || (etat === "classe" && etatDe(e) === "pause");
   elementsRef.current = elements;
@@ -876,6 +888,7 @@ export default function PlanDeTravail() {
     if (c.genre === "video") openUrl(c.video.url).catch(() => window.open(c.video.url, "_blank"));
     else ouvrirLaPieceJointe(c.nom, e.titre).catch((err) => toast(String(err), { icone: "⚠️" }));
   };
+  ouvrirRef.current = ouvrir;
 
   /** Efface un élément, sans rien rafraîchir : les suppressions en chaîne s'en servent. */
   const effacer = async (e: Element) => {

@@ -24,6 +24,9 @@ describe("la demande venue de ⌘K", () => {
   it("lit un identifiant et un titre", () => {
     expect(lireDemandeBureau({ id: "j1", titre: "Loto des couleurs" }))
       .toEqual({ id: "j1", titre: "Loto des couleurs" });
+    // Depuis ⌘K : y aller, et l'ouvrir ; seul un vrai « oui » ouvre.
+    expect(lireDemandeBureau({ id: "j1", titre: "Loto des couleurs", ouvrir: true }).ouvrir).toBe(true);
+    expect(lireDemandeBureau({ id: "j1", titre: "Loto des couleurs", ouvrir: "oui" }).ouvrir).toBeUndefined();
   });
 
   it("accepte encore un simple titre : c'était la forme d'avant", () => {
