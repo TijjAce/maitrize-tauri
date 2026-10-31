@@ -72,11 +72,16 @@ function Chip({ m, extra, onRetirer, onRenommer, onSeul, onImage }: {
   );
 }
 
-export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions, affichage = false }: {
+export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions, affichage = false, assistant = false }: {
   mots: MotImage[];
   onChange: (mots: MotImage[]) => void;
   /** La banque de pictogrammes est là : on peut chercher des images et des thèmes. */
   banque: boolean;
+  /**
+   * L'atelier a son assistant, qui propose les mots du projet et les thèmes de la banque (voir AssistantDesMots) :
+   * la liste ne les répète pas — ni la case du projet, ni « piocher dans un thème » (demandes de l'enseignant, 31 octobre 2026).
+   */
+  assistant?: boolean;
   /** Ce qu'on montre en plus sur chaque mot (un compte de syllabes, par exemple). */
   extra?: (m: MotImage) => React.ReactNode;
   aide?: string;
@@ -164,7 +169,7 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
           {/* Une photo, un dessin, une image d'ailleurs : elles se mêlent aux pictogrammes. */}
           <BoutonMesImages onImages={(images) => onChange([...mots, ...images.map((i) => ({ id: i.id, mot: i.mot }))])}>🖼 Mes images</BoutonMesImages>
         </div>
-        {projet && corpus.mots.length > 0 && (
+        {!assistant && projet && corpus.mots.length > 0 && (
           <label className="pb-coche" style={{ marginTop: 8 }}>
             {/* À moitié cochée : une partie des mots du projet est déjà là ; la cocher ajoute les autres. */}
             <input type="checkbox" checked={projetCoche} disabled={occupe}
@@ -186,7 +191,7 @@ export function BanqueDeMots({ mots, onChange, banque, extra, aide, propositions
           </div>
         </Field>
       )}
-      {banque ? (
+      {banque ? !assistant && (
         <Field label="Ou piocher dans un thème">
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
             <Select value={theme} onChange={(e) => setTheme(e.target.value)} style={{ flex: 1, minWidth: 150 }}>

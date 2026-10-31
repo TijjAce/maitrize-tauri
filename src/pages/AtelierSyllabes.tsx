@@ -310,7 +310,7 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
             La syllabe qui manque
             <Aide titre="La syllabe qui manque" vers="droite"><p>Sous chaque dessin, le mot avec un trou : l'élève dit le mot, et écrit la syllabe qu'il entend.</p></Aide>
           </h3>
-          <BanqueDeMots mots={mots} onChange={setMots} banque={banque}
+          <BanqueDeMots mots={mots} onChange={setMots} banque={banque} assistant
             aide="Ou écrivez vos mots : chacun prend son dessin dans la banque. Un mot sans dessin, ou sans l'une de ces syllabes, reste hors de la feuille." />
           {lignes.length > 0 && (
             <Field label="Le trou de chaque mot">

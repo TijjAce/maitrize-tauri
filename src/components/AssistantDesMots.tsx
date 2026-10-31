@@ -1,7 +1,7 @@
 import React from "react";
-import { api } from "../api";
+import { api, type CategorieArasaac } from "../api";
 import { corpusDe } from "../corpusProjet";
-import { EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
+import { EXCLUES_PAR_DEFAUT, libelleCategorie } from "../data/categoriesArasaac";
 import { MOTS_PAR_THEME, themesDeDepart } from "../departsEnUnClic";
 import { melanger } from "../hasard";
 import { MODES_IMAGES, MODE_IMAGES_DEFAUT, feuillesAvecImages } from "../imagesSelonMode";
@@ -106,6 +106,8 @@ export function AssistantDesMots({ titre, question = "Avec quels mots ?", mots, 
   const [occupe, setOccupe] = React.useState(false);
   const { projet, corpus, choix } = useProjetDuMoment();
   const { data: niveauClasse } = useAsync(() => api.settingGet("niveauClasse").catch(() => null), []);
+  // Tous les thèmes de la banque, pour celui qu'on écrit : ceux qui ont assez de mots, comme dans la liste des mots.
+  const { data: categories } = useAsync<CategorieArasaac[]>(() => (banque ? api.arasaacCategories() : Promise.resolve([])), [banque]);
   const deLaFeuille = useQuestionsDeLaFeuille(feuille);
   const themes = banque && niveauClasse !== undefined ? themesDeDepart(niveauClasse) : [];
   const autres = choix.map((c) => c.projet).filter((p) => p.id !== projet?.id && corpusDe(p).mots.length > 0);
@@ -133,7 +135,10 @@ export function AssistantDesMots({ titre, question = "Avec quels mots ?", mots, 
       ...(mots.length ? [{ id: "garder", libelle: `Garder mes ${mots.length} mots`, description: "ceux de la liste, à gauche" }] : []),
       ...(projet && corpus.mots.length ? [{ id: "projet", libelle: `📌 Le projet « ${projet.titre} »`, description: `ses ${corpus.mots.length} mots, avec leurs images` }] : []),
       ...(autres.length ? [{ id: "autreProjet", libelle: "📁 Un autre projet", description: autres.slice(0, 3).map((p) => p.titre).join(", ") + (autres.length > 3 ? "…" : "") }] : []),
-      ...(themes.length ? [{ id: "theme", libelle: "🐮 Un thème", description: `${themes.map((t) => t.libelle.toLowerCase()).join(", ")} : des mots que la banque illustre` }] : []),
+      ...(themes.length || categories?.length ? [{
+        id: "theme", libelle: "🐮 Un thème",
+        description: `${themes.length ? `${themes.map((t) => t.libelle.toLowerCase()).join(", ")}, ou un autre` : "celui qu'on écrit"} : des mots que la banque illustre`,
+      }] : []),
       {
         id: "images", libelle: "🖼 Mes images", description: "vos photos ou vos dessins, chacun avec son mot",
         bouton: ({ className, contenu }) => (
@@ -152,6 +157,7 @@ export function AssistantDesMots({ titre, question = "Avec quels mots ?", mots, 
     ...(suite === "theme" ? [{
       id: "theme", puce: "Le thème", titre: "Quel thème ?",
       choix: themes.map((t) => ({ id: t.categorie, libelle: `${t.icone} ${t.libelle}` })),
+      autre: { placeholder: "Un autre thème de la banque : la mer, l'école, les émotions…" },
     }] : suite === "projet" ? [{
       id: "projet", puce: "Le projet", titre: "Quel projet ?",
       choix: autres.slice(0, 6).map((p) => ({ id: p.id, libelle: `📌 ${p.titre || "Sans titre"}`, description: `${corpusDe(p).mots.length} mots` })),
@@ -179,6 +185,16 @@ export function AssistantDesMots({ titre, question = "Avec quels mots ?", mots, 
       return;
     }
     if (q === "theme") {
+      if (c === "autre") {
+        // Le thème qu'on écrit : celui de la banque qui porte ce nom, sinon le premier qui le contient.
+        const forme = (x: string) => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const cherche = forme(texte ?? "");
+        const possibles = (categories ?? []).filter((x) => x.nombre >= 6);
+        const trouve = possibles.find((x) => forme(libelleCategorie(x.nom)) === cherche) ?? possibles.find((x) => forme(libelleCategorie(x.nom)).includes(cherche));
+        if (!trouve) { toast(`Aucun thème de la banque ne s'appelle « ${(texte ?? "").trim()} ».`, { icone: "ℹ️" }); return; }
+        void charger("theme", libelleCategorie(trouve.nom), () => piocher(trouve.nom));
+        return;
+      }
       const t = themes.find((x) => x.categorie === c);
       if (t) void charger("theme", `${t.icone} ${t.libelle}`, () => piocher(t.categorie));
       return;

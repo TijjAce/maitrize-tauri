@@ -115,7 +115,7 @@ export function LotoDesSonsTab({ banque, unite }: { banque: boolean; unite: Unit
             <p>{"Le son que Maitrize entend dans chaque mot se lit sous son image : un clic le corrige (« ville » ne se dit pas comme « fille »)."}</p>
           </Aide>
         </h3>
-        <BanqueDeMots mots={mots} onChange={setMots} banque={banque}
+        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} assistant
           extra={(m) => <SonModifiable son={sonDansLaListe(m, unite, r)} corrige={Boolean(r.corrections[m.mot.toLowerCase()])} onCorriger={(t) => corriger(m, t)} />} />
       </>}
       droite={

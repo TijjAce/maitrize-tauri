@@ -137,7 +137,7 @@ export function LotoSyllabesTab({ banque }: { banque: boolean }) {
           Loto des syllabes
           <Aide titre="Loto des syllabes" vers="droite"><p>{"Chaque case d'une planche impose un nombre de syllabes ; on pioche une image, on scande, on compte. Le nombre sous chaque mot se corrige d'un clic."}</p></Aide>
         </h3>
-        <BanqueDeMots mots={mots} onChange={setMots} banque={banque}
+        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} assistant
           extra={(m) => <button type="button" className="bm-compte" title="Changer le nombre de syllabes" onClick={() => tourner(m)}>{nbSyllabes(m, r.ecrites)} syll.</button>} />
       </>}
       droite={
@@ -178,7 +178,7 @@ export function DominosTab({ banque }: { banque: boolean }) {
           Dominos des syllabes
           <Aide titre="Dominos des syllabes" vers="droite"><p>{"Un domino s'enchaîne quand la dernière syllabe d'une image commence la suivante : micro – crocodile. Il faut beaucoup de mots pour trouver des enchaînements — piochez un thème entier, ou deux."}</p></Aide>
         </h3>
-        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} />
+        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} assistant />
       </>}
       droite={
         <div className="loto-droite">
@@ -243,7 +243,7 @@ export function IntrusTab({ banque }: { banque: boolean }) {
           Chasse à l'intrus
           <Aide titre="Chasse à l'intrus" vers="droite"><p>{"Trois mots qui commencent (ou finissent) par la même syllabe, et un intrus : bateau, banane, tapis, ballon. Il faut des mots qui se ressemblent — un ou deux thèmes entiers."}</p></Aide>
         </h3>
-        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} />
+        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} assistant />
       </>}
       droite={
         <div className="loto-droite">

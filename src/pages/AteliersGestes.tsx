@@ -243,7 +243,7 @@ export function MotsEnGestesTab({ banque }: { banque: boolean }) {
             <button type="button" className="lien" onClick={() => ouvrirOnglet("jeux", "gestes")}>Importer mes images</button>
           </p>
         )}
-        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} propositions={MOTS_PAR_SON}
+        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} assistant propositions={MOTS_PAR_SON}
           aide="Chaque mot s'écrit en gestes, un par son. L'élève dit les syllabes en faisant les gestes, puis retrouve le mot." />
         {mots.length > 0 && (
           <Field label="Le codage de chaque mot — corrigez un pas si la règle s'est trompée">
