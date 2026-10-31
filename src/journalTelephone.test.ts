@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import type { Creneau, MaterielItem, Seance, Sequence } from "./api";
+import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import {
-  aFaireDuCreneau, cleDeLaSeance, minuteurDeLaSeance,
+  aFaireDuCreneau, cleDeLaSeance, deLaClasse, minuteurDeLaSeance,
   aidesDuCreneau, cleDuDeroulement, cleDuDeroulementDe, dureeDuMinuteur, estUneAide, estUneFicheDEleve, fichesDuCreneau, journalDes, joursPublies, minuteurDuCreneau, MINUTEURS_DES_TABLETTES,
   domaineDeLaSeance, pasDuDeroulement,
   pageDeLaConsigne, signatureDuJournal, titreDeLAide, titrePourLesTablettes,
@@ -164,8 +164,8 @@ describe("les fiches d'« En retard », pour les tablettes", () => {
     const c = creneau("c1", "2026-10-13", { seanceId: "s1", prevu: "🔁 La date\n🔁 La météo\n" + prevu });
     expect(pasDuDeroulement(c, seanceDuJour, phases, [pyramides, meles])).toEqual([
       { texte: "La date · La météo", matiere: "Rituel", rituel: true },
-      { texte: "Je découvre les mots.", matiere: "" },
-      { texte: "Je cherche.", matiere: "" },
+      { texte: "Je découvre les mots.", matiere: "", seance: "s1" },
+      { texte: "Je cherche.", matiere: "", seance: "s1" },
     ]);
     // Celui d'un élève finit par ses fiches, et par elles seules : chacun a sa tablette.
     expect(pasDuDeroulement(c, seanceDuJour, phases, [pyramides, meles], "", "ZENON").slice(3)).toEqual([{ texte: "Mots mêlés", matiere: "", fiche: true }]);
@@ -175,7 +175,7 @@ describe("les fiches d'« En retard », pour les tablettes", () => {
       .toEqual(["Rituel", "Les mots de l'automne"]);
     // Les phases d'une séance portent son domaine : c'est son picto qu'elles montrent.
     expect(pasDuDeroulement(creneau("c2", "2026-10-13", { seanceId: "s1" }), seanceDuJour, phases, [], "Lecture").slice(1))
-      .toEqual([{ texte: "Je découvre les mots.", matiere: "", domaine: "Lecture" }, { texte: "Je cherche.", matiere: "", domaine: "Lecture" }]);
+      .toEqual([{ texte: "Je découvre les mots.", matiere: "", domaine: "Lecture", seance: "s1" }, { texte: "Je cherche.", matiere: "", domaine: "Lecture", seance: "s1" }]);
     // Ni séance ni fiche : rien à dérouler.
     expect(pasDuDeroulement(creneau("c3", "2026-10-13", { prevu: "🔁 La date" }), undefined, phases, [pyramides])).toEqual([]);
     // Au journal : les aides de la séance prennent sa première phase ; la fiche de chaque élève suit les phases, dans son déroulement.
@@ -266,6 +266,55 @@ describe("les séances d'« En retard », pour les tablettes (demande de l'ensei
     const sig = signatureDuJournal(j, [meles], [entrainer]);
     expect(signatureDuJournal(j, [meles], [{ ...entrainer, consignes: "Je lis le verbe.\nJ'écris la bonne forme." }])).not.toBe(sig);
     expect(signatureDuJournal(j, [meles], [entrainer, { ...seance("s9", "Une autre"), consignes: "Rien." }])).toBe(sig);
+  });
+});
+
+describe("ce que le prévu cite pour la classe, sur les tablettes (demande de l'enseignant, 31 octobre 2026)", () => {
+  const nombres: Sequence = {
+    id: "q3", titre: "La connaissance des nombres de 10 à 20 (CP)", matiere: "Mathématiques", cycle: "", objectifs: "", competences: "", competenceVisee: "",
+    imageNom: null, couleur: "", dateCreation: "", periode: 2, annee: "2026-2027", ratingEngagement: 0, ratingFacilite: 0, ratingApprentissage: 0,
+    ratingDateMaj: null, projetId: null, video: "", dossier: "", nbSeancesPrevu: 6, etat: "", dateMaj: "",
+  };
+  const dire: Seance = {
+    ...seance("s5", "Les nombres jusqu'à 9 : dire, écrire, décomposer"), sequenceId: "q3",
+    competences: JSON.stringify([{ domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres et calcul" }]),
+  };
+  const oie: Jeu = {
+    id: "j1", titre: "jeu de l’oie", typeJeu: "Société", descriptionJeu: "", regles: "", competences: "", competencesBo: "[]",
+    nbJoueursMin: 2, nbJoueursMax: 4, duree: 20, ageMin: 0, rangement: "", couleur: "", dateCreation: "", imageNom: null, dossier: "",
+  };
+  // Le prévu tel que le bouton 📚 le pose, puis le jeu écrit à la main ; aucune séance posée sur le créneau.
+  const prevu = "📚 La connaissance des nombres de 10 à 20 (CP) · séance 1/6 : Les nombres jusqu'à 9 : dire, écrire, décomposer\njeu de l’oie\n";
+  const c = creneau("c1", "2026-11-02", { heureDebut: "14:10", heureFin: "15:00", prevu });
+  const phases = () => ["Je dis les nombres.", "Je les décompose."];
+
+  it("déroule après le rituel la séance de la ligne 📚, puis le jeu, avec le picto de son nom", () => {
+    expect(deLaClasse(c, undefined, [nombres], [dire], [oie]).map((x) => x.seance?.id ?? x.jeu?.id)).toEqual(["s5", "j1"]);
+    expect(pasDuDeroulement(c, undefined, phases, [], "", undefined, [nombres], [dire], [oie])).toEqual([
+      { texte: "Rituel", matiere: "", rituel: true },
+      { texte: "Je dis les nombres.", matiere: "", domaine: "Nombres et calcul", seance: "s5" },
+      { texte: "Je les décompose.", matiere: "", domaine: "Nombres et calcul", seance: "s5" },
+      { texte: "Jeu de l’oie", matiere: "Jeu", jeu: true },
+    ]);
+  });
+
+  it("envoie aux tablettes ce déroulement, le titre de la séance et ses aides, à sa première phase", () => {
+    const aide = materiel("m5", "Ce que je vais faire — Les nombres jusqu'à 9", "s5", "sequentiel");
+    const x = journalDes(["2026-11-02"], [c], [dire], [aide], phases, [nombres], [oie]).jours[0].creneaux[0];
+    expect([x.seance, x.deroule]).toEqual(["Les nombres jusqu'à 9 : dire, écrire, décomposer", cleDuDeroulement("c1")]);
+    expect(x.aides).toEqual([{ id: "m5", titre: "Ce que je vais faire — Les nombres jusqu'à 9", minuteur: 0, etape: 1 }]);
+    // Le jeu seul suffit à dérouler ; une ligne qui ne cite rien, non.
+    expect(journalDes(["2026-11-02"], [creneau("c2", "2026-11-02", { prevu: "jeu de l’oie" })], [], [], phases, [], [oie]).jours[0].creneaux[0].deroule)
+      .toBe(cleDuDeroulement("c2"));
+    expect(journalDes(["2026-11-02"], [creneau("c3", "2026-11-02", { prevu: "On range la classe." })], [], [], phases, [], [oie]).jours[0].creneaux[0].deroule)
+      .toBe("");
+  });
+
+  it("laisse à chaque élève ce qui suit « En autonomie », ne cherche pas de jeu dans la ligne 📚, et ne double pas la séance posée", () => {
+    expect(deLaClasse(creneau("c2", "2026-11-02", { prevu: "⏰ En autonomie :\n" + prevu }), undefined, [nombres], [dire], [oie])).toEqual([]);
+    expect(deLaClasse(c, undefined, [nombres], [dire], [{ ...oie, id: "j2", titre: "Décomposer" }]).map((x) => x.seance?.id ?? x.jeu?.id)).toEqual(["s5"]);
+    expect(deLaClasse(c, dire, [nombres], [dire], []).map((x) => x.seance?.id)).toEqual(["s5"]);
+    expect(aidesDuCreneau({ seanceId: "s5" }, [materiel("m5", "x", "s5", "sequentiel")], ["s5"]).map((m) => m.id)).toEqual(["m5"]);
   });
 });
 

@@ -257,7 +257,8 @@ export default function Planning() {
     const materiels = await api.materielList().catch((): MaterielItem[] => []);
     if (enBandes) {
       const seancesActuelles = await api.seancesList().catch(() => seances ?? []);
-      await api.ouvrirHtml(await pageDeLaJourneeEnBandes(titre, jourCreneaux, seancesActuelles, sequences ?? [], materiels), SCRIPTS_DES_BANDES);
+      const jeuxDuJour = await api.jeuxList().catch((): Jeu[] => []);
+      await api.ouvrirHtml(await pageDeLaJourneeEnBandes(titre, jourCreneaux, seancesActuelles, sequences ?? [], materiels, jeuxDuJour), SCRIPTS_DES_BANDES);
       return;
     }
     const reImg = /\[img:([^\]]+)\]/g;
@@ -452,7 +453,7 @@ export default function Planning() {
     // Puis la journée en bandes, regroupées sur une page — les cartes des tablettes, toutes de la même taille (demande de
     // l'enseignant, 31 octobre 2026) —, avant le matériel. Sans bande, pas de page.
     const seancesActuelles = await api.seancesList().catch(() => seances ?? []);
-    const duJour = await bandesDuJour(jourCreneaux, seancesActuelles, sequences ?? [], materiels).catch(() => ({ bandes: [], refs: [] }));
+    const duJour = await bandesDuJour(jourCreneaux, seancesActuelles, sequences ?? [], materiels, jeux).catch(() => ({ bandes: [], refs: [] }));
     const pageDesBandes = duJour.bandes.length
       ? corpsDesBandes(titre, duJour.bandes, mentionDesPictos(duJour.refs, "", "bandes-attribution"), "portrait") : "";
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Planning — ${escapeHtml(titre)}</title><style>${css}${pageDesBandes ? STYLE_BANDES_DU_JOURNAL : ""}</style></head>

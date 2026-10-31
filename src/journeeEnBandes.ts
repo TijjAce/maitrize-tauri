@@ -1,8 +1,8 @@
 // La journée sur une seule page, en bandes (demande de l'enseignant, 31 octobre 2026).
 //
 // Chaque créneau qu'on imprime y est une bande : son déroulement tel que les
-// tablettes le montrent — le rituel d'abord, puis les phases de sa séance et
-// les fiches de ses élèves, chacun dans sa carte avec son picto et sa
+// tablettes le montrent — le rituel d'abord, puis les phases de ses séances,
+// ses jeux et les fiches de ses élèves, chacun dans sa carte avec son picto et sa
 // matière, reliés par des flèches (voir journalTelephone.ts) —, l'heure en
 // tête. Un créneau coché « ne pas imprimer » n'y est pas ; une pause où rien
 // n'est écrit non plus.
@@ -18,7 +18,7 @@
 // pour que la bande la plus longue tienne dans la hauteur — à l'ouverture,
 // une fois les images chargées, et avant d'imprimer.
 
-import type { Creneau, MaterielItem, Seance, Sequence } from "./api";
+import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import {
   aFaireDuCreneau, cadresDuDeroulement, domaineDeLaSeance, elevesDuCreneau, estUneFicheDEleve, pasDuDeroulement, pictosDuDeroulement,
   STYLE_DU_DEROULEMENT, type EtapesDeLaSeance, type PasDuDeroulement,
@@ -47,17 +47,18 @@ export const heuresDeLaBande = (c: Pick<Creneau, "heureDebut" | "heureFin">): st
 
 /**
  * Le déroulement d'un créneau sur sa bande : celui des tablettes — le rituel
- * d'abord, puis les phases de sa séance —, puis les fiches et les séances de
- * chacun de ses élèves, son prénom avec la matière (une tablette ne montre
- * que les siennes ; la page, toutes). Sans séance ni fiche, une seule carte :
- * ses rituels s'il en cite, sinon sa matière.
+ * d'abord, puis les phases de ses séances, posée ou citées au prévu, et ses
+ * jeux —, puis les fiches et les séances de chacun de ses élèves, son prénom
+ * avec la matière (une tablette ne montre que les siennes ; la page, toutes).
+ * Sans séance, ni jeu, ni fiche, une seule carte : ses rituels s'il en cite,
+ * sinon sa matière.
  */
 export function pasDeLaBande(
   c: Pick<Creneau, "prevu" | "matiere">, seance: Seance | undefined, etapesDe: EtapesDeLaSeance, fiches: MaterielItem[], domaineDeSeance = "",
-  sequences: Sequence[] = [], seances: Seance[] = [],
+  sequences: Sequence[] = [], seances: Seance[] = [], jeux: Jeu[] = [],
 ): PasDuDeroulement[] {
   const eleves = elevesDuCreneau(aFaireDuCreneau(c, fiches, sequences, seances));
-  const deroulementDe = (eleve?: string) => pasDuDeroulement(c, seance, etapesDe, fiches, domaineDeSeance, eleve, sequences, seances);
+  const deroulementDe = (eleve?: string) => pasDuDeroulement(c, seance, etapesDe, fiches, domaineDeSeance, eleve, sequences, seances, jeux);
   // Le début, commun à tous : celui de la classe ; sans séance, le rituel par lequel commence celui de chaque élève.
   const debut = (eleves.length ? deroulementDe(eleves[0]) : deroulementDe()).filter((p) => !p.fiche);
   const leurs = eleves.flatMap((eleve) => deroulementDe(eleve).filter((p) => p.fiche).map((p) => ({ ...p, eleve })));
@@ -191,7 +192,9 @@ export function corpsDesBandes(titre: string, bandes: Bande[], fin = "", format:
 }
 
 /** Les bandes du jour : le déroulement de chaque créneau qui en a une, dessiné comme pour les tablettes, avec les pictos que l'enseignant a choisis. */
-export async function bandesDuJour(creneaux: Creneau[], seances: Seance[], sequences: Sequence[], materiel: MaterielItem[]): Promise<{ bandes: Bande[]; refs: RefPicto[] }> {
+export async function bandesDuJour(
+  creneaux: Creneau[], seances: Seance[], sequences: Sequence[], materiel: MaterielItem[], jeux: Jeu[] = [],
+): Promise<{ bandes: Bande[]; refs: RefPicto[] }> {
   const { etapesDeLaSeance } = await import("./aidesALaTache");
   const pictos = await pictosDuDeroulement();
   const fiches = materiel.filter(estUneFicheDEleve);
@@ -200,7 +203,7 @@ export async function bandesDuJour(creneaux: Creneau[], seances: Seance[], seque
   for (const c of creneauxEnBandes(creneaux)) {
     const seance = c.seanceId ? seances.find((s) => s.id === c.seanceId) : undefined;
     const domaine = seance ? domaineDeLaSeance(seance, sequences.find((q) => q.id === seance.sequenceId)) : "";
-    const { html, refs } = await cadresDuDeroulement(pasDeLaBande(c, seance, etapesDeLaSeance, fiches, domaine, sequences, seances), pictos);
+    const { html, refs } = await cadresDuDeroulement(pasDeLaBande(c, seance, etapesDeLaSeance, fiches, domaine, sequences, seances, jeux), pictos);
     bandes.push({ heures: heuresDeLaBande(c), matiere: c.matiere ?? "", cadres: html });
     montres.push(...refs);
   }
@@ -211,8 +214,10 @@ export async function bandesDuJour(creneaux: Creneau[], seances: Seance[], seque
 export const STYLE_BANDES_DU_JOURNAL = STYLE_DU_DEROULEMENT.replace(/\.page > \.titre \{[^}]*\}/, "") + STYLE_BANDES;
 
 /** La page de la journée en bandes, seule, en paysage — et la mention de la banque de ses pictos. */
-export async function pageDeLaJourneeEnBandes(titre: string, creneaux: Creneau[], seances: Seance[], sequences: Sequence[], materiel: MaterielItem[]): Promise<string> {
-  const { bandes, refs } = await bandesDuJour(creneaux, seances, sequences, materiel);
+export async function pageDeLaJourneeEnBandes(
+  titre: string, creneaux: Creneau[], seances: Seance[], sequences: Sequence[], materiel: MaterielItem[], jeux: Jeu[] = [],
+): Promise<string> {
+  const { bandes, refs } = await bandesDuJour(creneaux, seances, sequences, materiel, jeux);
   const logo = await logoImprimable().catch(() => "");
   const fin = mentionDesPictos(refs, "", "bandes-attribution") + piedMaitrize(logo);
   return documentImprimable(`La journée — ${titre}`, corpsDesBandes(titre, bandes, fin), STYLE_DU_DEROULEMENT + STYLE_PIED + STYLE_PAGE_BANDES + STYLE_BANDES);
