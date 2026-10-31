@@ -83,6 +83,8 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
   tri: "Trier pour apprendre une notion, comme la leçon de grammaire du guide « Pour enseigner la lecture et l'écriture au CE1 » (Éduscol, 2019), "
     + "p. 95-97, qui part d'un corpus qu'on classe.",
   phrases: `${FRANCAIS_C2}, « Produire des écrits » : au CP, composer des phrases avec des étiquettes.`,
+  phrasesPuzzle: `${SOURCE_INCONNUE} pour le puzzle lui-même, un jeu de classe ; il sert ce que demande le programme de français du cycle 2 (2024) : `
+    + "au CP, composer des phrases avec des étiquettes, trouver le sujet et le verbe ; au CE1, les compléments.",
   trous: `${SOURCE_INCONNUE}.`,
   motsMeles: `${SOURCE_INCONNUE}.`,
   cursive: "Livret d'accompagnement de français CP (Éduscol, 2025), séquence n° 2 « Apprendre à écrire en écriture cursive » : les réglures de 3, "
