@@ -1221,8 +1221,10 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .stf-puce-logo { position: absolute; top: 6px; right: 6px; width: 17px; height: 17px; border-radius: 5px; box-shadow: 0 0 0 1px var(--border); }
 .stf-logo-titre { flex: none; width: 20px; height: 20px; border-radius: 6px; box-shadow: 0 0 0 1px var(--border); }
 .stf-logo-aide { width: 15px; height: 15px; border-radius: 4px; vertical-align: -3px; }
-.stf-ligne-detail > td { padding: 4px 0 18px; }
-.stf-detail { margin: 12px 0 18px; scroll-margin-top: 125px; }
+/* Une séquence ouverte : sa page, à la place du tableau, et le chemin du retour. */
+.stf-page { scroll-margin-top: 125px; }
+.stf-retour { margin-bottom: 4px; }
+.stf-detail { margin: 8px 0 18px; }
 .stf-option { display: flex; align-items: center; gap: 6px; font-size: 13px; margin: 0 0 10px; cursor: pointer; }
 .stf-periode { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13px; }
 .stf-ateliers { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; font-size: 13px; }
@@ -1396,6 +1398,10 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 .atelier.atelier-sequence:hover { background: color-mix(in srgb, var(--panel-2) 72%, #0d9488); border-color: #0d9488; }
 .atelier-genre { font-weight: 700; color: color-mix(in srgb, var(--text) 55%, #0d9488); white-space: nowrap; }
 .atelier-sequence .atelier-besoin { opacity: 1; }
+/* Un dossier de séquences : l'icône et le nom de la classe, rien d'autre ; ce qu'il contient se lit au survol. */
+.atelier.atelier-dossier { grid-template-rows: auto; align-items: center; }
+.atelier-dossier .atelier-icone { grid-row: auto; }
+.atelier-dossier .atelier-nom { font-size: 16px; }
 /* Un encart vide, en pointillés : rien à montrer ici, et ce qu'on peut y faire. */
 .zone-moment-vide { border: 1px dashed var(--border); border-radius: 12px; padding: 18px; font-size: 12.5px; color: var(--text-2); text-align: center; }
 /* Une famille se plie : la flèche tourne, et la section repliée dit combien d'ateliers elle garde. */

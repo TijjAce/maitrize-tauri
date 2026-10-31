@@ -170,15 +170,17 @@ function CarteAtelier({ o, usage, creer, onOuvrir, onRanger }: {
 }) {
   const besoin = [o.cycles, o.pictos ? "pictogrammes ARASAAC" : ""].filter(Boolean).join(" · ");
   return (
-    <div role="button" tabIndex={0} className={`atelier${o.sequence ? " atelier-sequence" : ""}${creer ? " atelier-creer" : ""}`} onClick={onOuvrir}
+    <div role="button" tabIndex={0} className={`atelier${o.sequence ? " atelier-sequence" : ""}${o.dossier ? " atelier-dossier" : ""}${creer ? " atelier-creer" : ""}`}
+      onClick={onOuvrir} title={o.dossier ? o.quoi : undefined}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOuvrir(); } }}
       onContextMenu={onRanger ? (e) => openCtx(e, USAGES.map((u) => ({
         label: `Ranger dans ${u.nom}${u.id === usage ? " ✓" : ""}`, icon: u.ico, onClick: () => onRanger(u.id),
       }))) : undefined}>
       <span className="atelier-icone">{o.icone}</span>
       <span className="atelier-nom">{o.nom}</span>
-      <span className="atelier-quoi">{o.quoi}</span>
-      {(besoin || o.sequence) && (
+      {/* Un dossier se dit par son nom seul — « CP », « GS » — : « enlève le texte sur les cartes » (31 octobre 2026) ; ce qu'il contient, au survol. */}
+      {!o.dossier && <span className="atelier-quoi">{o.quoi}</span>}
+      {!o.dossier && (besoin || o.sequence) && (
         <span className="atelier-besoin">
           {o.sequence && (
             <span className="atelier-genre" title={o.dossier ? "Des séquences, leurs séances et toutes leurs feuilles, prêtes : chacune se crée d'un clic" : "Ses séances et toutes leurs feuilles, prêtes : on la crée d'un clic"}>
@@ -419,7 +421,7 @@ export default function Jeux() {
   // ── Dans un atelier ──
   return (
     <ProjetDuMomentProvider>
-    <Page titre={outil ? `${outil.icone} ${dossierDe(outil)}${outil.nom}` : "Fabriquer"} sous={outil?.quoi}
+    <Page titre={outil ? `${outil.icone} ${dossierDe(outil)}${outil.nom}` : "Fabriquer"} sous={outil?.dossier ? undefined : outil?.quoi}
       actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>}>
       <BandeauModification atelier={onglet} onReprendre={(a) => setOnglet(a as Onglet)} />
       <BandeauPourLaSeance />
