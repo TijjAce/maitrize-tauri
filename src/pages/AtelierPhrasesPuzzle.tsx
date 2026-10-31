@@ -3,6 +3,7 @@ import { Aide } from "../components/Aide";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { ChoixPicto, usePictoImage, usePictoImages } from "../components/ChoixPicto";
 import { ApercuExemple } from "../components/Exemple";
+import { useQuestionsDeLaFeuille, useReponsesGuidees, type QuestionDeReglage } from "../components/AssistantDesMots";
 import { QuestionsGuidees, type QuestionGuidee } from "../components/QuestionsGuidees";
 import { toast } from "../components/Toaster";
 import { Textarea } from "../components/ui";
@@ -15,15 +16,16 @@ import {
   REGLAGES_PUZZLE, SORTES, STYLE_PUZZLE, THEMES_DE_PUZZLE, combienDePhrases, htmlPuzzle, motDeLImage, reglagesPuzzle,
   type PiecesDuPuzzle, type ReglagesPuzzle, type SortePiece,
 } from "../phrasesPuzzle";
-import { Boutons, Coche, Colonnes, bureau, imprimer } from "./AteliersSons";
+import { Boutons, Colonnes, bureau, imprimer } from "./AteliersSons";
 
 // ── Fabriquer › Lecture et écriture › Les phrases en puzzle ──────────────
 //
 // Les sujets, les verbes et les compléments en trois listes (voir
 // phrasesPuzzle.ts) ; chaque groupe de mots trouve son image dans la banque
-// — le nom, ou l'infinitif du verbe — et la change d'un clic. L'assistant
-// pose ses questions une à une : les pièces d'un thème ou les siennes, leur
-// taille, l'écriture, le code de la phrase, les étiquettes des sachets.
+// — le nom, ou l'infinitif du verbe — et la change d'un clic : elles seules
+// à gauche. À droite, l'assistant pose ses questions une à une : les pièces
+// d'un thème ou les siennes, leur taille, l'écriture, le code de la phrase,
+// les images, les étiquettes des sachets, puis la feuille.
 
 /** Chaque groupe de mots avec l'image que la banque donne à son nom, ou à l'infinitif de son verbe ; sans image, le mot seul. */
 async function avecImages(textes: string[], sorte: SortePiece): Promise<MotImage[]> {
@@ -104,7 +106,7 @@ export function PhrasesPuzzleTab({ banque }: { banque: boolean }) {
   // Le code de la phrase de la classe, tel que l'atelier « Le code de la phrase » l'a gardé.
   const code = React.useMemo(() => codeActuel(), []);
   const pieces: PiecesDuPuzzle = React.useMemo(() => ({ sujet, verbe, complement }), [sujet, verbe, complement]);
-  const poser: Record<SortePiece, (l: MotImage[]) => void> = { sujet: setSujet, verbe: setVerbe, complement: setComplement };
+  const poserLaListe: Record<SortePiece, (l: MotImage[]) => void> = { sujet: setSujet, verbe: setVerbe, complement: setComplement };
   const vide = !sujet.length && !verbe.length && !complement.length;
   // Sans pièces, celles d'un exemple — la ferme — : ce que donnera le puzzle.
   const [exemple, setExemple] = React.useState<PiecesDuPuzzle | null>(null);
@@ -123,11 +125,67 @@ export function PhrasesPuzzleTab({ banque }: { banque: boolean }) {
   const fabriquer = (im: Record<number, string>) => htmlPuzzle(pieces, im, r, code);
   const idsDesPieces = [...sujet, ...verbe, ...complement].map((m) => m.id).filter((x): x is number => x != null);
 
-  // L'assistant : les pièces, puis la taille, l'écriture, le code, les sachets.
-  const [ouvert, setOuvert] = React.useState(vide);
-  const [reponses, setReponses] = React.useState<Record<string, string>>({});
+  // L'assistant : les pièces, puis la taille, l'écriture, le code, les images, les sachets, et la feuille. Revenu avec des
+  // pièces, les réponses sont en place, en pastilles, qu'un clic rouvre (voir AssistantDesMots).
   const [occupe, setOccupe] = React.useState(false);
-  const repondu = (q: string, libelle: string) => setReponses((x) => ({ ...x, [q]: libelle }));
+  const deLaFeuille = useQuestionsDeLaFeuille();
+  const dit = (oui: boolean, si: string, sinon: string) => (oui ? si : sinon);
+  const reglages: QuestionDeReglage[] = [
+    {
+      question: {
+        id: "taille", puce: "Taille", titre: "Quelle taille de pièces ?",
+        choix: [
+          { id: "grandes", libelle: "De grandes pièces", description: "dix par page, pour les petites mains" },
+          { id: "petites", libelle: "De petites pièces", description: "dix-huit par page" },
+        ],
+      },
+      repondre: (c) => { maj({ taille: c === "petites" ? "petites" : "grandes" }); return dit(c === "petites", "De petites pièces", "De grandes pièces"); },
+      actuelle: () => dit(r.taille === "petites", "De petites pièces", "De grandes pièces"),
+    },
+    {
+      question: {
+        id: "ecriture", puce: "L'écrit", titre: "Les mots en capitales, ou en script ?",
+        choix: [
+          { id: "capitales", libelle: "EN CAPITALES", description: "comme en maternelle" },
+          { id: "script", libelle: "en script", description: "pour qui lit déjà" },
+        ],
+      },
+      repondre: (c) => { maj({ ecriture: c === "script" ? "script" : "capitales" }); return dit(c === "script", "En script", "En capitales"); },
+      actuelle: () => dit(r.ecriture === "script", "En script", "En capitales"),
+    },
+    {
+      question: {
+        id: "code", puce: "Couleurs", titre: "Aux couleurs du code de la phrase de la classe ?",
+        choix: [
+          { id: "oui", libelle: "Oui", description: "les couleurs et les marques choisies dans « Le code de la phrase »" },
+          { id: "non", libelle: "Non", description: "des pièces blanches, à colorier" },
+        ],
+      },
+      repondre: (c) => { maj({ code: c === "oui" }); return dit(c === "oui", "Aux couleurs du code", "Des pièces blanches"); },
+      actuelle: () => dit(r.code, "Aux couleurs du code", "Des pièces blanches"),
+    },
+    {
+      question: {
+        id: "images", puce: "Images", titre: "Avec l'image de chaque groupe de mots ?",
+        choix: [
+          { id: "oui", libelle: "Oui", description: "le fermier, la vache : on lit l'image avant les mots" },
+          { id: "non", libelle: "Non", description: "les mots seuls" },
+        ],
+      },
+      repondre: (c) => { maj({ images: c === "oui" }); return dit(c === "oui", "Avec les images", "Les mots seuls"); },
+      actuelle: () => dit(r.images, "Avec les images", "Les mots seuls"),
+    },
+    {
+      question: {
+        id: "sachets", puce: "Sachets", titre: "Les étiquettes des sachets ?",
+        choix: [{ id: "oui", libelle: "Oui", description: "SUJET, VERBE, COMPLÉMENT, à coller sur chaque sachet" }, { id: "non", libelle: "Non" }],
+      },
+      repondre: (c) => { maj({ sachets: c === "oui" }); return dit(c === "oui", "Avec les étiquettes des sachets", "Sans étiquettes"); },
+      actuelle: () => dit(r.sachets, "Avec les étiquettes des sachets", "Sans étiquettes"),
+    },
+    ...deLaFeuille,
+  ];
+  const { lire, poser, revenir, regler } = useReponsesGuidees(!vide, reglages);
   const questions: QuestionGuidee[] = [
     {
       id: "pieces", puce: "Les pièces", titre: "Avec quelles pièces ?",
@@ -137,48 +195,23 @@ export function PhrasesPuzzleTab({ banque }: { banque: boolean }) {
         { id: "ecrire", libelle: "✍️ Je les écris", description: "à gauche : un groupe de mots par ligne" },
       ],
     },
-    {
-      id: "taille", puce: "Taille", titre: "Quelle taille de pièces ?",
-      choix: [
-        { id: "grandes", libelle: "De grandes pièces", description: "dix par page, pour les petites mains" },
-        { id: "petites", libelle: "De petites pièces", description: "dix-huit par page" },
-      ],
-    },
-    {
-      id: "ecriture", puce: "L'écrit", titre: "Les mots en capitales, ou en script ?",
-      choix: [
-        { id: "capitales", libelle: "EN CAPITALES", description: "comme en maternelle" },
-        { id: "script", libelle: "en script", description: "pour qui lit déjà" },
-      ],
-    },
-    {
-      id: "code", puce: "Couleurs", titre: "Aux couleurs du code de la phrase de la classe ?",
-      choix: [
-        { id: "oui", libelle: "Oui", description: "les couleurs et les marques choisies dans « Le code de la phrase »" },
-        { id: "non", libelle: "Non", description: "des pièces blanches, à colorier" },
-      ],
-    },
-    {
-      id: "sachets", puce: "Sachets", titre: "Les étiquettes des sachets ?",
-      choix: [{ id: "oui", libelle: "Oui", description: "SUJET, VERBE, COMPLÉMENT, à coller sur chaque sachet" }, { id: "non", libelle: "Non" }],
-    },
+    ...reglages.map((x) => x.question),
   ];
-  const repondre = (q: string, c: string) => {
+  // En place, les listes répondent à la question des pièces ; vides, elles la reposent.
+  const lues = lire(questions, (id) => (id === "pieces" && !vide ? "Mes pièces" : undefined));
+  const repondre = (q: string, c: string, texte?: string) => {
     if (occupe) return;
     if (q === "pieces") {
       const t = THEMES_DE_PUZZLE.find((x) => x.id === c);
       if (t) {
         setOccupe(true);
-        piecesDuTheme(t.id).then((p) => { prendre(p); repondu("pieces", `${t.icone} ${t.nom}`); })
+        piecesDuTheme(t.id).then((p) => { prendre(p); poser("pieces", `${t.icone} ${t.nom}`); })
           .catch((e) => toast(String(e), { icone: "⚠️" })).finally(() => setOccupe(false));
-      } else if (c === "garder") repondu("pieces", "Mes pièces");
-      else { repondu("pieces", "✍️ Je les écris"); document.querySelector<HTMLTextAreaElement>(".pz-saisie textarea")?.focus(); }
+      } else if (c === "garder") poser("pieces", "Mes pièces");
+      else { poser("pieces", "✍️ Je les écris"); document.querySelector<HTMLTextAreaElement>(".pz-saisie textarea")?.focus(); }
       return;
     }
-    if (q === "taille") { maj({ taille: c === "petites" ? "petites" : "grandes" }); repondu(q, c === "petites" ? "De petites pièces" : "De grandes pièces"); }
-    if (q === "ecriture") { maj({ ecriture: c === "script" ? "script" : "capitales" }); repondu(q, c === "script" ? "En script" : "En capitales"); }
-    if (q === "code") { maj({ code: c === "oui" }); repondu(q, c === "oui" ? "Aux couleurs du code" : "Des pièces blanches"); }
-    if (q === "sachets") { maj({ sachets: c === "oui" }); repondu(q, c === "oui" ? "Avec les étiquettes des sachets" : "Sans étiquettes"); }
+    regler(q, c, texte);
   };
   const fin = occupe ? "…" : vide ? "Écrivez vos sujets, vos verbes et vos compléments à gauche : le puzzle se fait sous vos yeux."
     : n ? `C'est prêt : ${n} phrase${n > 1 ? "s" : ""} possible${n > 1 ? "s" : ""} avec ces pièces.`
@@ -195,29 +228,14 @@ export function PhrasesPuzzleTab({ banque }: { banque: boolean }) {
           </Aide>
         </h3>
         {SORTES.map((s) => (
-          <ListeDePieces key={s.id} sorte={s} liste={pieces[s.id]} onChange={poser[s.id]} banque={banque} couleur={r.code ? hexDe(code, s.id) : "var(--text-2)"} />
+          <ListeDePieces key={s.id} sorte={s} liste={pieces[s.id]} onChange={poserLaListe[s.id]} banque={banque} couleur={r.code ? hexDe(code, s.id) : "var(--text-2)"} />
         ))}
-        {!vide && <div className="meta" style={{ fontSize: 12.5, margin: "4px 0 8px" }}>{n ? `${n} phrase${n > 1 ? "s" : ""} possible${n > 1 ? "s" : ""}.` : "Il faut au moins un sujet, un verbe et un complément."}</div>}
-        <div className="seg" role="group" aria-label="La taille des pièces" style={{ marginBottom: 8 }}>
-          <button type="button" className={r.taille === "grandes" ? "active" : ""} onClick={() => maj({ taille: "grandes" })}>Grandes pièces</button>
-          <button type="button" className={r.taille === "petites" ? "active" : ""} onClick={() => maj({ taille: "petites" })}>Petites pièces</button>
-        </div>
-        <div className="seg" role="group" aria-label="L'écriture des mots" style={{ marginBottom: 8 }}>
-          <button type="button" className={r.ecriture === "capitales" ? "active" : ""} onClick={() => maj({ ecriture: "capitales" })}>CAPITALES</button>
-          <button type="button" className={r.ecriture === "script" ? "active" : ""} onClick={() => maj({ ecriture: "script" })}>script</button>
-        </div>
-        <Coche on={r.code} libelle="Aux couleurs du code de la phrase" onChange={(v) => maj({ code: v })} />
-        <Coche on={r.images} libelle="Avec l'image de chaque groupe de mots" onChange={(v) => maj({ images: v })} />
-        <Coche on={r.sachets} libelle="Les étiquettes des sachets" onChange={(v) => maj({ sachets: v })} />
-        <Boutons peut={n > 0} onImprimer={() => imprimer("phrasesPuzzle", "Les phrases en puzzle", fabriquer, idsDesPieces, STYLE_PUZZLE)}
-          onBureau={() => bureau("phrasesPuzzle", "Les phrases en puzzle", fabriquer, idsDesPieces, STYLE_PUZZLE)} />
       </>}
       droite={
         <div className="loto-droite">
-          {ouvert
-            ? <QuestionsGuidees titre="Préparer le puzzle des phrases" questions={questions} reponses={reponses} onRepondre={repondre}
-                onRevenir={(q) => setReponses((x) => { const y = { ...x }; delete y[q]; return y; })} fin={fin} onFermer={() => setOuvert(false)} />
-            : <div className="qg-ferme"><button type="button" className="btn ghost sm" onClick={() => setOuvert(true)}>💬 Préparer le puzzle des phrases</button></div>}
+          <QuestionsGuidees titre="Préparer le puzzle des phrases" questions={questions} reponses={lues} onRepondre={repondre} onRevenir={(q) => revenir(q)} fin={fin} />
+          <Boutons sousLAssistant peut={n > 0} onImprimer={() => imprimer("phrasesPuzzle", "Les phrases en puzzle", fabriquer, idsDesPieces, STYLE_PUZZLE)}
+            onBureau={() => bureau("phrasesPuzzle", "Les phrases en puzzle", fabriquer, idsDesPieces, STYLE_PUZZLE)} />
           {vide ? (exemple ? <ApercuExemple onPrendre={() => prendre(exemple)}><ApercuFeuille html={html} style={STYLE_PUZZLE} /></ApercuExemple> : null)
             : <ApercuFeuille html={html} style={STYLE_PUZZLE} />}
         </div>

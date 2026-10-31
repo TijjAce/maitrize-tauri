@@ -7,9 +7,10 @@ import React from "react";
 // avec un ou plusieurs choix, puis question suivante ». Chaque question a son
 // étiquette et ses choix — un clic, ou le chiffre du choix au clavier,
 // répond ; quand plusieurs choix vont ensemble, on les coche puis on valide —,
-// parfois « Autre » à écrire. La réponse se range à droite, et la
-// question suivante vient. Une réponse se change d'un clic : on revient à sa
-// question. L'atelier décide des questions et de ce que fait chaque réponse.
+// parfois « Autre » à écrire. La réponse se range en pastille, au-dessus, et
+// la question suivante vient. Une réponse se change d'un clic sur sa
+// pastille : on revient à sa question. L'atelier décide des questions et de
+// ce que fait chaque réponse.
 
 export interface ChoixGuide {
   id: string;
@@ -25,13 +26,13 @@ export interface QuestionGuidee {
   puce: string;
   titre: string;
   choix: ChoixGuide[];
-  /** Plusieurs choix à la fois : on les coche, puis « Valider » répond avec leurs identifiants, séparés par des virgules. */
-  plusieurs?: { coches: string[] };
+  /** Plusieurs choix à la fois : on les coche, puis « Valider » répond avec leurs identifiants, séparés par des virgules — et par un vide, si `aucun` permet de n'en cocher aucun. */
+  plusieurs?: { coches: string[]; aucun?: boolean };
   /** Une réponse à écrire, quand aucun choix ne convient : un nombre, ou un texte. */
   autre?: { placeholder: string; nombre?: { min: number; max: number } };
 }
 
-export function QuestionsGuidees({ titre, questions, reponses, onRepondre, onRevenir, fin, onFermer }: {
+export function QuestionsGuidees({ titre, questions, reponses, onRepondre, onRevenir, fin }: {
   titre: string;
   questions: QuestionGuidee[];
   /** Ce qu'on a répondu à chaque question, tel qu'on l'affiche. */
@@ -41,10 +42,10 @@ export function QuestionsGuidees({ titre, questions, reponses, onRepondre, onRev
   onRevenir: (question: string) => void;
   /** Le dernier message, quand tout est répondu. */
   fin?: React.ReactNode;
-  onFermer?: () => void;
 }) {
   const courante = questions.find((q) => reponses[q.id] === undefined);
-  const repondues = courante ? questions.slice(0, questions.indexOf(courante)) : questions;
+  // Toutes les réponses, même celles qui suivent une question qu'on a rouverte.
+  const repondues = questions.filter((q) => reponses[q.id] !== undefined);
   const [texte, setTexte] = React.useState("");
   // Les choix cochés d'une question à plusieurs choix : ceux de départ, puis ceux qu'on coche.
   const [coches, setCoches] = React.useState<string[]>([]);
@@ -67,14 +68,16 @@ export function QuestionsGuidees({ titre, questions, reponses, onRepondre, onRev
     <div className="qg" role="group" aria-label={titre} onKeyDown={auClavier}>
       <div className="qg-tete">
         <span className="qg-titre">💬 {titre}</span>
-        {onFermer && <button type="button" className="btn ghost sm" onClick={onFermer}>Fermer</button>}
       </div>
-      {repondues.map((q) => (
-        <React.Fragment key={q.id}>
-          <div className="qg-bulle qg-question"><span className="qg-puce">{q.puce}</span>{q.titre}</div>
-          <button type="button" className="qg-bulle qg-reponse" title="Changer cette réponse" onClick={() => onRevenir(q.id)}>{reponses[q.id]}</button>
-        </React.Fragment>
-      ))}
+      {repondues.length > 0 && (
+        <div className="qg-faites">
+          {repondues.map((q) => (
+            <button key={q.id} type="button" className="qg-fait" title={`${q.titre} — changer cette réponse`} onClick={() => onRevenir(q.id)}>
+              <span className="qg-puce">{q.puce}</span>{reponses[q.id]}
+            </button>
+          ))}
+        </div>
+      )}
       {courante ? (
         <>
           <div className="qg-bulle qg-question"><span className="qg-puce">{courante.puce}</span>{courante.titre}</div>
@@ -94,7 +97,7 @@ export function QuestionsGuidees({ titre, questions, reponses, onRepondre, onRev
           </div>
           {courante.plusieurs && (
             <div className="qg-valider">
-              <button type="button" className="btn sm primary" disabled={!coches.length} onClick={() => onRepondre(courante.id, coches.join(","))}>Valider</button>
+              <button type="button" className="btn sm primary" disabled={!coches.length && !courante.plusieurs.aucun} onClick={() => onRepondre(courante.id, coches.join(","))}>Valider</button>
             </div>
           )}
           {autre && (

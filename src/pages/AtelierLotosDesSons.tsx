@@ -5,7 +5,6 @@ import { AssistantDesMots, questionDesCases, questionDesLegendes, questionDesPla
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { usePictoImages } from "../components/ChoixPicto";
 import { ApercuExemple, useMotsExemple } from "../components/Exemple";
-import { Field, Input, Select } from "../components/ui";
 import { useMotsGardes, useReglages } from "../components/useMemoire";
 import { MOTS_EXEMPLE } from "../exemplesDesAteliers";
 import { graineAuHasard, hasard } from "../hasard";
@@ -15,16 +14,16 @@ import {
   type LotoDesSons, type ReglagesLotoSons, type SonDuMot, type UniteLoto,
 } from "../lotosDesSons";
 import { useGraine } from "../modifierFeuille";
-import { Boutons, Coche, Colonnes, Vide, bureau, ids, imprimer } from "./AteliersSons";
+import { Boutons, Colonnes, Vide, bureau, ids, imprimer } from "./AteliersSons";
 
 // ── Fabriquer › Sons et lecture › les lotos des sons ──────────────────────
 //
 // Six lotos, un même atelier (voir lotosDesSons.ts) : les attaques, les
 // rimes, les syllabes d'attaque et de fin, les phonèmes d'attaque et de fin.
-// En tête, un assistant pose ses questions une à une — avec quels mots,
-// combien de planches, de cases, comment on joue (voir AssistantDesMots) — ;
-// à gauche, les mots, chacun avec son son, et les réglages ; à droite, la
-// feuille telle qu'elle s'imprimera.
+// À gauche, les mots et leurs images, chacun avec son son ; à droite, un
+// assistant pose ses questions une à une — avec quels mots, combien de
+// planches, de cases, comment on joue, puis la feuille (voir
+// AssistantDesMots) —, les boutons, et la feuille telle qu'elle s'imprimera.
 
 // ── Le son d'un mot, qu'on corrige ──
 
@@ -81,9 +80,10 @@ export function LotoDesSonsTab({ banque, unite }: { banque: boolean; unite: Unit
   };
   const fabriquer = (im: Record<number, string>) => htmlLotoDesSons(partieDeLoto(mots, unite, r, hasard(graine)), loto, im, r);
   const meneur = `🗣 Le meneur dit ${loto.quoi}`;
+  const jeu = (j: ReglagesLotoSons["jeu"]) => (j === "images" ? "🖼 On pioche des images" : meneur);
   const reglages: QuestionDeReglage[] = [
-    questionDesPlanches((planches) => maj({ planches })),
-    questionDesCases((cases) => maj({ cases })),
+    questionDesPlanches(r.planches, (planches) => maj({ planches })),
+    questionDesCases(r.cases, (cases) => maj({ cases })),
     {
       question: {
         id: "jeu", puce: "Le jeu", titre: "Comment joue-t-on ?",
@@ -92,9 +92,10 @@ export function LotoDesSonsTab({ banque, unite }: { banque: boolean; unite: Unit
           { id: "images", libelle: "🖼 On pioche des images", description: `on pose l'image piochée sur celle qui ${unite === "rime" ? "rime avec elle" : loto.debut ? "commence pareil" : "finit pareil"} (${loto.paire.join(" – ")}) : il faut des paires de mots` },
         ],
       },
-      repondre: (c) => { maj({ jeu: c === "images" ? "images" : "meneur" }); return c === "images" ? "🖼 On pioche des images" : meneur; },
+      repondre: (c) => { const j = c === "images" ? "images" : "meneur"; maj({ jeu: j }); return jeu(j); },
+      actuelle: () => jeu(r.jeu),
     },
-    questionDesLegendes((legendes) => maj({ legendes })),
+    questionDesLegendes(r.legendes, (legendes) => maj({ legendes })),
   ];
   const fin = !mots.length
     ? "Écrivez vos mots à gauche, ou choisissez-en : le loto se fait sous vos yeux."
@@ -116,27 +117,14 @@ export function LotoDesSonsTab({ banque, unite }: { banque: boolean; unite: Unit
         </h3>
         <BanqueDeMots mots={mots} onChange={setMots} banque={banque}
           extra={(m) => <SonModifiable son={sonDansLaListe(m, unite, r)} corrige={Boolean(r.corrections[m.mot.toLowerCase()])} onCorriger={(t) => corriger(m, t)} />} />
-        <Field label="Planches">
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <Input type="number" min={1} max={12} value={r.planches} onChange={(e) => maj({ planches: Math.max(1, Math.min(12, Number(e.target.value) || 1)) })} style={{ width: 70 }} aria-label="Nombre de planches" />
-            <Select value={r.cases} onChange={(e) => maj({ cases: Number(e.target.value) === 9 ? 9 : 6 })} aria-label="Cases par planche">
-              <option value={6}>6 cases</option><option value={9}>9 cases</option>
-            </Select>
-          </div>
-        </Field>
-        <div className="seg" role="group" aria-label="Comment on joue" style={{ marginBottom: 8 }}>
-          <button type="button" className={r.jeu === "meneur" ? "active" : ""} onClick={() => maj({ jeu: "meneur" })}>🗣 Le meneur</button>
-          <button type="button" className={r.jeu === "images" ? "active" : ""} onClick={() => maj({ jeu: "images" })}>🖼 Des images à piocher</button>
-        </div>
-        <Coche on={r.legendes} libelle="Écrire le mot sous chaque image" onChange={(v) => maj({ legendes: v })} />
-        <Boutons peut={mots.length > 0 && partie.planches.length > 0} onTirage={() => setGraine(graineAuHasard())}
-          onImprimer={() => imprimer(loto.atelier, loto.nom, fabriquer, ids(mots), style)}
-          onBureau={() => bureau(loto.atelier, loto.nom, fabriquer, ids(mots), style)} />
       </>}
       droite={
         <div className="loto-droite">
           <AssistantDesMots titre={`Préparer le ${loto.nom.charAt(0).toLowerCase()}${loto.nom.slice(1)}`} question="Avec quels mots fait-on le loto ?" mots={mots} onMots={setMots} banque={banque} parTheme={18}
             reglages={reglages} fin={fin} />
+          <Boutons sousLAssistant peut={mots.length > 0 && partie.planches.length > 0} onTirage={() => setGraine(graineAuHasard())}
+            onImprimer={() => imprimer(loto.atelier, loto.nom, fabriquer, ids(mots), style)}
+            onBureau={() => bureau(loto.atelier, loto.nom, fabriquer, ids(mots), style)} />
           {partie.manque ? <Vide quoi={`${partie.manque} Ajoutez des mots qui ${loto.debut ? "commencent" : "finissent"} autrement${conseil}.`} />
             : mots.length ? apercu
               : <ApercuExemple onPrendre={() => setMots(montres)}>{apercu}</ApercuExemple>}
