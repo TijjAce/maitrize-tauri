@@ -310,14 +310,13 @@ function motif(c: ContexteFiche, graine: number): FicheFabriquee {
   return commeLAtelier(htmlMotifs(r, {}, hasard(graine)), STYLE_FEUILLE + STYLE_MOTIFS, "motifs", r);
 }
 
-/** Des phrases à remettre dans l'ordre : celles du jour de la classe, les plus courtes au CP et au CE1 ; sans le corrigé, qui est pour l'enseignant. */
+/** Des phrases à remettre dans l'ordre : celles du jour de la classe, les plus courtes au CP et au CE1 ; le corrigé suit, pour l'enseignant. */
 function phrasesARanger(c: ContexteFiche, graine: number): FicheFabriquee {
   const classe = elementaire(c.niveau);
   const toutes = [...PHRASES_DU_JOUR[classe]].sort((a, b) => a.length - b.length);
   const choisies = classe === "CE2" ? piocher(hasard(graine), toutes, 4) : toutes.slice(0, 4);
   const r = { ...REGLAGES_PHRASES, phrases: choisies.join("\n"), lignes: true };
-  const html = htmlPhrasesEnDesordre(phrasesEnDesordre(choisies, graine), r).replace(/<div class="page corrige">[\s\S]*?<\/ol><\/div>/, "");
-  return commeLAtelier(html, STYLE_FEUILLE + STYLE_PHRASES, "phrases", r);
+  return commeLAtelier(htmlPhrasesEnDesordre(phrasesEnDesordre(choisies, graine), r), STYLE_FEUILLE + STYLE_PHRASES, "phrases", r);
 }
 
 const C2: NiveauFiches[] = ["CP", "CE1", "CE2"];
