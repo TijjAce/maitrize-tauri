@@ -130,7 +130,7 @@ export function EtiquettesTab({ banque }: { banque: boolean }) {
           Étiquettes à catégoriser
           <Aide titre="Étiquettes à catégoriser" vers="droite"><p>{"Les mots collectés pendant la séquence, à regrouper, classer, trier : en grand pour le tableau, en petit dans une enveloppe par trinôme. Une image aide les élèves qui ne déchiffrent pas encore."}</p></Aide>
         </h3>
-        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} />
+        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} assistant />
       </div>
       <div className="loto-droite">
         <AssistantDesMots titre="Préparer les étiquettes" mots={mots} onMots={setMots} banque={banque} reglages={reglages} fin={fin} />
@@ -696,7 +696,7 @@ export function OmbresTab({ banque }: { banque: boolean }) {
           Le jeu des ombres
           <Aide titre="Le jeu des ombres" vers="droite"><p>{"Chaque image retrouve son ombre : on découpe les images, on les pose sur la planche des silhouettes. Les pictogrammes de la banque, ou vos images : une image détourée, ou un objet photographié sur un fond uni — une feuille, une table —, donne une ombre nette ; une photo plein cadre ne donne qu'un rectangle."}</p></Aide>
         </h3>
-        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} />
+        <BanqueDeMots mots={mots} onChange={setMots} banque={banque} assistant />
         {sansImage > 0 && (
           <div className="meta" style={{ fontSize: 12.5, marginTop: 6, color: "var(--orange)" }}>
             {sansImage} mot{sansImage > 1 ? "s" : ""} sans image : pas d'ombre pour {sansImage > 1 ? "eux" : "lui"}.
