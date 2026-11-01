@@ -20,8 +20,9 @@ import { entier } from "./nombres";
 import { nombreEnLettres } from "./nombresEnLettres";
 
 const NOIR = "#1c2233", BLEU = "#2f6fd1";
-/** Les billes : bleues, rouges, vertes. */
-const BILLE_BLEUE = "#4a86e8", BILLE_ROUGE = "#e05252", BILLE_VERTE = "#38a169";
+/** Les billes : bleues, rouges, vertes ; les deux premières font aussi les familles d'addition (famillesAddition.ts). */
+export const BILLE_BLEUE = "#4a86e8", BILLE_ROUGE = "#e05252";
+const BILLE_VERTE = "#38a169";
 const COULEURS = [BILLE_BLEUE, BILLE_ROUGE, BILLE_VERTE];
 const JETON_ROUGE = "#e05252", JETON_VERT = "#38a169";
 
@@ -80,7 +81,7 @@ function dizainesEtUnites(n: number): string {
 // ── Les billes et les calots ──────────────────────────────────────────────
 
 /** Une bille : un rond de sa couleur et son reflet ; au corrigé, son rang dans le paquet de dix à la place du reflet. */
-function bille(x: number, y: number, r: number, hex: string, rang?: number): string {
+export function bille(x: number, y: number, r: number, hex: string, rang?: number): string {
   const rond = `<circle cx="${n2(x)}" cy="${n2(y)}" r="${r}" fill="${hex}" stroke="${NOIR}" stroke-width="0.35"/>`;
   return rang
     ? `${rond}<text x="${n2(x)}" y="${n2(y + r * 0.4)}" font-size="${n2(r * 1.1)}" font-weight="800" text-anchor="middle" fill="#fff">${rang}</text>`

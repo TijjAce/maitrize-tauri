@@ -7,7 +7,7 @@ export const ONGLETS = [
   "sons", "lotoSyllabes", "lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin", "lotoPhonemesAttaque", "lotoPhonemesFin", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "phrasesPuzzle", "trous", "motsMeles", "cursive",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "problemesCM", "coloriage", "collections", "problemeDuJour", "motifs", "tangram", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "rectangles", "calculCM", "soustractionPosee", "sequencesPS", "sequencesMS", "sequencesGS", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "grandeursCM", "geometrie", "solides", "deplacements", "geometrieCM", "donnees", "numeration",
-  "carteMentale", "taches",
+  "carteMentale", "famillesAddition", "taches",
   "sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction",
   "planClasse", "frise", "paysage",
   "perso",
@@ -294,10 +294,12 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
   },
   {
     id: "affichages", libelle: "📌 Affichages",
-    aide: "Ce qui se met au mur de la classe : la carte mentale d'un thème, d'une notion, d'une leçon.",
+    aide: "Ce qui se met au mur de la classe : la carte mentale d'un thème, d'une notion, d'une leçon ; les familles d'addition.",
     outils: [
       { id: "carteMentale", nom: "Carte mentale", icone: "🧠", pictos: true, cycles: "Cycles 1 à 3",
         quoi: "Le thème au centre, ses branches autour, chacune à sa couleur avec ses idées en mots et en images : l'affiche de la classe, en A4 ou agrandie en A3." },
+      { id: "famillesAddition", nom: "Les familles d'addition", icone: "🏠", cycles: "CP",
+        quoi: "La maison d'un nombre, une page chacun : toutes ses façons de le faire en deux parties — 3 + 4, 4 + 3… —, en billes bleues et rouges." },
     ],
   },
 ];

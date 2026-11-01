@@ -69,7 +69,7 @@ export const Coche = ({ on, libelle, onChange }: { on: boolean; libelle: string;
   <label className="pb-coche"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} /><span><LibelleAvecAide libelle={libelle} /></span></label>
 );
 
-function Chips<T extends string | number>({ liste, choisis, onChange, libelle }: {
+export function Chips<T extends string | number>({ liste, choisis, onChange, libelle }: {
   liste: readonly T[]; choisis: T[]; onChange: (v: T[]) => void; libelle?: (x: T) => string;
 }) {
   return (

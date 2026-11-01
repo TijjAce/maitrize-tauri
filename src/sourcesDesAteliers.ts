@@ -40,6 +40,8 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
   ombres: `${SOURCE_INCONNUE}.`,
   oeilDeLynx: `${SOURCE_INCONNUE}.`,
   carteMentale: `${SOURCE_INCONNUE}.`,
+  famillesAddition: `${MATHS_C2}, CP : « Connaitre dans les deux sens les tables d'addition » ; les décompositions des nombres inférieurs à dix, vues `
+    + "en maternelle, « sont réintroduits progressivement pendant les deux premières périodes du CP ».",
   taches: `${SOURCE_INCONNUE}.`,
 
   // ── Sons et lecture ──

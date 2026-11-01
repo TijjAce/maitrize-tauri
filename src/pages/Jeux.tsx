@@ -30,6 +30,7 @@ import {
 import { CursiveTab, EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab } from "./AteliersLangage";
 import { AbaqueTab, BillesTab, SuiteNombresTab } from "./AteliersNumerationCP";
 import { DemiDroiteTab, OrdinauxTab } from "./AteliersReperage";
+import { FamillesAdditionTab } from "./AtelierFamillesAddition";
 import { CalculCMTab, GeometrieCMTab, GrandeursCMTab, ProblemesCMTab } from "./AteliersCoursMoyen";
 import { RectanglesTab } from "./AtelierRectangles";
 import { TangramTab } from "./AtelierTangram";
@@ -447,6 +448,7 @@ export default function Jeux() {
         : onglet === "suites" ? <SuitesTab banque={Boolean(etat?.installee)} />
         : onglet === "vilainPetitCanard" ? <VilainPetitCanardTab />
         : onglet === "carteMentale" ? <CarteMentaleTab banque={Boolean(etat?.installee)} />
+        : onglet === "famillesAddition" ? <FamillesAdditionTab />
         : onglet === "nombres" ? <CartesNombresTab />
         : onglet === "cubes" ? <CubesTab />
         : onglet === "billes" ? <BillesTab />
