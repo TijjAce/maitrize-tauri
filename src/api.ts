@@ -359,6 +359,8 @@ export interface ChatMessage {
   role: "system" | "user" | "assistant"; content: string;
   /** La réponse retouchée avant d'être imprimée ou exportée, en HTML ; elle ne part jamais chez Mistral. */
   mise?: string;
+  /** Les images collées dans le message (⌘V), en adresses data: ; elles partent avec lui (voir imagesDeLAssistant.ts). */
+  images?: string[];
 }
 export interface ResultatRecherche {
   kind: string; id: string; titre: string; sousTitre: string;

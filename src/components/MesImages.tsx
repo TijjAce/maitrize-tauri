@@ -42,6 +42,20 @@ export async function imageReduite(fichier: Blob | string, max = 700): Promise<s
   return aDeLaTransparence(pixels) ? toile.toDataURL("image/png") : toile.toDataURL("image/jpeg", 0.86);
 }
 
+/**
+ * Une image pour l'assistant (voir imagesDeLAssistant.ts) : au plus 1 280
+ * points de côté, assez pour lire le texte d'une capture, et en JPEG sur fond
+ * blanc — l'ombre transparente d'une capture de fenêtre devient blanche —,
+ * assez léger pour voyager avec la conversation.
+ */
+export async function imagePourLAssistant(fichier: Blob): Promise<string> {
+  const { toile, pinceau } = await peindre(fichier, 1280);
+  pinceau.globalCompositeOperation = "destination-over";
+  pinceau.fillStyle = "#ffffff";
+  pinceau.fillRect(0, 0, toile.width, toile.height);
+  return toile.toDataURL("image/jpeg", 0.85);
+}
+
 export interface ImagePerso { id: number; mot: string; src: string }
 
 const EST_IMAGE = /\.(png|jpe?g|webp|gif|bmp|avif|heic|heif|svg)$/i;

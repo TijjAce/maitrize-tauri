@@ -496,6 +496,17 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .chat-input { display: flex; gap: 10px; padding: 14px 150px 14px 20px; border-top: 1px solid var(--border);
   background: var(--panel); }
 .chat-input textarea { flex: 1; resize: none; }
+/* Les images collées (⌘V) dans la zone de saisie, avant l'envoi ; puis dans le message envoyé. */
+.chat-images { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 150px 0 20px; background: var(--panel);
+  border-top: 1px solid var(--border); }
+.chat-image { position: relative; flex: none; }
+.chat-image img { display: block; height: 64px; max-width: 140px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+.chat-image button { position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--panel); color: var(--text); font-size: 13px; line-height: 1; padding: 0; cursor: pointer; }
+.chat-images-note { font-size: 12px; flex: 1 1 220px; }
+.chat-images + .chat-input { border-top: 0; }
+.msg-images { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.msg-images img { display: block; max-height: 200px; max-width: 100%; border-radius: 8px; background: #fff; }
 
 /* ── Notes flottantes ─────────────────────────────────── */
 .notes-fab, .pictos-fab { position: fixed; bottom: 22px; right: 22px; width: 50px; height: 50px;

@@ -22,6 +22,8 @@ import { deposerSurLeBureau } from "../impressionAtelier";
 import { TrouverUnPicto } from "../components/TrouverUnPicto";
 import { TrouverUnLivre } from "../components/LivresDeReference";
 import { EVT_QUESTION_ASSISTANT, prendreQuestion } from "../questionAssistant";
+import { imagePourLAssistant } from "../components/MesImages";
+import { IMAGES_PAR_DEMANDE, TITRE_D_UNE_IMAGE, imagesDeLaDemande } from "../imagesDeLAssistant";
 
 // Extrait un objet JSON d'une réponse IA (tolère du texte autour).
 function extraireJson(rep: string): any {
@@ -48,6 +50,8 @@ export default function Assistant() {
   const nav = useNavigate();
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [input, setInput] = React.useState("");
+  // Les images collées (⌘V) dans la zone de saisie : elles partent avec le prochain message.
+  const [images, setImages] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [hasKey, setHasKey] = React.useState<boolean | null>(null);
   const [showGen, setShowGen] = React.useState(false);
@@ -170,7 +174,7 @@ export default function Assistant() {
   const dernierRecit = () => {
     if (input.trim()) return input.trim();
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "user") return messages[i].content;
+      if (messages[i].role === "user" && messages[i].content.trim()) return messages[i].content;
     }
     return "";
   };
@@ -223,7 +227,8 @@ export default function Assistant() {
     const id = convId || newId();
     const exist = (convs ?? []).find((c) => c.id === id);
     const now = nowIso();
-    const titre = exist?.titre || (final.find((m) => m.role === "user")?.content ?? "Conversation").slice(0, 60);
+    const premier = final.find((m) => m.role === "user");
+    const titre = exist?.titre || (premier?.content || (premier?.images?.length ? TITRE_D_UNE_IMAGE : "Conversation")).slice(0, 60);
     await api.conversationSave({ id, titre, messagesJson: JSON.stringify(final), dateCreation: exist?.dateCreation ?? now, dateMaj: now });
     if (!convId) setConvId(id);
     reloadConvs();
@@ -232,11 +237,28 @@ export default function Assistant() {
   // La réponse en cours, qu'on peut arrêter si elle ne convient pas : ce qui est écrit reste, la suite ne vient pas.
   const arret = React.useRef<(() => void) | null>(null);
 
+  // ⌘V : une image copiée — une capture, une photo — se colle dans la zone de saisie ; du texte se colle comme avant.
+  const collerImages = async (fichiers: File[]) => {
+    const lues = (await Promise.all(fichiers.map((f) => imagePourLAssistant(f).catch(() => null)))).filter((x): x is string => !!x);
+    if (lues.length < fichiers.length) toast("Une image n'a pas pu être lue. Préférez une capture, un PNG ou un JPEG.", { icone: "⚠️" });
+    if (images.length + lues.length > IMAGES_PAR_DEMANDE) toast(`${IMAGES_PAR_DEMANDE} images au plus par message.`, { icone: "ℹ️" });
+    setImages((v) => [...v, ...lues].slice(0, IMAGES_PAR_DEMANDE));
+  };
+  const surCollage = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const fichiers = [...e.clipboardData.files].filter((f) => f.type.startsWith("image/"));
+    if (!fichiers.length) return;
+    // Un fichier copié dans le Finder apporte aussi son nom, en texte : on ne le colle pas.
+    const texte = e.clipboardData.getData("text/plain");
+    if (!texte.trim() || /\.(png|jpe?g|gif|webp|heic|heif|tiff?|bmp)$/i.test(texte.trim())) e.preventDefault();
+    void collerImages(fichiers);
+  };
+
   const envoyer = async (texte?: string) => {
     const contenu = (texte ?? input).trim();
-    if (!contenu || loading) return;
-    const suite: ChatMessage[] = [...messages, { role: "user", content: contenu }];
-    setMessages(suite); setInput(""); setLoading(true);
+    const jointes = images;
+    if ((!contenu && !jointes.length) || loading) return;
+    const suite: ChatMessage[] = [...messages, { role: "user", content: contenu, ...(jointes.length ? { images: jointes } : {}) }];
+    setMessages(suite); setInput(""); setImages([]); setLoading(true);
     colleEnBas.current = true; setDetache(false);
     let cleanup = () => {};
 
@@ -245,7 +267,9 @@ export default function Assistant() {
     // recherche. On dit explicitement si la recherche a bien eu lieu : une
     // réponse de mémoire affichée sous un bandeau « web » paraîtrait vérifiée
     // alors qu'elle ne l'est pas, ce qui est pire que pas de recherche.
-    if (surLeWeb) {
+    // L'agent qui cherche sur le web ne lit pas les images : un message qui en porte part à l'assistant, sans le web.
+    if (surLeWeb && jointes.length) toast("La recherche sur le web ne lit pas les images : l'assistant répond sans le web.", { icone: "🖼" });
+    if (surLeWeb && !jointes.length) {
       // La recherche ne se coupe pas en route : arrêtée, sa réponse sera simplement ignorée.
       let arretee = false;
       arret.current = () => {
@@ -292,8 +316,10 @@ export default function Assistant() {
       // l'établissement —, masquée d'un seul tenant ; la réponse les retrouve
       // à mesure qu'elle s'écrit.
       const masque = pseudonymiserTout(suite.map((m) => m.content), await nomsAMasquer());
-      // La version retouchée d'une réponse reste ici : seul le texte part.
-      const envoyes: ChatMessage[] = suite.map((m, i) => ({ role: m.role, content: masque.textes[i] ?? m.content }));
+      // La version retouchée d'une réponse reste ici : seul le texte part, avec les images les plus récentes.
+      // Les images partent telles quelles : un prénom écrit dessus n'est pas masqué.
+      const parMessage = imagesDeLaDemande(suite);
+      const envoyes: ChatMessage[] = suite.map((m, i) => ({ role: m.role, content: masque.textes[i] ?? m.content, images: parMessage[i] }));
       const rendre = (t: string) => restaurer(t, masque.table).texte;
       // Streaming : la réponse s'affiche au fil des tokens via événements Tauri.
       const reqId = newId();
@@ -429,6 +455,7 @@ export default function Assistant() {
         )}
         {messages.map((m, i) => (
           <div key={i} className={"msg " + m.role}>
+            {m.images?.length ? <div className="msg-images">{m.images.map((src, k) => <img key={k} src={src} alt={`Image ${k + 1}`} />)}</div> : null}
             {m.role === "assistant" ? <Markdown texte={m.content || "…"} /> : m.content}
             {/* Une réponse finie devient une feuille : imprimée, ou en PDF sur le bureau. */}
             {m.role === "assistant" && m.content.trim() && !(loading && i === messages.length - 1) && !m.content.startsWith("⚠️") && (
@@ -451,10 +478,21 @@ export default function Assistant() {
           ↓ {loading ? "La réponse continue" : "Revenir en bas"}
         </button>
       )}
+      {images.length > 0 && (
+        <div className="chat-images">
+          {images.map((src, i) => (
+            <span key={i} className="chat-image">
+              <img src={src} alt={`Image ${i + 1}`} />
+              <button type="button" aria-label={`Retirer l'image ${i + 1}`} title="Retirer cette image" onClick={() => setImages((v) => v.filter((_, k) => k !== i))}>×</button>
+            </span>
+          ))}
+          <span className="meta chat-images-note">Les images partent telles quelles chez Mistral : un prénom écrit dessus n'est pas masqué.</span>
+        </div>
+      )}
       <div className="chat-input">
         <textarea className="textarea" rows={2} ref={saisie}
           placeholder={dictee.etat === "enregistrement" ? "Enregistrement en cours…" : modeDocument ? "Décrivez le document à fabriquer : pour qui, quoi, combien d'exercices…" : "Écrivez ou dictez votre demande…"} value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => setInput(e.target.value)} onPaste={surCollage}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } }} />
         <button className="btn" onClick={classer} disabled={loading}
           title="Ranger ce récit dans les fiches élèves, après relecture">
@@ -472,7 +510,7 @@ export default function Assistant() {
         {loading ? (
           <button className="btn danger" onClick={() => arret.current?.()} title="Arrêter la réponse : ce qui est écrit reste, la suite ne vient pas">⏹ Arrêter</button>
         ) : (
-          <button className="btn primary" disabled={!input.trim()} onClick={() => envoyer()}>Envoyer</button>
+          <button className="btn primary" disabled={!input.trim() && !images.length} onClick={() => envoyer()}>Envoyer</button>
         )}
       </div>
       {aRetoucher !== null && messages[aRetoucher] && (

@@ -881,31 +881,119 @@ pub fn mistral_chat_arreter(request_id: String) {
     arrets().insert(request_id);
 }
 
+// ── Les images de la conversation ────────────────────────────────────────
+//
+// « Dans l'IA, je veux pouvoir mettre des images avec le ⌘V » (demande de
+// l'enseignant, 2026-11-01). Un message de l'assistant peut porter des images
+// collées : il part alors en morceaux, son texte puis chaque image, en adresse
+// `data:` — la forme que donne la description de l'API (`ImageURLChunk`). Tous
+// les modèles ne les lisent pas, et la documentation ne le dit pas de chacun
+// (Mistral Large 4, « multimodal », sans plus) : on le demande à Mistral pour
+// le modèle choisi (`capabilities.vision`) ; s'il ne les lit pas, ou les
+// refuse, Ministral 14B répond à sa place, et la réponse le dit.
+
+/// Le modèle qui lit sûrement les images : l'exemple de la documentation de Mistral l'emploie (vu le 2026-11-01).
+const MODELE_IMAGES: &str = "ministral-14b-latest";
+
+/// Ce qu'on dit en tête de la réponse quand Ministral 14B répond à la place du modèle choisi.
+const AVIS_IMAGES: &str = "_Le modèle choisi ne lit pas les images : Ministral 14B répond à sa place._\n\n";
+
+/// Un message de l'assistant, avec les images qu'on y a collées.
+#[derive(Deserialize, Clone, Debug)]
+pub struct MessageAvecImages {
+    pub role: String,
+    pub content: String,
+    /// Des adresses `data:image/…;base64,…`.
+    #[serde(default)]
+    pub images: Vec<String>,
+}
+
+/// Une image que Mistral sait lire, et rien d'autre : une adresse `data:` d'un format d'image courant.
+fn est_une_image(s: &str) -> bool {
+    ["data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,", "data:image/gif;base64,"]
+        .iter()
+        .any(|debut| s.starts_with(debut))
+}
+
+/// Le message tel que Mistral le lit : son texte seul, ou en morceaux — le texte, puis chaque image.
+fn pour_mistral(m: &MessageAvecImages) -> serde_json::Value {
+    let images: Vec<&String> = m.images.iter().filter(|s| est_une_image(s)).collect();
+    if images.is_empty() {
+        return serde_json::json!({ "role": m.role, "content": m.content });
+    }
+    let mut morceaux = Vec::with_capacity(images.len() + 1);
+    if !m.content.trim().is_empty() {
+        morceaux.push(serde_json::json!({ "type": "text", "text": m.content }));
+    }
+    for src in images {
+        morceaux.push(serde_json::json!({ "type": "image_url", "image_url": src }));
+    }
+    serde_json::json!({ "role": m.role, "content": morceaux })
+}
+
+/// Ce que Mistral dit d'un modèle : lit-il les images ? Demandé une fois par modèle ; `None` si la question n'a pas abouti.
+async fn lit_les_images(client: &reqwest::Client, cle: &str, modele: &str) -> Option<bool> {
+    static VUS: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<String, bool>>> = std::sync::OnceLock::new();
+    let vus = VUS.get_or_init(Default::default);
+    if let Some(v) = vus.lock().ok()?.get(modele).copied() {
+        return Some(v);
+    }
+    let rep = client
+        .get(format!("https://api.mistral.ai/v1/models/{modele}"))
+        .bearer_auth(cle)
+        .send()
+        .await
+        .ok()?;
+    if !rep.status().is_success() {
+        return None;
+    }
+    let fiche: serde_json::Value = rep.json().await.ok()?;
+    let vision = fiche.pointer("/capabilities/vision")?.as_bool()?;
+    vus.lock().ok()?.insert(modele.to_string(), vision);
+    Some(vision)
+}
+
+/// Une erreur qui parle d'images : le modèle n'en prend pas.
+fn refuse_les_images(corps: &str) -> bool {
+    let c = corps.to_lowercase();
+    ["image", "vision", "multimodal"].iter().any(|m| c.contains(m))
+}
+
 /// Variante streaming : émet `mistral://chunk` au fil des tokens, puis
 /// `mistral://done` (ou `mistral://error`). Le frontend filtre par `request_id`.
 /// Une demande arrêtée (`mistral_chat_arreter`) se tait au morceau suivant.
+/// Les images collées partent avec leur message (voir `pour_mistral`).
 #[tauri::command]
 pub async fn mistral_chat_stream(
     app: AppHandle,
     db: State<'_, Db>,
-    messages: Vec<ChatMessage>,
+    messages: Vec<MessageAvecImages>,
     model: Option<String>,
     request_id: String,
 ) -> Result<(), String> {
     let cle = cle_mistral(&db)?;
-    let model = model.unwrap_or_else(|| MODELE_DEFAUT.to_string());
-    let modele = model.clone();
-    let body = serde_json::json!({ "model": model, "messages": messages, "temperature": 0.4, "stream": true });
+    let mut modele = model.unwrap_or_else(|| MODELE_DEFAUT.to_string());
+    let client = reqwest::Client::new();
 
     let envoyer_err = |msg: String| { let _ = app.emit("mistral://error", ErrEvt { id: request_id.clone(), message: msg.clone() }); msg };
 
-    let mut resp = reqwest::Client::new()
-        .post("https://api.mistral.ai/v1/chat/completions")
-        .bearer_auth(&cle)
-        .json(&body)
-        .send().await
-        .map_err(|e| envoyer_err(format!("Réseau : {e}")))?;
+    // Des images, et un modèle qui ne les lit pas, Mistral le dit : Ministral 14B répond à sa place.
+    let avec_images = messages.iter().any(|m| m.images.iter().any(|s| est_une_image(s)));
+    let mut avis = false;
+    if avec_images && modele != MODELE_IMAGES && lit_les_images(&client, &cle, &modele).await == Some(false) {
+        modele = MODELE_IMAGES.to_string();
+        avis = true;
+    }
+    let messages: Vec<serde_json::Value> = messages.iter().map(pour_mistral).collect();
+    let demander = |modele: &str| {
+        client
+            .post("https://api.mistral.ai/v1/chat/completions")
+            .bearer_auth(&cle)
+            .json(&serde_json::json!({ "model": modele, "messages": messages, "temperature": 0.4, "stream": true }))
+            .send()
+    };
 
+    let mut resp = demander(&modele).await.map_err(|e| envoyer_err(format!("Réseau : {e}")))?;
     if est_arretee(&request_id) {
         return Ok(());
     }
@@ -913,7 +1001,25 @@ pub async fn mistral_chat_stream(
         let code = resp.status().as_u16();
         let quota = quota_minute(resp.headers());
         let txt = resp.text().await.unwrap_or_default();
-        return Err(envoyer_err(message_erreur(code, &txt, quota)));
+        // Mistral n'avait pas dit si le modèle lit les images, et il les refuse : une fois encore, avec Ministral 14B.
+        if !(avec_images && modele != MODELE_IMAGES && matches!(code, 400 | 422) && refuse_les_images(&txt)) {
+            return Err(envoyer_err(message_erreur(code, &txt, quota)));
+        }
+        modele = MODELE_IMAGES.to_string();
+        avis = true;
+        resp = demander(&modele).await.map_err(|e| envoyer_err(format!("Réseau : {e}")))?;
+        if est_arretee(&request_id) {
+            return Ok(());
+        }
+        if !resp.status().is_success() {
+            let code = resp.status().as_u16();
+            let quota = quota_minute(resp.headers());
+            let txt = resp.text().await.unwrap_or_default();
+            return Err(envoyer_err(message_erreur(code, &txt, quota)));
+        }
+    }
+    if avis {
+        let _ = app.emit("mistral://chunk", ChunkEvt { id: request_id.clone(), delta: AVIS_IMAGES.to_string() });
     }
 
     // Les données arrivent en SSE : lignes « data: {json} », séparées par \n.
@@ -1149,6 +1255,36 @@ pub async fn voix_lire(db: State<'_, Db>, texte: String) -> Result<String, Strin
     // Pas de disque : on lit quand même, la prochaine fois refera l'appel.
     let _ = std::fs::write(&fichier, &octets);
     Ok(b64.encode(octets))
+}
+
+#[cfg(test)]
+mod tests_images {
+    use super::*;
+
+    #[test]
+    fn un_message_avec_des_images_part_en_morceaux() {
+        let m: MessageAvecImages = serde_json::from_value(serde_json::json!({
+            "role": "user", "content": "Rédige un questionnaire.",
+            "images": ["data:image/jpeg;base64,AAAA", "https://ailleurs.example/x.png"],
+        })).unwrap();
+        // Le texte, puis l'image ; une adresse qui n'est pas une image collée ne part pas.
+        assert_eq!(pour_mistral(&m), serde_json::json!({ "role": "user", "content": [
+            { "type": "text", "text": "Rédige un questionnaire." },
+            { "type": "image_url", "image_url": "data:image/jpeg;base64,AAAA" },
+        ] }));
+        // Sans image — ou sans champ `images`, comme les autres fenêtres l'envoient —, le texte seul, comme avant.
+        let texte: MessageAvecImages = serde_json::from_value(serde_json::json!({ "role": "user", "content": "Bonjour" })).unwrap();
+        assert_eq!(pour_mistral(&texte), serde_json::json!({ "role": "user", "content": "Bonjour" }));
+        // Une image seule, sans texte : l'image seule.
+        let seule = MessageAvecImages { role: "user".into(), content: " ".into(), images: vec!["data:image/png;base64,BBBB".into()] };
+        assert_eq!(pour_mistral(&seule)["content"].as_array().map(|v| v.len()), Some(1));
+    }
+
+    #[test]
+    fn un_refus_qui_parle_d_images_fait_repondre_ministral() {
+        assert!(refuse_les_images(r#"{"message":"Image input is not supported for this model"}"#));
+        assert!(!refuse_les_images(r#"{"message":"Rate limit exceeded"}"#));
+    }
 }
 
 #[cfg(test)]
