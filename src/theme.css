@@ -1147,6 +1147,13 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .regle-app-photo { width: 84px; height: 84px; object-fit: contain; border-radius: 8px; border: 1px solid var(--border); background: #fff; }
 .regle-app-a-cote { flex: 1; min-width: 0; }
 .regle-app-corps .regle-app-texte, .regle-app-corps .regle-app-suite, .regle-app-corps .regle-app-vide { margin-left: 0; }
+/* Les supports des séances du créneau — matériel, outils, affichages —, chacun avec sa photo de la classe ou son image. */
+.journal-supports { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
+.journal-support { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+.journal-support-image { flex: none; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: 8px; background: #fff; overflow: hidden; font-size: 22px; }
+.journal-support-texte { min-width: 0; }
+.journal-support-titre { font-weight: 600; font-size: 13px; }
 .lien { border: none; background: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; }
 
 /* Fiche d'un jeu : les compétences du BO */
@@ -1931,8 +1938,10 @@ details.cm-pli > summary .meta { margin-left: 4px; font-size: 12.5px; }
 .sdt-champs .input, .sdt-champs .select { width: 100%; min-width: 0; padding: 6px 9px; font-size: 13px; }
 .sdt-champs .sdt-nom { font-weight: 600; }
 /* Les champs en grille : la matière et le niveau côte à côte ; le jeu et la séquence, aux titres longs, sur deux colonnes. */
-.sdt-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px 8px; min-width: 0; }
+.sdt-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px 8px; min-width: 0; align-items: start; }
 .sdt-champ.long { grid-column: span 2; }
+/* Les règles du jeu, et dessous le matériel, l'outil ou l'affichage que la photo montre : une seule case, l'un sous l'autre. */
+.sdt-pile { gap: 6px; align-content: start; }
 .sdt-champ { display: grid; gap: 3px; min-width: 0; }
 .sdt-champ > span { font-size: 11px; font-weight: 600; color: var(--text-2); }
 .sdt-champ .select { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

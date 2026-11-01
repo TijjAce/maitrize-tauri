@@ -5,9 +5,9 @@ import { JeuForm } from "./JeuForm";
 import { usePictoImage } from "./ChoixPicto";
 import { infosDuJeu, jeuxCites, regleEcrite } from "../jeuxCites";
 import { masqueJeu } from "../journalMasques";
-import { EVT_MES_PICTOS, lireMesPictos, type MonPicto } from "../mesPictos";
-import { photosDesJeux } from "../supportsDeTravail";
+import type { MonPicto } from "../mesPictos";
 import { CaseImpression } from "./MasquesDuJournal";
+import { usePhotosLiees } from "./usePhotosLiees";
 
 // ── Règles des jeux cités ──────────────────────────────────────────────────
 //
@@ -21,18 +21,6 @@ import { CaseImpression } from "./MasquesDuJournal";
 export function useLudotheque() {
   const { data, reload } = useAsync(() => api.jeuxList(), []);
   return { jeux: data ?? [], recharger: reload };
-}
-
-/** Les photos des jeux, relues quand une photo arrive du téléphone ou se règle sur l'autre ordinateur. */
-function usePhotosDesJeux(): MonPicto[] {
-  const [photos, setPhotos] = React.useState<MonPicto[]>([]);
-  React.useEffect(() => {
-    const lire = () => lireMesPictos().then((l) => setPhotos(photosDesJeux(l))).catch(() => setPhotos([]));
-    void lire();
-    window.addEventListener(EVT_MES_PICTOS, lire);
-    return () => window.removeEventListener(EVT_MES_PICTOS, lire);
-  }, []);
-  return photos;
 }
 
 function PhotoDuJeu({ photo }: { photo: MonPicto }) {
@@ -117,7 +105,7 @@ export function ReglesDesJeux({ jeux, onModifier, masques, onMasquer }: {
   /** Dans le cahier journal : ce que ce créneau cite sans l'imprimer, et de quoi le changer. */
   masques?: readonly string[]; onMasquer?: (cle: string) => void;
 }) {
-  const photos = usePhotosDesJeux();
+  const photos = usePhotosLiees();
   if (!jeux.length) return null;
   return (
     <div className="regles-app" aria-label="Règles des jeux cités">

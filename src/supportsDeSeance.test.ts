@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Jeu, MaterielItem, OutilClasse } from "./api";
 import {
-  chercherElements, dejaPose, elementDuRenvoi, elementsDuBureau, lireRenvoi, renvoiVers, supportsDeLaSeance,
+  chercherElements, dejaPose, elementDuRenvoi, elementsDuBureau, lireRenvoi, renvoiVers, supportsDeLaSeance, supportsDuCreneau, supportsImprimes,
 } from "./supportsDeSeance";
+import type { Seance, Sequence } from "./api";
 
 const outil = (p: Partial<OutilClasse>): OutilClasse => ({
   id: "o", genre: "outil", titre: "", categorie: "", usage: "", competencesBo: "[]", consignes: "", lieu: "", periode: "",
@@ -67,5 +68,28 @@ describe("les supports d'une séance", () => {
     const tous = elementsDuBureau("evaluation", bureau, aDesPdfs);
     expect(chercherElements(tous, "evaluation doubles").map((e) => e.titre)).toEqual(["Évaluation des doubles"]);
     expect(chercherElements(tous, "triples")).toEqual([]);
+  });
+});
+
+describe("les supports au cahier journal (demande de l'enseignant, 2026-11-01)", () => {
+  const pose = (id: string, seanceId: string, genre: string, source: string) =>
+    materiel({ id, seanceId, sequenceId: "q1", supportJson: JSON.stringify({ genre, source }), dateCreation: `2026-11-01T08:0${id.length}:00Z` });
+  const seances = [{ id: "s1", sequenceId: "q1", numero: 1, titre: "Compter" }, { id: "s2", sequenceId: "q1", numero: 2, titre: "Ranger" }] as Seance[];
+  const sequences = [{ id: "q1", titre: "Les nombres", nbSeancesPrevu: 2 }] as Sequence[];
+  const liens = [pose("a", "s1", "outil", "o1"), pose("bb", "s1", "jeu", "j1"), pose("ccc", "s2", "affichage", "o2"), pose("dddd", "s2", "outil", "o1"), pose("eeeee", "s3", "materiel", "m1")];
+
+  it("montrent ceux de la séance posée et des séances citées par leur ligne 📚, une fois chacun, sans les jeux", () => {
+    expect(supportsDuCreneau({ seanceId: "s1", prevu: "" }, sequences, seances, liens).map((m) => m.id)).toEqual(["a"]);
+    const avecCitee = supportsDuCreneau({ seanceId: "s1", prevu: "📚 Les nombres · séance 2/2 : Ranger" }, sequences, seances, liens);
+    expect(avecCitee.map((m) => m.id)).toEqual(["a", "ccc"]);
+    expect(supportsDuCreneau({ seanceId: null, prevu: "Récréation" }, sequences, seances, liens)).toEqual([]);
+  });
+
+  it("s'impriment sur une ligne, chacun avec son image, sa sorte et son nom", () => {
+    const html = supportsImprimes([liens[0], liens[2]], bureau, { "outil:o1": "data:image/jpeg;base64,AAA" });
+    expect(html).toContain('<img alt="" src="data:image/jpeg;base64,AAA">📏 Bande numérique<span class="support-imprime-detail"> · Nombres · Bac bleu</span>');
+    expect(html).toContain("🖼 Affiche des sons");
+    expect(html.match(/<img/g)).toHaveLength(1);
+    expect(supportsImprimes([], bureau)).toBe("");
   });
 });

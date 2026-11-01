@@ -8,9 +8,14 @@
 // aujourd'hui, et le retirer de la séance ne le retire pas du bureau. Les
 // feuilles PDF, elles, se copient dans la séance (voir materielSeance) : elles
 // s'impriment à la suite du cahier journal, et peuvent changer d'une séance à
-// l'autre.
+// l'autre. Le cahier journal montre, sous le prévu, ceux des séances du
+// créneau, avec leur image : la photo que l'enseignant leur a donnée dans
+// Réglages › Personnalisation, sinon la leur (demande de l'enseignant,
+// 2026-11-01).
 
-import type { Jeu, MaterielItem, OutilClasse } from "./api";
+import type { Creneau, Jeu, MaterielItem, OutilClasse, Seance, Sequence } from "./api";
+import { liensDuCreneau } from "./materielAImprimer";
+import { escapeHtml } from "./print";
 
 export type GenreDeSupport = "outil" | "affichage" | "evaluation" | "jeu" | "materiel";
 
@@ -66,6 +71,45 @@ export function supportsDeLaSeance(materiel: MaterielItem[], seanceId: string): 
     .filter((m) => m.seanceId === seanceId && lireRenvoi(m.supportJson))
     .sort((a, b) => a.dateCreation.localeCompare(b.dateCreation));
 }
+
+/**
+ * Les supports des séances d'un créneau — la séance posée, et celles que le
+ * prévu cite par leur ligne 📚 —, chacun une fois ; sans les jeux, que leur
+ * règle montre déjà quand le prévu les nomme.
+ */
+export function supportsDuCreneau(
+  c: Pick<Creneau, "seanceId" | "prevu">, sequences: Sequence[], seances: Seance[], materiel: MaterielItem[],
+): MaterielItem[] {
+  const vus = new Set<string>();
+  return [...liensDuCreneau(c, sequences, seances).seances].flatMap((id) => supportsDeLaSeance(materiel, id)).filter((m) => {
+    const r = lireRenvoi(m.supportJson);
+    const cle = r ? `${r.genre}:${r.source}` : "";
+    return r !== null && r.genre !== "jeu" && !vus.has(cle) && Boolean(vus.add(cle));
+  });
+}
+
+/**
+ * Les supports d'un créneau pour le PDF du jour, sur une ligne : chacun son
+ * image — `images`, prêtes à imprimer, par « genre:id » —, sa sorte et son nom.
+ */
+export function supportsImprimes(supports: MaterielItem[], bureau: SourcesDuBureau, images: Record<string, string> = {}): string {
+  const morceaux = supports.flatMap((m) => {
+    const r = lireRenvoi(m.supportJson);
+    if (!r) return [];
+    const e = elementDuRenvoi(r, bureau);
+    const image = images[`${r.genre}:${r.source}`];
+    return [`<span class="support-imprime">${image ? `<img alt="" src="${escapeHtml(image)}">` : ""}`
+      + `${genreDeSupport(r.genre).ico} ${escapeHtml(e?.titre || m.titre)}${e?.detail ? `<span class="support-imprime-detail"> · ${escapeHtml(e.detail)}</span>` : ""}</span>`];
+  });
+  return morceaux.length ? `<div class="supports-imprimes">${morceaux.join("")}</div>` : "";
+}
+
+export const STYLE_SUPPORTS_IMPRIMES = `
+  .supports-imprimes { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
+  .support-imprime { display: inline-flex; align-items: center; gap: 5px; break-inside: avoid; page-break-inside: avoid; }
+  .support-imprime img { width: 14mm; height: 14mm; object-fit: contain; margin: 0; border-radius: 3px; border: 1px solid #d7dbe6; background: #fff; }
+  .support-imprime-detail { color: #7a7f8f; }
+`;
 
 /** Cet élément du bureau est-il déjà posé dans la séance ? */
 export function dejaPose(supports: MaterielItem[], renvoi: RenvoiDeSupport): boolean {

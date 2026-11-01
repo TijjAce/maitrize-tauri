@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { api, Creneau, Seance, Sequence, Eleve, Jeu, journal, nouveauJeu, teinteCreneau, texteErreur, type CommentaireEleve, type MaterielItem, type ObservationEleve } from "../api";
+import { api, Creneau, Seance, Sequence, Eleve, Jeu, journal, nouveauJeu, teinteCreneau, texteErreur, type CommentaireEleve, type MaterielItem, type ObservationEleve, type OutilClasse } from "../api";
 import { toast, toastAnnulable } from "./Toaster";
 import { PoserObservation } from "./PoserObservation";
 import { appliquer, porterAuDossier } from "../notesDuBilan";
@@ -18,6 +18,8 @@ import {
 import { reformuler } from "../reformulation";
 import { JeuForm } from "./JeuForm";
 import { ReglesDesJeux, useJeuxCites, useLudotheque } from "./ReglesDesJeux";
+import { SupportsDuCreneau } from "./SupportsDeLaSeance";
+import { supportsDuCreneau } from "../supportsDeSeance";
 import { jeuxCites, nomSousLeCurseur, regleEcrite, sansMarqueurs } from "../jeuxCites";
 import { ChoixSequence, SequencesCitees } from "./SequencesCitees";
 import { ChoixRituel, RituelForm, RituelsCites, useRituels } from "./Rituels";
@@ -93,6 +95,8 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
   const navigate = useNavigate();
   // Le matériel des séances : annoncé sous le créneau, avec la molette de son échelle à l'impression.
   const { data: materiels } = useAsync(() => api.materielList(), []);
+  // Les outils et les affichages du plan de travail : ceux que les séances du créneau posent se montrent sous le prévu.
+  const { data: outils } = useAsync(() => api.outilsClasseList().catch((): OutilClasse[] => []), []);
   // Le téléphone relié : chaque créneau dit ce qu'il enverra aux tablettes, et son minuteur s'y règle.
   const { data: telephone } = useAsync(() => api.telephoneEtat(), []);
   const [minuteursRegles, setMinuteursRegles] = React.useState<Record<string, number>>({});
@@ -621,6 +625,9 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                         {/* Les jeux du prévu, et ceux du déroulement de la séance liée : ce sont eux qui s'impriment. */}
                         <ReglesDesJeux jeux={citesDans(seance?.deroulement ? `${b.prevu}\n${sansMarqueurs(seance.deroulement)}` : b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })}
                           masques={masques[c.id]} onMasquer={(cle) => masquer(c.id, cle)} />
+                        {/* Le matériel, les outils et les affichages que posent les séances du créneau, chacun avec sa photo. */}
+                        <SupportsDuCreneau supports={supportsDuCreneau({ seanceId: c.seanceId, prevu: b.prevu }, sequences, seances, materiels ?? [])}
+                          bureau={{ outils: outils ?? [], jeux, materiel: materiels ?? [] }} />
                         <SequencesCitees citations={sequencesCitees(b.prevu, sequences, seances)} seances={seances}
                           onOuvrir={(s) => navigate(`/sequences/${s.id}`)} onVoirSeance={setSeanceVue}
                           masques={masques[c.id]} onMasquer={(cle) => masquer(c.id, cle)} />

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ficheEcrite, lireFiches, type MonPicto } from "./mesPictos";
-import { estUnSupport, supportsDeLaSequence, TOUS_LES_NIVEAUX } from "./supportsDeTravail";
+import { cleDeLElement, estUnSupport, photoDeLElement, photosLiees, supportsDeLaSequence, TOUS_LES_NIVEAUX } from "./supportsDeTravail";
 import { lireFabrication, seRefaitDansFabriquer } from "./modifierFeuille";
 import { NIVEAUX_FICHES, iconeDeLaRecette, pageDuSupport, recetteDe, recettesDesSupports, recettesPour } from "./fichesAutonomie";
 
@@ -68,5 +68,17 @@ describe("un support de travail dans « En retard »", () => {
     expect(f).toMatchObject({ atelier: "support", minuteur: 15, support: { photo: PHOTO, matiere: "Mathématiques" } });
     expect(seRefaitDansFabriquer(f)).toBe(false);
     expect(seRefaitDansFabriquer(lireFabrication(JSON.stringify({ atelier: "pyramides" })))).toBe(true);
+  });
+});
+
+describe("une photo qui montre un élément du plan de travail (demande de l'enseignant, 2026-11-01)", () => {
+  it("le garde dans sa fiche, et lui sert d'image ; une photo sans lien n'est pas relue pour les jeux ni le plan de travail", () => {
+    const p = photo({ elementId: cleDeLElement({ genre: "outil", source: "o1" }) });
+    expect(p.elementId).toBe("outil:o1");
+    const [relue] = lireFiches({ [`pictos:${PHOTO}`]: ficheEcrite(p) });
+    expect(relue.elementId).toBe("outil:o1");
+    expect(photoDeLElement([relue], { genre: "outil", source: "o1" })).toBe(PHOTO);
+    expect(photoDeLElement([relue], { genre: "affichage", source: "o1" })).toBeUndefined();
+    expect(photosLiees([relue, photo({ id: PHOTO - 1 }), photo({ id: PHOTO - 2, jeuId: "j1" })]).map((x) => x.id)).toEqual([PHOTO, PHOTO - 2]);
   });
 });

@@ -39,16 +39,19 @@ export interface MonPicto {
   /**
    * Une photo est aussi un support de travail : l'objet, le jeu de la classe.
    * Sa matière, son niveau (« tous », ou CP, CE1…), le jeu de la ludothèque
-   * dont elle prend les règles, la séquence où elle sert (voir supportsDeTravail).
+   * dont elle prend les règles, le matériel, l'outil ou l'affichage du plan de
+   * travail qu'elle montre (« outil:<id> »), la séquence où elle sert (voir
+   * supportsDeTravail).
    */
   matiere?: string;
   niveau?: string;
   jeuId?: string;
+  elementId?: string;
   sequenceId?: string;
 }
 
 /** Ce qu'une photo dit d'elle comme support de travail, et qui se règle dans Réglages › Personnalisation. */
-export const CHAMPS_DU_SUPPORT = ["matiere", "niveau", "jeuId", "sequenceId"] as const;
+export const CHAMPS_DU_SUPPORT = ["matiere", "niveau", "jeuId", "elementId", "sequenceId"] as const;
 
 export const PREFIXE_MES_PICTOS = "pictos:";
 

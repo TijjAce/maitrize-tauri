@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Page } from "../App";
 import { isoJour, lundiDe, jourPlanningInitial, anneeDe, toMin, minToHHMM, plusJours, moisVoisin } from "../dates";
-import { api, Creneau, Seance, Sequence, Eleve, Jeu, MATIERES, couleurPourMatiere, teinteCreneau, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance, texteErreur, type MaterielItem, type ObservationEleve } from "../api";
+import { api, Creneau, Seance, Sequence, Eleve, Jeu, MATIERES, couleurPourMatiere, teinteCreneau, joursFeriesFR, newId, nouvelleSequence, nouvelleSeance, texteErreur, type MaterielItem, type ObservationEleve, type OutilClasse } from "../api";
 import { supprimerLeCreneau } from "../suppressionsAnnulables";
 import { Modal, Field, Input, Select, Confirm, useAsync, useSegmentNav } from "../components/ui";
 import { openCtx } from "../components/ctxmenu";
@@ -36,7 +36,8 @@ import { creneauxAvecTapuscrit } from "../journalTapuscrit";
 import { mentionDesPictos, type RefPicto } from "../pictosAppoint";
 import { aDesPhases, texteDuDeroulement } from "../documentSeance";
 import { lireMesPictos, type MonPicto } from "../mesPictos";
-import { photosDesJeux } from "../supportsDeTravail";
+import { cleDeLElement, photoDeLElement, photosLiees } from "../supportsDeTravail";
+import { STYLE_SUPPORTS_IMPRIMES, elementDuRenvoi, lireRenvoi, supportsDuCreneau, supportsImprimes } from "../supportsDeSeance";
 import { chargerImages } from "../components/ChoixPicto";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
@@ -302,10 +303,24 @@ export default function Planning() {
     // La ludothèque : la règle des jeux cités suit le prévu du créneau, avec la photo du jeu s'il en a une
     // (Réglages › Personnalisation › Mes photos) ; sa carte la reprend dans les bandes.
     const jeux = await api.jeuxList().catch((): Jeu[] => []);
-    const photosDeLaLudotheque = photosDesJeux(await lireMesPictos().catch((): MonPicto[] => []));
+    const photosDeLaLudotheque = photosLiees(await lireMesPictos().catch((): MonPicto[] => []));
     const imagesDesPhotos = await chargerImages(photosDeLaLudotheque.map((p) => p.id), true);
     const photosDesJeuxCites: Record<string, string[]> = {};
     for (const p of photosDeLaLudotheque) if (p.jeuId && imagesDesPhotos[p.id]) (photosDesJeuxCites[p.jeuId] ??= []).push(imagesDesPhotos[p.id]);
+    // Le matériel, les outils et les affichages que posent les séances de chaque créneau, avec leur image : la photo
+    // que l'enseignant leur a donnée, sinon la leur.
+    const bureau = { outils: await api.outilsClasseList().catch((): OutilClasse[] => []), jeux, materiel: materiels };
+    const imagesDesSupports: Record<string, string> = {};
+    await Promise.all(jourCreneaux.flatMap((c) => supportsDuCreneau(c, sequences ?? [], seances ?? [], materiels)).map(async (m) => {
+      const r = lireRenvoi(m.supportJson);
+      if (!r || imagesDesSupports[cleDeLElement(r)]) return;
+      const photo = photoDeLElement(photosDeLaLudotheque, r);
+      const propre = elementDuRenvoi(r, bureau)?.image;
+      if (photo != null && imagesDesPhotos[photo]) imagesDesSupports[cleDeLElement(r)] = imagesDesPhotos[photo];
+      else if (propre) {
+        try { imagesDesSupports[cleDeLElement(r)] = dataUrlImage(propre, await api.fichierRead(propre)); } catch { /* sans image */ }
+      }
+    }));
     // Les temps d'observation posés sur la journée : ce qu'on a décidé de
     // regarder s'imprime avec le reste — c'est la feuille qu'on a en main.
     const observations = await api.observationsList().catch((): ObservationEleve[] => []);
@@ -377,6 +392,7 @@ export default function Planning() {
         tapuscrits[c.id] ? `<div class="f"><span class="fl">Consignes en pictogrammes :</span></div>${tapuscrits[c.id]}` : "",
         c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt prevu">${rendreCell(c.prevu.trim())}</div>` : "",
         reglesImprimees(aImprimer(jeuxCites(`${c.prevu ?? ""}\n${sansMarqueurs(s?.deroulement ?? "")}`, jeux), (j) => masqueJeu(j.id), masques[c.id] ?? []), photosDesJeuxCites),
+        supportsImprimes(supportsDuCreneau(c, sequences ?? [], seances ?? [], materiels), bureau, imagesDesSupports),
         sequencesImprimees(aImprimer(sequencesCitees(c.prevu ?? "", sequences ?? [], seances ?? []), (x) => masqueSequence(x.sequence.id, x.seance?.id), masques[c.id] ?? []), seances ?? []),
         rituelsImprimes(aImprimer(rituelsCites(c.prevu ?? "", rituels), (r) => masqueRituel(r.id), masques[c.id] ?? []),
           (r) => deroulementsImprimes.get(r.id) ?? deroulementEnHtml(r)),
@@ -429,6 +445,7 @@ export default function Planning() {
       td img{max-height:110px}
       @media print{@page{margin:11mm}}
       ${STYLE_REGLES}
+      ${STYLE_SUPPORTS_IMPRIMES}
       ${STYLE_SEQUENCES}
       ${STYLE_RITUELS_IMPRIMES}
       ${STYLE_PIED}

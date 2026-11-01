@@ -15,10 +15,60 @@ import {
   GENRES_DE_SUPPORT, chercherElements, dejaPose, elementDuRenvoi, elementsDuBureau, genreDeSupport, lireRenvoi, renvoiVers, supportsDeLaSeance,
   type ElementDeSupport, type GenreDeSupport, type RenvoiDeSupport, type SourcesDuBureau,
 } from "../supportsDeSeance";
+import { photoDeLElement } from "../supportsDeTravail";
+import { usePictoImage } from "./ChoixPicto";
+import { usePhotosLiees } from "./usePhotosLiees";
 
 // Les supports d'une séance (voir supportsDeSeance) : la fenêtre qui les
-// prend sur le plan de travail — ou les y crée —, et la ligne qui les montre
-// dans la séance.
+// prend sur le plan de travail — ou les y crée —, la ligne qui les montre
+// dans la séance, et le bloc du cahier journal qui les rappelle sous le
+// prévu. Un élément auquel l'enseignant a donné une photo (Réglages ›
+// Personnalisation › Mes photos) la montre à la place de son image.
+
+/**
+ * L'image d'un élément du plan de travail : sa photo de la classe, sinon la
+ * sienne, sinon l'icône de sa sorte. `entiere` : toute l'image, sans la
+ * recadrer — au cahier journal, où l'on reconnaît l'objet d'un coup d'œil.
+ */
+function VignetteDeSupport({ renvoi, image, taille, entiere = false }: {
+  renvoi: RenvoiDeSupport; image: string | null | undefined; taille: number; entiere?: boolean;
+}) {
+  const photo = photoDeLElement(usePhotosLiees(), renvoi);
+  const src = usePictoImage(photo ?? null, true);
+  const style = entiere
+    ? { width: taille, height: taille, objectFit: "contain" as const, borderRadius: 6, background: "#fff" }
+    : { width: taille, height: taille, objectFit: "cover" as const };
+  if (photo != null) return src ? <img src={src} alt="" style={style} /> : <span aria-hidden="true">{genreDeSupport(renvoi.genre).ico}</span>;
+  return image ? <FichierImg nom={image} style={style} alt="" /> : <span aria-hidden="true">{genreDeSupport(renvoi.genre).ico}</span>;
+}
+
+/**
+ * Sous le prévu du cahier journal : les supports des séances du créneau
+ * (voir supportsDuCreneau), chacun avec son image, sa sorte, son nom et où il
+ * est. Rien s'il n'y en a pas.
+ */
+export function SupportsDuCreneau({ supports, bureau }: { supports: MaterielItem[]; bureau: SourcesDuBureau }) {
+  if (!supports.length) return null;
+  return (
+    <div className="journal-supports" aria-label="Les supports de la séance">
+      {supports.map((m) => {
+        const r = lireRenvoi(m.supportJson);
+        if (!r) return null;
+        const e = elementDuRenvoi(r, bureau);
+        const g = genreDeSupport(r.genre);
+        return (
+          <div key={m.id} className="journal-support">
+            <div className="journal-support-image"><VignetteDeSupport renvoi={r} image={e?.image} taille={56} entiere /></div>
+            <div className="journal-support-texte">
+              <div className="journal-support-titre">{e?.titre || m.titre}</div>
+              <div className="meta">{[g.nom, e ? e.detail : "n'est plus sur le plan de travail"].filter(Boolean).join(" · ")}</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 type Onglet = "pdf" | GenreDeSupport;
 
@@ -182,8 +232,7 @@ export function LigneDeSupport({ lien, bureau, onOuvrir, onRetirer }: {
   return (
     <div className="list-row support-seance">
       <div className="choix-support-vignette">
-        {e?.image ? <FichierImg nom={e.image} style={{ width: 40, height: 40, objectFit: "cover" }} alt="" />
-          : <span aria-hidden="true">{g.ico}</span>}
+        <VignetteDeSupport renvoi={r} image={e?.image} taille={40} />
       </div>
       <div className="choix-support-texte">
         <div className="title">{e?.titre || lien.titre}</div>

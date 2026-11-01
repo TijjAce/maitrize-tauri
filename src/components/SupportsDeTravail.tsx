@@ -1,7 +1,9 @@
 import React from "react";
-import { api, MATIERES, NIVEAUX_SCOLAIRES, type Jeu, type Sequence } from "../api";
+import { api, MATIERES, NIVEAUX_SCOLAIRES, type Jeu, type MaterielItem, type OutilClasse, type Sequence } from "../api";
 import { EVT_MES_PICTOS, changerMonPicto, lireMesPictos, type MonPicto } from "../mesPictos";
-import { TOUS_LES_NIVEAUX, supportsDeLaSequence } from "../supportsDeTravail";
+import { GENRES_MONTRES, TOUS_LES_NIVEAUX, cleDeLElement, supportsDeLaSequence } from "../supportsDeTravail";
+import { elementsDuBureau, genreDeSupport, type ElementDeSupport } from "../supportsDeSeance";
+import { lirePdfs } from "../materielSeance";
 import { etiquetteDeMatiere } from "../pictosMatieres";
 import { usePictoImage } from "./ChoixPicto";
 import { useLudotheque } from "./ReglesDesJeux";
@@ -11,20 +13,30 @@ import { toast } from "./Toaster";
 //
 // Les photos prises avec le dictaphone, chacune avec ce qui en fait un
 // support de travail (voir supportsDeTravail) : son nom, sa matière, son
-// niveau, le jeu dont elle prend les règles, la séquence où elle sert. Tout
-// s'enregistre aussitôt, et passe à l'autre ordinateur avec la photo.
+// niveau, le jeu dont elle prend les règles, le matériel, l'outil ou
+// l'affichage du plan de travail qu'elle montre, la séquence où elle sert.
+// Tout s'enregistre aussitôt, et passe à l'autre ordinateur avec la photo.
 
-type Champs = Partial<Pick<MonPicto, "mot" | "matiere" | "niveau" | "jeuId" | "sequenceId">>;
+type Champs = Partial<Pick<MonPicto, "mot" | "matiere" | "niveau" | "jeuId" | "elementId" | "sequenceId">>;
+
+/** Ce qu'une photo peut montrer du plan de travail, par sorte : le matériel, les outils pour l'élève, les affichages. */
+type ElementsMontres = { genre: (typeof GENRES_MONTRES)[number]; elements: ElementDeSupport[] }[];
 
 export function SupportsDeTravail() {
   const [photos, setPhotos] = React.useState<MonPicto[] | null>(null);
   const [jeux, setJeux] = React.useState<Jeu[]>([]);
   const [sequences, setSequences] = React.useState<Sequence[]>([]);
+  const [bureau, setBureau] = React.useState<{ outils: OutilClasse[]; materiel: MaterielItem[] }>({ outils: [], materiel: [] });
+  const montres = React.useMemo((): ElementsMontres => GENRES_MONTRES.map((genre) => ({
+    genre, elements: elementsDuBureau(genre, { ...bureau, jeux: [] }, (m) => lirePdfs(m.pdfsJson).length > 0),
+  })), [bureau]);
   React.useEffect(() => {
     const lire = () => lireMesPictos().then((l) => setPhotos(l.filter((p) => p.origine === "photo"))).catch(() => setPhotos([]));
     void lire();
     api.jeuxList().then((l) => setJeux([...l].sort((a, b) => a.titre.localeCompare(b.titre, "fr")))).catch(() => {});
     api.sequencesList().then((l) => setSequences([...l].sort((a, b) => a.titre.localeCompare(b.titre, "fr")))).catch(() => {});
+    Promise.all([api.outilsClasseList().catch((): OutilClasse[] => []), api.materielList().catch((): MaterielItem[] => [])])
+      .then(([outils, materiel]) => setBureau({ outils, materiel })).catch(() => {});
     // Une photo arrivée du téléphone, ou réglée sur l'autre ordinateur.
     window.addEventListener(EVT_MES_PICTOS, lire);
     return () => window.removeEventListener(EVT_MES_PICTOS, lire);
@@ -42,7 +54,7 @@ export function SupportsDeTravail() {
         Les photos prises avec le dictaphone — l'objet, le jeu de la classe — sont des supports de travail, pour l'élève qui
         n'entre pas dans l'abstraction d'un pictogramme. Donnez à chacune son nom et son niveau : « En retard » la propose alors à
         tout élève de ce niveau. Sa matière s'écrit au-dessus d'elle sur les tablettes. Un jeu de la ludothèque lui prête ses règles ;
-        une séquence la montre avec son matériel.
+        le matériel, l'outil ou l'affichage qu'elle montre la prend pour image ; une séquence la montre avec son matériel.
       </p>
       {photos.length === 0 && (
         <p className="meta" style={{ fontSize: 13 }}>
@@ -50,18 +62,20 @@ export function SupportsDeTravail() {
         </p>
       )}
       {photos.map((p) => (
-        <LigneDeSupport key={p.id} photo={p} jeux={jeux} sequences={sequences} onChanger={(champs) => { void changer(p, champs); }} />
+        <LigneDeSupport key={p.id} photo={p} jeux={jeux} montres={montres} sequences={sequences} onChanger={(champs) => { void changer(p, champs); }} />
       ))}
     </>
   );
 }
 
 /** Une photo : son image, son nom, et ce qui en fait un support de travail. */
-function LigneDeSupport({ photo, jeux, sequences, onChanger }: {
-  photo: MonPicto; jeux: Jeu[]; sequences: Sequence[]; onChanger: (champs: Champs) => void;
+function LigneDeSupport({ photo, jeux, montres, sequences, onChanger }: {
+  photo: MonPicto; jeux: Jeu[]; montres: ElementsMontres; sequences: Sequence[]; onChanger: (champs: Champs) => void;
 }) {
   const src = usePictoImage(photo.id, true);
   const complet = !!photo.niveau;
+  // L'élément qu'elle montrait n'est plus sur le plan de travail : on le dit, plutôt que de montrer « Aucun ».
+  const perdu = !!photo.elementId && !montres.some((g) => g.elements.some((e) => cleDeLElement(e.renvoi) === photo.elementId));
   return (
     <div className="sdt-ligne">
       <div className="sdt-image">{src ? <img src={src} alt="" /> : null}</div>
@@ -86,13 +100,29 @@ function LigneDeSupport({ photo, jeux, sequences, onChanger }: {
               {NIVEAUX_SCOLAIRES.map((n) => <option key={n} value={n}>{n}</option>)}
             </select>
           </label>
-          <label className="sdt-champ long">
-            <span>Les règles du jeu</span>
-            <select className="select" value={photo.jeuId ?? ""} aria-label={`Le jeu dont « ${photo.mot} » prend les règles`} onChange={(e) => onChanger({ jeuId: e.target.value })}>
-              <option value="">Aucun jeu</option>
-              {jeux.map((j) => <option key={j.id} value={j.id}>{j.titre}</option>)}
-            </select>
-          </label>
+          <div className="sdt-champ long sdt-pile">
+            <label className="sdt-champ">
+              <span>Les règles du jeu</span>
+              <select className="select" value={photo.jeuId ?? ""} aria-label={`Le jeu dont « ${photo.mot} » prend les règles`} onChange={(e) => onChanger({ jeuId: e.target.value })}>
+                <option value="">Aucun jeu</option>
+                {jeux.map((j) => <option key={j.id} value={j.id}>{j.titre}</option>)}
+              </select>
+            </label>
+            {/* Juste sous « Les règles du jeu » : le matériel, l'outil ou l'affichage du plan de travail qu'elle montre ; elle lui sert d'image (demande de l'enseignant, 2026-11-01). */}
+            <label className="sdt-champ">
+              <span>Le matériel, l'outil ou l'affichage</span>
+              <select className="select" value={photo.elementId ?? ""} aria-label={`Le matériel, l'outil ou l'affichage que montre « ${photo.mot} »`}
+                onChange={(e) => onChanger({ elementId: e.target.value })}>
+                <option value="">Aucun</option>
+                {perdu && <option value={photo.elementId}>N'est plus sur le plan de travail</option>}
+                {montres.filter((g) => g.elements.length).map((g) => (
+                  <optgroup key={g.genre} label={genreDeSupport(g.genre).pluriel}>
+                    {g.elements.map((e) => <option key={cleDeLElement(e.renvoi)} value={cleDeLElement(e.renvoi)}>{e.titre}</option>)}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+          </div>
           <label className="sdt-champ long">
             <span>La séquence</span>
             <select className="select" value={photo.sequenceId ?? ""} aria-label={`La séquence de « ${photo.mot} »`} onChange={(e) => onChanger({ sequenceId: e.target.value })}>
