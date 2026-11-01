@@ -21,7 +21,7 @@ import { ReglesDesJeux, useJeuxCites, useLudotheque } from "./ReglesDesJeux";
 import { SupportsDuCreneau } from "./SupportsDeLaSeance";
 import { supportsDuCreneau } from "../supportsDeSeance";
 import { jeuxCites, nomSousLeCurseur, regleEcrite, sansMarqueurs } from "../jeuxCites";
-import { ChoixSequence, SequencesCitees } from "./SequencesCitees";
+import { ChoixSequenceEnCours, SequencesCitees } from "./SequencesCitees";
 import { ChoixRituel, RituelForm, RituelsCites, useRituels } from "./Rituels";
 import { IndicateurZoom, useZoomPince } from "./ZoomPince";
 import { CaseImpression, useMasquesDuJournal } from "./MasquesDuJournal";
@@ -656,7 +656,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
           onEnregistrer={(r) => { enregistrerRituel(r); if (rituelEdite.nouveau) toast(`Rituel « ${r.titre} » créé : posez-le dans un créneau avec 🔁 Rituel.`, { icone: "🔁", duree: 7000 }); }} />
       )}
       {sequencePour && (
-        <ChoixSequence sequences={sequences} seances={seances} matiere={sequencePour.matiere}
+        <ChoixSequenceEnCours sequences={sequences} seances={seances} matiere={sequencePour.matiere}
           onClose={() => setSequencePour(null)} onChoisir={(s, seance) => poserSequence(sequencePour, s, seance)} />
       )}
       {seanceVue && (

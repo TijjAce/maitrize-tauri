@@ -9,8 +9,7 @@ vi.mock("./api", () => ({
 import type { Creneau, Seance, Sequence } from "./api";
 import {
   avancement, bornesDeLAnnee, ilYA, jourProche, joursEntre, libelleDuPassage, libelleDuSuivi, passagesParSequence, rangerParActivite,
-  suiviDeLaSequence, suivisDesSequences,
-} from "./suiviSequences";
+  suiviDeLaSequence, suivisDesSequences, estEnCours } from "./suiviSequences";
 
 const sequence = (id: string, titre: string, p: Partial<Sequence> = {}): Sequence => ({
   id, titre, matiere: "Français", cycle: "", objectifs: "", competences: "", competenceVisee: "", imageNom: null, couleur: "blue",
@@ -172,5 +171,17 @@ describe("les dates qu'on lit", () => {
   it("bornent l'année scolaire du 1er août au 31 juillet", () => {
     expect(bornesDeLAnnee("2026-2027")).toEqual(["2026-08-01", "2027-07-31"]);
     expect(bornesDeLAnnee("")[0].endsWith("-08-01")).toBe(true);
+  });
+});
+
+describe("les séquences en cours (le choix du cahier journal, 2026-11-01)", () => {
+  it("sont en classe, ou ont une séance déjà posée à venir ; ni en pause, ni terminées, ni seulement préparées", () => {
+    const passage = { creneauId: "c", date: "2026-11-05", heure: "09:00", seance: null, bilan: "" };
+    expect(estEnCours({ etat: "classe", prochain: null })).toBe(true);
+    expect(estEnCours({ etat: "preparation", prochain: passage })).toBe(true);
+    expect(estEnCours({ etat: "preparation", prochain: null })).toBe(false);
+    expect(estEnCours({ etat: "pause", prochain: passage })).toBe(false);
+    expect(estEnCours({ etat: "terminee", prochain: null })).toBe(false);
+    expect(estEnCours(undefined)).toBe(false);
   });
 });

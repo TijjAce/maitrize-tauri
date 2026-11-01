@@ -26,6 +26,15 @@ export const ETATS_SEQUENCE: { id: EtatSequence; nom: string; pluriel: string; i
 
 export const descriptionEtat = (e: EtatSequence) => ETATS_SEQUENCE.find((x) => x.id === e) ?? ETATS_SEQUENCE[0];
 
+/**
+ * Une séquence en cours : en classe, ou dont une séance est déjà posée à
+ * venir au cahier journal — celle qu'on commence demain. Ni en pause, ni
+ * terminée, ni seulement préparée (le choix d'une séquence du cahier journal
+ * ne montre qu'elles, demande de l'enseignant du 2026-11-01).
+ */
+export const estEnCours = (s: Pick<SuiviSequence, "etat" | "prochain"> | undefined): boolean =>
+  s?.etat === "classe" || (s?.etat === "preparation" && !!s.prochain);
+
 /** Un passage en classe : le créneau, sa date, la séance si elle est précisée, et le bilan écrit ce jour-là. */
 export interface Passage { creneauId: string; date: string; heure: string; seance: Seance | null; bilan: string }
 

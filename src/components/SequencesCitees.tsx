@@ -5,6 +5,8 @@ import { rangDeLaSeance, texteDeSeance, totalDesSeances, type CitationSequence }
 import { masqueSequence } from "../journalMasques";
 import { CaseImpression } from "./MasquesDuJournal";
 import { niveauDeProgrammation } from "../programmation";
+import { descriptionEtat, estEnCours, type SuiviSequence } from "../suiviSequences";
+import { useSuiviSequences } from "./useSuiviSequences";
 
 // ── Séquences citées dans le prévu ─────────────────────────────────────────
 //
@@ -93,7 +95,7 @@ export function SequencesCitees({ citations, seances, onOuvrir, onVoirSeance, ma
  * Sans `seancesAussi`, la séquence seule se choisit : c'est ce que la
  * programmation par élève prend.
  */
-export function ChoixSequence({ sequences, seances, matiere, onClose, onChoisir, titre = "Poser une séquence dans le prévu", seancesAussi = true, libelle = "La séquence entière" }: {
+export function ChoixSequence({ sequences, seances, matiere, onClose, onChoisir, titre = "Poser une séquence dans le prévu", seancesAussi = true, libelle = "La séquence entière", suivis }: {
   sequences: Sequence[]; seances: Seance[];
   /** L'intitulé du créneau : les séquences de cette matière viennent en tête. */
   matiere?: string;
@@ -103,25 +105,36 @@ export function ChoixSequence({ sequences, seances, matiere, onClose, onChoisir,
   seancesAussi?: boolean;
   /** Ce que dit le bouton qui prend la séquence. */
   libelle?: string;
+  /**
+   * L'état de chaque séquence (le cahier journal) : la liste ne montre alors
+   * que celles en cours ; les autres — en pause, terminées, seulement
+   * préparées — viennent quand on cherche, ou qu'on les demande.
+   */
+  suivis?: Map<string, Pick<SuiviSequence, "etat" | "prochain">>;
 }) {
   const [q, setQ] = React.useState("");
+  const [toutes, setToutes] = React.useState(false);
   const cle = (t: string) => (t ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const cherche = cle(q.trim());
   const proche = cle(matiere ?? "");
+  const enCours = (s: Sequence) => !suivis || estEnCours(suivis.get(s.id));
+  const autres = suivis ? sequences.filter((s) => !enCours(s)).length : 0;
   const liste = sequences
+    .filter((s) => toutes || cherche || enCours(s))
     .filter((s) => !cherche || cle(`${s.titre} ${s.matiere}`).includes(cherche)
       || seances.some((x) => x.sequenceId === s.id && cle(x.titre).includes(cherche)))
     .sort((a, b) => {
+      const ca = enCours(a) ? 0 : 1, cb = enCours(b) ? 0 : 1;
       const pa = proche && cle(a.matiere) && proche.includes(cle(a.matiere)) ? 0 : 1;
       const pb = proche && cle(b.matiere) && proche.includes(cle(b.matiere)) ? 0 : 1;
-      return pa - pb || (b.dateCreation ?? "").localeCompare(a.dateCreation ?? "");
+      return ca - cb || pa - pb || (b.dateCreation ?? "").localeCompare(a.dateCreation ?? "");
     });
   return (
     <Modal titre={titre} onClose={onClose} large
       footer={<button className="btn" onClick={onClose}>Annuler</button>}>
       <Input autoFocus placeholder="Chercher une séquence ou une séance…" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="choix-sequence-liste">
-        {!liste.length && <div style={{ fontSize: 13, color: "var(--text-2)", padding: 8 }}>Aucune séquence.</div>}
+        {!liste.length && <div style={{ fontSize: 13, color: "var(--text-2)", padding: 8 }}>{suivis && !toutes && !cherche ? "Aucune séquence en cours." : "Aucune séquence."}</div>}
         {liste.map((s) => {
           const siennes = seances.filter((x) => x.sequenceId === s.id).sort((a, b) => a.numero - b.numero);
           const total = totalDesSeances(s, seances);
@@ -134,7 +147,8 @@ export function ChoixSequence({ sequences, seances, matiere, onClose, onChoisir,
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600 }}>{s.titre || "Sans titre"}</div>
                   <div style={{ fontSize: 12, color: "var(--text-2)" }}>
-                    {[s.matiere, niveauDeProgrammation(s.niveau), s.periode ? `période ${s.periode}` : "", compte].filter(Boolean).join(" · ")}
+                    {[!enCours(s) && suivis?.get(s.id) ? `${descriptionEtat(suivis.get(s.id)!.etat).ico} ${descriptionEtat(suivis.get(s.id)!.etat).nom}` : "",
+                      s.matiere, niveauDeProgrammation(s.niveau), s.periode ? `période ${s.periode}` : "", compte].filter(Boolean).join(" · ")}
                   </div>
                 </div>
                 <button className={seancesAussi ? "btn sm" : "btn sm primary"} onClick={() => onChoisir(s, null)}
@@ -158,7 +172,19 @@ export function ChoixSequence({ sequences, seances, matiere, onClose, onChoisir,
             </div>
           );
         })}
+        {suivis && !cherche && autres > 0 && (
+          <button type="button" className="btn ghost sm" style={{ alignSelf: "flex-start" }} onClick={() => setToutes(!toutes)}>
+            {toutes ? "Seulement les séquences en cours" : `Voir aussi les autres séquences (${autres})`}
+          </button>
+        )}
       </div>
     </Modal>
   );
+}
+
+/** Le choix d'une séquence du cahier journal : celles en cours d'abord, et seules tant qu'on ne cherche pas. */
+export function ChoixSequenceEnCours(props: Omit<React.ComponentProps<typeof ChoixSequence>, "suivis">) {
+  const { suivis, chargement } = useSuiviSequences();
+  if (chargement) return null;
+  return <ChoixSequence {...props} suivis={suivis} />;
 }
