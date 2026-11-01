@@ -356,17 +356,24 @@ function lignesSimples(markup: string, images = false): string[] {
 const enUnBloc = (lignes: string[]) => lignes.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 
 /**
+ * Le titre d'une phase sans son « Temps 2 – » : la liste numérotée le dit
+ * déjà, et le calcul mental, posé avant le temps 1, décalait tout — « 3.
+ * Temps 2 ». L'enseignant l'a demandé le 2026-11-01.
+ */
+export const titreSansLeTemps = (titre: string) => titre.replace(/^Temps\s*\d+\s*[–—-]\s*/i, "").trim() || titre.trim();
+
+/**
  * Le déroulement en texte simple, pour ce qui n'imprime que du texte : les
- * phases numérotées, avec leur durée et leur organisation ; leurs champs,
- * nommés ; les listes à puces ; les images retirées ; les supports cités par
- * leur titre.
+ * phases numérotées, sans leur « Temps 1 – », avec leur durée et leur
+ * organisation ; leurs champs, nommés ; les listes à puces ; les images
+ * retirées ; les supports cités par leur titre.
  */
 export function texteDuDeroulement(markup: string): string {
   const s = lireSeance(markup);
   const sortie = lignesSimples(s.intro);
   s.phases.forEach((p, i) => {
     const organisation = champDe(p, CHAMP_ORGANISATION).replace(/\s+/g, " ").trim();
-    sortie.push(`${i + 1}. ${p.titre.trim() || "Phase"}${p.duree ? ` — ${p.duree}` : ""}${organisation ? ` · ${organisation}` : ""}`);
+    sortie.push(`${i + 1}. ${titreSansLeTemps(p.titre) || "Phase"}${p.duree ? ` — ${p.duree}` : ""}${organisation ? ` · ${organisation}` : ""}`);
     sortie.push(...lignesSimples(p.deroulement));
     for (const c of p.champs) {
       if (memeNom(c.nom, CHAMP_ORGANISATION)) continue;

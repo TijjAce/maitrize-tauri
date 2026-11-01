@@ -68,6 +68,21 @@ describe("le déroulement en document", () => {
     ].join("\n"));
   });
 
+  it("numérote les phases sans leur « Temps 1 – » : le calcul mental passe avant", () => {
+    const doc = [
+      "## Calcul mental — procédé La Martinière (10 min)", "Sommes jusqu'à 10.",
+      "## Temps 1 – Définition des objectifs et mise en réussite (5 min)", "Des collections montrées.",
+      "## Temps 2 — Mise en activité des élèves (20 min)", "Les jetons cachés.",
+      "## Temps 3 (10 min)", "Ce qu'on retient.",
+    ].join("\n");
+    expect(texteDuDeroulement(doc)).toBe([
+      "1. Calcul mental — procédé La Martinière — 10 min", "Sommes jusqu'à 10.",
+      "2. Définition des objectifs et mise en réussite — 5 min", "Des collections montrées.",
+      "3. Mise en activité des élèves — 20 min", "Les jetons cachés.",
+      "4. Temps 3 — 10 min", "Ce qu'on retient.",
+    ].join("\n"));
+  });
+
   it("sait où chaque support est cité", () => {
     expect(citationsDuDocument(DOC).map((c) => [c.genre, c.id, c.phase])).toEqual([["affichage", "a1", 1], ["outil", "o1", 2], ["feuille", "f1", 3]]);
     expect(marqueDeCitation("jeu", "j1", "Le jeu [rapide] | 2")).toBe("[@jeu:j1|Le jeu [rapide) / 2]");
