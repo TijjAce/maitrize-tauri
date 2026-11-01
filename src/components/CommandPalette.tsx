@@ -115,6 +115,8 @@ export const SOUS_ONGLETS: { ico: string; label: string; to: string; page: strin
   { ico: "🗂", label: "Catégoriser les mots (tri, intrus, loto aveugle, familles, mistigri)", to: "/jeux", page: "jeux", onglet: "categoriser", sous: "Fabriquer · maternelle" },
   { ico: "🧠", label: "Carte mentale (affichage de la classe : un thème, ses branches, ses idées)", to: "/jeux", page: "jeux", onglet: "carteMentale", sous: "Fabriquer · affichages" },
   { ico: "🏠", label: "Les familles d'addition (affichage : la maison du 7, toutes ses décompositions en deux parties)", to: "/jeux", page: "jeux", onglet: "famillesAddition", sous: "Fabriquer · affichages" },
+  { ico: "🔲", label: "Le tableau à double entrée (formes ou images en lignes, couleurs en colonnes, gommettes à coller)", to: "/jeux", page: "jeux", onglet: "tableauDouble", sous: "Fabriquer · mathématiques" },
+  { ico: "🎲", label: "Les dés personnalisés (faces en images, couleurs, formes, points ; « Dessine-moi… »)", to: "/jeux", page: "jeux", onglet: "des", sous: "Fabriquer · mathématiques" },
   { ico: "🎞", label: "Images séquentielles (remettre une histoire dans l'ordre, cases fléchées)", to: "/jeux", page: "jeux", onglet: "suites", sous: "Fabriquer · maternelle" },
   { ico: "🦢", label: "Le Vilain Petit Canard (séquence de vocabulaire MS-GS : familles d'animaux, émotions, synonymots, tapis de conte)", to: "/jeux", page: "jeux", onglet: "vilainPetitCanard", sous: "Fabriquer · maternelle" },
   { ico: "🧸", label: "Construire des collections (cardinal donné : fiches de places, « Donne-moi… », bons de commande)", to: "/jeux", page: "jeux", onglet: "collections", sous: "Fabriquer · maternelle" },

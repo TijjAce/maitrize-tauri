@@ -6,7 +6,7 @@ export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "vilainPetitCanard", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin", "lotoPhonemesAttaque", "lotoPhonemesFin", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "phrasesPuzzle", "trous", "motsMeles", "cursive",
-  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "problemesCM", "coloriage", "collections", "problemeDuJour", "motifs", "tangram", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "rectangles", "calculCM", "soustractionPosee", "sequencesPS", "sequencesMS", "sequencesGS", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "grandeursCM", "geometrie", "solides", "deplacements", "geometrieCM", "donnees", "numeration",
+  "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "problemesCM", "coloriage", "collections", "problemeDuJour", "motifs", "tangram", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "rectangles", "calculCM", "soustractionPosee", "sequencesPS", "sequencesMS", "sequencesGS", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "grandeursCM", "geometrie", "solides", "deplacements", "geometrieCM", "donnees", "tableauDouble", "des", "numeration",
   "carteMentale", "famillesAddition", "taches",
   "sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction",
   "planClasse", "frise", "paysage",
@@ -248,6 +248,10 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Perpendiculaires et parallèles, le cercle, nommer les figures ; lire un programme de construction — l'étape par étape, quatre figures dont une juste, les consignes à remettre dans l'ordre — ; le symétrique, les solides et leurs patrons." },
       { id: "donnees", nom: "Tableaux et diagrammes", icone: "📊", cycles: "Cycle 2",
         quoi: "Une enquête et son relevé par bâtons, le tableau, le diagramme en barres à lire ou à construire, le tableau à double entrée des formes et des couleurs, des tableaux à compléter, des problèmes." },
+      { id: "tableauDouble", nom: "Le tableau à double entrée", icone: "🔲", pictos: true, cycles: "Cycles 1 et 2",
+        quoi: "Des formes ou des images en lignes, des couleurs en colonnes : chaque case, la forme de sa ligne, de la couleur de sa colonne. Des cases faites en modèle, des gommettes à coller." },
+      { id: "des", nom: "Les dés personnalisés", icone: "🎲", pictos: true, cycles: "Cycles 1 et 2",
+        quoi: "Des dés aux faces choisies — images, couleurs, formes, points, chiffres, mots —, en patron à plier ou en cartes pour un dé à pochettes. Deux dés font « Dessine-moi… »." },
       { id: "numeration", nom: "Grands nombres et décimaux", icone: "💯", cycles: "Cycle 3",
         quoi: "Tableau de numération, écriture en lettres, décomposition, comparaison, encadrement." },
     ],
@@ -318,7 +322,7 @@ export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[]
   { id: "problemes", nom: "Les problèmes", outils: ["partieTout", "multiplicatifs", "problemesCM"] },
   { id: "grandeurs", nom: "Grandeurs et mesures", outils: ["heure", "monnaie", "mesures", "grandeursCM"] },
   { id: "geometrie", nom: "Espace et géométrie", outils: ["motifs", "tangram", "geometrie", "solides", "deplacements", "geometrieCM"] },
-  { id: "donnees", nom: "Données", outils: ["donnees"] },
+  { id: "donnees", nom: "Données", outils: ["donnees", "tableauDouble", "des"] },
 ];
 
 /**

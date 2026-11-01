@@ -38,6 +38,8 @@ import { GenerateurPersoTab } from "./AtelierGenerateurPerso";
 import { enregistrerGenerateur, useGenerateursPerso } from "../components/GenerateursPerso";
 import type { GenerateurPerso } from "../generateursPerso";
 import { DonneesTab, MesuresTab, MonnaieTab } from "./AteliersMesures";
+import { TableauDoubleTab } from "./AtelierTableauDouble";
+import { DesTab } from "./AtelierDes";
 import { ComprehensionTab, LecteurTab, VoixHauteTab } from "./AteliersLecture";
 import { EcrireTab, GrammaireTab, OralTab, OrthographeTab } from "./AteliersFrancais";
 import { DeplacementsTab, GeometrieTab, SolidesTab } from "./AteliersGeometrie";
@@ -473,6 +475,8 @@ export default function Jeux() {
         : onglet === "deplacements" ? <DeplacementsTab />
         : onglet === "geometrieCM" ? <GeometrieCMTab />
         : onglet === "donnees" ? <DonneesTab />
+        : onglet === "tableauDouble" ? <TableauDoubleTab banque={Boolean(etat?.installee)} />
+        : onglet === "des" ? <DesTab banque={Boolean(etat?.installee)} />
         : onglet === "voixHaute" ? <VoixHauteTab />
         : onglet === "comprehension" ? <ComprehensionTab />
         : onglet === "lecteur" ? <LecteurTab />

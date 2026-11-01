@@ -11,6 +11,8 @@
 export const MOTS_EXEMPLE = {
   // Des silhouettes qui ne se confondent pas.
   ombres: ["chat", "vache", "poule", "lapin", "cheval", "canard"],
+  // Le premier dé du jeu « Dessine-moi… » : des animaux que la banque dessine.
+  des: ["zèbre", "lion", "girafe", "hippopotame", "pingouin", "singe"],
   // Deux familles à trier : des fruits, des légumes.
   etiquettes: ["pomme", "banane", "poire", "carotte", "tomate", "salade"],
   // D'une à trois syllabes, pour quatre planches.

@@ -148,6 +148,9 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
     + "« Espace et géométrie au cycle 2 » (2002).",
   geometrieCM: `${MATHS_C3}.`,
   donnees: `${MATHS_C2} : l'enquête, le relevé, le tableau, le diagramme en barres.`,
+  tableauDouble: `${MATHS_C2}, CP : « Construire et compléter un tableau à double entrée » ; « une ligne et une colonne d'un tableau à double entrée `
+    + "permettent d'identifier le contenu de la case située à leur intersection ».",
+  des: `${SOURCE_INCONNUE}.`,
 
   // ── Histoire-géographie ──
   planClasse: "Éduscol, ressources 2016 — Questionner le monde, cycle 2 : la séquence « La classe, un espace organisé qui se représente » (CP).",
