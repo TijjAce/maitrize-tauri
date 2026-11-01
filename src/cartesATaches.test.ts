@@ -148,6 +148,17 @@ describe("la feuille", () => {
     for (const c of s.cartes) expect(html).toContain(`>${c.etiquette}<`);
   });
 
+  it("n'écrit pas de numéro au recto des cartes à pinces, seulement au dos (« enlève le petit nombre en haut à gauche », 2026-11-01)", () => {
+    const r = reglages({ type: "cubes", classe: "CP", format: "pinces", combien: 4, dos: true, marque: "" });
+    const html = htmlDeLaSerie(cartesDeLaSerie(r, 3), r, 3);
+    expect(html).not.toContain("ct-coin");
+    expect((html.match(/class="ct-dos-num">\d+</g) ?? []).length).toBe(4);
+    // Le mot de la série, lui, garde son coin, et sa place en haut de la carte.
+    const marquee = reglages({ ...r, marque: "Série A" });
+    const avec = htmlDeLaSerie(cartesDeLaSerie(marquee, 3), marquee, 3);
+    expect(avec).toContain('<div class="ct-gauche ct-avec-coin"><div class="ct-coin"><span class="ct-marque">Série A</span></div>');
+  });
+
   it("échappe ce que l'enseignant écrit dans le coin", () => {
     const r = reglages({ type: "solide", marque: "<b>Série A</b>" });
     expect(htmlDeLaSerie(cartesDeLaSerie(r, 1), r, 1)).toContain("&lt;b&gt;Série A&lt;/b&gt;");

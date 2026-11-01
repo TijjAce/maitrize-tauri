@@ -11,8 +11,8 @@
 //   la fiche réponse, où chaque carte a son numéro.
 //
 // Les cartes sont numérotées : le numéro relie la carte, la fiche réponse et
-// le corrigé. Un mot dans le coin — « Niveau 1 », « Série A » — range les
-// séries entre elles.
+// le corrigé — au dos seulement, pour les cartes à pinces. Un mot dans le
+// coin — « Niveau 1 », « Série A » — range les séries entre elles.
 
 import {
   CLASSES, DOMAINES, type Carte, type Classe, type Contexte, type Format, type TypeDeCarte,
@@ -155,12 +155,15 @@ export function largeurDesChoix(choix: string[]): "s" | "m" | "l" | "xl" {
   return plus <= 4 ? "s" : plus <= 9 ? "m" : plus <= 15 ? "l" : "xl";
 }
 
-const coin = (i: number, marque: string) =>
-  `<div class="ct-coin"><span class="ct-n">${i + 1}</span>${marque ? `<span class="ct-marque">${escapeHtml(marque)}</span>` : ""}</div>`;
-
-function cartePinces(c: Carte, i: number, r: ReglagesCartes, largeur: string): string {
+/**
+ * Le recto d'une carte à pinces : rien dans le coin que le mot de la série,
+ * s'il y en a un. Son numéro n'y est plus — « enlève le petit nombre en haut
+ * à gauche » (demande de l'enseignant, 2026-11-01) — ; il reste au dos.
+ */
+function cartePinces(c: Carte, r: ReglagesCartes, largeur: string): string {
+  const coin = r.marque ? `<div class="ct-coin"><span class="ct-marque">${escapeHtml(r.marque)}</span></div>` : "";
   return `<div class="ct-c ct-pinces ct-choix-${largeur}">
-    <div class="ct-gauche">${coin(i, r.marque)}${r.question ? `<div class="ct-question">${escapeHtml(c.question)}</div>` : ""}<div class="ct-visuel">${c.visuel}</div></div>
+    <div class="ct-gauche${coin ? " ct-avec-coin" : ""}">${coin}${r.question ? `<div class="ct-question">${escapeHtml(c.question)}</div>` : ""}<div class="ct-visuel">${c.visuel}</div></div>
     <div class="ct-choix">${c.choix.map((x) => `<div>${x}</div>`).join("")}</div>
   </div>`;
 }
@@ -229,9 +232,9 @@ export function htmlDeLaSerie(s: Serie, r: ReglagesCartes, graine: number): stri
     const format: FormatGrille = { colonnes: 2, lignes: 4, hauteurMm: HAUTEUR_PINCES };
     // Une seule largeur de colonne pour toute la série : les cartes se ressemblent, et les dos aussi.
     const largeur = largeurDesChoix(s.cartes.flatMap((c) => c.choix));
-    const rectos = s.cartes.map((c, i) => carte(cartePinces(c, i, r, largeur), "ct-cellule"));
+    const rectos = s.cartes.map((c) => carte(cartePinces(c, r, largeur), "ct-cellule"));
     corps = r.dos
-      ? pagesAvecRegle(s.cartes.map((c, i) => `<div class="carte ct-paire"><div class="ct-moitie">${cartePinces(c, i, r, largeur)}</div>`
+      ? pagesAvecRegle(s.cartes.map((c, i) => `<div class="carte ct-paire"><div class="ct-moitie">${cartePinces(c, r, largeur)}</div>`
         + `<div class="ct-pli" title="Plier ici"></div><div class="ct-moitie">${dosPinces(c, i, largeur)}</div></div>`), { ...format, colonnes: 1 }, tete)
       : pagesAvecRegle(rectos, format, tete);
   } else {
@@ -256,7 +259,8 @@ export const STYLE_CARTES_A_TACHES = `
   .ct-pinces { display: grid; grid-template-columns: minmax(0, 1fr) var(--choix); }
   .ct-pinces.ct-dos { grid-template-columns: var(--choix) minmax(0, 1fr); }
   .ct-choix-s { --choix: 20mm; } .ct-choix-m { --choix: 28mm; } .ct-choix-l { --choix: 37mm; } .ct-choix-xl { --choix: 45mm; }
-  .ct-gauche { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 5mm 2mm 2mm; gap: 1mm; }
+  .ct-gauche { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 2mm; gap: 1mm; }
+  .ct-gauche.ct-avec-coin { padding-top: 5mm; }
   .ct-question { flex: none; font-size: 10px; font-weight: 700; line-height: 1.2; color: #3b4256; }
   .ct-visuel { flex: 1 1 0; min-height: 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
   .ct-dessin { width: 100%; height: 100%; min-height: 0; }
@@ -269,7 +273,6 @@ export const STYLE_CARTES_A_TACHES = `
   .ct-choix > div:first-child { border-top: 0; }
   .ct-choix-l .ct-choix > div { font-size: 14px; } .ct-choix-xl .ct-choix > div { font-size: 12px; }
   .ct-coin { position: absolute; top: 1.3mm; left: 2mm; display: flex; gap: 1.5mm; align-items: center; }
-  .ct-n { font-size: 8.5px; font-weight: 800; color: var(--ct); }
   .ct-marque { font-size: 7.5px; font-weight: 700; color: var(--ct); border: 0.3mm solid var(--ct); border-radius: 10mm; padding: 0 1.6mm; line-height: 1.5; white-space: nowrap; }
   .ct-point { display: inline-block; width: 7mm; height: 7mm; border-radius: 50%; background: var(--ct); }
   .ct-dos-num { margin: auto; font-size: 30px; font-weight: 800; color: #e3e6ef; }
