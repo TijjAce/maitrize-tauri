@@ -17,6 +17,11 @@ describe("une image en coloriage (demande de l'enseignant, 2026-11-01)", () => {
     expect(lire(enColoriage(picto, hexEnRvb("#e05252")))).toEqual([[0, 0, 0, 0], [28, 34, 51, 255], [224, 82, 82, 255], [224, 82, 82, 255]]);
   });
 
+  it("prend un brun foncé pour un aplat, pas pour un trait : seul le presque noir sans couleur est un trait", () => {
+    const pelage = points([110, 60, 25, 255], [40, 40, 45, 255], [20, 30, 90, 255]);
+    expect(lire(enColoriage(pelage, hexEnRvb("#4a86e8")))).toEqual([[74, 134, 232, 255], [28, 34, 51, 255], [74, 134, 232, 255]]);
+  });
+
   it("laisse blanc le fond presque blanc d'une photo, qui n'a pas de transparence", () => {
     const photo = points([252, 252, 252, 255], [20, 20, 20, 255], [120, 160, 200, 255]);
     expect(lire(enColoriage(photo, hexEnRvb("#38a169")))).toEqual([[255, 255, 255, 255], [28, 34, 51, 255], [56, 161, 105, 255]]);

@@ -111,8 +111,9 @@ export function reglagesTableauSurs(brut: Partial<ReglagesTableau> | null | unde
 
 /**
  * Une image de la banque, pour une ligne : son mot, sa source prête à
- * imprimer ; en coloriage, son dessin noir et blanc, et ce dessin colorié de
- * chaque couleur (par son code, « #e05252 »).
+ * imprimer ; son dessin noir et blanc, pour le coloriage ; et l'image
+ * recoloriée de chaque couleur (par son code, « #e05252 »), pour les cases
+ * faites et le corrigé.
  */
 export interface ImageDeLigne { mot: string; src: string; coloriage?: string; colorie?: Record<string, string> }
 
@@ -149,7 +150,8 @@ export function htmlTableau(brut: Partial<ReglagesTableau>, images: ImageDeLigne
       nom: i.mot,
       tete: img(enColoriage ? i.coloriage! : i.src),
       vide: enColoriage && r.tache === "dessiner" ? img(i.coloriage!) : "",
-      dans: (hex: string) => (enColoriage && i.colorie?.[hex] ? img(i.colorie[hex])
+      // Le pictogramme recolorié de la couleur de la colonne, comme une forme ; sinon, en attendant, encadré de cette couleur.
+      dans: (hex: string) => (i.colorie?.[hex] ? img(i.colorie[hex])
         : `<span class="tde-encadre" style="border-color:${hex};background:${hex}33">${img(i.src, figure)}</span>`),
     }))
     : r.formes.map((f) => ({ nom: f, tete: forme(f, "#ffffff", figure), vide: "", dans: (hex: string) => forme(f, hex, figure) }));

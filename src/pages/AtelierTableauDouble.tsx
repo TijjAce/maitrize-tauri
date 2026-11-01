@@ -20,8 +20,9 @@ import { Chips, Coche } from "./AteliersMaths";
 // Son atelier à lui, hors de la séquence (voir tableauDoubleEntree.ts) : les
 // formes ou les images des lignes — de deux à cinq —, les couleurs des
 // colonnes — de deux à neuf —, les cases faites, ce que fait l'élève. Des
-// images en coloriage : leur dessin noir et blanc se calcule ici, avec celui
-// de chaque couleur.
+// lignes d'images : chacune se recolorie ici de chaque couleur — la case
+// faite montre « le zèbre violet » —, et se dessine en noir et blanc pour le
+// coloriage.
 
 const ATELIER = "tableauDouble";
 
@@ -35,7 +36,8 @@ export function TableauDoubleTab({ banque }: { banque: boolean }) {
   const brutes = React.useMemo(() => mots.flatMap((m) => (m.id != null && sources[m.id] ? [{ mot: m.mot, src: sources[m.id] }] : [])).slice(0, MAX_DU_TABLEAU),
     [mots, sources]);
   const hexes = r.couleurs.map((nom) => couleurDuTableau(nom)!.hex);
-  const { dessins } = useColoriages(brutes.map((i) => i.src), hexes, r.lignes === "images" && r.coloriage);
+  // Les images recoloriées de chaque couleur, pour les cases faites et le corrigé ; leur dessin noir et blanc, pour le coloriage.
+  const { dessins } = useColoriages(brutes.map((i) => i.src), hexes, r.lignes === "images");
   const images = React.useMemo(() => brutes.map((i) => (dessins[`:${i.src}`]
     ? { ...i, coloriage: dessins[`:${i.src}`], colorie: Object.fromEntries(hexes.flatMap((h) => (dessins[`${h}:${i.src}`] ? [[h, dessins[`${h}:${i.src}`]]] : []))) }
     : i)), [brutes, dessins, hexes.join()]); // eslint-disable-line react-hooks/exhaustive-deps

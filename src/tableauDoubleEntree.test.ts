@@ -66,6 +66,18 @@ describe("le tableau à double entrée, son atelier (demande de l'enseignant, 20
     expect(htmlTableau({ ...REGLAGES_TABLEAU, lignes: "images", coloriage: true }, [{ mot: "a", src: "x" }, { mot: "b", src: "y" }], 1)).toContain("je dessine l'image de sa ligne");
   });
 
+  it("montre dans les cases faites et au corrigé l'image recoloriée de la couleur de la colonne, sans cadre", () => {
+    const zebre = { mot: "zèbre", src: "data:image/png;base64,Z", colorie: { "#4a86e8": "data:image/png;base64,ZBLEU", "#38a169": "data:image/png;base64,ZVERT" } };
+    const lion = { mot: "lion", src: "data:image/png;base64,L", colorie: { "#4a86e8": "data:image/png;base64,LBLEU", "#38a169": "data:image/png;base64,LVERT" } };
+    const { eleve, corrige } = parties(htmlTableau({ ...REGLAGES_TABLEAU, lignes: "images", couleurs: ["bleu", "vert"], faites: "ligne" }, [zebre, lion], 1));
+    expect(eleve).toContain('src="data:image/png;base64,ZBLEU"');
+    expect(eleve).toContain('src="data:image/png;base64,ZVERT"');
+    expect(eleve).not.toContain("tde-encadre");
+    expect(corrige).toContain('src="data:image/png;base64,LVERT"');
+    // Les têtes gardent l'image telle quelle : l'élève reconnaît l'animal.
+    expect(eleve).toContain('src="data:image/png;base64,Z"');
+  });
+
   it("lit ses réglages sans leur faire confiance", () => {
     const r = reglagesTableauSurs({ formes: ["cercle", "ovale" as never], couleurs: ["bleu", "bleu", "vert", "gris"], combien: 99, faites: "partout" as never });
     expect(r.formes).toEqual(REGLAGES_TABLEAU.formes);
