@@ -4,7 +4,7 @@ import { toast } from "./Toaster";
 import { chargerImages, memoriserImage } from "./ChoixPicto";
 import { aDeLaTransparence, dimensionsReduites, motDuFichier, nouvelIdPerso } from "../imagesPerso";
 import { silhouette, teinteDeLOmbre } from "../ombres";
-import { enColoriage, hexEnRvb } from "../coloriages";
+import { hexEnRvb, masqueDuColoriage, peindreLeMasque } from "../coloriages";
 
 // ── Les images de l'enseignant, côté écran ─────────────────────────────────
 //
@@ -98,6 +98,23 @@ export function ombreDe(src: string, grise: boolean): Promise<string> {
   return p;
 }
 
+const masques = new Map<string, Promise<{ masque: Uint8Array; largeur: number; hauteur: number }>>();
+
+/** Ce que devient chaque point d'une image en coloriage (voir coloriages.ts) : lu une fois, pour toutes ses couleurs. */
+function masqueDe(src: string) {
+  let p = masques.get(src);
+  if (!p) {
+    p = peindre(src, 420).then(({ toile, pinceau }) => ({
+      masque: masqueDuColoriage(pinceau.getImageData(0, 0, toile.width, toile.height).data, toile.width),
+      largeur: toile.width,
+      hauteur: toile.height,
+    }));
+    p.catch(() => masques.delete(src));
+    masques.set(src, p);
+  }
+  return p;
+}
+
 const coloriages = new Map<string, Promise<string>>();
 
 /** Une image en coloriage (voir coloriages.ts) : ses traits seuls, ou ses aplats de la couleur `hex` ; calculée une fois. */
@@ -105,10 +122,13 @@ export function coloriageDe(src: string, hex = ""): Promise<string> {
   const cle = `${hex}:${src}`;
   let p = coloriages.get(cle);
   if (!p) {
-    p = peindre(src, 420).then(({ toile, pinceau }) => {
-      const pixels = pinceau.getImageData(0, 0, toile.width, toile.height);
-      const dessin = enColoriage(pixels.data, hex ? hexEnRvb(hex) : undefined);
-      pinceau.putImageData(new ImageData(dessin, toile.width, toile.height), 0, 0);
+    p = masqueDe(src).then(({ masque, largeur, hauteur }) => {
+      const toile = document.createElement("canvas");
+      toile.width = largeur;
+      toile.height = hauteur;
+      const pinceau = toile.getContext("2d");
+      if (!pinceau) throw new Error("Toile indisponible.");
+      pinceau.putImageData(new ImageData(peindreLeMasque(masque, hex ? hexEnRvb(hex) : undefined), largeur, hauteur), 0, 0);
       return toile.toDataURL("image/png");
     });
     p.catch(() => coloriages.delete(cle));
