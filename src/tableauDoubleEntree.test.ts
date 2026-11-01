@@ -35,9 +35,35 @@ describe("le tableau à double entrée, son atelier (demande de l'enseignant, 20
     const html = htmlTableau({ ...REGLAGES_TABLEAU, lignes: "images" }, images, 1);
     expect(html).toContain("Le tableau des images et des couleurs");
     expect(html).toContain("je dessine l'image de sa ligne");
-    expect(html).toContain('<img class="tde-image" alt="" src="data:image/png;base64,AAA">');
+    expect(html).toContain('<img class="tde-image" alt="" src="data:image/png;base64,AAA"');
     expect(htmlTableau({ ...REGLAGES_TABLEAU, lignes: "images" }, images.slice(0, 1), 1)).toContain("Le tableau des formes et des couleurs");
     expect(titreTableau({ titre: " Mon tableau ", lignes: "formes" })).toBe("Mon tableau");
+  });
+
+  it("prend jusqu'à neuf couleurs : au-delà de cinq, la feuille passe à l'italienne et les cases se resserrent", () => {
+    const toutes = ["bleu", "vert", "jaune", "violet", "rouge", "orange", "rose", "marron", "noir"];
+    const html = htmlTableau({ ...REGLAGES_TABLEAU, couleurs: toutes }, [], 1);
+    expect(html).toContain("<style>@page { size: A4 landscape; }</style>");
+    expect(html.match(/class="tde-pastille"/g)).toHaveLength(18);
+    expect(html).toContain("--tde-l:25mm;--tde-h:28mm");
+    expect(htmlTableau(REGLAGES_TABLEAU, [], 1)).not.toContain("landscape");
+    expect(reglagesTableauSurs({ couleurs: [...toutes, "bleu"] }).couleurs).toEqual(toutes);
+  });
+
+  it("met en coloriage les lignes d'images : le dessin noir et blanc dans les têtes et les cases, colorié dans les cases faites", () => {
+    const zebre = { mot: "zèbre", src: "data:image/png;base64,Z", coloriage: "data:image/png;base64,ZNB", colorie: { "#4a86e8": "data:image/png;base64,ZBLEU" } };
+    const lion = { mot: "lion", src: "data:image/png;base64,L", coloriage: "data:image/png;base64,LNB", colorie: { "#4a86e8": "data:image/png;base64,LBLEU" } };
+    const html = htmlTableau({ ...REGLAGES_TABLEAU, lignes: "images", coloriage: true, couleurs: ["bleu", "vert"], faites: "colonne" }, [zebre, lion], 1);
+    const { eleve, corrige } = parties(html);
+    expect(eleve).toContain("Dans chaque case, je colorie le dessin de la couleur de sa colonne. La première colonne est faite : c'est le modèle.");
+    // Les têtes et les deux cases vides en noir et blanc, la première colonne coloriée en bleu.
+    expect(eleve.match(/src="data:image\/png;base64,ZNB"/g)).toHaveLength(2);
+    expect(eleve).toContain('src="data:image/png;base64,ZBLEU"');
+    expect(eleve).not.toContain('src="data:image/png;base64,Z"');
+    // Le vert n'est pas encore colorié : au corrigé, l'image encadrée de vert, en attendant.
+    expect(corrige).toContain("border-color:#38a169");
+    // Sans le dessin noir et blanc, pas de coloriage : les images telles quelles.
+    expect(htmlTableau({ ...REGLAGES_TABLEAU, lignes: "images", coloriage: true }, [{ mot: "a", src: "x" }, { mot: "b", src: "y" }], 1)).toContain("je dessine l'image de sa ligne");
   });
 
   it("lit ses réglages sans leur faire confiance", () => {

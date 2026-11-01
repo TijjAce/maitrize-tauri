@@ -8,6 +8,12 @@
 // ligne, ou la première colonne, en modèle ; l'élève dessine les autres, ou
 // colle les gommettes qu'il découpe sur la deuxième page. Le corrigé suit.
 //
+// Puis (le même jour) : « il faut qu'il puisse y avoir plus de couleurs » —
+// jusqu'à neuf colonnes, la feuille passant à l'italienne au-delà de cinq —,
+// et « des coloriages noir et blanc dans les images » : en lignes d'images,
+// le dessin en noir et blanc (voir coloriages.ts) dans la tête et dans chaque
+// case, que l'élève colorie de la couleur de sa colonne.
+//
 // Le programme de mathématiques du CP (2024) : « Construire et compléter un
 // tableau à double entrée » ; il permet de représenter tous les couples de
 // deux critères, « par exemple la forme et la couleur ».
@@ -69,15 +75,20 @@ export interface ReglagesTableau {
   motsEcrits: boolean;
   /** Pour l'enseignant, la case où noter le niveau d'aide (une évaluation). */
   niveauDAide: boolean;
+  /** Des lignes d'images en coloriage : le dessin noir et blanc dans chaque case, à colorier. */
+  coloriage: boolean;
 }
 
 export const REGLAGES_TABLEAU: ReglagesTableau = {
   titre: "", lignes: "formes", formes: ["cercle", "carré", "triangle"], couleurs: ["bleu", "vert", "jaune", "violet"],
-  faites: "hasard", combien: 3, tache: "dessiner", motsEcrits: true, niveauDAide: false,
+  faites: "hasard", combien: 3, tache: "dessiner", motsEcrits: true, niveauDAide: false, coloriage: false,
 };
 
-/** Entre deux et cinq lignes ou colonnes : au-delà, les cases ne tiennent plus sur la page. */
+/** De deux à cinq lignes : au-delà, elles ne tiennent plus sur la page. */
 export const MAX_DU_TABLEAU = 5;
+/** De deux à neuf colonnes, toutes les couleurs ; au-delà de cinq, la feuille passe à l'italienne. */
+export const MAX_COULEURS_DU_TABLEAU = COULEURS_DU_TABLEAU.length;
+const COLONNES_EN_PORTRAIT = 5;
 
 /** Des réglages lus de la mémoire, sans leur faire confiance. */
 export function reglagesTableauSurs(brut: Partial<ReglagesTableau> | null | undefined): ReglagesTableau {
@@ -88,17 +99,22 @@ export function reglagesTableauSurs(brut: Partial<ReglagesTableau> | null | unde
     titre: typeof b.titre === "string" ? b.titre : "",
     lignes: b.lignes === "images" ? "images" : "formes",
     formes: formes.length >= 2 ? formes.slice(0, MAX_DU_TABLEAU) : REGLAGES_TABLEAU.formes,
-    couleurs: couleurs.length >= 2 ? couleurs.slice(0, MAX_DU_TABLEAU) : REGLAGES_TABLEAU.couleurs,
+    couleurs: couleurs.length >= 2 ? couleurs.slice(0, MAX_COULEURS_DU_TABLEAU) : REGLAGES_TABLEAU.couleurs,
     faites: b.faites === "ligne" || b.faites === "colonne" || b.faites === "aucune" ? b.faites : "hasard",
     combien: Math.max(1, Math.min(8, typeof b.combien === "number" && Number.isFinite(b.combien) ? Math.round(b.combien) : 3)),
     tache: b.tache === "coller" ? "coller" : "dessiner",
     motsEcrits: b.motsEcrits !== false,
     niveauDAide: b.niveauDAide === true,
+    coloriage: b.coloriage === true,
   };
 }
 
-/** Une image de la banque, pour une ligne : son mot, et sa source prête à imprimer. */
-export interface ImageDeLigne { mot: string; src: string }
+/**
+ * Une image de la banque, pour une ligne : son mot, sa source prête à
+ * imprimer ; en coloriage, son dessin noir et blanc, et ce dessin colorié de
+ * chaque couleur (par son code, « #e05252 »).
+ */
+export interface ImageDeLigne { mot: string; src: string; coloriage?: string; colorie?: Record<string, string> }
 
 /** Les niveaux d'aide qu'on note, du plus autonome au plus guidé (les mêmes qu'à la séquence). */
 const NIVEAUX_D_AIDE = ["seul, sans support", "avec la ligne modèle", "avec les gommettes de départ", "avec un geste de l'adulte", "avec la main de l'adulte"];
@@ -110,28 +126,42 @@ export const titreTableau = (r: Pick<ReglagesTableau, "titre" | "lignes">, avecI
 /**
  * La feuille : le tableau, ses cases faites ; la planche des gommettes à
  * découper quand l'élève colle ; le corrigé. Des lignes en images ne valent
- * qu'à partir de deux images : sinon, les formes.
+ * qu'à partir de deux images : sinon, les formes. Au-delà de cinq couleurs,
+ * la feuille passe à l'italienne, et les cases se resserrent pour tenir.
  */
 export function htmlTableau(brut: Partial<ReglagesTableau>, images: ImageDeLigne[], graine: number): string {
   const r = reglagesTableauSurs(brut);
   const alea = hasard(graine);
   const enImages = r.lignes === "images" && images.length >= 2;
+  const choisies = images.slice(0, MAX_DU_TABLEAU);
+  // En coloriage : le dessin noir et blanc dans les têtes et dans les cases à colorier ; colorié dans les cases faites.
+  const enColoriage = enImages && r.coloriage && choisies.every((i) => !!i.coloriage);
   const couleurs = r.couleurs.map((nom) => couleurDuTableau(nom)!);
+  const paysage = couleurs.length > COLONNES_EN_PORTRAIT;
+  const nLignes = enImages ? choisies.length : r.formes.length;
+  const l = Math.min(30, (paysage ? 250 : 180) / (couleurs.length + 1));
+  const h = Math.min(28, (paysage ? 135 : 210) / (nLignes + 1));
+  const figure = Math.min(14, l * 0.6, h * 0.6);
+  const img = (src: string, taille = figure + 2) =>
+    `<img class="tde-image" alt="" src="${escapeHtml(src)}" style="width:${n2(taille)}mm;height:${n2(taille)}mm">`;
   const lignes = enImages
-    ? images.slice(0, MAX_DU_TABLEAU).map((i) => ({
+    ? choisies.map((i) => ({
       nom: i.mot,
-      tete: `<img class="tde-image" alt="" src="${escapeHtml(i.src)}">`,
-      dans: (hex: string) => `<span class="tde-encadre" style="border-color:${hex};background:${hex}33"><img class="tde-image" alt="" src="${escapeHtml(i.src)}"></span>`,
+      tete: img(enColoriage ? i.coloriage! : i.src),
+      vide: enColoriage && r.tache === "dessiner" ? img(i.coloriage!) : "",
+      dans: (hex: string) => (enColoriage && i.colorie?.[hex] ? img(i.colorie[hex])
+        : `<span class="tde-encadre" style="border-color:${hex};background:${hex}33">${img(i.src, figure)}</span>`),
     }))
-    : r.formes.map((f) => ({ nom: f, tete: forme(f, "#ffffff"), dans: (hex: string) => forme(f, hex) }));
-  const cases = lignes.flatMap((_, l) => couleurs.map((__, c) => `${l},${c}`));
+    : r.formes.map((f) => ({ nom: f, tete: forme(f, "#ffffff", figure), vide: "", dans: (hex: string) => forme(f, hex, figure) }));
+  const cases = lignes.flatMap((_, k) => couleurs.map((__, c) => `${k},${c}`));
   const faites = new Set(r.faites === "ligne" ? couleurs.map((_, c) => `0,${c}`)
-    : r.faites === "colonne" ? lignes.map((_, l) => `${l},0`)
+    : r.faites === "colonne" ? lignes.map((_, k) => `${k},0`)
       : r.faites === "hasard" ? melanger(alea, cases).slice(0, Math.min(r.combien, cases.length - 1)) : []);
-  const tableau = (tout: boolean) => `<table class="tde-tableau"><tr><th></th>${couleurs.map((c) =>
+  const tailles = `--tde-l:${n2(l)}mm;--tde-h:${n2(h)}mm`;
+  const tableau = (tout: boolean) => `<table class="tde-tableau" style="${tailles}"><tr><th></th>${couleurs.map((c) =>
     `<th><span class="tde-pastille" style="background:${c.hex}"></span>${r.motsEcrits ? `<div>${c.nom}</div>` : ""}</th>`).join("")}</tr>`
-    + lignes.map((ligne, l) => `<tr><th>${ligne.tete}${r.motsEcrits ? `<div>${escapeHtml(ligne.nom)}</div>` : ""}</th>${couleurs.map((c, k) =>
-      `<td>${tout || faites.has(`${l},${k}`) ? ligne.dans(c.hex) : ""}</td>`).join("")}</tr>`).join("")
+    + lignes.map((ligne, k) => `<tr><th>${ligne.tete}${r.motsEcrits ? `<div>${escapeHtml(ligne.nom)}</div>` : ""}</th>${couleurs.map((c, i) =>
+      `<td>${tout || faites.has(`${k},${i}`) ? ligne.dans(c.hex) : ligne.vide}</td>`).join("")}</tr>`).join("")
     + "</table>";
   const quoi = enImages ? "l'image de sa ligne" : "la forme de sa ligne";
   const deja = r.faites === "ligne" ? " La première ligne est faite : c'est le modèle."
@@ -139,16 +169,18 @@ export function htmlTableau(brut: Partial<ReglagesTableau>, images: ImageDeLigne
       : faites.size ? ` ${faites.size === 1 ? "Une case est déjà faite" : `${faites.size} cases sont déjà faites`}.` : "";
   const consigne = r.tache === "coller"
     ? `Je découpe les gommettes. Je colle chacune dans la case de sa ligne et de sa colonne.${deja}`
-    : `Dans chaque case vide, je dessine ${quoi}, de la couleur de sa colonne.${deja}`;
+    : enColoriage ? `Dans chaque case, je colorie le dessin de la couleur de sa colonne.${deja}`
+      : `Dans chaque case vide, je dessine ${quoi}, de la couleur de sa colonne.${deja}`;
   const aide = r.niveauDAide
     ? `<div class="tde-aide"><b>Pour l'enseignant — le niveau d'aide :</b> ${NIVEAUX_D_AIDE.map((n) => `<span>☐ ${n}</span>`).join("")}</div>` : "";
   const titre = escapeHtml(titreTableau(r, enImages));
   const restantes = melanger(alea, cases.filter((x) => !faites.has(x)));
   const gommettes = r.tache === "coller"
     ? `<div class="page"><div class="titre">${titre} — les gommettes</div><div class="regle">Je découpe en suivant les pointillés.</div>
-      <div class="tde-gommettes">${restantes.map((x) => { const [l, c] = x.split(",").map(Number); return `<div class="tde-gommette">${lignes[l].dans(couleurs[c].hex)}</div>`; }).join("")}</div></div>`
+      <div class="tde-gommettes" style="${tailles}">${restantes.map((x) => { const [k, c] = x.split(",").map(Number); return `<div class="tde-gommette">${lignes[k].dans(couleurs[c].hex)}</div>`; }).join("")}</div></div>`
     : "";
-  return feuille(`<div class="page"><div class="titre">${titre}</div>
+  // Plus de cinq couleurs : à l'italienne (le fabricant de PDF le lit dans la feuille, voir feuille_pdf.rs).
+  return feuille(`${paysage ? "<style>@page { size: A4 landscape; }</style>" : ""}<div class="page"><div class="titre">${titre}</div>
     <div class="sous">Prénom : ........................................ Date : ........................</div>
     <div class="regle">${consigne}</div>${tableau(false)}${aide}</div>${gommettes}
     <div class="page corrige"><div class="titre">${titre} — corrigé</div>${tableau(true)}</div>`, "tde");
@@ -156,15 +188,15 @@ export function htmlTableau(brut: Partial<ReglagesTableau>, images: ImageDeLigne
 
 export const STYLE_TABLEAU = `
   .feuille.tde .tde-tableau { border-collapse: collapse; margin: 6mm auto; }
-  .feuille.tde .tde-tableau th, .feuille.tde .tde-tableau td { border: 1.2px solid ${NOIR}; width: 30mm; height: 28mm; text-align: center;
-    vertical-align: middle; font-size: 13px; font-weight: 700; }
+  .feuille.tde .tde-tableau th, .feuille.tde .tde-tableau td { border: 1.2px solid ${NOIR}; width: var(--tde-l, 30mm); height: var(--tde-h, 28mm);
+    text-align: center; vertical-align: middle; font-size: 13px; font-weight: 700; padding: 0; }
   .feuille.tde .tde-tableau svg { display: block; margin: 0 auto; }
-  .feuille.tde .tde-pastille { display: block; width: 14mm; height: 7mm; border-radius: 1.5mm; border: 1px solid ${NOIR}; margin: 0 auto 2mm; }
-  .feuille.tde .tde-image { display: block; width: 16mm; height: 16mm; object-fit: contain; margin: 0 auto; }
-  .feuille.tde .tde-encadre { display: inline-block; padding: 1.5mm; border: 2.2mm solid; border-radius: 3mm; }
-  .feuille.tde .tde-encadre .tde-image { width: 14mm; height: 14mm; }
+  .feuille.tde .tde-pastille { display: block; width: min(14mm, calc(var(--tde-l, 30mm) - 6mm)); height: 7mm; border-radius: 1.5mm;
+    border: 1px solid ${NOIR}; margin: 0 auto 2mm; }
+  .feuille.tde .tde-image { display: block; object-fit: contain; margin: 0 auto; }
+  .feuille.tde .tde-encadre { display: inline-block; padding: 1mm; border: 1.8mm solid; border-radius: 3mm; }
   .feuille.tde .tde-aide { margin-top: 6mm; font-size: 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
   .feuille.tde .tde-gommettes { display: flex; flex-wrap: wrap; gap: 0; margin-top: 6mm; }
-  .feuille.tde .tde-gommette { width: 30mm; height: 28mm; display: flex; align-items: center; justify-content: center;
+  .feuille.tde .tde-gommette { width: var(--tde-l, 30mm); height: var(--tde-h, 28mm); display: flex; align-items: center; justify-content: center;
     border: 1px dashed #9aa0b4; box-sizing: border-box; break-inside: avoid; page-break-inside: avoid; }
 `;

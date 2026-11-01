@@ -4,6 +4,7 @@ import { toast } from "./Toaster";
 import { chargerImages, memoriserImage } from "./ChoixPicto";
 import { aDeLaTransparence, dimensionsReduites, motDuFichier, nouvelIdPerso } from "../imagesPerso";
 import { silhouette, teinteDeLOmbre } from "../ombres";
+import { enColoriage, hexEnRvb } from "../coloriages";
 
 // ── Les images de l'enseignant, côté écran ─────────────────────────────────
 //
@@ -95,6 +96,46 @@ export function ombreDe(src: string, grise: boolean): Promise<string> {
     ombres.set(cle, p);
   }
   return p;
+}
+
+const coloriages = new Map<string, Promise<string>>();
+
+/** Une image en coloriage (voir coloriages.ts) : ses traits seuls, ou ses aplats de la couleur `hex` ; calculée une fois. */
+export function coloriageDe(src: string, hex = ""): Promise<string> {
+  const cle = `${hex}:${src}`;
+  let p = coloriages.get(cle);
+  if (!p) {
+    p = peindre(src, 420).then(({ toile, pinceau }) => {
+      const pixels = pinceau.getImageData(0, 0, toile.width, toile.height);
+      const dessin = enColoriage(pixels.data, hex ? hexEnRvb(hex) : undefined);
+      pinceau.putImageData(new ImageData(dessin, toile.width, toile.height), 0, 0);
+      return toile.toDataURL("image/png");
+    });
+    p.catch(() => coloriages.delete(cle));
+    coloriages.set(cle, p);
+  }
+  return p;
+}
+
+/**
+ * Le coloriage de chaque image, et chacune coloriée de chaque couleur, par
+ * « couleur:source » (« :source » pour les traits seuls) ; rien tant que
+ * `actif` est faux. `pret` : tout ce qui pouvait se calculer l'est.
+ */
+export function useColoriages(srcs: string[], hexes: string[], actif: boolean): { dessins: Record<string, string>; pret: boolean } {
+  const cles = actif ? srcs.flatMap((s) => ["", ...hexes].map((h) => `${h}:${s}`)) : [];
+  const cle = cles.map((c) => `${c.length}${c.slice(0, 40)}${c.slice(-24)}`).join("|");
+  const [etat, setEtat] = React.useState<{ cle: string; dessins: Record<string, string> }>({ cle: "", dessins: {} });
+  React.useEffect(() => {
+    if (!actif) return;
+    let vivant = true;
+    void Promise.all(cles.map((c) => {
+      const i = c.indexOf(":");
+      return coloriageDe(c.slice(i + 1), c.slice(0, i)).then((d) => [c, d] as const).catch(() => null);
+    })).then((paires) => { if (vivant) setEtat({ cle, dessins: Object.fromEntries(paires.filter((p): p is readonly [string, string] => p !== null)) }); });
+    return () => { vivant = false; };
+  }, [cle, actif]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { dessins: actif ? etat.dessins : {}, pret: !actif || etat.cle === cle };
 }
 
 /**

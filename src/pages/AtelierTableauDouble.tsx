@@ -3,13 +3,14 @@ import { Aide } from "../components/Aide";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { BanqueDeMots } from "../components/BanqueDeMots";
 import { usePictoImages } from "../components/ChoixPicto";
+import { useColoriages } from "../components/MesImages";
 import { Field, Input, Select } from "../components/ui";
 import { useMotsGardes, useReglages } from "../components/useMemoire";
 import { graineAuHasard } from "../hasard";
 import { useGraine } from "../modifierFeuille";
 import {
-  COULEURS_DU_TABLEAU, FORMES_DU_TABLEAU, MAX_DU_TABLEAU, REGLAGES_TABLEAU, STYLE_TABLEAU, htmlTableau, reglagesTableauSurs, titreTableau,
-  type ReglagesTableau,
+  COULEURS_DU_TABLEAU, FORMES_DU_TABLEAU, MAX_COULEURS_DU_TABLEAU, MAX_DU_TABLEAU, REGLAGES_TABLEAU, STYLE_TABLEAU, couleurDuTableau, htmlTableau,
+  reglagesTableauSurs, titreTableau, type ReglagesTableau,
 } from "../tableauDoubleEntree";
 import { Boutons, Colonnes } from "./AteliersLangage";
 import { Chips, Coche } from "./AteliersMaths";
@@ -17,8 +18,10 @@ import { Chips, Coche } from "./AteliersMaths";
 // ── Fabriquer › Mathématiques › Données › Le tableau à double entrée ──────
 //
 // Son atelier à lui, hors de la séquence (voir tableauDoubleEntree.ts) : les
-// formes ou les images des lignes, les couleurs des colonnes — de deux à
-// cinq —, les cases faites, ce que fait l'élève.
+// formes ou les images des lignes — de deux à cinq —, les couleurs des
+// colonnes — de deux à neuf —, les cases faites, ce que fait l'élève. Des
+// images en coloriage : leur dessin noir et blanc se calcule ici, avec celui
+// de chaque couleur.
 
 const ATELIER = "tableauDouble";
 
@@ -29,12 +32,17 @@ export function TableauDoubleTab({ banque }: { banque: boolean }) {
   const [graine, setGraine] = useGraine();
   const ids = mots.map((m) => m.id).filter((x): x is number => x != null);
   const sources = usePictoImages(ids);
-  const images = React.useMemo(() => mots.flatMap((m) => (m.id != null && sources[m.id] ? [{ mot: m.mot, src: sources[m.id] }] : [])).slice(0, MAX_DU_TABLEAU),
+  const brutes = React.useMemo(() => mots.flatMap((m) => (m.id != null && sources[m.id] ? [{ mot: m.mot, src: sources[m.id] }] : [])).slice(0, MAX_DU_TABLEAU),
     [mots, sources]);
+  const hexes = r.couleurs.map((nom) => couleurDuTableau(nom)!.hex);
+  const { dessins } = useColoriages(brutes.map((i) => i.src), hexes, r.lignes === "images" && r.coloriage);
+  const images = React.useMemo(() => brutes.map((i) => (dessins[`:${i.src}`]
+    ? { ...i, coloriage: dessins[`:${i.src}`], colorie: Object.fromEntries(hexes.flatMap((h) => (dessins[`${h}:${i.src}`] ? [[h, dessins[`${h}:${i.src}`]]] : []))) }
+    : i)), [brutes, dessins, hexes.join()]); // eslint-disable-line react-hooks/exhaustive-deps
   const html = React.useMemo(() => htmlTableau(r, images, graine), [r, images, graine]);
   const enImages = r.lignes === "images" && images.length >= 2;
-  // Entre deux et cinq lignes, entre deux et cinq colonnes : au-delà, les cases ne tiennent plus sur la page.
-  const borne = <T,>(liste: T[], poser: (v: T[]) => void) => { if (liste.length >= 2 && liste.length <= MAX_DU_TABLEAU) poser(liste); };
+  // De deux à `max` : au-delà, les cases ne tiennent plus sur la page.
+  const borne = <T,>(liste: T[], max: number, poser: (v: T[]) => void) => { if (liste.length >= 2 && liste.length <= max) poser(liste); };
   return (
     <Colonnes
       gauche={<>
@@ -51,10 +59,13 @@ export function TableauDoubleTab({ banque }: { banque: boolean }) {
           </Select>
         </Field>
         {r.lignes === "formes"
-          ? <Chips liste={FORMES_DU_TABLEAU} choisis={r.formes} onChange={(formes) => borne(formes, (v) => maj({ formes: v }))} />
-          : <BanqueDeMots mots={mots} onChange={setMots} banque={banque} aide={`De deux à ${MAX_DU_TABLEAU} images : une ligne chacune.`} />}
+          ? <Chips liste={FORMES_DU_TABLEAU} choisis={r.formes} onChange={(formes) => borne(formes, MAX_DU_TABLEAU, (v) => maj({ formes: v }))} />
+          : <>
+            <BanqueDeMots mots={mots} onChange={setMots} banque={banque} aide={`De deux à ${MAX_DU_TABLEAU} images : une ligne chacune.`} />
+            <Coche on={r.coloriage} libelle="En coloriage : le dessin en noir et blanc, à colorier" onChange={(coloriage) => maj({ coloriage })} />
+          </>}
         <Field label="Les colonnes : les couleurs">
-          <Chips liste={COULEURS_DU_TABLEAU.map((c) => c.nom)} choisis={r.couleurs} onChange={(couleurs) => borne(couleurs, (v) => maj({ couleurs: v }))} />
+          <Chips liste={COULEURS_DU_TABLEAU.map((c) => c.nom)} choisis={r.couleurs} onChange={(couleurs) => borne(couleurs, MAX_COULEURS_DU_TABLEAU, (v) => maj({ couleurs: v }))} />
         </Field>
         <Field label="Les cases déjà faites">
           <Select value={r.faites} onChange={(e) => maj({ faites: e.target.value as ReglagesTableau["faites"] })}>
