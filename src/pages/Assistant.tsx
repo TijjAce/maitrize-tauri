@@ -23,6 +23,7 @@ import { TrouverUnPicto } from "../components/TrouverUnPicto";
 import { TrouverUnLivre } from "../components/LivresDeReference";
 import { EVT_QUESTION_ASSISTANT, prendreQuestion } from "../questionAssistant";
 import { imagePourLAssistant } from "../components/MesImages";
+import { estImage, useFileDropZone } from "../dragdrop";
 import { IMAGES_PAR_DEMANDE, TITRE_D_UNE_IMAGE, imagesDeLaDemande } from "../imagesDeLAssistant";
 
 // Extrait un objet JSON d'une réponse IA (tolère du texte autour).
@@ -252,6 +253,12 @@ export default function Assistant() {
     if (!texte.trim() || /\.(png|jpe?g|gif|webp|heic|heif|tiff?|bmp)$/i.test(texte.trim())) e.preventDefault();
     void collerImages(fichiers);
   };
+  // Une image se dépose aussi, glissée depuis le Finder ou depuis la vignette d'une capture d'écran.
+  const depot = useFileDropZone({
+    accept: estImage,
+    onFiles: (fichiers) => { void collerImages(fichiers); },
+    onRefus: (noms) => toast(`Seules les images vont à l'assistant : ${noms.slice(0, 2).join(", ")}${noms.length > 2 ? "…" : ""} reste${noms.length > 1 ? "nt" : ""} de côté.`, { icone: "ℹ️" }),
+  });
 
   const envoyer = async (texte?: string) => {
     const contenu = (texte ?? input).trim();
@@ -400,7 +407,8 @@ export default function Assistant() {
               </div>
             ))}
       </aside>
-      <div className="chat" style={{ flex: 1, height: "100%" }}>
+      <div className="chat" ref={depot.ref}
+        style={{ flex: 1, height: "100%", ...(depot.actif ? { outline: "2px dashed var(--accent)", outlineOffset: -4, background: "var(--accent-soft)" } : {}) }}>
       <div className="topbar"><h1>Assistant IA</h1><span className="sub">propulsé par Mistral</span>
         <div className="spacer" />
         <Select value={model} onChange={(e) => choisirModele(e.target.value)} style={{ maxWidth: 200 }}
