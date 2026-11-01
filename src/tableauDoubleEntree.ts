@@ -9,10 +9,13 @@
 // colle les gommettes qu'il découpe sur la deuxième page. Le corrigé suit.
 //
 // Puis (le même jour) : « il faut qu'il puisse y avoir plus de couleurs » —
-// jusqu'à neuf colonnes, la feuille passant à l'italienne au-delà de cinq —,
-// et « des coloriages noir et blanc dans les images » : en lignes d'images,
-// le dessin en noir et blanc (voir coloriages.ts) dans la tête et dans chaque
-// case, que l'élève colorie de la couleur de sa colonne.
+// jusqu'à neuf colonnes —, et « des coloriages noir et blanc dans les
+// images » : en lignes d'images, le dessin en noir et blanc (voir
+// coloriages.ts) dans la tête et dans chaque case, que l'élève colorie de la
+// couleur de sa colonne. Et, devant six animaux dont le tableau n'en montrait
+// que cinq : « tous les animaux ne rentrent pas » — jusqu'à huit lignes, les
+// cases se resserrant pour tenir sur la page, à l'italienne quand elles y
+// sont plus grandes.
 //
 // Le programme de mathématiques du CP (2024) : « Construire et compléter un
 // tableau à double entrée » ; il permet de représenter tous les couples de
@@ -84,11 +87,42 @@ export const REGLAGES_TABLEAU: ReglagesTableau = {
   faites: "hasard", combien: 3, tache: "dessiner", motsEcrits: true, niveauDAide: false, coloriage: false,
 };
 
-/** De deux à cinq lignes : au-delà, elles ne tiennent plus sur la page. */
-export const MAX_DU_TABLEAU = 5;
-/** De deux à neuf colonnes, toutes les couleurs ; au-delà de cinq, la feuille passe à l'italienne. */
+/** De deux à huit lignes : au-delà, les cases sont trop petites pour qu'on y dessine. */
+export const MAX_DU_TABLEAU = 8;
+/** De deux à neuf colonnes, toutes les couleurs. */
 export const MAX_COULEURS_DU_TABLEAU = COULEURS_DU_TABLEAU.length;
-const COLONNES_EN_PORTRAIT = 5;
+
+/**
+ * La place du tableau, tête comprise, en mm : la largeur de la page sans ses
+ * marges ; sa hauteur sans le titre, le prénom, la consigne et le pied —
+ * mesurées sur la feuille imprimée, en portrait et à l'italienne.
+ */
+const PLACE = { portrait: { l: 165, h: 195 }, italienne: { l: 250, h: 120 } };
+/** Ce que prend, sous le tableau, la ligne du niveau d'aide. */
+const PLACE_DE_L_AIDE = 16;
+/** La largeur d'un nom dans la tête d'une ligne, à peu près : des lettres grasses de 13 px, et un peu d'air. */
+const largeurDuNom = (nom: string) => nom.length * 2.1 + 3;
+
+export interface TaillesDuTableau { tete: number; l: number; h: number; figure: number; paysage: boolean }
+
+/**
+ * La taille des cases, en mm : la colonne des têtes, assez large pour le plus
+ * long nom ; les colonnes des couleurs ; les lignes, qui se partagent la
+ * hauteur ; la forme ou l'image, qui tient dans sa case avec son nom dessous.
+ * À l'italienne quand la forme y est plus grande — beaucoup de couleurs, peu
+ * de lignes —, sinon en portrait.
+ */
+export function taillesDuTableau(noms: string[], nCouleurs: number, motsEcrits: boolean, aide: boolean): TaillesDuTableau {
+  const dans = (place: { l: number; h: number }, paysage: boolean): TaillesDuTableau => {
+    const base = Math.min(30, place.l / (nCouleurs + 1));
+    const tete = motsEcrits ? Math.max(base, Math.min(40, Math.max(0, ...noms.map(largeurDuNom)))) : base;
+    const l = Math.min(30, (place.l - tete) / nCouleurs);
+    const h = Math.min(28, (place.h - (aide ? PLACE_DE_L_AIDE : 0)) / (noms.length + 1));
+    return { tete, l, h, figure: Math.min(14, l * 0.6, h - (motsEcrits ? 8 : 4)), paysage };
+  };
+  const portrait = dans(PLACE.portrait, false), italienne = dans(PLACE.italienne, true);
+  return italienne.figure > portrait.figure ? italienne : portrait;
+}
 
 /** Des réglages lus de la mémoire, sans leur faire confiance. */
 export function reglagesTableauSurs(brut: Partial<ReglagesTableau> | null | undefined): ReglagesTableau {
@@ -138,11 +172,7 @@ export function htmlTableau(brut: Partial<ReglagesTableau>, images: ImageDeLigne
   // En coloriage : le dessin noir et blanc dans les têtes et dans les cases à colorier ; colorié dans les cases faites.
   const enColoriage = enImages && r.coloriage && choisies.every((i) => !!i.coloriage);
   const couleurs = r.couleurs.map((nom) => couleurDuTableau(nom)!);
-  const paysage = couleurs.length > COLONNES_EN_PORTRAIT;
-  const nLignes = enImages ? choisies.length : r.formes.length;
-  const l = Math.min(30, (paysage ? 250 : 180) / (couleurs.length + 1));
-  const h = Math.min(28, (paysage ? 135 : 210) / (nLignes + 1));
-  const figure = Math.min(14, l * 0.6, h * 0.6);
+  const { tete: lTete, l, h, figure, paysage } = taillesDuTableau(enImages ? choisies.map((i) => i.mot) : r.formes, couleurs.length, r.motsEcrits, r.niveauDAide);
   const img = (src: string, taille = figure + 2) =>
     `<img class="tde-image" alt="" src="${escapeHtml(src)}" style="width:${n2(taille)}mm;height:${n2(taille)}mm">`;
   const lignes = enImages
@@ -159,7 +189,7 @@ export function htmlTableau(brut: Partial<ReglagesTableau>, images: ImageDeLigne
   const faites = new Set(r.faites === "ligne" ? couleurs.map((_, c) => `0,${c}`)
     : r.faites === "colonne" ? lignes.map((_, k) => `${k},0`)
       : r.faites === "hasard" ? melanger(alea, cases).slice(0, Math.min(r.combien, cases.length - 1)) : []);
-  const tailles = `--tde-l:${n2(l)}mm;--tde-h:${n2(h)}mm`;
+  const tailles = `--tde-t:${n2(lTete)}mm;--tde-l:${n2(l)}mm;--tde-h:${n2(h)}mm`;
   const tableau = (tout: boolean) => `<table class="tde-tableau" style="${tailles}"><tr><th></th>${couleurs.map((c) =>
     `<th><span class="tde-pastille" style="background:${c.hex}"></span>${r.motsEcrits ? `<div>${c.nom}</div>` : ""}</th>`).join("")}</tr>`
     + lignes.map((ligne, k) => `<tr><th>${ligne.tete}${r.motsEcrits ? `<div>${escapeHtml(ligne.nom)}</div>` : ""}</th>${couleurs.map((c, i) =>
@@ -181,7 +211,7 @@ export function htmlTableau(brut: Partial<ReglagesTableau>, images: ImageDeLigne
     ? `<div class="page"><div class="titre">${titre} — les gommettes</div><div class="regle">Je découpe en suivant les pointillés.</div>
       <div class="tde-gommettes" style="${tailles}">${restantes.map((x) => { const [k, c] = x.split(",").map(Number); return `<div class="tde-gommette">${lignes[k].dans(couleurs[c].hex)}</div>`; }).join("")}</div></div>`
     : "";
-  // Plus de cinq couleurs : à l'italienne (le fabricant de PDF le lit dans la feuille, voir feuille_pdf.rs).
+  // À l'italienne, le fabricant de PDF le lit dans la feuille (voir feuille_pdf.rs).
   return feuille(`${paysage ? "<style>@page { size: A4 landscape; }</style>" : ""}<div class="page"><div class="titre">${titre}</div>
     <div class="sous">Prénom : ........................................ Date : ........................</div>
     <div class="regle">${consigne}</div>${tableau(false)}${aide}</div>${gommettes}
@@ -192,6 +222,7 @@ export const STYLE_TABLEAU = `
   .feuille.tde .tde-tableau { border-collapse: collapse; margin: 6mm auto; }
   .feuille.tde .tde-tableau th, .feuille.tde .tde-tableau td { border: 1.2px solid ${NOIR}; width: var(--tde-l, 30mm); height: var(--tde-h, 28mm);
     text-align: center; vertical-align: middle; font-size: 13px; font-weight: 700; padding: 0; }
+  .feuille.tde .tde-tableau tr > :first-child { width: var(--tde-t, var(--tde-l, 30mm)); }
   .feuille.tde .tde-tableau svg { display: block; margin: 0 auto; }
   .feuille.tde .tde-pastille { display: block; width: min(14mm, calc(var(--tde-l, 30mm) - 6mm)); height: 7mm; border-radius: 1.5mm;
     border: 1px solid ${NOIR}; margin: 0 auto 2mm; }

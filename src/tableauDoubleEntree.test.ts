@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { REGLAGES_TABLEAU, htmlTableau, reglagesTableauSurs, titreTableau } from "./tableauDoubleEntree";
+import { REGLAGES_TABLEAU, htmlTableau, reglagesTableauSurs, taillesDuTableau, titreTableau } from "./tableauDoubleEntree";
 
 /** Les pages de la feuille, sans le corrigé, et le corrigé. */
 const parties = (html: string) => { const i = html.indexOf('class="page corrige"'); return { eleve: html.slice(0, i), corrige: html.slice(i) }; };
@@ -48,6 +48,26 @@ describe("le tableau à double entrée, son atelier (demande de l'enseignant, 20
     expect(html).toContain("--tde-l:25mm;--tde-h:28mm");
     expect(htmlTableau(REGLAGES_TABLEAU, [], 1)).not.toContain("landscape");
     expect(reglagesTableauSurs({ couleurs: [...toutes, "bleu"] }).couleurs).toEqual(toutes);
+  });
+
+  it("prend tous les animaux, jusqu'à huit lignes, les cases resserrées pour tenir sur la page (« tous les animaux ne rentrent pas », 2026-11-01)", () => {
+    const animaux = ["singe", "zèbre", "hippopotame", "lion", "girafe", "manchot", "panda", "koala", "tigre"].map((mot, i) => ({ mot, src: `data:image/png;base64,${i}` }));
+    const lignes = (html: string) => (parties(html).eleve.match(/<tr>/g) ?? []).length - 1;
+    expect(lignes(htmlTableau({ ...REGLAGES_TABLEAU, lignes: "images" }, animaux.slice(0, 6), 1))).toBe(6);
+    expect(lignes(htmlTableau({ ...REGLAGES_TABLEAU, lignes: "images" }, animaux, 1))).toBe(8);
+    // Six lignes et quatre couleurs : en portrait, les lignes se partagent la hauteur ; la colonne des têtes reste assez large pour « hippopotame ».
+    const six = taillesDuTableau(animaux.slice(0, 6).map((a) => a.mot), 4, true, false);
+    expect(six.paysage).toBe(false);
+    expect(six.h).toBeCloseTo(195 / 7, 1);
+    expect(six.tete).toBeGreaterThanOrEqual(11 * 2.1);
+    expect(six.tete + 4 * six.l).toBeLessThanOrEqual(165);
+    expect(six.figure + 8).toBeLessThanOrEqual(six.h);
+    // À l'italienne seulement quand les formes y sont plus grandes : beaucoup de couleurs, peu de lignes.
+    expect(taillesDuTableau(["cercle", "carré", "triangle"], 9, true, false).paysage).toBe(true);
+    expect(taillesDuTableau(["cercle", "carré", "triangle"], 5, true, false).paysage).toBe(false);
+    expect(taillesDuTableau(animaux.slice(0, 8).map((a) => a.mot), 9, true, false).paysage).toBe(false);
+    // La ligne du niveau d'aide prend sa place sous le tableau.
+    expect(taillesDuTableau(animaux.slice(0, 8).map((a) => a.mot), 4, true, true).h).toBeLessThan(taillesDuTableau(animaux.slice(0, 8).map((a) => a.mot), 4, true, false).h);
   });
 
   it("met en coloriage les lignes d'images : le dessin noir et blanc dans les têtes et les cases, colorié dans les cases faites", () => {

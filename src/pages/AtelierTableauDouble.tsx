@@ -18,7 +18,7 @@ import { Chips, Coche } from "./AteliersMaths";
 // ── Fabriquer › Mathématiques › Données › Le tableau à double entrée ──────
 //
 // Son atelier à lui, hors de la séquence (voir tableauDoubleEntree.ts) : les
-// formes ou les images des lignes — de deux à cinq —, les couleurs des
+// formes ou les images des lignes — de deux à huit —, les couleurs des
 // colonnes — de deux à neuf —, les cases faites, ce que fait l'élève. Des
 // lignes d'images : chacune se recolorie ici de chaque couleur — la case
 // faite montre « le zèbre violet » —, et se dessine en noir et blanc pour le
@@ -43,8 +43,10 @@ export function TableauDoubleTab({ banque }: { banque: boolean }) {
     : i)), [brutes, dessins, hexes.join()]); // eslint-disable-line react-hooks/exhaustive-deps
   const html = React.useMemo(() => htmlTableau(r, images, graine), [r, images, graine]);
   const enImages = r.lignes === "images" && images.length >= 2;
-  // De deux à `max` : au-delà, les cases ne tiennent plus sur la page.
+  // De deux à `max` : au-delà, les cases deviennent trop petites.
   const borne = <T,>(liste: T[], max: number, poser: (v: T[]) => void) => { if (liste.length >= 2 && liste.length <= max) poser(liste); };
+  // Des images au-delà de huit restent hors du tableau : on le dit, plutôt que de les perdre en silence.
+  const enTrop = mots.filter((m) => m.id != null).length - MAX_DU_TABLEAU;
   return (
     <Colonnes
       gauche={<>
@@ -63,7 +65,9 @@ export function TableauDoubleTab({ banque }: { banque: boolean }) {
         {r.lignes === "formes"
           ? <Chips liste={FORMES_DU_TABLEAU} choisis={r.formes} onChange={(formes) => borne(formes, MAX_DU_TABLEAU, (v) => maj({ formes: v }))} />
           : <>
-            <BanqueDeMots mots={mots} onChange={setMots} banque={banque} aide={`De deux à ${MAX_DU_TABLEAU} images : une ligne chacune.`} />
+            <BanqueDeMots mots={mots} onChange={setMots} banque={banque} aide={enTrop > 0
+              ? `⚠️ Le tableau prend les ${MAX_DU_TABLEAU} premières images : ${enTrop} de trop.`
+              : `De deux à ${MAX_DU_TABLEAU} images : une ligne chacune.`} />
             <Coche on={r.coloriage} libelle="En coloriage : le dessin en noir et blanc, à colorier" onChange={(coloriage) => maj({ coloriage })} />
           </>}
         <Field label="Les colonnes : les couleurs">
