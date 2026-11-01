@@ -155,6 +155,7 @@ export function SuiteNombresTab() {
           <Choix<ExerciceSuite> liste={EXERCICES_SUITE} choisis={r.exercices} onChange={(exercices) => maj({ exercices })} />
         </Field>
         <Bornes de={r.de} a={r.a} min={0} max={100} onChange={(de, a) => maj({ de, a })} />
+        <Coche on={r.grand} libelle="De grandes cases, pour qui écrit encore gros" onChange={(grand) => maj({ grand })} />
         <Field label="Le titre">
           <Input value={r.titre} placeholder={titreSuite(r)} onChange={(e) => maj({ titre: e.target.value })} />
         </Field>

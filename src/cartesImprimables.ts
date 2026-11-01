@@ -19,12 +19,17 @@ export const HAUTEUR_UTILE_MM = 269;
 export const LARGEUR_CONTENU_MM = 165;
 
 // La mention des pictogrammes suit la dernière page : sans la règle `:has`,
-// le saut de page l'enverrait seule sur une feuille de plus. Dans une petite
+// le saut de page l'enverrait seule sur une feuille de plus. Un corrigé
+// « à la suite » (data-a-la-suite) suit l'exercice sur sa page s'il y tient
+// tout entier, sinon il passe à la suivante : « tu peux les mettre ensemble
+// sur la même page » (demande de l'enseignant, 2026-11-01). Dans une petite
 // carte, l'image rapetisse pour laisser sa place au mot plutôt que de déborder.
 export const STYLE_FEUILLE = `
   .feuille { color: #1c2233; background: #fff; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   .feuille .page { page-break-after: always; break-after: page; }
   .feuille .page:last-child, .feuille .page:has(+ .attribution) { page-break-after: auto; break-after: auto; }
+  .feuille .page:has(+ .page[data-a-la-suite]) { page-break-after: auto; break-after: auto; }
+  .feuille .page[data-a-la-suite] { break-inside: avoid; page-break-inside: avoid; margin-top: 8mm; padding-top: 5mm; border-top: 0.4mm dashed #9aa0b4; }
   .feuille .titre { font-size: 18px; font-weight: 800; margin: 0 0 6px; }
   .feuille .sous { font-size: 12px; color: #687087; margin: 0 0 10px; line-height: 1.45; }
   .feuille .grille { display: grid; gap: 0; width: 100%; }

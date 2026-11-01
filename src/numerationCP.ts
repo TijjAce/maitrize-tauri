@@ -31,9 +31,10 @@ const entete = (titre: string, consigne: string) => `<div class="titre">${titre}
   <div class="sous">Prénom : ........................................ Date : ........................</div>
   <div class="regle">${consigne} ${PROGRAMME}</div>`;
 /** Une feuille et son corrigé, sur sa page. */
+/** La page de l'élève, puis le corrigé : à la suite, sur la même page, quand il y tient (voir STYLE_FEUILLE). */
 const page = (titre: string, consigne: string, corps: (corr: boolean) => string) =>
   `<div class="page">${entete(titre, consigne)}${corps(false)}</div>`
-  + `<div class="page corrige"><div class="titre">${titre} — corrigé</div>${corps(true)}</div>`;
+  + `<div class="page corrige" data-a-la-suite><div class="titre">${titre} — corrigé</div>${corps(true)}</div>`;
 const BLANC = '<span class="dv-blanc"></span>';
 /** La réponse : un blanc pour l'élève, en gras au corrigé. */
 const rep = (corr: boolean, v: string | number) => (corr ? `<b class="dv-rep">${v}</b>` : BLANC);
@@ -343,9 +344,13 @@ function svgBarresEtCubes(dizaines: number, unites: number): string {
 
 // ── La frise, relier ──────────────────────────────────────────────────────
 
-const frise = (debut: number, fin: number, trous: number[], corr: boolean) =>
-  `<table class="dv-frise${fin >= 100 ? " dv-frise-cent" : ""}"><tr>${de(debut, fin).map((n) => (trous.includes(n)
-    ? `<td class="dv-trou">${corr ? `<b>${n}</b>` : ""}</td>` : `<td>${n}</td>`)).join("")}</tr></table>`;
+/** Une frise de `debut` à `fin`, ses trous vides ; en rangs de `parRang` cases quand elles sont grandes. */
+function frise(debut: number, fin: number, trous: number[], corr: boolean, parRang = Infinity): string {
+  const cases = de(debut, fin).map((n) => (trous.includes(n) ? `<td class="dv-trou">${corr ? `<b>${n}</b>` : ""}</td>` : `<td>${n}</td>`));
+  const rangs: string[] = [];
+  for (let i = 0; i < cases.length; i += parRang) rangs.push(`<tr>${cases.slice(i, i + parRang).join("")}</tr>`);
+  return `<table class="dv-frise${fin >= 100 ? " dv-frise-cent" : ""}">${rangs.join("")}</table>`;
+}
 
 /** Les cases à vider d'une frise de `debut` à `fin` : le premier nombre reste écrit. */
 const trousDeLaFrise = (alea: () => number, debut: number, fin: number, combien: number) =>
@@ -547,16 +552,20 @@ export interface ReglagesSuite {
   /** Les exercices de la feuille, dans l'ordre du catalogue. */
   exercices: ExerciceSuite[];
   de: number; a: number;
+  /** De grandes cases, pour qui écrit encore gros (demande de l'enseignant, 2026-11-01) : la frise en rangs de dix. */
+  grand: boolean;
 }
 
-export const REGLAGES_SUITE: ReglagesSuite = { titre: "", exercices: ["manquants", "voisins"], de: 1, a: 20 };
+export const REGLAGES_SUITE: ReglagesSuite = { titre: "", exercices: ["manquants", "voisins"], de: 1, a: 20, grand: false };
 
 export function reglagesSuiteSurs(brut: Partial<ReglagesSuite> | null | undefined): ReglagesSuite {
   const r = { ...REGLAGES_SUITE, ...(brut ?? {}) };
   const exercices = EXERCICES_SUITE.map((e) => e.id).filter((id) => Array.isArray(r.exercices) && r.exercices.includes(id));
   // Au moins six nombres : de quoi ranger cinq nombres, en relier six.
   const [de0, a0] = bornes(r.de, r.a, 0, 100, [1, 20], 5);
-  return { titre: typeof r.titre === "string" ? r.titre : "", exercices: exercices.length ? exercices : [...REGLAGES_SUITE.exercices], de: de0, a: a0 };
+  return {
+    titre: typeof r.titre === "string" ? r.titre : "", exercices: exercices.length ? exercices : [...REGLAGES_SUITE.exercices], de: de0, a: a0, grand: r.grand === true,
+  };
 }
 
 /** Le titre de la feuille, d'après ses exercices : « La frise jusqu'à 20 », « Comparer et ranger de 10 à 20 ». */
@@ -611,7 +620,7 @@ export function htmlSuite(brut: Partial<ReglagesSuite>, graine: number): string 
   const entoure = (corr: boolean, oui: boolean) => (corr && oui ? " dv-gagne" : "");
   const hauteur = 10 + 5.4 * Math.max(...aDessiner.map((n) => Math.floor(n / 10)));
   const contenu: Record<ExerciceSuite, (corr: boolean) => string> = {
-    manquants: (corr) => lesFrises.map((f) => frise(f.debut, f.fin, f.trous, corr)).join(""),
+    manquants: (corr) => lesFrises.map((f) => frise(f.debut, f.fin, f.trous, corr, r.grand ? 10 : Infinity)).join(""),
     voisins: (corr) => `<div class="dv-voisins">${voisins.map((n) => `<div>${rep(corr, n - 1)} <b class="dv-gros">${n}</b> ${rep(corr, n + 1)}</div>`).join("")}</div>`,
     ranger: (corr) => listes.map((l) => `<div class="dv-ranger"><div class="dv-a-ranger">${l.map((n) => `<span>${n}</span>`).join("")}</div>`
       + `<div class="dv-cases">${[...l].sort((x, y) => x - y).map((n) => `<span class="dv-case">${corr ? n : ""}</span>`).join("")}</div></div>`).join(""),
@@ -629,7 +638,8 @@ export function htmlSuite(brut: Partial<ReglagesSuite>, graine: number): string 
   const consigne = (e: ExerciceSuite) => EXERCICES_SUITE.find((x) => x.id === e)!.consigne;
   const seul = r.exercices.length === 1;
   return feuille(page(titre, seul ? consigne(r.exercices[0]) : "Je fais les exercices dans l'ordre.",
-    (corr) => r.exercices.map((e, i) => (seul ? `<div class="dv-exo">${contenu[e](corr)}</div>` : exo(i + 1, consigne(e), contenu[e](corr)))).join("")), "dv");
+    (corr) => r.exercices.map((e, i) => (seul ? `<div class="dv-exo">${contenu[e](corr)}</div>` : exo(i + 1, consigne(e), contenu[e](corr)))).join("")),
+    r.grand ? "dv dv-grand" : "dv");
 }
 
 export const STYLE_NUMERATION_CP = `
@@ -691,4 +701,12 @@ export const STYLE_NUMERATION_CP = `
   .feuille.dv .dv-a-ranger { display: flex; gap: 4mm; font-size: 16px; font-weight: 700; }
   .feuille.dv .dv-cases { display: flex; gap: 1.5mm; }
   .feuille.dv .dv-case { display: inline-block; width: 11mm; height: 9mm; line-height: 9mm; border: 1.2px solid #1c2233; text-align: center; font-weight: 700; color: #2f6fd1; }
+  .feuille.dv.dv-grand .dv-frise { font-size: 22px; margin-bottom: 6mm; }
+  .feuille.dv.dv-grand .dv-frise td { width: 15mm; height: 16mm; font-size: 24px; }
+  .feuille.dv.dv-grand .dv-blanc { width: 26mm; height: 12mm; border-bottom-width: 2.5px; }
+  .feuille.dv.dv-grand .dv-voisins { font-size: 20px; gap: 6mm 8mm; }
+  .feuille.dv.dv-grand .dv-gros { font-size: 26px; }
+  .feuille.dv.dv-grand .dv-case { width: 16mm; height: 14mm; line-height: 14mm; font-size: 20px; }
+  .feuille.dv.dv-grand .dv-tableau { font-size: 16px; }
+  .feuille.dv.dv-grand .dv-tableau td { padding: 3mm 4mm; }
 `;

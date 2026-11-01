@@ -32,6 +32,21 @@ describe("les ateliers de la numération au CP : billes et calots, l'abaque, la 
     expect(htmlSuite({}, 5)).not.toBe(htmlSuite({}, 6));
   });
 
+  it("mettent le corrigé à la suite, et de grandes cases à qui écrit encore gros (demande de l'enseignant, 2026-11-01)", () => {
+    // Le corrigé suit l'exercice sur sa page quand il y tient : la feuille le marque, la règle commune fait le reste.
+    expect(htmlSuite({ exercices: ["manquants"] }, 1)).toContain('<div class="page corrige" data-a-la-suite>');
+    expect(reglagesSuiteSurs({}).grand).toBe(false);
+    expect(reglagesSuiteSurs({ grand: true }).grand).toBe(true);
+    // En grand : la frise de vingt nombres en deux rangs de dix, la feuille marquée pour ses grandes cases.
+    const frises = (html: string) => [...eleve(html).matchAll(/<table class="dv-frise[^"]*">([\s\S]*?)<\/table>/g)].map((m) => (m[1].match(/<tr>/g) ?? []).length);
+    const grand = htmlSuite({ exercices: ["manquants"], de: 1, a: 20, grand: true }, 1);
+    expect(grand).toContain('<div class="feuille dv dv-grand">');
+    expect(frises(grand)).toEqual([2, 2, 2, 2]);
+    expect(frises(htmlSuite({ exercices: ["manquants"], de: 1, a: 20 }, 1))).toEqual([1, 1, 1, 1]);
+    // Les cases restent celles de la frise : vingt par frise, ses trous au même endroit.
+    expect((eleve(grand).match(/<td/g) ?? []).length).toBe((eleve(htmlSuite({ exercices: ["manquants"], de: 1, a: 20 }, 1)).match(/<td/g) ?? []).length);
+  });
+
   it("gardent leurs réglages dans leurs bornes", () => {
     // Deux joueurs n'ont pas le même nombre ; on ne compte pas plus de cartes que la page n'en tient.
     expect(reglagesBillesSurs({ exercice: "partie", de: 15, a: 15 })).toMatchObject({ de: 15, a: 16 });

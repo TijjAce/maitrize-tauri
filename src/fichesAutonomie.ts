@@ -389,7 +389,7 @@ export const RECETTES: RecetteDeFiche[] = [
   { id: "suite-nombres", atelier: "suiteNombres", nom: "La suite des nombres", domaine: "maths", niveaux: ["CP"],
     fabriquer: (c, g) => {
       // Les nombres de la période : jusqu'à vingt, puis cinquante-neuf, puis cent.
-      const r: ReglagesSuite = { titre: "", exercices: ["manquants", "voisins"], de: 1, a: c.periode <= 1 ? 20 : c.periode === 2 ? 59 : 100 };
+      const r: ReglagesSuite = { titre: "", exercices: ["manquants", "voisins"], de: 1, a: c.periode <= 1 ? 20 : c.periode === 2 ? 59 : 100, grand: false };
       return commeLAtelier(htmlSuite(r, g), STYLE_FEUILLE + STYLE_NUMERATION_CP, "suiteNombres", r);
     } },
   { id: "donnees", atelier: "donnees", nom: (c) => (c.niveau === "CP" ? "Le tableau des formes et des couleurs" : "Lire un diagramme en barres"),
