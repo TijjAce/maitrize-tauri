@@ -35,6 +35,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { NotesPanel } from "./components/NotesPanel";
 import { BoutonPictos } from "./components/BoutonPictos";
 import { CommandPalette } from "./components/CommandPalette";
+import { ChercherDansLaPage } from "./components/ChercherDansLaPage";
 import { Onboarding } from "./components/Onboarding";
 import { ContextMenuHost } from "./components/ctxmenu";
 import { CguGate } from "./components/CGU";
@@ -316,6 +317,8 @@ export default function App() {
       <NotesPanel />
       <BoutonPictos />
       <CommandPalette />
+      {/* ⌘F partout : chercher dans ce que l'écran montre. */}
+      <ChercherDansLaPage />
       <Onboarding />
       {/* L'été : proposer de laisser place à la classe suivante (voir finDAnnee.ts). */}
       <FinDAnneeHost />
