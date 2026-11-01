@@ -10,6 +10,8 @@
 // - « Organisation » : emploi du temps, progressions (la classe puis les
 //   niveaux, période par période), programmations.
 // - « Cahier journal » : une page par semaine, rangée par année scolaire.
+// - « Grilles d'observables » : la grille de chaque séquence finie, avec les
+//   élèves observés, rangée par année scolaire (voir grillesObservables.ts).
 // - « Ressources » : les documents du coffre.
 //
 // Une page ne se refait que si ce qu'elle montre a changé : son empreinte
@@ -18,7 +20,7 @@
 import {
   couleurHex, couleurPourMatiere, getMatiereOverrides, MATIERES, matiereDuDomaine, NIVEAUX_SCOLAIRES, type CommentaireEleve, type Creneau, type DocumentCoffre,
   type DocumentEleve, type EdtTypique, type Eleve, type Evaluation, type NoteEleve, type ObservationEleve, type PapierEleve,
-  type ProgrammationFinale, type ProgressionAnnuelle, type ProgressionEleve, type Seance,
+  type ProgrammationFinale, type ProgressionAnnuelle, type ProgressionEleve, type Seance, type Sequence,
 } from "./api";
 import { documentImprimable } from "./print";
 import { empreinte, extensionDe, Noms, nomSur, sansExtension, type FichierCopie, type PlanDeCopie } from "./copieBureau";
@@ -31,6 +33,12 @@ import { estUnEleve, idDeLEleve, lireEtat } from "./progressionAnnuelle";
 import { estALaClasse, teintesDesLignes } from "./programmationAnnuelle";
 import { htmlParEleve, lire as lireProgrammationIme } from "./programmationIme";
 import type { SlotEdt } from "./organisation";
+import {
+  PREFIXE_GRILLE, STYLE_GRILLE_OBSERVABLES, aEteObserve, aObserver, echelleDe, estUneGrille, htmlGrilleObservables, lireGrille,
+  observablesDeLaSequence, type GrilleDeLEleve,
+} from "./grillesObservables";
+import { dateCourte, suivisDesSequences } from "./suiviSequences";
+import { isoJour } from "./dates";
 
 /** Change quand la mise en page des pages change : elles sont alors toutes réécrites. */
 const VERSION = "1";
@@ -38,6 +46,7 @@ const VERSION = "1";
 export const PARTIE_ELEVES = "Élèves";
 export const PARTIE_ORGANISATION = "Organisation";
 export const PARTIE_JOURNAL = "Cahier journal";
+export const PARTIE_GRILLES = "Grilles d'observables";
 export const PARTIE_RESSOURCES = "Ressources";
 
 export interface DonneesTravail {
@@ -50,11 +59,14 @@ export interface DonneesTravail {
   progressionsEleve: ProgressionEleve[];
   observations: ObservationEleve[];
   creneaux: Creneau[];
+  sequences: Sequence[];
   seances: Seance[];
   edts: EdtTypique[];
   progressions: ProgressionAnnuelle[];
   programmations: ProgrammationFinale[];
   coffre: DocumentCoffre[];
+  /** Le jour où l'on copie : une séquence finie depuis une semaine y range sa grille. Aujourd'hui par défaut. */
+  aujourdHui?: string;
 }
 
 const liste = <T>(json: string | null | undefined): T[] => {
@@ -103,7 +115,8 @@ export function planDuTravail(d: DonneesTravail): PlanDeCopie {
     const siens = {
       commentaires: d.commentaires.filter((c) => c.eleveId === e.id),
       notes: d.notes.filter((n) => n.eleveId === e.id),
-      docs: d.documents.filter((x) => x.eleveId === e.id),
+      // Ses grilles se lisent avec leur séquence, dans « Grilles d'observables ».
+      docs: d.documents.filter((x) => x.eleveId === e.id && !estUneGrille(x.typeDoc)),
       papiers: d.papiers.filter((p) => p.eleveId === e.id),
       progressions: d.progressionsEleve.filter((p) => p.eleveId === e.id),
       observations: d.observations.filter((o) => o.eleveId === e.id),
@@ -197,6 +210,32 @@ export function planDuTravail(d: DonneesTravail): PlanDeCopie {
     page(`${PARTIE_JOURNAL}/${anneeScolaireDe(lundi)}`, `Semaine du ${lundi}`,
       `journal|${lundi}|${JSON.stringify(creneaux.map((c) => [c.id, c.date, c.heureDebut, c.heureFin, c.matiere, c.prevu, c.bilan]))}|${JSON.stringify(seances)}`,
       `Cahier journal, semaine du ${lundi}`, () => htmlSemaineDuJournal(lundi, creneaux, (id) => titres.get(id)));
+  }
+
+  // ── Grilles d'observables : celle de chaque séquence qu'on n'observe plus, avec les élèves observés ──
+  const aujourdHui = d.aujourdHui ?? isoJour(new Date());
+  const suivis = suivisDesSequences(d.sequences, d.seances, d.creneaux, aujourdHui);
+  const grilles = new Map<string, Map<string, GrilleDeLEleve>>();
+  for (const doc of d.documents) {
+    if (!estUneGrille(doc.typeDoc)) continue;
+    const sequenceId = doc.typeDoc.slice(PREFIXE_GRILLE.length);
+    grilles.set(sequenceId, (grilles.get(sequenceId) ?? new Map()).set(doc.eleveId, lireGrille(doc.donnees)));
+  }
+  for (const s of [...d.sequences].sort((a, b) => a.titre.localeCompare(b.titre, "fr"))) {
+    const suivi = suivis.get(s.id);
+    const parEleve = grilles.get(s.id);
+    if (!parEleve || !suivi || aObserver(suivi, aujourdHui)) continue;
+    const observables = observablesDeLaSequence(d.seances.filter((x) => x.sequenceId === s.id));
+    // Les élèves observés, même partis depuis : la grille garde ce qui a été vu.
+    const observes = parNom.filter((e) => aEteObserve(parEleve.get(e.id), observables));
+    if (!observes.length) continue;
+    const valeurs = Object.fromEntries(observes.map((e) => [e.id, parEleve.get(e.id) ?? {}]));
+    const quand = suivi.demarreeLe && suivi.derniereLe ? `du ${dateCourte(suivi.demarreeLe)} au ${dateCourte(suivi.derniereLe)}` : "";
+    const sous = [s.niveau, s.periode ? `période ${s.periode}` : "", quand, "grille d'observables"].filter(Boolean).join(" · ");
+    const annee = s.annee || anneeScolaireDe(suivi.derniereLe ?? aujourdHui);
+    page(`${PARTIE_GRILLES}/${annee}`, s.titre || "Séquence", `grille|${s.id}|${JSON.stringify([s.titre, sous, observables, observes.map((e) => [e.id, e.nom]), valeurs])}`,
+      `Grille — ${s.titre}`, () => htmlGrilleObservables({ titre: s.titre, sous, observables, eleves: observes, valeurs, echelle: echelleDe(s) }),
+      STYLE_GRILLE_OBSERVABLES);
   }
 
   // ── Ressources : les documents du coffre ──

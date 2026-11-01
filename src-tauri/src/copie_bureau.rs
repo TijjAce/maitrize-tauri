@@ -53,6 +53,8 @@ seule sur cet ordinateur, quelques minutes après chaque modification.
 - « Élèves » : un dossier par élève, sa fiche et ses documents.
 - « Organisation » : emploi du temps, progressions, programmation.
 - « Cahier journal » : une page par semaine.
+- « Grilles d'observables » : la grille de chaque séquence finie, avec les
+  élèves observés.
 - « Ressources » : les documents du coffre.
 
 Ces dossiers parlent d'élèves : si ce dossier est synchronisé (iCloud Drive,
@@ -862,16 +864,33 @@ pub async fn copie_bureau_appliquer(db: State<'_, Db>, entrees: Vec<Entree>, dos
 }
 
 #[tauri::command(async)]
-pub fn copie_bureau_ouvrir(db: State<Db>) -> R<()> {
+pub fn copie_bureau_ouvrir(db: State<Db>, partie: Option<String>) -> R<()> {
     let racine = PathBuf::from(info(&db).racine);
     std::fs::create_dir_all(&racine).map_err(|e| e.to_string())?;
     reserver_au_proprietaire(&racine);
-    tauri_plugin_opener::open_path(&racine, None::<&str>).map_err(|e| e.to_string())
+    tauri_plugin_opener::open_path(dossier_a_ouvrir(&racine, partie.as_deref()), None::<&str>).map_err(|e| e.to_string())
+}
+
+/// Une partie du dossier (« Grilles d'observables ») si elle existe déjà ; le dossier entier sinon.
+fn dossier_a_ouvrir(racine: &Path, partie: Option<&str>) -> PathBuf {
+    partie.and_then(chemin_valide).map(|r| racine.join(r)).filter(|c| c.is_dir()).unwrap_or_else(|| racine.to_path_buf())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn s_ouvre_sur_une_partie_existante_jamais_hors_du_dossier() {
+        let racine = std::env::temp_dir().join(format!("maitrize-ouvrir-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(racine.join("Grilles d'observables")).unwrap();
+        assert_eq!(dossier_a_ouvrir(&racine, Some("Grilles d'observables")), racine.join("Grilles d'observables"));
+        // Pas encore de grille rangée, ou un chemin qui sortirait du dossier : le dossier entier.
+        assert_eq!(dossier_a_ouvrir(&racine, Some("Cahier journal")), racine);
+        assert_eq!(dossier_a_ouvrir(&racine, Some("../..")), racine);
+        assert_eq!(dossier_a_ouvrir(&racine, None), racine);
+        std::fs::remove_dir_all(&racine).ok();
+    }
 
     #[test]
     fn le_rapport_d_incidents_se_recopie_a_cote_du_travail_sans_se_reecrire_pour_rien() {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Creneau, Seance, Sequence } from "./api";
 import {
-  AIDES, COLONNES_A_NOMMER, ECHELLE_LSU, ECHELLE_MATERNELLE, ceQuIlsSauront, cleDeLaGrille, echelleDe, elevesDeLaSequence, htmlGrilleObservables,
-  niveauSuivant, observablesDeLaSequence,
+  AIDES, COLONNES_A_NOMMER, ECHELLE_LSU, ECHELLE_MATERNELLE, aObserver, ceQuIlsSauront, cleDeLaGrille, echelleDe, elevesDeLaSequence,
+  estUneGrille, htmlGrilleObservables, lireGrille, niveauSuivant, observablesDeLaSequence,
 } from "./grillesObservables";
 
 const seance = (id: string, numero: number, objectifs: string) => ({ id, numero, titre: `Séance ${numero}`, objectifs });
@@ -89,5 +89,20 @@ describe("les grilles d'observables des séquences (demande de l'enseignant, 31 
     });
     expect(vierge.match(/class="go-eleve"/g)).toHaveLength(COLONNES_A_NOMMER);
     expect(vierge.match(/class="go-case"/g)).toHaveLength(COLONNES_A_NOMMER);
+  });
+
+  it("ne montrent que les séquences en cours : en classe, ou finies depuis moins d'une semaine", () => {
+    const jour = "2026-11-01";
+    expect(aObserver({ etat: "classe", derniereLe: "2026-10-30" }, jour)).toBe(true);
+    expect(aObserver({ etat: "terminee", derniereLe: "2026-10-28" }, jour)).toBe(true);
+    expect(aObserver({ etat: "terminee", derniereLe: "2026-10-20" }, jour)).toBe(false);
+    expect(aObserver({ etat: "pause", derniereLe: "2026-09-20" }, jour)).toBe(false);
+    expect(aObserver({ etat: "preparation", derniereLe: null }, jour)).toBe(false);
+    expect(aObserver(undefined, jour)).toBe(false);
+    expect(estUneGrille(cleDeLaGrille("q1"))).toBe(true);
+    expect(estUneGrille("ppi")).toBe(false);
+    expect(lireGrille('{"s1":{"n":2}}')).toEqual({ s1: { n: 2 } });
+    expect(lireGrille("[1]")).toEqual({});
+    expect(lireGrille("pas du JSON")).toEqual({});
   });
 });

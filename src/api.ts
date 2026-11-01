@@ -833,7 +833,8 @@ export const api = {
     invoke<{ aEcrire: string[]; travail: boolean }>("copie_bureau_preparer", { entrees, dossiers }),
   copieBureauAppliquer: (entrees: EntreeCopie[], dossiers: string[]) =>
     invoke<BilanCopie>("copie_bureau_appliquer", { entrees, dossiers }),
-  copieBureauOuvrir: () => invoke<void>("copie_bureau_ouvrir"),
+  /** Ouvre le dossier de la copie, ou l'une de ses parties (« Grilles d'observables ») si elle existe déjà. */
+  copieBureauOuvrir: (partie?: string) => invoke<void>("copie_bureau_ouvrir", { partie: partie ?? null }),
 
   // Vacances scolaires
   vacancesScolaires: (zone: string) => invoke<VacancePeriode[]>("vacances_scolaires", { zone }),

@@ -13,12 +13,17 @@
 // atteint, partiellement atteint, atteint, dépassé) — et, s'il le faut, l'aide
 // qu'il a fallu : réussir avec un geste de l'adulte n'est pas échouer. Ce que
 // l'enseignant coche se range dans le dossier de chaque élève.
+//
+// Seules les séquences en cours s'observent à l'écran ; la grille d'une
+// séquence finie se range ensuite dans le dossier « Maitrize » du Bureau,
+// avec les élèves observés (voir copieDuTravail.ts).
 
 import { NIVEAUX_MAITRISE, type Creneau, type Eleve, type Seance, type Sequence } from "./api";
 import { DEBUT_OBJECTIF_SEANCE } from "./demarches";
 import { elevesDuCreneau, prenomDe } from "./fichesAutonomie";
 import { escapeHtml } from "./print";
 import { forme, sequencesCitees } from "./sequencesCitees";
+import { joursEntre, type SuiviSequence } from "./suiviSequences";
 
 /** Une ligne de la grille : ce qu'on observe, et la séance d'où il vient. */
 export interface Observable { id: string; numero: number; seance: string; texte: string }
@@ -49,8 +54,39 @@ export interface Cellule { n?: number; aide?: string }
 /** Ce que la grille d'une séquence garde pour un élève, observable par observable, dans son dossier. */
 export type GrilleDeLEleve = Record<string, Cellule>;
 
+/** Le début de la clé des documents de l'élève qui gardent ses grilles. */
+export const PREFIXE_GRILLE = "grille-sequence:";
+
 /** La clé du document de l'élève qui garde sa grille pour cette séquence. */
-export const cleDeLaGrille = (sequenceId: string) => `grille-sequence:${sequenceId}`;
+export const cleDeLaGrille = (sequenceId: string) => `${PREFIXE_GRILLE}${sequenceId}`;
+
+/** Vrai pour un document qui garde une grille : il se lit avec sa séquence, pas seul dans le dossier de l'élève. */
+export const estUneGrille = (typeDoc: string) => typeDoc.startsWith(PREFIXE_GRILLE);
+
+/** La grille d'un élève, lue dans son document ; vide s'il n'y a rien ou si elle est illisible. */
+export function lireGrille(brut: string | null | undefined): GrilleDeLEleve {
+  try {
+    const v: unknown = JSON.parse(brut || "{}");
+    return v && typeof v === "object" && !Array.isArray(v) ? v as GrilleDeLEleve : {};
+  } catch { return {}; }
+}
+
+/** Vrai si l'élève a quelque chose de noté sur l'une de ces lignes. */
+export const aEteObserve = (grille: GrilleDeLEleve | undefined, observables: Observable[]) =>
+  observables.some((o) => { const c = grille?.[o.id]; return !!c && (c.n != null || !!c.aide); });
+
+/** Après sa dernière séance, une séquence finie s'observe encore une semaine : le temps de remplir sa grille. */
+export const JOURS_POUR_OBSERVER = 7;
+
+/**
+ * Une séquence à observer (« fais apparaître seulement les séquences en cours
+ * pour l'observation », 31 octobre 2026) : en classe, ou finie depuis moins
+ * d'une semaine. Ni en préparation, ni en pause.
+ */
+export function aObserver(suivi: Pick<SuiviSequence, "etat" | "derniereLe"> | undefined, aujourdHui: string): boolean {
+  if (suivi?.etat === "classe") return true;
+  return suivi?.etat === "terminee" && !!suivi.derniereLe && joursEntre(suivi.derniereLe, aujourdHui) <= JOURS_POUR_OBSERVER;
+}
 
 const MATERNELLE = /^(TPS|PS|MS|GS)$/i;
 

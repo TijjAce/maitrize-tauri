@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Creneau, DocumentCoffre, EdtTypique, Eleve, ProgrammationFinale, ProgressionAnnuelle } from "./api";
+import type { Creneau, DocumentCoffre, DocumentEleve, EdtTypique, Eleve, ProgrammationFinale, ProgressionAnnuelle, Seance, Sequence } from "./api";
 import { planDuTravail, type DonneesTravail } from "./copieDuTravail";
 import { lundiDe, anneeScolaireDe } from "./organisationHtml";
 
@@ -13,7 +13,19 @@ const creneau = (id: string, date: string, extra: Partial<Creneau> = {}): Crenea
 });
 const vide = (): DonneesTravail => ({
   eleves: [], commentaires: [], notes: [], evaluations: [], documents: [], papiers: [], progressionsEleve: [], observations: [],
-  creneaux: [], seances: [], edts: [], progressions: [], programmations: [], coffre: [],
+  creneaux: [], sequences: [], seances: [], edts: [], progressions: [], programmations: [], coffre: [],
+});
+const sequence = (id: string, titre: string, extra: Partial<Sequence> = {}): Sequence => ({
+  id, titre, matiere: "Mathématiques", cycle: "", objectifs: "", competences: "", competenceVisee: "", imageNom: null, couleur: "blue",
+  dateCreation: "2026-09-01T10:00:00.000Z", periode: 1, annee: "2026-2027", ratingEngagement: 0, ratingFacilite: 0, ratingApprentissage: 0,
+  ratingDateMaj: null, projetId: null, video: "", dossier: "", nbSeancesPrevu: 0, etat: "", dateMaj: "", ...extra,
+});
+const seance = (id: string, sequenceId: string, numero: number, objectifs: string): Seance => ({
+  id, titre: `Séance ${numero}`, numero, objectifs, competences: "", deroulement: "", materiel: "", duree: 40, date: null,
+  tableauDeroulement: "[]", imagesDeroulement: "[]", bilan: "", bilanDate: null, sequenceId, dateMaj: "",
+});
+const grille = (eleveId: string, sequenceId: string, donnees: object): DocumentEleve => ({
+  id: `${eleveId}-${sequenceId}`, eleveId, typeDoc: `grille-sequence:${sequenceId}`, donnees: JSON.stringify(donnees), dateMaj: "",
 });
 
 describe("la copie du travail", () => {
@@ -125,5 +137,49 @@ describe("la copie du travail", () => {
     }
     expect(lundiDe("2026-09-13")).toBe("2026-09-07");
     expect(anneeScolaireDe("2027-07-31")).toBe("2026-2027");
+  });
+
+  it("range la grille d'une séquence finie depuis une semaine, avec les seuls élèves observés", () => {
+    const d = vide();
+    d.eleves = [eleve("e1", "Élève Un"), eleve("e2", "Élève Deux"), eleve("e3", "Élève Trois", { present: false })];
+    d.sequences = [
+      sequence("q1", "Trier et ranger", { niveau: "GS", nbSeancesPrevu: 2 }),
+      sequence("q2", "Compter jusqu'à 10", { nbSeancesPrevu: 3 }),
+    ];
+    d.seances = [
+      seance("a", "q1", 1, "À la fin de cette séance, les élèves sauront trier des objets par couleur."),
+      seance("b", "q1", 2, "À la fin de cette séance, les élèves sauront ranger trois objets du plus petit au plus grand."),
+      seance("c", "q2", 1, "À la fin de cette séance, les élèves sauront compter jusqu'à 5."),
+    ];
+    // q1 : ses deux séances faites, la dernière le 9 octobre ; q2 : en classe.
+    d.creneaux = [
+      creneau("k1", "2026-10-05", { seanceId: "a" }), creneau("k2", "2026-10-09", { seanceId: "b" }),
+      creneau("k3", "2026-10-12", { seanceId: "c" }),
+    ];
+    // Élève Trois, parti depuis, a été observé ; Élève Deux ne l'a pas été.
+    d.documents = [
+      grille("e1", "q1", { a: { n: 3 }, b: { n: 2, aide: "geste" } }), grille("e3", "q1", { a: { n: 1 } }),
+      grille("e2", "q1", {}), grille("e1", "q2", { c: { n: 2 } }),
+    ];
+    // Six jours après la dernière séance, on l'observe encore : rien n'est rangé.
+    d.aujourdHui = "2026-10-15";
+    expect(planDuTravail(d).fichiers.some((f) => f.chemin.startsWith("Grilles d'observables/"))).toBe(false);
+    d.aujourdHui = "2026-10-20";
+    const plan = planDuTravail(d);
+    const rangees = plan.fichiers.filter((f) => f.chemin.startsWith("Grilles d'observables/")).map((f) => f.chemin);
+    // q2 est encore en classe : sa grille reste à l'écran.
+    expect(rangees).toEqual(["Grilles d'observables/2026-2027/Trier et ranger.html"]);
+    const page = plan.fichiers.find((f) => f.chemin === rangees[0])!;
+    if (page.source.genre !== "contenu") throw new Error("une page attendue");
+    const html = page.source.creer();
+    expect(html).toContain("Élève Un");
+    expect(html).toContain("Élève Trois");
+    expect(html).not.toContain("Élève Deux");
+    expect(html).toContain("Ranger trois objets du plus petit au plus grand");
+    expect(html).toContain("du 05/10 au 09/10");
+    // La grille n'est pas recopiée, illisible, dans le dossier de l'élève.
+    const dossier = plan.fichiers.find((f) => f.chemin === "Élèves/Élève Un/Dossier.html")!;
+    if (dossier.source.genre !== "contenu") throw new Error("une page attendue");
+    expect(dossier.source.creer()).not.toMatch(/grille-sequence|Grille-sequence/i);
   });
 });

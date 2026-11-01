@@ -9,6 +9,7 @@
 import { couleurObservation } from "./components/TypeObservation";
 import { infosReussite, lireLiens, intitulesDesObjectifs } from "./objectifsPpi";
 import { documentImprimable, escapeHtml } from "./print";
+import { estUneGrille } from "./grillesObservables";
 import { construire, Dossier, piecesAttendues } from "./dossier";
 import {
   api, type CommentaireEleve, type DocumentEleve, type Eleve, type Evaluation, type NoteEleve, type ObservationEleve,
@@ -117,7 +118,8 @@ function nomDuDocument(type: string): string {
 
 /** Le contenu des documents de l'élève, document par document. */
 export function documentsHtml(docs: DocumentEleve[]): string {
-  const parties = docs.map((doc) => {
+  // Une grille d'observables ne se lit qu'avec sa séquence : elle a sa page à part (voir copieDuTravail.ts).
+  const parties = docs.filter((doc) => !estUneGrille(doc.typeDoc)).map((doc) => {
     let valeur: unknown = doc.donnees;
     try { valeur = JSON.parse(doc.donnees); } catch { /* un texte simple */ }
     const contenu = valeurHtml(valeur);

@@ -26,7 +26,7 @@ async function lireBureau(): Promise<DonneesBureau> {
   return { sequences, seances, piecesJointes, materiels, textes, coffre, reglages, jeux, ateliers, espaces, outils };
 }
 
-/** Le reste du travail : élèves, organisation, cahier journal (le coffre et les séances viennent du bureau). */
+/** Le reste du travail : élèves, organisation, cahier journal, grilles (le coffre, les séquences et les séances viennent du bureau). */
 async function lireTravail(bureau: DonneesBureau): Promise<DonneesTravail> {
   const [eleves, commentaires, notes, evaluations, documents, papiers, progressionsEleve, observations, creneaux, edts, progressions, programmations] =
     await Promise.all([
@@ -36,7 +36,7 @@ async function lireTravail(bureau: DonneesBureau): Promise<DonneesTravail> {
     ]);
   return {
     eleves, commentaires, notes, evaluations, documents, papiers, progressionsEleve, observations, creneaux,
-    seances: bureau.seances, edts, progressions, programmations, coffre: bureau.coffre,
+    sequences: bureau.sequences, seances: bureau.seances, edts, progressions, programmations, coffre: bureau.coffre,
   };
 }
 
