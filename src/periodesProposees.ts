@@ -47,9 +47,10 @@ export const PERIODES_PROPOSEES: Record<Classe, Record<string, PeriodeProposee>>
       + "inférences — à mesure que les élèves lisent seuls, « à partir de la 3e période de CP » d'après le programme ; les types de textes en fin d'année.",
     { "lieux-de-lecture-c2": 1, "personnages-types-c2": 1, "mots-inconnus-c2": 2, "reprises-c2": 3, "inferences-c2": 4, "types-et-genres-c2": 5 }),
     ...ligne("le programme la veut « tout au long de l'année » : la séquence qui installe la méthode vient à la rentrée.", { "mots-frequents-c2": 1 }),
-    ...ligne("après la phrase de la rentrée : ses types, avec la ponctuation, et les classes de mots, avant le genre, le nombre et le sujet "
-      + "du verbe, que les textes mettent en période 3 ; être et avoir au présent ensuite.",
-    { "types-formes-c2": 2, "classes-de-mots-c2": 2, "etre-avoir-cp": 4 }),
+    ...ligne("après la phrase de la rentrée, et le genre, le nombre et le sujet du verbe, que les textes mettent en période 3 : les boîtes "
+      + "de mots, que le programme fait seulement observer au CP — l'enseignant trie les mots des textes lus, les élèves disent ce qu'on "
+      + "trouve dans chaque boîte —, quand les lectures les ont remplies ; être et avoir au présent dans la même période.",
+    { "classes-de-mots-cp": 4, "etre-avoir-cp": 4 }),
     ...ligne(CORPUS, { "vocabulaire-cp": 1 }),
     ...ligne("les règles de l'échange à la rentrée ; puis écouter, raconter, dire un poème — le Printemps des poètes est en mars — ; "
       + "les registres de langue en fin d'année.",

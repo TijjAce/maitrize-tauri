@@ -50,6 +50,10 @@ const GUIDE_CP = "guide « Pour enseigner la lecture et l'écriture au CP » (20
 const SOURCE = `${PROGRAMME_FRANCAIS} ; ${GUIDE_CE1} ; démarche en quatre temps des livrets`;
 const SOURCE_CP = `${PROGRAMME_FRANCAIS} ; ${GUIDE_CP} ; ${GUIDE_CE1} ; démarche en quatre temps des livrets`;
 const MANIPULER = "Fais agir : classer, réécrire, surligner, recopier dans un tableau. Le corpus montre des régularités, sans exception.";
+// Au CP, la réflexion sur la langue n'est qu'amorcée : les types de phrases et les classes de mots y ont leur séquence à
+// eux, d'observation et de manipulation ; les leçons, les noms et les transformations viennent au CE1 (« Points de
+// vigilance » du programme). L'enseignant l'a relevé le 2026-11-01 : la séquence du CE1 n'était pas faite pour le CP.
+const OBSERVER_CP = "Au CP, on observe et on manipule, à l'oral d'abord, sans leçon : ce que les élèves remarquent, l'enseignant le valide et l'écrit sur l'affiche de la classe.";
 
 // ── La phrase ─────────────────────────────────────────────────────────────
 
@@ -77,10 +81,36 @@ const PHRASE_CP: Demarche = {
   ],
 };
 
-const TYPES_FORMES: Demarche = {
-  id: "types-formes-c2", nom: "Les types et les formes de phrases (CP, CE1, CE2)", famille: "Français",
+const TYPES_FORMES_CP: Demarche = {
+  id: "types-formes-cp", nom: "Dire, demander, ordonner (CP)", famille: "Français",
   source: SOURCE,
-  resume: "S'appuyer sur la ponctuation pour reconnaître les trois types de phrases — déclarative, interrogative, impérative — et reconnaître les formes négative et exclamative ; au CE1, savoir effectuer des transformations ; au CE2, les produire. Exemples de réussite : au CP, manipuler les phrases déclaratives et impératives avec la forme négative et expliciter le changement de sens ; au CE2, mettre une phrase impérative à la forme négative : « Ferme la porte. → Ne ferme pas la porte. ». En lecture à voix haute, la ponctuation guide l'intonation.",
+  resume: "Une première approche, à l'oral d'abord : s'appuyer sur la ponctuation pour reconnaître la phrase qui dit, celle qui demande et celle qui ordonne — déclarative, interrogative, impérative —, reconnaître la négation et l'exclamation. Exemple de réussite du programme : mettre à la forme négative une phrase qui dit ou qui ordonne, et expliquer ce qui a changé dans le sens. Au CP, on observe et on manipule ; les leçons et les transformations viennent au CE1.",
+  seances: [
+    trois("Dire, demander, ordonner", "reconnaître, à l'oral puis à l'écrit, une phrase qui dit, une phrase qui demande et une phrase qui ordonne.",
+      "Trois phrases dites à voix haute : « Tu ranges ta chambre. Tu ranges ta chambre ? Range ta chambre. » Qu'est-ce que la voix change ? Puis les mêmes, écrites au tableau : qu'est-ce qui change à la fin ?",
+      "Jouer les phrases à deux : l'un dit, demande ou ordonne, l'autre devine ; trier des étiquettes de phrases déchiffrables en trois maisons — elle dit, elle demande, elle ordonne — ; entourer le point de chacune.",
+      "Ce qu'on a remarqué, dit par les élèves et écrit sur l'affiche : la phrase qui demande finit par un point d'interrogation ; on l'entend à la voix.", OBSERVER_CP),
+    trois("Les points de la phrase", "repérer le point d'interrogation et le point d'exclamation, et lire la phrase avec la voix qui va avec.",
+      "Un court texte déchiffrable, lu par l'enseignant : « Comment ma voix sait-elle qu'il faut poser une question, ou s'étonner ? »",
+      "Entourer les points du texte, chacun de sa couleur ; relire chaque phrase avec la voix de son point ; écouter des phrases qui s'exclament — « Quelle belle journée ! », « Bravo ! » — et les ranger dans leur maison.",
+      "Ce qu'on a remarqué : le point d'exclamation, c'est quand on s'étonne, qu'on est content ou fâché ; on le voit, et on l'entend."),
+    trois("Ne… pas", "mettre ne… pas dans une phrase qui dit ou qui ordonne, et dire ce que la phrase veut dire alors.",
+      "« Le chat dort. » puis « Le chat ne dort pas. », dites et montrées en étiquettes : est-ce que ça veut dire la même chose ?",
+      "Glisser les étiquettes ne et pas dans des phrases qui disent (« Papa lit. → Papa ne lit pas. ») et qui ordonnent (« Range ta chambre. → Ne range pas ta chambre. ») ; mimer la phrase avant et après ; dire ce qui a changé.",
+      "Ce qu'on a remarqué : avec ne… pas, la phrase dit le contraire ; ne et pas vont de chaque côté du mot qui dit ce qu'on fait."),
+    seance("S'entraîner : lire, ponctuer, dire le contraire", sauront("mettre son point à une phrase et la dire à la forme négative."), 30, [
+      ph(T1, "5 min", "L'affiche de la classe relue ; un exemple rappelé."),
+      ph(T4, "20 min", "Quelques minutes chaque jour : lire des phrases avec la voix de leur point ; choisir le point d'une phrase entendue ; dire, puis écrire avec les étiquettes, le contraire avec ne… pas."),
+      ph(T3, "5 min", "L'affiche des points et de ne… pas, complétée par les élèves."),
+    ]),
+    evaluation("reconnaître une phrase qui dit, qui demande ou qui ordonne, et lui mettre son point", "Ensuite, ne… pas se vérifie à l'oral ; en lecture à voix haute, la voix suit les points."),
+  ],
+};
+
+const TYPES_FORMES: Demarche = {
+  id: "types-formes-c2", nom: "Les types et les formes de phrases (CE1, CE2)", famille: "Français",
+  source: SOURCE,
+  resume: "Après la première approche du CP, reconnaître et utiliser les trois types de phrases en lien avec la ponctuation — déclarative, interrogative, impérative — et les formes négative et exclamative ; au CE1, savoir effectuer des transformations ; au CE2, les produire. Exemple de réussite du CE2 : mettre une phrase impérative à la forme négative : « Ferme la porte. → Ne ferme pas la porte. ». En lecture à voix haute, la ponctuation guide l'intonation.",
   seances: [
     trois("Dire, demander, ordonner", "reconnaître une phrase qui dit, une phrase qui demande, une phrase qui donne un ordre.",
       "Trois phrases dites à voix haute : « Tu ranges ta chambre. Tu ranges ta chambre ? Range ta chambre. » Qu'est-ce qui change ?",
@@ -101,10 +131,36 @@ const TYPES_FORMES: Demarche = {
   ],
 };
 
-const CLASSES_DE_MOTS: Demarche = {
-  id: "classes-de-mots-c2", nom: "Les classes de mots (CP, CE1, CE2)", famille: "Français",
+const CLASSES_DE_MOTS_CP: Demarche = {
+  id: "classes-de-mots-cp", nom: "Les boîtes de mots (CP)", famille: "Français",
   source: SOURCE,
-  resume: "Au CP, constituer des corpus par classe de mots — noms, verbes, déterminants, adjectifs, pronoms personnels — : « Dans la boîte des noms, on trouve des noms d'animaux, de personnes, d'objets… Dans la boîte des verbes, on trouve souvent des actions. » Au CE1, différencier et nommer le déterminant, le nom commun, le nom propre, l'adjectif, le verbe, le pronom personnel sujet, en affinant les critères de reconnaissance ; au CE2, l'adverbe en plus, et la différence entre mots variables et invariables (très, si, bien, assez, aujourd'hui, demain, les adverbes en -ment).",
+  resume: "Constituer des corpus par classe de mots — noms, verbes, déterminants, adjectifs, pronoms personnels — : l'enseignant range dans des boîtes les mots des textes lus ; les élèves les observent et commencent à dire ce qu'on trouve dans chacune. Exemple de réussite du programme : dans la boîte des noms, des noms d'animaux, de personnes, d'objets ; dans la boîte des verbes, souvent des actions. Différencier et nommer les classes de mots, c'est au CE1.",
+  seances: [
+    trois("Ouvrir les boîtes", "dire ce qu'on trouve dans la boîte des noms et dans la boîte des verbes.",
+      "Deux boîtes préparées avec des mots des textes lus — chat, maman, vélo, école dans l'une ; manger, courir, dormir, chanter dans l'autre — : « Pourquoi ces mots sont-ils ensemble ? »",
+      "Tirer un mot, le lire, le mimer ou le dessiner ; chercher ce que les mots d'une boîte ont en commun ; proposer un mot qu'on connaît et dire dans quelle boîte il irait.",
+      "Ce qu'on a remarqué, dit par les élèves et écrit sur l'affiche : dans la boîte des noms, des animaux, des personnes, des objets ; dans la boîte des verbes, souvent des actions.", OBSERVER_CP),
+    trois("Les petits mots qui accompagnent le nom", "trouver le petit mot qui va devant un nom et le mot qui dit comment il est.",
+      "« le chat », « un chat », « mon chat », puis « le petit chat » : quels mots accompagnent chat ?",
+      "Associer des étiquettes — le, la, un, une, mon, des — à des noms ; ajouter un mot qui dit comment est la chose — petit, rouge, grand — ; ranger ces mots dans deux nouvelles boîtes préparées par l'enseignant.",
+      "Ce qu'on a remarqué : devant le nom, il y a souvent un petit mot ; d'autres mots disent comment il est."),
+    trois("Les petits mots qui remplacent", "redire une phrase en remplaçant le nom par il, elle, ils ou elles.",
+      "« Le loup court. Il a faim. » — qui est « il » ?",
+      "Dire une phrase sur un personnage de l'histoire lue, puis la redire sans dire son nom ; trouver qui se cache derrière il, elle, ils, elles dans le texte ; ranger ces mots dans la boîte des petits mots qui remplacent.",
+      "Ce qu'on a remarqué : il, elle, ils, elles remplacent un nom pour ne pas le répéter."),
+    seance("Remplir les boîtes", sauront("ranger un mot nouveau dans sa boîte et dire pourquoi."), 30, [
+      ph(T1, "5 min", "L'affiche des boîtes relue ; un mot de chaque boîte rappelé."),
+      ph(T4, "20 min", "Chaque semaine, les mots des textes lus : les lire, les ranger dans les boîtes de la classe, dire pourquoi ; l'enseignant valide ou déplace."),
+      ph(T3, "5 min", "Les boîtes se remplissent toute l'année ; ce qu'on y trouve, redit par les élèves."),
+    ]),
+    evaluation("ranger des mots dans la boîte des noms, des verbes, des petits mots devant le nom et des mots qui disent comment il est", "Ensuite, les boîtes continuent de se remplir ; les noms des classes viendront au CE1."),
+  ],
+};
+
+const CLASSES_DE_MOTS: Demarche = {
+  id: "classes-de-mots-c2", nom: "Les classes de mots (CE1, CE2)", famille: "Français",
+  source: SOURCE,
+  resume: "Après les boîtes de mots du CP, différencier et nommer les principales classes de mots : au CE1, le déterminant, le nom commun, le nom propre, l'adjectif, le verbe, le pronom personnel sujet, en affinant les critères de reconnaissance élaborés au CP ; au CE2, l'adverbe en plus, et la différence entre mots variables et invariables (très, si, bien, assez, aujourd'hui, demain, les adverbes en -ment).",
   seances: [
     trois("Les boîtes de mots", "trier des mots et justifier son tri.",
       "Des mots des textes de la semaine, en étiquettes : « Faisons des familles de mots qui se ressemblent. »",
@@ -333,7 +389,7 @@ function conjuguer(temps: Temps): Demarche {
 
 const CONJUGUER = (["present", "imparfait", "futur", "passeCompose"] as Temps[]).map(conjuguer);
 
-export const DEMARCHES_LANGUE: Demarche[] = [PHRASE_CP, TYPES_FORMES, CLASSES_DE_MOTS, CONSTITUANTS, DISCOURS, GENRE_NOMBRE_CP, CHAINE_ACCORDS, SUJET_VERBE, ETRE_AVOIR_CP, VERBE_INFINITIF, ...CONJUGUER];
+export const DEMARCHES_LANGUE: Demarche[] = [PHRASE_CP, TYPES_FORMES_CP, TYPES_FORMES, CLASSES_DE_MOTS_CP, CLASSES_DE_MOTS, CONSTITUANTS, DISCOURS, GENRE_NOMBRE_CP, CHAINE_ACCORDS, SUJET_VERBE, ETRE_AVOIR_CP, VERBE_INFINITIF, ...CONJUGUER];
 
 /** Le temps à conjuguer d'après la période : le présent, l'imparfait, le futur, puis le passé composé — l'ordre du programme. */
 export const tempsDeLaPeriode = (periode: number): Temps => (periode <= 2 ? "present" : periode === 3 ? "imparfait" : periode === 4 ? "futur" : "passeCompose");
@@ -346,8 +402,8 @@ export const tempsDeLaPeriode = (periode: number): Temps => (periode <= 2 ? "pre
 export function demarcheDeLaLangue(classe: string, cg: string, comp: string, periode = 0): string | null {
   if (/se reperer dans la phrase simple/.test(cg)) {
     if (/discours rapporte/.test(comp)) return "discours-rapporte-ce2";
-    if (/types de phrases|formes? negatives?|exclamatives?/.test(comp)) return "types-formes-c2";
-    if (/classes? de mots/.test(comp)) return "classes-de-mots-c2";
+    if (/types de phrases|formes? negatives?|exclamatives?/.test(comp)) return classe === "cp" ? "types-formes-cp" : "types-formes-c2";
+    if (/classes? de mots/.test(comp)) return classe === "cp" ? "classes-de-mots-cp" : "classes-de-mots-c2";
     if (/constituants/.test(comp)) return "constituants-c2";
     return classe === "cp" ? "phrase-cp" : "constituants-c2";
   }
@@ -418,6 +474,14 @@ const PLANS: Record<string, (classe: ClasseC2) => Plan> = {
   "phrase-cp": () => ({
     feuilles: [tri(0, "phrase"), gr(1, "Combien de phrases ?", { exercice: "phrases", classe: "CP" }), desordre(2), gr(4, "Est-ce une phrase ? — évaluation", { exercice: "estCeUnePhrase", classe: "CP" })],
     materiel: ["Des étiquettes de phrases et de non-phrases", "Le texte court au tableau ; des crayons de couleur", "Les étiquettes-mots de quelques phrases", "Des étiquettes et des mots donnés", "Les feuilles d'évaluation"],
+  }),
+  "types-formes-cp": () => ({
+    feuilles: [gr(0, "Dire, demander, ordonner", { exercice: "types", classe: "CP" }), tri(1, "types"), gr(2, "Ne… pas", { exercice: "negation", classe: "CP" }), gr(4, "Dire, demander, ordonner — évaluation", { exercice: "types", classe: "CP" })],
+    materiel: ["Les trois phrases au tableau ; des étiquettes de phrases à trier", "Un court texte déchiffrable ; des crayons de couleur", "Des phrases en étiquettes ; les étiquettes ne et pas", "Des phrases à lire ; les étiquettes ne et pas", "Les feuilles d'évaluation"],
+  }),
+  "classes-de-mots-cp": () => ({
+    feuilles: [tri(0, "nom-verbe"), gr(1, "Les boîtes de mots", { exercice: "classes", classe: "CP" }), gr(4, "Les boîtes de mots — évaluation", { exercice: "classes", classe: "CP" })],
+    materiel: ["Deux boîtes de mots des textes lus", "Des étiquettes de petits mots, de noms et de mots qui disent comment", "Une phrase sur un personnage de l'histoire ; les étiquettes il, elle, ils, elles", "L'affiche des boîtes ; les mots des textes de la semaine", "Les feuilles d'évaluation"],
   }),
   "types-formes-c2": (classe) => ({
     feuilles: [tri(0, "types"), gr(0, "Les types de phrases", { exercice: "types", classe }), gr(2, "La forme négative", { exercice: "negation", classe }), gr(4, "Les types de phrases — évaluation", { exercice: "types", classe })],

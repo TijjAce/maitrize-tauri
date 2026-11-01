@@ -217,6 +217,10 @@ const SINON_PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
   ],
   "genre-nombre-cp": { niveau: "CP", periode: 3,
     raison: citeLeProgrammeDeFrancais("CP", "En milieu d'année — Il déchiffre tous les mots selon la progression des CGP et identifie les marques grammaticales en genre et en nombre.") },
+  // Les types de phrases se reconnaissent, au CP, par leur ponctuation : le programme la fait identifier en fin d'année.
+  "types-formes-cp": { niveau: "CP", periode: 5,
+    raison: `${citeLeProgrammeDeFrancais("CP", "En fin d'année — Identifier les marques de ponctuation et les prendre en compte sur un texte préparé.")} : `
+      + "en lecture à voix haute. La séquence s'y appuie : au CP, le programme fait reconnaître les types de phrases par leur ponctuation." },
   "sujet-verbe-c2": { niveau: "CP", periode: 3,
     raison: `${citeLeGuide(GUIDE_LECTURE_CP, "Période 3 (janvier-février) — […] -ent : terminaison muette — Pluriel des verbes du premier groupe")} : `
       + "le « -nt » qu'on n'entend pas, que la séquence fait découvrir (« les chats miaulent »)." },

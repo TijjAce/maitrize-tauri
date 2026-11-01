@@ -12,9 +12,10 @@ const cible = (niveau: string, cg: string, competenceTitre: string) => ({ domain
 const COMPETENCES: [string, string, string, string][] = [
   ["CP", "Se repérer dans la phrase simple", "S’approprier progressivement la notion de phrase simple et ses trois marqueurs essentiels : majuscule initiale, ponctuation finale forte et sens.", "phrase-cp"],
   ["CP", "Se repérer dans la phrase simple", "Comprendre que certains éléments (sujet/verbe et déterminants/noms/adjectifs) fonctionnent ensemble et constituent un système.", "phrase-cp"],
-  ["CP", "Se repérer dans la phrase simple", "S’appuyer sur la ponctuation pour reconnaitre les trois types de phrases (déclarative, interrogative et impérative).", "types-formes-c2"],
-  ["CP", "Se repérer dans la phrase simple", "Reconnaitre les formes négative et exclamative.", "types-formes-c2"],
-  ["CP", "Se repérer dans la phrase simple", "Constituer des corpus par classe de mots : noms, verbes, déterminants, adjectifs, pronoms personnels.", "classes-de-mots-c2"],
+  // Au CP, une approche par l'observation ; les leçons du CE1 et du CE2 sont une autre séquence.
+  ["CP", "Se repérer dans la phrase simple", "S’appuyer sur la ponctuation pour reconnaitre les trois types de phrases (déclarative, interrogative et impérative).", "types-formes-cp"],
+  ["CP", "Se repérer dans la phrase simple", "Reconnaitre les formes négative et exclamative.", "types-formes-cp"],
+  ["CP", "Se repérer dans la phrase simple", "Constituer des corpus par classe de mots : noms, verbes, déterminants, adjectifs, pronoms personnels.", "classes-de-mots-cp"],
   ["CE1", "Se repérer dans la phrase simple", "Identifier la phrase simple, en distinguer les principaux constituants et les nommer : groupe sujet (GS), verbe et compléments sans distinguer ces derniers entre eux.", "constituants-c2"],
   ["CE1", "Se repérer dans la phrase simple", "Reconnaitre et utiliser les trois types de phrases, en lien avec la ponctuation : déclarative, interrogative et impérative.", "types-formes-c2"],
   ["CE1", "Se repérer dans la phrase simple", "Reconnaitre les formes négatives et exclamatives et savoir effectuer des transformations.", "types-formes-c2"],

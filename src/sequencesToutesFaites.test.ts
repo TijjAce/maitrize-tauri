@@ -187,6 +187,14 @@ describe("les séquences toutes faites, d'après les déroulements (demande de l
     expect(periodeProposee("reproduire-cp", "CP")!.periode).toBe(5);
     expect(periodeProposee("parite-ce1", "CE1")!.periode).toBe(2);
     expect(periodeProposee("parite-ce1", "CE2")).toBeNull();
+    // Au CP, les types de phrases et les classes de mots ont leur séquence d'observation, plus tard dans l'année ;
+    // celles du CE1 et du CE2, avec leurs leçons, ne sont plus dans le dossier du CP (remarque de l'enseignant, 2026-11-01).
+    expect(periodeProposee("classes-de-mots-cp", "CP")!.periode).toBe(4);
+    expect(repereDeLaDemarche("types-formes-cp", "CP")!.periode).toBe(5);
+    for (const id of ["types-formes-c2", "classes-de-mots-c2"]) {
+      expect(cles.has(`${id}:CP`), id).toBe(false);
+      expect(cles.has(`${id}:CE1`) && cles.has(`${id}:CE2`), id).toBe(true);
+    }
     // Toutes les séquences, à chaque classe : quatre secondes sur le Mac, plus de cinq sur les machines de GitHub.
   }, 60_000);
 
