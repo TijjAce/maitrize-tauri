@@ -9,7 +9,8 @@
 // fermier / nourrit / une vache », « Le chien / regarde / une vache »…
 //
 // Les pièces prennent les couleurs et les marques du code de la phrase de la
-// classe (voir codeDeLaPhrase.ts) ; sujet, verbe et complément sont les mots
+// classe (voir codeDeLaPhrase.ts) — ou restent blanches, pour que la couleur ne
+// donne pas d'indice (2026-11-01) ; sujet, verbe et complément sont les mots
 // du programme de français du cycle 2 (2024) — le sujet et le verbe au CP, les
 // compléments au CE1.
 
@@ -55,11 +56,16 @@ export const combienDePhrases = (p: PiecesDuPuzzle) => p.sujet.length * p.verbe.
 
 const avecMajuscule = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+/** Ce qui ferme déjà un complément, quand l'enseignant l'a écrit : un point, un point d'exclamation, d'interrogation. */
+const PONCTUATION_FINALE = /\s*[.!?…]+$/;
+
 /** Quelques phrases qu'on peut faire, chaque pièce prise à son tour : les exemples de la règle. */
 export function quelquesPhrases(p: PiecesDuPuzzle, combien = 3): string[] {
   const n = Math.min(combien, combienDePhrases(p));
-  return Array.from({ length: n }, (_, i) =>
-    `${avecMajuscule(p.sujet[i % p.sujet.length].mot)} ${p.verbe[(i + 1) % p.verbe.length].mot} ${p.complement[(i + 2) % p.complement.length].mot}.`);
+  return Array.from({ length: n }, (_, i) => {
+    const complement = p.complement[(i + 2) % p.complement.length].mot;
+    return `${avecMajuscule(p.sujet[i % p.sujet.length].mot)} ${p.verbe[(i + 1) % p.verbe.length].mot} ${complement}${PONCTUATION_FINALE.test(complement) ? "" : "."}`;
+  });
 }
 
 // ── Des pièces toutes prêtes ───────────────────────────────────────────────
@@ -110,7 +116,7 @@ const INFINITIFS: Record<string, string> = {
  * l'infinitif du verbe. L'enseignant change l'image d'un clic si elle ne va pas.
  */
 export function motDeLImage(texte: string, sorte: SortePiece): string {
-  const mots = texte.toLowerCase().replace(/['’]/g, " ").split(/\s+/).filter(Boolean);
+  const mots = texte.toLowerCase().replace(/['’.!?…,;:]/g, " ").split(/\s+/).filter(Boolean);
   if (sorte === "verbe") {
     const v = mots[0] ?? "";
     if (INFINITIFS[v]) return INFINITIFS[v];
@@ -168,8 +174,14 @@ function piece(m: MotImage, sorte: SortePiece, mes: MesuresDePiece, images: Imag
   const fond = r.code ? teinte(couleur) : "#ffffff";
   // Le contenu évite l'encoche : il commence après elle.
   const gauche = sorte === "sujet" ? 3 : mes.tenon + 1.5;
-  const texte = r.ecriture === "capitales" ? m.mot.toLocaleUpperCase("fr") : m.mot;
-  const ecrit = r.code ? marquer(code, sorte, texte) : escapeHtml(texte);
+  // Demande de l'enseignant (2026-11-01) : « il faut mettre un point si c'est la fin de la phrase ». Le complément la
+  // ferme : son point — ou le point d'exclamation déjà écrit —, hors de la marque du code, qui ne prend que le groupe
+  // de mots. Le sujet l'ouvre : en script, sa majuscule.
+  const ferme = sorte === "complement" ? PONCTUATION_FINALE.exec(m.mot)?.[0] ?? "" : "";
+  const groupe = m.mot.slice(0, m.mot.length - ferme.length);
+  const point = sorte !== "complement" ? "" : ferme ? ferme.replace(/^\s+/, " ") : ".";
+  const texte = r.ecriture === "capitales" ? groupe.toLocaleUpperCase("fr") : sorte === "sujet" ? avecMajuscule(groupe) : groupe;
+  const ecrit = (r.code ? marquer(code, sorte, texte) : escapeHtml(texte)) + escapeHtml(point);
   const src = m.id != null ? images[m.id] : undefined;
   return `<div class="pz-piece" style="width:${f(largeurCase)}mm;height:${f(mes.hauteur)}mm">`
     + `<svg class="pz-contour" viewBox="0 0 ${f(largeurCase)} ${f(mes.hauteur)}" width="${f(largeurCase)}mm" height="${f(mes.hauteur)}mm">`

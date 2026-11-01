@@ -158,11 +158,11 @@ export function PhrasesPuzzleTab({ banque }: { banque: boolean }) {
         id: "code", puce: "Couleurs", titre: "Aux couleurs du code de la phrase de la classe ?",
         choix: [
           { id: "oui", libelle: "Oui", description: "les couleurs et les marques choisies dans « Le code de la phrase »" },
-          { id: "non", libelle: "Non", description: "des pièces blanches, à colorier" },
+          { id: "non", libelle: "Non, sans couleurs", description: "des pièces blanches, sans marques : la couleur ne donne plus d'indice" },
         ],
       },
-      repondre: (c) => { maj({ code: c === "oui" }); return dit(c === "oui", "Aux couleurs du code", "Des pièces blanches"); },
-      actuelle: () => dit(r.code, "Aux couleurs du code", "Des pièces blanches"),
+      repondre: (c) => { maj({ code: c === "oui" }); return dit(c === "oui", "Aux couleurs du code", "Sans couleurs ni marques"); },
+      actuelle: () => dit(r.code, "Aux couleurs du code", "Sans couleurs ni marques"),
     },
     {
       question: {
@@ -225,6 +225,7 @@ export function PhrasesPuzzleTab({ banque }: { banque: boolean }) {
           <Aide titre="Les phrases en puzzle" vers="droite">
             <p>{"Des pièces de puzzle pour fabriquer des phrases : un sujet, un verbe, un complément. Elles ne s'emboîtent que dans l'ordre de la phrase ; en changeant une pièce, on en fait une autre."}</p>
             <p>{"Chaque groupe de mots sur sa ligne — « le fermier », « nourrit », « une vache » — : son image vient de la banque, d'après le nom ou l'infinitif du verbe, et se change d'un clic. Des sujets au singulier et des verbes au présent : toutes les phrases se tiennent."}</p>
+            <p>{"Le point se met seul au bout du complément, qui ferme la phrase ; en script, la majuscule au début du sujet, qui l'ouvre."}</p>
           </Aide>
         </h3>
         {SORTES.map((s) => (

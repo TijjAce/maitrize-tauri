@@ -75,6 +75,26 @@ describe("les phrases en puzzle (demande de l'enseignant, 31 octobre 2026)", () 
     expect(pages(htmlPuzzle(beaucoup, {}, { ...REGLAGES_PUZZLE, sachets: false }, CODE_PAR_DEFAUT))).toBe(4);
   });
 
+  it("mettent le point au bout du complément, qui ferme la phrase, et en script la majuscule au sujet (demande de l'enseignant, 2026-11-01)", () => {
+    const p = pieces();
+    // Le point hors de la marque du code : le cadre vert ne prend que le groupe de mots.
+    const html = htmlPuzzle(p, {}, REGLAGES_PUZZLE, CODE_PAR_DEFAUT);
+    expect(html).toContain(">LES POULES</span>.</div>");
+    expect(html).toContain(">NOURRIT</span></div>");
+    expect(html).toContain(">LE FERMIER</span></div>");
+    // Sans couleurs ni marques, en script : la majuscule au sujet, le point au complément, rien au verbe.
+    const script = htmlPuzzle(p, {}, { ...REGLAGES_PUZZLE, code: false, ecriture: "script" }, CODE_PAR_DEFAUT);
+    expect(script).toContain('<div class="pz-texte">Le fermier</div>');
+    expect(script).toContain('<div class="pz-texte">nourrit</div>');
+    expect(script).toContain('<div class="pz-texte">les poules.</div>');
+    expect(script).not.toContain("cp-complement");
+    // Un point d'exclamation déjà écrit reste seul, collé au groupe par une espace insécable ; son image se trouve quand même.
+    const crie = { ...p, complement: [{ id: null, mot: "le loup !" }] };
+    expect(htmlPuzzle(crie, {}, { ...REGLAGES_PUZZLE, code: false, ecriture: "script" }, CODE_PAR_DEFAUT)).toContain('<div class="pz-texte">le loup !</div>');
+    expect(quelquesPhrases(crie)[0]).toBe("Le fermier regarde le loup !");
+    expect(motDeLImage("une vache.", "complement")).toBe("vache");
+  });
+
   it("relisent leurs réglages, et ont leur atelier dans « Lecture et écriture », avec leur source", () => {
     expect(reglagesPuzzle({ taille: "petites", ecriture: "script", code: false })).toEqual({ taille: "petites", ecriture: "script", code: false, images: true, sachets: true });
     expect(reglagesPuzzle({})).toEqual(REGLAGES_PUZZLE);
