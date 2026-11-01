@@ -27,8 +27,11 @@ export interface MorceauxAplatis {
 export function aplatirMorceaux(morceaux: string[]): MorceauxAplatis {
   const sortie: MorceauxAplatis = { texte: "", morceau: [], debut: [], fin: [] };
   let blanc = true;
+  // Une place par unité du texte, que la recherche compte ainsi : un emoji — 📚, 🐟 — en prend deux. Une seule
+  // décalait toutes les places qui le suivent, et une trouvaille au bas de la page tombait hors de la liste (2026-11-01).
   const ajouter = (c: string, i: number, d: number, f: number) => {
-    sortie.texte += c; sortie.morceau.push(i); sortie.debut.push(d); sortie.fin.push(f);
+    sortie.texte += c;
+    for (let u = 0; u < c.length; u++) { sortie.morceau.push(i); sortie.debut.push(d); sortie.fin.push(f); }
   };
   morceaux.forEach((m, i) => {
     let k = 0;

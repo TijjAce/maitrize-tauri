@@ -29,6 +29,18 @@ describe("⌘F partout (demande de l'enseignant, 2026-11-01)", () => {
     expect(chercherDansLesMorceaux(["le jeu ", "des poissons"], "poissons", (i) => i === 1)).toEqual([{ de: 1, debut: 4, a: 1, fin: 12 }]);
   });
 
+  it("garde ses places justes après un emoji, qui compte pour deux dans le texte (erreur signalée le 2026-11-01)", () => {
+    const morceaux = ["📚 Séquences toutes faites 🐟🐟", "🐟 Le jeu des poissons"];
+    const a = aplatirMorceaux(morceaux);
+    expect(a.morceau).toHaveLength(a.texte.length);
+    // Avant : la trouvaille du bas de la page tombait hors de la liste, et ⌘F s'arrêtait sur « morceaux[i].champ ».
+    const vus: number[] = [];
+    const t = chercherDansLesMorceaux(morceaux, "poissons", (i) => { vus.push(i); return false; });
+    expect(t).toEqual([{ de: 1, debut: 14, a: 1, fin: 22 }]);
+    expect(morceaux[1].slice(14, 22)).toBe("poissons");
+    expect(vus.every((i) => i >= 0 && i < morceaux.length)).toBe(true);
+  });
+
   it("dit où l'on en est", () => {
     expect(ouOnEnEst(2, 12, "jeu")).toBe("3 sur 12");
     expect(ouOnEnEst(0, 0, "jeu")).toBe("Aucun résultat");

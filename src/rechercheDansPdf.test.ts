@@ -24,6 +24,13 @@ describe("aplatir le texte d'une page", () => {
     expect(origine).toEqual([0, 0, 0, 0, 0]);
   });
 
+  it("un caractère hors du plan de base — un 𝑥 de formule — garde son origine sur ses deux unités", () => {
+    const { texte, origine } = aplatir(["𝑥 = 2", "vocabulaire"]);
+    expect(origine).toHaveLength(texte.length);
+    // Le « 2 » vient du premier morceau, le « v » du second : avant, tout glissait d'une place.
+    expect([origine[texte.indexOf("vocabulaire") - 1], origine[texte.indexOf("vocabulaire")]]).toEqual([0, 1]);
+  });
+
   it("le même texte, lu d'un bloc ou en morceaux, s'aplatit pareil", () => {
     // Sans cela, le nombre de trouvailles annoncé ne serait pas celui qu'on
     // surligne : le texte brut sépare par des retours, les morceaux non.

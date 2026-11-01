@@ -56,7 +56,8 @@ export function aplatir(morceaux: string[]): TexteAplati {
         continue;
       }
       const plat = aplatirCaractere(c);
-      for (const p of plat) { texte += p; origine.push(i); }
+      // Une origine par unité du texte : un caractère hors du plan de base — un 𝑥 de formule, un emoji — en prend deux.
+      for (const p of plat) { texte += p; for (let u = 0; u < p.length; u++) origine.push(i); }
       if (plat) blanc = false;
     }
   }
