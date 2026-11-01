@@ -175,14 +175,24 @@ export function regleEcrite(regles: string): string {
   }).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
-/** Les règles des jeux cités, pour l'impression. Un jeu sans règle écrite n'y figure pas. */
-export function reglesImprimees(jeux: Jeu[]): string {
-  const avecRegle = jeux.filter((j) => regleEcrite(j.regles));
-  if (!avecRegle.length) return "";
-  return `<div class="regles-jeux">${avecRegle.map((j) =>
-    `<div class="regle-jeu"><div class="regle-jeu-titre">🎲 Règle — ${escapeHtml(j.titre)}`
-    + `<span class="regle-jeu-infos"> · ${escapeHtml(infosDuJeu(j))}</span></div>`
-    + `<div class="regle-jeu-texte">${escapeHtml(regleEcrite(j.regles))}</div></div>`).join("")}</div>`;
+/**
+ * Les règles des jeux cités, pour l'impression. Un jeu sans règle écrite n'y
+ * figure pas, sauf s'il a sa photo (`photos` : les images prêtes à imprimer
+ * de chaque jeu, par son identifiant) : elle s'imprime à gauche de sa règle.
+ */
+export function reglesImprimees(jeux: Jeu[], photos: Record<string, string[]> = {}): string {
+  const aImprimer = jeux.filter((j) => regleEcrite(j.regles) || photos[j.id]?.length);
+  if (!aImprimer.length) return "";
+  return `<div class="regles-jeux">${aImprimer.map((j) => {
+    const regle = regleEcrite(j.regles);
+    const bloc = `<div class="regle-jeu-titre">🎲 ${regle ? "Règle — " : ""}${escapeHtml(j.titre)}`
+      + `<span class="regle-jeu-infos"> · ${escapeHtml(infosDuJeu(j))}</span></div>`
+      + (regle ? `<div class="regle-jeu-texte">${escapeHtml(regle)}</div>` : "");
+    const images = (photos[j.id] ?? []).map((src) => `<img class="regle-jeu-photo" alt="" src="${escapeHtml(src)}">`).join("");
+    return images
+      ? `<div class="regle-jeu avec-photo"><div class="regle-jeu-photos">${images}</div><div class="regle-jeu-corps">${bloc}</div></div>`
+      : `<div class="regle-jeu">${bloc}</div>`;
+  }).join("")}</div>`;
 }
 
 /** Styles des règles imprimées, à la taille du texte qui les entoure. */
@@ -190,6 +200,10 @@ export const STYLE_REGLES = `
   .regles-jeux { margin-top: 5px; display: flex; flex-direction: column; gap: 4px; }
   .regle-jeu { border: 1px solid #e0d5f5; background: #f8f5ff; border-radius: 6px; padding: 4px 8px;
     break-inside: avoid; page-break-inside: avoid; }
+  .regle-jeu.avec-photo { display: flex; gap: 8px; align-items: flex-start; }
+  .regle-jeu-photos { display: flex; gap: 4px; flex: none; }
+  .regle-jeu-photo { width: 22mm; height: 22mm; object-fit: contain; border-radius: 4px; background: #fff; border: 1px solid #e0d5f5; margin: 0; }
+  .regle-jeu-corps { flex: 1; min-width: 0; }
   .regle-jeu-titre { font-weight: 700; color: #5b3fa6; font-size: .95em; }
   .regle-jeu-infos { font-weight: 400; color: #7a7f8f; }
   .regle-jeu-texte { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .95em; line-height: 1.4; margin-top: 1px; }

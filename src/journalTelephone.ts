@@ -33,6 +33,7 @@
 
 import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import type { Lexique } from "./caa";
+import { photoDuJeu, type PhotoDeJeu } from "./supportsDeTravail";
 import type { RefPicto } from "./pictosAppoint";
 import { jeuxCites } from "./jeuxCites";
 import { pdfsCites } from "./materielAImprimer";
@@ -244,7 +245,7 @@ export const elevesDuCreneau = (aFaire: AFaire[]): string[] => [...new Set(aFair
  */
 export function pasDuDeroulement(
   c: Pick<Creneau, "prevu">, seance: Seance | undefined, fiches: MaterielItem[], domaineDeSeance = "", eleve?: string,
-  sequences: Sequence[] = [], seances: Seance[] = [], jeux: Jeu[] = [],
+  sequences: Sequence[] = [], seances: Seance[] = [], jeux: Jeu[] = [], photos: PhotoDeJeu[] = [],
 ): PasDuDeroulement[] {
   const lesSiennes = eleve === undefined ? [] : aFaireDuCreneau(c, fiches, sequences, seances).filter((x) => x.eleve === eleve);
   const classe = deLaClasse(c, seance, sequences, seances, jeux);
@@ -266,7 +267,9 @@ export function pasDuDeroulement(
       const propre = sienne?.sousDomaine || sienne?.domaine;
       const domaine = propre || premiere?.domaine;
       const matiere = (propre ? sienne?.domaine : premiere?.matiere) || "Jeu";
-      return { texte: nomDuJeu(x.jeu), matiere, ...(domaine ? { domaine } : {}) };
+      // La photo du jeu, donnée dans Réglages › Personnalisation, plutôt que le picto de son domaine.
+      const photo = photoDuJeu(photos, x.jeu.id);
+      return { texte: nomDuJeu(x.jeu), matiere, ...(domaine ? { domaine } : {}), ...(photo != null ? { picto: photo } : {}) };
     }),
     ...lesSiennes.map((x): PasDuDeroulement => {
       if (x.seance) {
@@ -599,9 +602,10 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
   try {
     const { api } = await import("./api");
     const jours = joursPublies(maintenant);
-    const [creneaux, seances, materiel, sequences, jeux] = await Promise.all([
+    const { lireMesPictos } = await import("./mesPictos");
+    const [creneaux, seances, materiel, sequences, jeux, photos] = await Promise.all([
       api.creneauxList(jours[0], jours[jours.length - 1]), api.seancesList(), api.materielList(), api.sequencesList().catch((): Sequence[] => []),
-      api.jeuxList().catch((): Jeu[] => []),
+      api.jeuxList().catch((): Jeu[] => []), lireMesPictos().catch((): PhotoDeJeu[] => []),
     ]);
     const journal = journalDes(jours, creneaux, seances, materiel, sequences, jeux);
     // Les déroulements de chaque créneau qui en a : celui de la classe — le rituel, ses séances, ses jeux —, et
@@ -622,7 +626,7 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
         ...Object.entries(publie.deroules ?? {}).map(([eleve, cle]) => [cle, eleve] as [string, string]),
       ];
       for (const [cle, eleve] of aPublier) {
-        deroulements.push({ cle, pas: pasDuDeroulement(c, seance, fiches, domaine, eleve, sequences, seances, jeux) });
+        deroulements.push({ cle, pas: pasDuDeroulement(c, seance, fiches, domaine, eleve, sequences, seances, jeux, photos) });
       }
     }
     // Un picto de matière ou de domaine choisi, une matière détaillée ou non : les déroulements changent, ils repartent.

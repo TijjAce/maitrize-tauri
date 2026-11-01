@@ -69,6 +69,12 @@ describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octob
     const c = creneau("c1", "14:10", "15:00", "Mathématiques", { prevu: "📚 Comparer des quantités · séance 1 : Comparer des collections\njeu de l’oie" });
     expect(pasDeLaBande(c, undefined, [], "", [sequence], [{ ...seance, numero: 1 } as Seance], [oie]).map((p) => [p.matiere, p.texte]))
       .toEqual([["", "Rituel"], ["Mathématiques", "Comparer des collections"], ["Mathématiques", "Jeu de l’oie"]]);
+    // Le jeu qui a sa photo dans Réglages › Personnalisation la montre au lieu du picto de son domaine (2026-11-01) ;
+    // une photo sans jeu, ou celle d'un autre jeu, n'y change rien.
+    const photos = [{ id: -7, origine: "photo" as const, jeuId: "j1" }, { id: -8, origine: "photo" as const, jeuId: "j2" }, { id: -9, origine: "photo" as const }];
+    const avecPhoto = pasDeLaBande(c, undefined, [], "", [sequence], [{ ...seance, numero: 1 } as Seance], [oie], photos);
+    expect(avecPhoto.map((p) => p.picto)).toEqual([undefined, undefined, -7]);
+    expect(pasDeLaBande(c, undefined, [], "", [sequence], [{ ...seance, numero: 1 } as Seance], [oie], photos.slice(1)).every((p) => p.picto === undefined)).toBe(true);
   });
 
   it("met les bandes côte à côte, regroupées, d'une largeur fixe, sur une page à la suite du cahier journal", () => {

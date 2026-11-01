@@ -26,6 +26,7 @@ import {
 } from "./journalTelephone";
 import type { RefPicto } from "./pictosAppoint";
 import { escapeHtml } from "./print";
+import type { PhotoDeJeu } from "./supportsDeTravail";
 import { titresDesRituels } from "./rituels";
 
 /** Les temps sans enseignement : la récréation, le repas, la sieste… */
@@ -56,10 +57,10 @@ export const heuresDeLaBande = (c: Pick<Creneau, "heureDebut" | "heureFin">): st
  */
 export function pasDeLaBande(
   c: Pick<Creneau, "prevu" | "matiere">, seance: Seance | undefined, fiches: MaterielItem[], domaineDeSeance = "",
-  sequences: Sequence[] = [], seances: Seance[] = [], jeux: Jeu[] = [],
+  sequences: Sequence[] = [], seances: Seance[] = [], jeux: Jeu[] = [], photos: PhotoDeJeu[] = [],
 ): PasDuDeroulement[] {
   const eleves = elevesDuCreneau(aFaireDuCreneau(c, fiches, sequences, seances));
-  const deroulementDe = (eleve?: string) => pasDuDeroulement(c, seance, fiches, domaineDeSeance, eleve, sequences, seances, jeux);
+  const deroulementDe = (eleve?: string) => pasDuDeroulement(c, seance, fiches, domaineDeSeance, eleve, sequences, seances, jeux, photos);
   // Le début, commun à tous : celui de la classe ; sans séance, le rituel par lequel commence celui de chaque élève.
   const debut = (eleves.length ? deroulementDe(eleves[0]) : deroulementDe()).filter((p) => !p.fiche);
   const leurs = eleves.flatMap((eleve) => deroulementDe(eleve).filter((p) => p.fiche).map((p) => ({ ...p, eleve })));
@@ -177,7 +178,7 @@ export function corpsDesBandes(titre: string, bandes: Bande[], fin = ""): string
 
 /** Les bandes du jour : le déroulement de chaque créneau qui en a une, dessiné comme pour les tablettes, avec les pictos que l'enseignant a choisis. */
 export async function bandesDuJour(
-  creneaux: Creneau[], seances: Seance[], sequences: Sequence[], materiel: MaterielItem[], jeux: Jeu[] = [],
+  creneaux: Creneau[], seances: Seance[], sequences: Sequence[], materiel: MaterielItem[], jeux: Jeu[] = [], photos: PhotoDeJeu[] = [],
 ): Promise<{ bandes: Bande[]; refs: RefPicto[] }> {
   const pictos = await pictosDuDeroulement();
   const fiches = materiel.filter(estUneFicheDEleve);
@@ -186,7 +187,7 @@ export async function bandesDuJour(
   for (const c of creneauxEnBandes(creneaux)) {
     const seance = c.seanceId ? seances.find((s) => s.id === c.seanceId) : undefined;
     const domaine = seance ? domaineDeLaSeance(seance, sequences.find((q) => q.id === seance.sequenceId)) : "";
-    const { html, refs } = await cadresDuDeroulement(pasDeLaBande(c, seance, fiches, domaine, sequences, seances, jeux), pictos);
+    const { html, refs } = await cadresDuDeroulement(pasDeLaBande(c, seance, fiches, domaine, sequences, seances, jeux, photos), pictos);
     bandes.push({ heures: heuresDeLaBande(c), matiere: c.matiere ?? "", cadres: html });
     montres.push(...refs);
   }

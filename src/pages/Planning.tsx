@@ -35,6 +35,9 @@ import { tapuscritImprimable, useTapuscritDuJournal } from "../components/Tapusc
 import { creneauxAvecTapuscrit } from "../journalTapuscrit";
 import { mentionDesPictos, type RefPicto } from "../pictosAppoint";
 import { aDesPhases, texteDuDeroulement } from "../documentSeance";
+import { lireMesPictos, type MonPicto } from "../mesPictos";
+import { photosDesJeux } from "../supportsDeTravail";
+import { chargerImages } from "../components/ChoixPicto";
 
 const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
 const JOURS7 = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -296,8 +299,13 @@ export default function Planning() {
         if (html) { tapuscrits[c.id] = html; pictosDuJournal.push(...refs); }
       } catch { /* voir plus haut */ }
     }
-    // La ludothèque : la règle des jeux cités suit le prévu du créneau.
+    // La ludothèque : la règle des jeux cités suit le prévu du créneau, avec la photo du jeu s'il en a une
+    // (Réglages › Personnalisation › Mes photos) ; sa carte la reprend dans les bandes.
     const jeux = await api.jeuxList().catch((): Jeu[] => []);
+    const photosDeLaLudotheque = photosDesJeux(await lireMesPictos().catch((): MonPicto[] => []));
+    const imagesDesPhotos = await chargerImages(photosDeLaLudotheque.map((p) => p.id), true);
+    const photosDesJeuxCites: Record<string, string[]> = {};
+    for (const p of photosDeLaLudotheque) if (p.jeuId && imagesDesPhotos[p.id]) (photosDesJeuxCites[p.jeuId] ??= []).push(imagesDesPhotos[p.id]);
     // Les temps d'observation posés sur la journée : ce qu'on a décidé de
     // regarder s'imprime avec le reste — c'est la feuille qu'on a en main.
     const observations = await api.observationsList().catch((): ObservationEleve[] => []);
@@ -368,7 +376,7 @@ export default function Planning() {
         illus.length ? `<div class="imgs">${illus.map(imgTag).join("")}</div>` : "",
         tapuscrits[c.id] ? `<div class="f"><span class="fl">Consignes en pictogrammes :</span></div>${tapuscrits[c.id]}` : "",
         c.prevu?.trim() ? `<div class="f"><span class="fl">Prévu :</span></div><div class="txt prevu">${rendreCell(c.prevu.trim())}</div>` : "",
-        reglesImprimees(aImprimer(jeuxCites(`${c.prevu ?? ""}\n${sansMarqueurs(s?.deroulement ?? "")}`, jeux), (j) => masqueJeu(j.id), masques[c.id] ?? [])),
+        reglesImprimees(aImprimer(jeuxCites(`${c.prevu ?? ""}\n${sansMarqueurs(s?.deroulement ?? "")}`, jeux), (j) => masqueJeu(j.id), masques[c.id] ?? []), photosDesJeuxCites),
         sequencesImprimees(aImprimer(sequencesCitees(c.prevu ?? "", sequences ?? [], seances ?? []), (x) => masqueSequence(x.sequence.id, x.seance?.id), masques[c.id] ?? []), seances ?? []),
         rituelsImprimes(aImprimer(rituelsCites(c.prevu ?? "", rituels), (r) => masqueRituel(r.id), masques[c.id] ?? []),
           (r) => deroulementsImprimes.get(r.id) ?? deroulementEnHtml(r)),
@@ -447,7 +455,7 @@ export default function Planning() {
     // Puis la journée en bandes, regroupées sur une page — les cartes des tablettes, toutes de la même taille (demande de
     // l'enseignant, 31 octobre 2026) —, avant le matériel. Sans bande, pas de page.
     const seancesActuelles = await api.seancesList().catch(() => seances ?? []);
-    const duJour = await bandesDuJour(jourCreneaux, seancesActuelles, sequences ?? [], materiels, jeux).catch(() => ({ bandes: [], refs: [] }));
+    const duJour = await bandesDuJour(jourCreneaux, seancesActuelles, sequences ?? [], materiels, jeux, photosDeLaLudotheque).catch(() => ({ bandes: [], refs: [] }));
     const pageDesBandes = duJour.bandes.length
       ? corpsDesBandes(titre, duJour.bandes, mentionDesPictos(duJour.refs, "", "bandes-attribution")) : "";
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Planning — ${escapeHtml(titre)}</title><style>${css}${pageDesBandes ? STYLE_BANDES_DU_JOURNAL : ""}</style></head>

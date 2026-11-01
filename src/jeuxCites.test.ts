@@ -96,6 +96,20 @@ describe("règles à l'impression", () => {
     expect(reglesImprimees([jeu("hg", "Halli Galli")])).toBe("");
   });
 
+  it("imprime la photo du jeu à gauche de sa règle, et le jeu sans règle qui a sa photo (2026-11-01)", () => {
+    const photos = { sk: ["data:image/png;base64,AAA"], hg: ["data:image/png;base64,BBB"] };
+    const html = reglesImprimees([jeu("sk", "Skyjo", "Retourner 2 cartes."), jeu("hg", "Halli Galli"), jeu("so", "Solitaire")], photos);
+    expect(html).toContain('<div class="regle-jeu avec-photo"><div class="regle-jeu-photos"><img class="regle-jeu-photo" alt="" src="data:image/png;base64,AAA"></div>');
+    expect(html).toContain("🎲 Règle — Skyjo");
+    // Sans règle écrite, le jeu garde son nom et sa photo ; sans règle ni photo, il n'y est pas.
+    expect(html).toContain("🎲 Halli Galli");
+    expect(html).not.toContain("Règle — Halli Galli");
+    expect(html).not.toContain("Solitaire");
+    // Sans photo, rien ne change.
+    expect(reglesImprimees([jeu("sk", "Skyjo", "Retourner 2 cartes.")], photos)).toContain('<div class="regle-jeu avec-photo">');
+    expect(reglesImprimees([jeu("sk", "Skyjo", "Retourner 2 cartes.")])).not.toContain("avec-photo");
+  });
+
   it("écrit l'effectif au singulier quand il le faut", () => {
     expect(infosDuJeu(jeu("so", "Solitaire", "", { nbJoueursMin: 1, nbJoueursMax: 1, duree: 0 }))).toBe("1 joueur");
   });

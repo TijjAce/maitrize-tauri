@@ -2,19 +2,42 @@ import React from "react";
 import { api, Jeu } from "../api";
 import { useAsync } from "./ui";
 import { JeuForm } from "./JeuForm";
+import { usePictoImage } from "./ChoixPicto";
 import { infosDuJeu, jeuxCites, regleEcrite } from "../jeuxCites";
 import { masqueJeu } from "../journalMasques";
+import { EVT_MES_PICTOS, lireMesPictos, type MonPicto } from "../mesPictos";
+import { photosDesJeux } from "../supportsDeTravail";
 import { CaseImpression } from "./MasquesDuJournal";
 
 // ── Règles des jeux cités ──────────────────────────────────────────────────
 //
 // Sous un prévu ou un déroulement, la règle de chaque jeu de la ludothèque
-// qui y est nommé : on l'a sous les yeux au moment de lancer la partie.
+// qui y est nommé : on l'a sous les yeux au moment de lancer la partie. La
+// photo du jeu, si l'enseignant lui en a donné une dans Réglages ›
+// Personnalisation › Mes photos, se montre à côté (demande de l'enseignant,
+// 2026-11-01).
 
 /** La ludothèque, relue quand elle change sur l'autre ordinateur. */
 export function useLudotheque() {
   const { data, reload } = useAsync(() => api.jeuxList(), []);
   return { jeux: data ?? [], recharger: reload };
+}
+
+/** Les photos des jeux, relues quand une photo arrive du téléphone ou se règle sur l'autre ordinateur. */
+function usePhotosDesJeux(): MonPicto[] {
+  const [photos, setPhotos] = React.useState<MonPicto[]>([]);
+  React.useEffect(() => {
+    const lire = () => lireMesPictos().then((l) => setPhotos(photosDesJeux(l))).catch(() => setPhotos([]));
+    void lire();
+    window.addEventListener(EVT_MES_PICTOS, lire);
+    return () => window.removeEventListener(EVT_MES_PICTOS, lire);
+  }, []);
+  return photos;
+}
+
+function PhotoDuJeu({ photo }: { photo: MonPicto }) {
+  const src = usePictoImage(photo.id, true);
+  return src ? <img className="regle-app-photo" src={src} alt={photo.mot} title={photo.mot} /> : null;
 }
 
 /**
@@ -37,8 +60,8 @@ export function useJeuxCites(jeux: Jeu[]): (texte: string) => Jeu[] {
 /** Les jeux repliés, gardés pendant la séance de travail : replié ici, replié partout. */
 const replies = new Set<string>();
 
-function RegleDuJeu({ jeu, onModifier, masque = false, onMasquer }: {
-  jeu: Jeu; onModifier: () => void;
+function RegleDuJeu({ jeu, photos, onModifier, masque = false, onMasquer }: {
+  jeu: Jeu; photos: MonPicto[]; onModifier: () => void;
   /** Dans le cahier journal : la règle reste à l'écran, mais ne s'imprime pas. */
   masque?: boolean; onMasquer?: () => void;
 }) {
@@ -51,6 +74,21 @@ function RegleDuJeu({ jeu, onModifier, masque = false, onMasquer }: {
     setReplie(suite);
     if (suite) replies.add(jeu.id); else replies.delete(jeu.id);
   };
+  const contenu = regle ? (
+    <>
+      <div className={`regle-app-texte${longue && !entiere ? " coupee" : ""}`}>{regle}</div>
+      {longue && (
+        <button className="lien regle-app-suite" onClick={() => setEntiere(!entiere)}>
+          {entiere ? "Réduire" : "Lire toute la règle"}
+        </button>
+      )}
+    </>
+  ) : (
+    <div className="regle-app-vide">
+      Pas encore de règle dans la ludothèque.{" "}
+      <button className="lien" onClick={onModifier}>L'écrire, ou la chercher en ligne</button>
+    </div>
+  );
   return (
     <div className={masque ? "regle-app non-imprime" : "regle-app"}>
       <div className="regle-app-tete">
@@ -63,36 +101,28 @@ function RegleDuJeu({ jeu, onModifier, masque = false, onMasquer }: {
         <button className="btn ghost sm" onClick={onModifier} title="Modifier le jeu et sa règle dans la ludothèque"
           aria-label={`Modifier la règle de ${jeu.titre}`}>✏️</button>
       </div>
-      {!replie && (regle ? (
-        <>
-          <div className={`regle-app-texte${longue && !entiere ? " coupee" : ""}`}>{regle}</div>
-          {longue && (
-            <button className="lien regle-app-suite" onClick={() => setEntiere(!entiere)}>
-              {entiere ? "Réduire" : "Lire toute la règle"}
-            </button>
-          )}
-        </>
-      ) : (
-        <div className="regle-app-vide">
-          Pas encore de règle dans la ludothèque.{" "}
-          <button className="lien" onClick={onModifier}>L'écrire, ou la chercher en ligne</button>
+      {!replie && (photos.length ? (
+        <div className="regle-app-corps">
+          <div className="regle-app-photos">{photos.map((p) => <PhotoDuJeu key={p.id} photo={p} />)}</div>
+          <div className="regle-app-a-cote">{contenu}</div>
         </div>
-      ))}
+      ) : contenu)}
     </div>
   );
 }
 
-/** Les règles des jeux donnés ; rien s'il n'y en a pas. */
+/** Les règles des jeux donnés, chacune avec la photo du jeu ; rien s'il n'y en a pas. */
 export function ReglesDesJeux({ jeux, onModifier, masques, onMasquer }: {
   jeux: Jeu[]; onModifier: (j: Jeu) => void;
   /** Dans le cahier journal : ce que ce créneau cite sans l'imprimer, et de quoi le changer. */
   masques?: readonly string[]; onMasquer?: (cle: string) => void;
 }) {
+  const photos = usePhotosDesJeux();
   if (!jeux.length) return null;
   return (
     <div className="regles-app" aria-label="Règles des jeux cités">
       {jeux.map((j) => (
-        <RegleDuJeu key={j.id} jeu={j} onModifier={() => onModifier(j)}
+        <RegleDuJeu key={j.id} jeu={j} photos={photos.filter((p) => p.jeuId === j.id)} onModifier={() => onModifier(j)}
           masque={masques?.includes(masqueJeu(j.id))} onMasquer={onMasquer ? () => onMasquer(masqueJeu(j.id)) : undefined} />
       ))}
     </div>
