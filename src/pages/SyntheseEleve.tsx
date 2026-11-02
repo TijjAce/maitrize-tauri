@@ -230,7 +230,7 @@ export function SyntheseEleveTab() {
         arrete: () => arreter.current,
       });
       setAvantTout(depart);
-      modifier(poserLaRedaction(depart, redige, remplacer));
+      modifier({ ...poserLaRedaction(depart, redige, remplacer), parLIA: new Date().toISOString() });
       const domaines = Object.keys(redige.sections).length;
       setAgent((a) => (a ? { ...a, redaction: 1, fini: `Le chat a lu ${lus} élément${lus > 1 ? "s" : ""} et rédigé la synthèse${domaines ? ` : ${domaines} domaine${domaines > 1 ? "s" : ""}` : ""}. À relire avant de l'imprimer.` } : a));
     } catch (e) {
@@ -325,6 +325,13 @@ export function SyntheseEleveTab() {
           )}
           {avantTout && (
             <button className="btn ghost sm" onClick={() => { modifier(avantTout); setAvantTout(null); }}>↶ Revenir</button>
+          )}
+          {/* Le premier jet de l'IA reste marqué tant que l'enseignant ne l'a pas relu : c'est lui qui le garde. */}
+          {synthese.parLIA && (
+            <button className="btn ghost sm" onClick={() => modifier({ ...synthese, parLIA: undefined })}
+              title={`Rédigée par l'IA de Mistral le ${fmtFr(synthese.parLIA.slice(0, 10))} : relisez-la et corrigez-la avant de vous en servir. Cliquez une fois relue.`}>
+              ✨ Rédigée par l'IA · à relire
+            </button>
           )}
           <button className="btn primary sm" disabled={agentTourne || !charge} onClick={() => { void lancerLAgentDeSynthese(); }}
             title="L'agent lit tout ce qui concerne l'élève — dossier, observations, cahier journal, évaluations, plans, PPI, GEVA-Sco, réunions —, puis rédige la synthèse">

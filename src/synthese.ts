@@ -37,6 +37,12 @@ export interface SyntheseEleve {
    * sur l'élève après cette date est « nouveau », et mérite d'être signalé.
    */
   vuLe?: string;
+  /**
+   * Quand l'agent de synthèse l'a rédigée, tant que l'enseignant ne l'a pas
+   * marquée relue : l'IA écrit un premier jet, c'est l'enseignant qui le
+   * garde (règlement européen sur l'IA, voir docs/reglement-europeen-ia.md).
+   */
+  parLIA?: string;
 }
 
 export const TYPE_DOC_SYNTHESE = "synthese";
