@@ -6,6 +6,7 @@ import { PoserObservation } from "./PoserObservation";
 import { appliquer, porterAuDossier } from "../notesDuBilan";
 import { segmentsDuBilan } from "../surlignage";
 import { prenomDe } from "../veilleEleve";
+import { segmentsDuPrevu } from "../prevuParEleve";
 import { ZoneSurlignee } from "./ZoneSurlignee";
 import { enAttente } from "../journalEnAttente";
 import { useDictee, mmss } from "../dictee";
@@ -597,10 +598,15 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                         "aria-label": `${LIBELLES[champ].titre} — ${c.heureDebut} ${c.matiere}`,
                         style: { width: "100%", resize: "vertical", fontSize: 13.5, lineHeight: 1.45 } as React.CSSProperties,
                       };
-                      // Le bilan montre en couleur ce qui part dans les notes des élèves.
-                      return champ === "bilan"
-                        ? <ZoneSurlignee {...proprietes} segments={segmentsDuBilan(b.bilan, prenomsDeLaClasse)}
-                            ref={(el) => { zones.current[c.id] = el; }} />
+                      // Le bilan montre en couleur ce qui part dans les notes des élèves. Le prévu d'un groupe encadre le
+                      // prénom qui ouvre la part d'un élève (« Lina : », voir prevuParEleve.ts) : ce qui suit est pour lui.
+                      if (champ === "bilan") {
+                        return <ZoneSurlignee {...proprietes} segments={segmentsDuBilan(b.bilan, prenomsDeLaClasse)}
+                          ref={(el) => { zones.current[c.id] = el; }} />;
+                      }
+                      return prenoms.length
+                        ? <ZoneSurlignee {...proprietes} segments={segmentsDuPrevu(b.prevu, prenoms as string[])}
+                            ref={(el) => { zonesPrevu.current[c.id] = el; }} />
                         : <textarea className="textarea" {...proprietes} ref={(el) => { zonesPrevu.current[c.id] = el; }} />;
                     })()}
                     {correction?.id === c.id && correction.champ === champ && (

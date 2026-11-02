@@ -8,8 +8,8 @@ import { positionsDuPrenom } from "./veilleEleve";
 
 export interface Segment {
   texte: string;
-  /** « phrase » : elle part dans les notes ; « nom » : le prénom qui l'y envoie. */
-  genre: "" | "phrase" | "nom";
+  /** « phrase » : elle part dans les notes ; « nom » : le prénom qui l'y envoie ; « cadre » : au prévu, le prénom qui ouvre la part d'un élève (voir prevuParEleve.ts). */
+  genre: "" | "phrase" | "nom" | "cadre";
 }
 
 /** Les phrases d'un texte, coupées comme `phrasesQuiCitent` les coupe : à chaque ligne, et après . ! ? … */

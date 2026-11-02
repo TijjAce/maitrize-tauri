@@ -25,7 +25,7 @@ import { CLE_RITUELS, STYLE_RITUELS_IMPRIMES, avecRituels, deroulementEnHtml, li
 import { avecImages } from "../components/imagesTexte";
 import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
 import { aImprimer, creneauMasque, masqueJeu, masqueRituel, masqueSequence, masquesDesReglages } from "../journalMasques";
-import { SCRIPTS_DES_BANDES, STYLE_BANDES_DU_JOURNAL, bandesDuJour, corpsDesBandes, planningsDesEleves } from "../journeeEnBandes";
+import { SCRIPTS_DES_BANDES, STYLE_BANDES_DU_JOURNAL, bandesDuJour, corpsDesBandes } from "../journeeEnBandes";
 import { JOURS_DE_RECUL, STYLE_VEILLE, bilansDeLaVeilleHtml, veilleDe } from "../bilansVeille";
 import { niveauDeProgrammation } from "../programmation";
 import { EnRetard } from "../components/EnRetard";
@@ -89,9 +89,6 @@ function layoutJour(cs: Creneau[]): Map<string, { lane: number; lanes: number }>
 
 const VUES = ["jour", "semaine", "mois"] as const;
 type Vue = typeof VUES[number];
-
-/** « 1 » : le PDF du jour ajoute le planning de chaque élève (voir planningsDesEleves). */
-const CLE_PLANNINGS_PAR_ELEVE = "planningsParEleve";
 
 export default function Planning() {
   const [vue, setVue] = React.useState<Vue>("jour");
@@ -167,10 +164,6 @@ export default function Planning() {
   const [del, setDel] = React.useState<Creneau | null>(null);
   const [voirSeance, setVoirSeance] = React.useState<Seance | null>(null);
   const [deplacer, setDeplacer] = React.useState(false);
-  // À l'impression du jour, une page par élève : son planning de créneaux, en bandes de pictos (2026-11-02).
-  const [parEleve, setParEleve] = React.useState(false);
-  React.useEffect(() => { api.settingGet(CLE_PLANNINGS_PAR_ELEVE).then((v) => setParEleve(v === "1")).catch(() => {}); }, []);
-  const basculerParEleve = () => setParEleve((v) => { api.settingSet(CLE_PLANNINGS_PAR_ELEVE, v ? "" : "1").catch(() => {}); return !v; });
   const navigate = useNavigate();
 
   // Crée une séance « libre » directement depuis un créneau quelconque : elle
@@ -479,24 +472,18 @@ export default function Planning() {
     // Puis la journée en bandes, regroupées sur une page — les cartes des tablettes, toutes de la même taille (demande de
     // l'enseignant, 31 octobre 2026) —, avant le matériel. Sans bande, pas de page.
     const seancesActuelles = await api.seancesList().catch(() => seances ?? []);
-    const duJour = await bandesDuJour(jourCreneaux, seancesActuelles, sequences ?? [], materiels, jeux, photosDeLaLudotheque).catch(() => ({ bandes: [], refs: [] }));
+    // Un créneau de groupe dont le prévu a la part de ses élèves (« Lina : … ») a une bande par élève.
+    const prenoms = (eleves ?? []).map((e) => ({ id: e.id, prenom: e.nom.trim().split(/\s+/)[0] ?? "" }));
+    const duJour = await bandesDuJour(jourCreneaux, seancesActuelles, sequences ?? [], materiels, jeux, photosDeLaLudotheque, prenoms)
+      .catch(() => ({ bandes: [], refs: [] }));
     const pageDesBandes = duJour.bandes.length
       ? corpsDesBandes(titre, duJour.bandes, mentionDesPictos(duJour.refs, "", "bandes-attribution")) : "";
-    // Puis, si on le veut, le planning de chaque élève que les créneaux nomment : une page chacun.
-    const prenoms = (eleves ?? []).map((e) => ({ id: e.id, prenom: e.nom.trim().split(/\s+/)[0] ?? "" }));
-    const desEleves = parEleve && pageDesBandes
-      ? await planningsDesEleves(jourCreneaux, prenoms, seancesActuelles, sequences ?? [], materiels, jeux, photosDeLaLudotheque)
-        .catch(() => ({ plannings: [], refs: [] }))
-      : { plannings: [], refs: [] };
-    const pagesDesEleves = desEleves.plannings.map((p) => corpsDesBandes(`${p.prenom} — ${titre}`, p.bandes,
-      mentionDesPictos(desEleves.refs, "", "bandes-attribution"), "Mon planning", false)).join("");
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Planning — ${escapeHtml(titre)}</title><style>${css}${pageDesBandes ? STYLE_BANDES_DU_JOURNAL : ""}</style></head>
       <body>${moletteDuJournalHtml()}<div class="journal"><h1>${escapeHtml(titre)}</h1><div class="sub">Cahier journal</div>
       ${bilansDeLaVeilleHtml(veille)}
       <div class="jour">${rangs || '<div class="row"><div style="padding:20px;color:#687087">Aucun créneau ce jour-là.</div></div>'}</div>
       ${mentionDesPictos([...new Set(pictosDuJournal)], "", "tp-attribution")}</div>
       ${pageDesBandes}
-      ${pagesDesEleves}
       ${annexesHtml(rendues)}
       ${piedMaitrize(logo)}
       </body></html>`;
@@ -596,14 +583,6 @@ export default function Planning() {
               style={cache ?? (deplacer ? { background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" } : undefined)}
               title={deplacer ? "Déplacement activé — glissez les créneaux. Cliquez pour désactiver." : "Activer le déplacement des créneaux par glisser-déposer"}>
               ✋ Déplacer</button>
-            {/* Quand des créneaux du jour nomment leurs élèves : un planning par élève à la suite des bandes. */}
-            {vue === "jour" && (creneaux ?? []).some((c) => c.date === iso(ancre) && c.elevesJson && c.elevesJson !== "[]") && (
-              <button className="btn" onClick={basculerParEleve} aria-pressed={parEleve}
-                style={parEleve ? { background: "var(--accent)", color: "#fff", borderColor: "var(--accent)" } : undefined}
-                title={parEleve ? "Le PDF du jour ajoute le planning de chaque élève : ses créneaux, avec ce qui est à lui. Cliquez pour ne plus l'ajouter."
-                  : "Ajouter au PDF du jour le planning de chaque élève : ses créneaux en bandes de pictos, avec la part du prévu à son prénom (« Pour Prénom : »)"}>
-                🧒 Par élève</button>
-            )}
             {/* Le jour s'imprime en cahier journal, ses bandes à la suite : une seule impression (demande de l'enseignant, 31 octobre 2026). */}
             <button className="btn" style={cache} disabled={surLeMois} aria-hidden={surLeMois} onClick={() => void imprimer()}>🖨 PDF</button>
           </>;

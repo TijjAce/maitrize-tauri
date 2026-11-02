@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { partsDuPrevu, prevuDeLEleve } from "./prevuParEleve";
+import { partsDuPrevu, prevuDeLEleve, segmentsDuPrevu } from "./prevuParEleve";
 
 // Prénoms inventés : jamais ceux de la classe.
 const prevu = [
@@ -33,5 +33,20 @@ describe("le prévu d'un créneau de groupe, élève par élève (demande de l'e
     expect(parts.get("Lina")).toBe("la frise\nle loto");
     expect(parts.get("Zoé")).toBe("la frise");
     expect(parts.get("Tom")).toBe("le loto");
+  });
+
+  it("ouvre aussi une part au prénom seul, avec ou sans « : », mais pas à une phrase qui le cite", () => {
+    const { commun, parts } = partsDuPrevu("Lina : la frise\nTom\nle loto\nLina et Tom rangent ensemble", ["Lina", "Tom"]);
+    expect(parts.get("Lina")).toBe("la frise");
+    expect(parts.get("Tom")).toBe("le loto\nLina et Tom rangent ensemble");
+    expect(commun).toBe("");
+  });
+
+  it("encadre au cahier journal le prénom qui ouvre une part, et rien d'autre", () => {
+    const texte = "matériel\nPour Lina : la frise\nTom et Lina : le loto\nLina range.";
+    const segments = segmentsDuPrevu(texte, ["Lina", "Tom"]);
+    expect(segments.map((s) => s.texte).join("")).toBe(texte);
+    expect(segments.filter((s) => s.genre === "cadre").map((s) => s.texte)).toEqual(["Lina", "Tom", "Lina"]);
+    expect(segmentsDuPrevu(texte, [])).toEqual([{ texte, genre: "" }]);
   });
 });

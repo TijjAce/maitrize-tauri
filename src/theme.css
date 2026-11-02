@@ -1363,6 +1363,8 @@ table.prog-ime .prog-ime-p { width: 46px; padding-left: 4px; padding-right: 4px;
 .surligneur-fond mark { color: transparent; padding: 0; border-radius: 3px; }
 mark.surligne-phrase { background: color-mix(in srgb, var(--accent) 26%, transparent); }
 mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparent); }
+/* Au prévu, le prénom qui ouvre la part d'un élève : encadré, sans rien décaler du texte. */
+mark.surligne-cadre { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 4px; box-shadow: 0 0 0 1.5px var(--accent); }
 
 /* Le « ? » qui ouvre une explication, et la bulle qu'il ouvre. */
 .aide-ancre { position: relative; display: inline-flex; flex: none; }
