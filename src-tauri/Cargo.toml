@@ -17,10 +17,12 @@ name = "maitrize_tauri_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# Tauri 2.12 au moins : il vient avec wry 0.57.1, qui ne s'arrête plus quand on glisse dans la fenêtre une vignette de
+# capture d'écran — un fichier « promis » (2026-11-02 ; voir l'historique de patches/wry).
+tauri = { version = "2.12", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-updater = "2"
@@ -104,10 +106,3 @@ gemm-c32 = { opt-level = 3 }
 gemm-c64 = { opt-level = 3 }
 half = { opt-level = 3 }
 safetensors = { opt-level = 3 }
-
-# wry 0.55.1 (celui de Tauri 2.11) arrêtait l'application quand on glissait dans la fenêtre une vignette de capture
-# d'écran ou une photo de Photos — un fichier « promis » — : un `unwrap` dans `collect_paths` (2026-11-01). Copie de
-# wry 0.55.1, cette seule fonction corrigée (voir patches/wry/CORRECTION.md). Corrigé dans wry 0.57.1, qui vient avec
-# Tauri 2.12 : retirer ce remplacement en passant à Tauri 2.12.
-[patch.crates-io]
-wry = { path = "patches/wry" }
