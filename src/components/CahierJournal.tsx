@@ -6,7 +6,7 @@ import { PoserObservation } from "./PoserObservation";
 import { appliquer, porterAuDossier } from "../notesDuBilan";
 import { segmentsDuBilan } from "../surlignage";
 import { prenomDe } from "../veilleEleve";
-import { segmentsDuPrevu } from "../prevuParEleve";
+import { elevesDuPassage, segmentsDuPrevu, surlignerPour } from "../prevuParEleve";
 import { ZoneSurlignee } from "./ZoneSurlignee";
 import { enAttente } from "../journalEnAttente";
 import { useDictee, mmss } from "../dictee";
@@ -277,6 +277,21 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
     setJeuEdite(connu ? { jeu: connu, nouveau: false } : { jeu: { ...nouveauJeu(), titre: nom }, nouveau: true });
   };
 
+  // ── Le prévu d'un groupe : le passage surligné devient l'étape d'un élève (voir prevuParEleve.ts) ──
+  const passageSelectionne = (c: Creneau) => {
+    const zone = zonesPrevu.current[c.id];
+    return zone && ouvertes.current.has(c.id) ? { debut: zone.selectionStart, fin: zone.selectionEnd } : null;
+  };
+  const surligner = (c: Creneau, prenom: string | null, groupe: string[]) => {
+    const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
+    const p = passageSelectionne(c);
+    const r = p ? surlignerPour(prevu, p.debut, p.fin, prenom, groupe) : null;
+    if (!r) { toast("Sélectionnez d'abord, dans le prévu, ce que l'élève doit faire.", { icone: "🖍" }); return; }
+    modifier(c.id, "prevu", r.texte, true);
+    // Le passage reste sélectionné : on peut le donner aussi à un autre élève.
+    requestAnimationFrame(() => zonesPrevu.current[c.id]?.setSelectionRange(r.debut, r.fin));
+  };
+
   // ── Les séquences citées dans le prévu ──
   const [sequencePour, setSequencePour] = React.useState<Creneau | null>(null);
 
@@ -465,7 +480,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
           const seance = seances.find((s) => s.id === c.seanceId);
           let ids: string[] = [];
           try { ids = JSON.parse(c.elevesJson || "[]"); } catch { ids = []; }
-          const prenoms = ids.map((id) => eleves.find((e) => e.id === id)?.nom.split(" ")[0]).filter(Boolean);
+          const prenoms = ids.map((id) => eleves.find((e) => e.id === id)?.nom.split(" ")[0]).filter((p): p is string => !!p);
           const reunion = natureDe(c) === "reunion";
           const etat = etats[c.id];
           const nonImprime = (masques[c.id] ?? []).includes(MASQUE_CRENEAU);
@@ -484,7 +499,13 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                     <span>🖼 consignes en pictos à l'impression</span>
                   </label>
                 )}
-                {prenoms.length > 0 && <span style={{ fontSize: 12, color: "var(--text-2)" }}>👥 {prenoms.join(", ")}</span>}
+                {/* À plusieurs, chaque prénom avec sa couleur : celle de ses étapes au prévu. */}
+                {prenoms.length > 0 && (
+                  <span style={{ fontSize: 12, color: "var(--text-2)" }}>👥 {prenoms.length > 1
+                    ? prenoms.map((p, i) => (
+                      <React.Fragment key={p}>{i ? ", " : ""}<span className={`pastille-eleve eleve-c${i % 8}`} aria-hidden="true" style={{ marginRight: 3 }} />{p}</React.Fragment>))
+                    : prenoms[0]}</span>
+                )}
                 <CaseImpression masque={nonImprime} onChange={() => masquer(c.id, MASQUE_CRENEAU)}
                   titre="Coché : ce créneau reste à l'écran, mais ne s'imprime pas — ni dans le cahier journal, ni dans la journée en bandes" />
                 <span style={{ marginLeft: "auto", fontSize: 11, color: etat === "erreur" ? "#c0392b" : "var(--text-2)" }}>
@@ -586,6 +607,31 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                               </>
                             )}
                           </MenuDeroulant>
+                          {prenoms.length > 1 && (
+                            <MenuDeroulant petit cote="gauche" titre="Surligner ce que doit faire un élève" libelle="🖍 Surligner">
+                              {(fermer) => {
+                                const p = passageSelectionne(c);
+                                const siens = p ? elevesDuPassage(aEcrire.current[c.id]?.prevu ?? c.prevu ?? "", p.debut, p.fin, prenoms) : [];
+                                return (
+                                  <>
+                                    {prenoms.map((prenom, i) => (
+                                      <button key={prenom} className={`ctx-item${siens.includes(prenom) ? " coche" : ""}`}
+                                        onClick={() => { fermer(); surligner(c, prenom, prenoms); }}
+                                        title={siens.includes(prenom) ? `Ce passage ne sera plus à ${prenom}`
+                                          : `Ce passage est à ${prenom} : il prend sa couleur et vient à son rang dans son planning`}>
+                                        <span className="ctx-ico" aria-hidden="true">{siens.includes(prenom) ? "✓" : ""}</span>
+                                        <span className={`pastille-eleve eleve-c${i % 8}`} aria-hidden="true" />{prenom}
+                                      </button>
+                                    ))}
+                                    <div className="ctx-sep" />
+                                    <button className="ctx-item" onClick={() => { fermer(); surligner(c, null, prenoms); }}
+                                      title="Ce passage redevient à tout le groupe : ses prénoms s'effacent">
+                                      <span className="ctx-ico" aria-hidden="true">👥</span>Tout le groupe</button>
+                                  </>
+                                );
+                              }}
+                            </MenuDeroulant>
+                          )}
                         </>
                       ) : null}
                     </div>
@@ -598,14 +644,14 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                         "aria-label": `${LIBELLES[champ].titre} — ${c.heureDebut} ${c.matiere}`,
                         style: { width: "100%", resize: "vertical", fontSize: 13.5, lineHeight: 1.45 } as React.CSSProperties,
                       };
-                      // Le bilan montre en couleur ce qui part dans les notes des élèves. Le prévu d'un groupe encadre le
-                      // prénom qui ouvre la part d'un élève (« Lina : », voir prevuParEleve.ts) : ce qui suit est pour lui.
+                      // Le bilan montre en couleur ce qui part dans les notes des élèves. Le prévu d'un groupe surligne
+                      // l'étape de chaque élève de sa couleur (« Lina : … », voir prevuParEleve.ts).
                       if (champ === "bilan") {
                         return <ZoneSurlignee {...proprietes} segments={segmentsDuBilan(b.bilan, prenomsDeLaClasse)}
                           ref={(el) => { zones.current[c.id] = el; }} />;
                       }
                       return prenoms.length
-                        ? <ZoneSurlignee {...proprietes} segments={segmentsDuPrevu(b.prevu, prenoms as string[])}
+                        ? <ZoneSurlignee {...proprietes} segments={segmentsDuPrevu(b.prevu, prenoms)}
                             ref={(el) => { zonesPrevu.current[c.id] = el; }} />
                         : <textarea className="textarea" {...proprietes} ref={(el) => { zonesPrevu.current[c.id] = el; }} />;
                     })()}

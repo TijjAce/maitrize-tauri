@@ -1363,8 +1363,14 @@ table.prog-ime .prog-ime-p { width: 46px; padding-left: 4px; padding-right: 4px;
 .surligneur-fond mark { color: transparent; padding: 0; border-radius: 3px; }
 mark.surligne-phrase { background: color-mix(in srgb, var(--accent) 26%, transparent); }
 mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparent); }
-/* Au prévu, le prénom qui ouvre la part d'un élève : encadré, sans rien décaler du texte. */
-mark.surligne-cadre { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 4px; box-shadow: 0 0 0 1.5px var(--accent); }
+/* Au prévu d'un groupe, l'étape d'un élève surlignée de sa couleur, son prénom un ton plus fort ; celle de plusieurs en gris,
+   chaque prénom de sa couleur (voir prevuParEleve.ts). */
+mark.surligne-eleve { background: color-mix(in srgb, var(--eleve, var(--accent)) 22%, transparent); }
+mark.surligne-eleves { background: color-mix(in srgb, var(--text-2) 16%, transparent); }
+mark.surligne-eleve-nom { background: color-mix(in srgb, var(--eleve, var(--accent)) 48%, transparent); }
+.eleve-c0 { --eleve: #4a86e8; } .eleve-c1 { --eleve: #d9822b; } .eleve-c2 { --eleve: #2f9e6e; } .eleve-c3 { --eleve: #9b59b6; }
+.eleve-c4 { --eleve: #d64545; } .eleve-c5 { --eleve: #1f9bb0; } .eleve-c6 { --eleve: #b8860b; } .eleve-c7 { --eleve: #c2185b; }
+.pastille-eleve { display: inline-block; flex: none; width: .75em; height: .75em; border-radius: 50%; background: var(--eleve, var(--accent)); }
 
 /* Le « ? » qui ouvre une explication, et la bulle qu'il ouvre. */
 .aide-ancre { position: relative; display: inline-flex; flex: none; }

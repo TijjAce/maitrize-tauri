@@ -158,37 +158,46 @@ export function aFaireDuCreneau(c: Pick<Creneau, "prevu">, fiches: MaterielItem[
   return sortie;
 }
 
-/** Ce que fait toute la classe au créneau : une séance, ou un jeu de la ludothèque. */
-export type DeLaClasse = { seance: Seance; jeu?: undefined } | { jeu: Jeu; seance?: undefined };
+/** Ce que fait toute la classe au créneau : une séance, ou un jeu de la ludothèque ; sur la bande d'un élève, une étape à son prénom. */
+export type DeLaClasse =
+  | { seance: Seance; jeu?: undefined; etape?: undefined }
+  | { jeu: Jeu; seance?: undefined; etape?: undefined }
+  | { etape: string; seance?: undefined; jeu?: undefined };
 
 /**
  * Ce que fait la classe au créneau, dans l'ordre : la séance posée, puis ce
  * que le prévu cite — les séances, par la ligne du bouton 📚 ou par le titre
  * de leur séquence, et les jeux de la ludothèque —, chacun une fois. Ce qui
- * suit « ⏰ En autonomie : » est à chaque élève, pas à la classe.
+ * suit « ⏰ En autonomie : » est à chaque élève, pas à la classe. Les
+ * `etapes` — le rang de lignes du prévu — sont celles qu'on a données à un
+ * élève (voir prevuParEleve.ts) : sur sa bande, celle qui ne cite ni séance ni
+ * jeu a sa carte à elle.
  */
-export function deLaClasse(c: Pick<Creneau, "prevu">, posee: Seance | undefined, sequences: Sequence[], seances: Seance[], jeux: Jeu[]): DeLaClasse[] {
+export function deLaClasse(
+  c: Pick<Creneau, "prevu">, posee: Seance | undefined, sequences: Sequence[], seances: Seance[], jeux: Jeu[], etapes: readonly number[] = [],
+): DeLaClasse[] {
   const sortie: DeLaClasse[] = posee ? [{ seance: posee }] : [];
   const vus = new Set(posee ? [`s:${posee.id}`] : []);
-  for (const ligne of (c.prevu ?? "").split("\n")) {
+  for (const [i, ligne] of (c.prevu ?? "").split("\n").entries()) {
     if (ligne.trim() === TETE_EN_AUTONOMIE) break;
-    for (const { seance } of sequencesCitees(ligne, sequences, seances)) {
+    const citees = sequencesCitees(ligne, sequences, seances);
+    for (const { seance } of citees) {
       if (seance && !vus.has(`s:${seance.id}`)) { vus.add(`s:${seance.id}`); sortie.push({ seance }); }
     }
     // La ligne du bouton 📚 ne nomme que sa séance : un jeu n'y est pas cité, même si le titre en contient un.
-    if (ligne.trim().startsWith("📚")) continue;
-    for (const jeu of jeuxCites(ligne, jeux)) {
+    const lesJeux = ligne.trim().startsWith("📚") ? [] : jeuxCites(ligne, jeux);
+    for (const jeu of lesJeux) {
       if (!vus.has(`j:${jeu.id}`)) { vus.add(`j:${jeu.id}`); sortie.push({ jeu }); }
     }
+    if (etapes.includes(i) && !citees.length && !lesJeux.length && ligne.trim()) sortie.push({ etape: ligne.trim() });
   }
   return sortie;
 }
 
-/** Le nom d'un jeu sur son cadre : celui de la ludothèque, sa première lettre en capitale. */
-const nomDuJeu = (j: Pick<Jeu, "titre">): string => {
-  const titre = (j.titre ?? "").trim();
-  return titre.charAt(0).toUpperCase() + titre.slice(1);
-};
+/** Un nom sur son cadre, sa première lettre en capitale. */
+const capitale = (texte: string): string => texte.charAt(0).toUpperCase() + texte.slice(1);
+/** Le nom d'un jeu sur son cadre : celui de la ludothèque. */
+const nomDuJeu = (j: Pick<Jeu, "titre">): string => capitale((j.titre ?? "").trim());
 
 /**
  * Une étape du déroulement d'un créneau, avant son image : ce qu'on lit, la
@@ -245,10 +254,10 @@ export const elevesDuCreneau = (aFaire: AFaire[]): string[] => [...new Set(aFair
  */
 export function pasDuDeroulement(
   c: Pick<Creneau, "prevu">, seance: Seance | undefined, fiches: MaterielItem[], domaineDeSeance = "", eleve?: string,
-  sequences: Sequence[] = [], seances: Seance[] = [], jeux: Jeu[] = [], photos: PhotoDeJeu[] = [],
+  sequences: Sequence[] = [], seances: Seance[] = [], jeux: Jeu[] = [], photos: PhotoDeJeu[] = [], etapes: readonly number[] = [],
 ): PasDuDeroulement[] {
   const lesSiennes = eleve === undefined ? [] : aFaireDuCreneau(c, fiches, sequences, seances).filter((x) => x.eleve === eleve);
-  const classe = deLaClasse(c, seance, sequences, seances, jeux);
+  const classe = deLaClasse(c, seance, sequences, seances, jeux, etapes);
   if (!classe.length && !lesSiennes.length) return [];
   const rituels = titresDesRituels(c.prevu ?? "");
   const deLaSeance = (s: Seance): PasDuDeroulement => {
@@ -263,6 +272,8 @@ export function pasDuDeroulement(
     { texte: rituels.length ? rituels.join(" · ") : "Rituel", matiere: rituels.length ? "Rituel" : "", rituel: true },
     ...classe.map((x, i): PasDuDeroulement => {
       if (x.seance) return taches[i]!;
+      // Une étape donnée à l'élève : ce qu'elle dit, avec la matière et le picto de la séance du créneau, comme un jeu.
+      if (x.etape !== undefined) return { texte: capitale(x.etape), matiere: premiere?.matiere ?? "", ...(premiere?.domaine ? { domaine: premiere.domaine } : {}) };
       const sienne = premiereCompetence(x.jeu.competencesBo);
       const propre = sienne?.sousDomaine || sienne?.domaine;
       const domaine = propre || premiere?.domaine;

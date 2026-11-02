@@ -77,19 +77,26 @@ describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octob
     expect(pasDeLaBande(c, undefined, [], "", [sequence], [{ ...seance, numero: 1 } as Seance], [oie], photos.slice(1)).every((p) => p.picto === undefined)).toBe(true);
   });
 
-  it("partage la bande d'un groupe : une par élève, son prénom en tête, avec ce qui est à tous et sa part (2026-11-02)", async () => {
-    // Un créneau de groupe comme celui de l'enseignant, prénoms inventés : la séance de l'une, le jeu de l'autre.
+  it("partage la bande d'un groupe : une par élève, son prénom en tête, ce qui est à tous et ses étapes dans l'ordre (2026-11-02)", async () => {
+    // Un créneau de groupe comme celui de l'enseignant, prénoms inventés : la séance de l'une, le jeu de l'autre, surlignés à leur prénom.
     const sequence = { id: "q1", titre: "Comparer des quantités", matiere: "Mathématiques", competences: "[]" } as unknown as Sequence;
     const oie = { id: "j1", titre: "jeu de l’oie" } as Jeu;
     const lesSeances = [{ ...seance, numero: 1 } as Seance];
     const groupe = creneau("c2", "14:10", "15:00", "Lina-Tom", {
       elevesJson: '["e1","e2"]',
-      prevu: "matériel base 10\nLina : 📚 Comparer des quantités · séance 1 : Comparer des collections\n\nPour Tom\nbande numérique jusqu'à 30\njeu de l’oie",
+      prevu: "matériel base 10\nLina : 📚 Comparer des quantités · séance 1 : Comparer des collections\n\nTom : jeu de l’oie",
     });
     const deLina = pasDeLaBandeDe(groupe, "Lina", ["Lina", "Tom"], undefined, [], "", [sequence], lesSeances, [oie]);
     const deTom = pasDeLaBandeDe(groupe, "Tom", ["Lina", "Tom"], undefined, [], "", [sequence], lesSeances, [oie]);
     expect(deLina.map((p) => p.texte)).toEqual(["Rituel", "Comparer des collections"]);
     expect(deTom.map((p) => p.texte)).toEqual(["Rituel", "Jeu de l’oie"]);
+    // « Deux élèves peuvent faire la même chose, mais pas au même moment » : chacun ses étapes, dans l'ordre où elles sont écrites ;
+    // une étape qui ne cite ni séance ni jeu a sa carte, avec la matière de la séance de l'élève. Ce qui est à tous, sans étape, n'en a pas.
+    const tour = { ...groupe, prevu: "matériel base 10\nLina : 📚 Comparer des quantités · séance 1 : Comparer des collections\nLina : jeu de l’oie\nTom : la frise\nTom : jeu de l’oie" };
+    expect(pasDeLaBandeDe(tour, "Lina", ["Lina", "Tom"], undefined, [], "", [sequence], lesSeances, [oie]).map((p) => [p.texte, p.matiere]))
+      .toEqual([["Rituel", ""], ["Comparer des collections", "Mathématiques"], ["Jeu de l’oie", "Mathématiques"]]);
+    expect(pasDeLaBandeDe(tour, "Tom", ["Lina", "Tom"], undefined, [], "", [sequence], lesSeances, [oie]).map((p) => p.texte))
+      .toEqual(["Rituel", "La frise", "Jeu de l’oie"]);
     const eleves = [{ id: "e1", prenom: "Lina" }, { id: "e2", prenom: "Tom" }, { id: "e3", prenom: "Zoé" }];
     // Qui a sa bande : le groupe dont le prévu a des parts ; un groupe sans parts, ou la classe, garde une bande pour tous.
     expect(elevesEnBandes(groupe, eleves)).toEqual(["Lina", "Tom"]);

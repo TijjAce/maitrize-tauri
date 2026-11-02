@@ -44,7 +44,7 @@ export const ZoneSurlignee = React.forwardRef<HTMLTextAreaElement,
       <div className="surligneur">
         <div ref={fond} className={`${className} surligneur-fond`} style={{ ...style, resize: "none" }} aria-hidden="true">
           {segments.map((s, i) => (s.genre
-            ? <mark key={i} className={`surligne-${s.genre}`}>{s.texte}</mark>
+            ? <mark key={i} className={`surligne-${s.genre}${s.couleur !== undefined ? ` eleve-c${s.couleur % 8}` : ""}`}>{s.texte}</mark>
             : <React.Fragment key={i}>{s.texte}</React.Fragment>))}
           {/* Un texte qui finit par un retour à la ligne : le calque doit avoir cette ligne aussi. */}
           {"​"}
