@@ -106,6 +106,25 @@ describe("une réunion écrite en direct par Voxtral Realtime (demande de l'ense
     expect(sockets).toHaveLength(1);
   });
 
+  it("reconnaît les voix sur demande : le texte arrive par tours de parole, chacun avec son intervenant", async () => {
+    const sockets: FausseSocket[] = [];
+    const tours: [string, string | null][] = [];
+    ouvrirLeDirect({
+      jeton: async () => ({ jeton: "rt_1", modele: "voxtral-mini-transcribe-realtime-3" }),
+      surTexte: () => { throw new Error("pas de texte sans intervenant"); },
+      diarize: true,
+      surTour: (texte, qui) => tours.push([texte, qui]),
+      surPanne: () => {},
+      creerSocket: (a, p) => { const s = new FausseSocket(a, p); sockets.push(s); return s; },
+    });
+    await tourDeBoucle();
+    sockets[0].recevoir({ type: "session.created" });
+    expect(sockets[0].envoyes[0].session).toMatchObject({ diarize: true, language: "fr" });
+    sockets[0].recevoir({ type: "transcription.segment", text: "Bonjour à tous.", start: null, end: null, speaker_id: "speaker_1" });
+    sockets[0].recevoir({ type: "transcription.segment", text: "Bonjour !", start: null, end: null, speaker_id: "speaker_2" });
+    expect(tours).toEqual([["Bonjour à tous.", "speaker_1"], ["Bonjour !", "speaker_2"]]);
+  });
+
   it("ramène la voix à 16 kHz par moyenne, et l'écrit en 16 bits", () => {
     const rampe = Float32Array.from({ length: 48 }, (_, i) => i);
     expect(Array.from(reechantillonner(rampe, 48000))).toEqual(Array.from({ length: 16 }, (_, i) => 3 * i + 1));

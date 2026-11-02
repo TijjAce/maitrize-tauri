@@ -1,19 +1,21 @@
 import React from "react";
 import { Page } from "../App";
 import { api, journal, newId, nowIso, texteErreur, type Reunion } from "../api";
-import { Field, Input, Modal, Select } from "../components/ui";
+import { Demander, Field, Input, Modal, Select } from "../components/ui";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { openCtx } from "../components/ctxmenu";
 import { printHTML, escapeHtml } from "../print";
 import { useEcoute, type TrancheAudio } from "../ecoute";
 import { ouvrirLeDirect, type Direct } from "../voxtralDirect";
+import { DialogueReunion } from "../components/DialogueReunion";
+import { ajouterUnTour, nomParDefaut, nomPropre, renommer } from "../dialogueReunion";
 import { ZoneVivante } from "../components/ZoneVivante";
 import {
   choixIci, paroleMinimale, plafondDuMorceau, sortieDeLAudio, transcrire, type Choix, type Moteur,
 } from "../transcription";
 import {
-  GENRES, ajouterAuDocument, ajouterAuTexte, ajouterLeDirectAuDocument, ajouterLeDirectAuTexte, apresLaPasse,
+  GENRES, ajouterLeDirectAuDocument, apresLaPasse,
   assezPourResumer, convertirAnciennes,
   dureeLisible, ecrireResumes, lirePlan, lireResumes, mettreAuPropre,
   assezPourRelire, nomDeLaReunion, phrasesEnAttente, planVide, rangerLeDocument,
@@ -46,15 +48,9 @@ const aujourdhui = () => isoJour(new Date());
 
 /** L'accord donné une fois, gardé sur ce poste : l'écoute part seule ensuite. */
 const CLE_CONSENTEMENT = "reunionsConsentement";
-
-/**
- * Le repos après lequel on résume, une fois les dix phrases atteintes.
- *
- * Court exprès : un texte qui continue d'arriver — la dictée qui reprend, une
- * frappe rapide — ne doit pas repousser le résumé indéfiniment. Il sert juste
- * à ne pas partir au milieu d'un mot.
- */
-const REPOS_MS = 1000;
+/** « direct » : les réunions se transcrivent chez Mistral, en direct, les voix reconnues — quoi que disent les Réglages. */
+const CLE_TRANSCRIPTION = "reunionsTranscription";
+type Transcription = "direct" | "";
 
 /** Une réunion vide, datée d'aujourd'hui. */
 function nouvelleReunion(): Reunion {
@@ -75,11 +71,15 @@ interface Infos { titre: string; genre: string; date: string; participants: stri
  * réunion, on regarde le texte. Pour la reprendre après coup, clic droit sur
  * la réunion dans la liste.
  */
-function FicheReunion({ infos, titre, bouton, onValider, onClose, mode, setMode, moteur }: {
+function FicheReunion({ infos, titre, bouton, onValider, onClose, mode, setMode, moteur, transcription, setTranscription, reglagesLocal }: {
   infos: Infos; titre: string; bouton: string;
   onValider: (i: Infos) => void; onClose: () => void;
   /** Le choix se fait ici, avant de commencer — pas pendant la réunion. */
   mode: ModeIA; setMode: (m: ModeIA) => void; moteur: Moteur;
+  /** « direct » : Mistral en direct, les voix reconnues, même si les Réglages transcrivent sur l'ordinateur. */
+  transcription: Transcription; setTranscription: (t: Transcription) => void;
+  /** Les Réglages transcrivent-ils sur cet ordinateur ? Sinon, la réunion est de toute façon en ligne. */
+  reglagesLocal: boolean;
 }) {
   const [i, setI] = React.useState<Infos>(infos);
   const champ = <T extends keyof Infos>(k: T) => (e: { target: { value: string } }) =>
@@ -108,7 +108,19 @@ function FicheReunion({ infos, titre, bouton, onValider, onClose, mode, setMode,
           <Input value={i.participants} placeholder="Directrice, psychologue, éducatrice, la famille…"
             onChange={champ("participants")} />
         </Field>
-        <Field label="Pendant la réunion">
+        <Field label="La transcription">
+          {reglagesLocal ? (
+            <div className="seg" role="group" aria-label="Où la parole est transcrite">
+              <button type="button" className={transcription === "direct" ? "active" : ""} onClick={() => setTranscription("direct")}
+                title="La voix part chez Mistral, en direct : chaque personne qui parle est reconnue, comme dans une conversation.">
+                ☁️ Mistral en direct — les voix reconnues</button>
+              <button type="button" className={transcription === "direct" ? "" : "active"} onClick={() => setTranscription("")}
+                title="Whisper, sur cet ordinateur : l'audio ne sort pas, mais les voix ne sont pas reconnues.">
+                🔒 Sur cet ordinateur</button>
+            </div>
+          ) : <div className="meta">☁️ Mistral en direct — les voix reconnues (Réglages · IA)</div>}
+        </Field>
+        <Field label="L'IA, après la réunion">
           <div className="seg" role="group" aria-label="Ce qui part en ligne">
             {MODES.map((m) => (
               <button key={m.id} type="button" className={mode === m.id ? "active" : ""}
@@ -118,7 +130,7 @@ function FicheReunion({ infos, titre, bouton, onValider, onClose, mode, setMode,
         </Field>
         <p style={{ margin: "2px 0 0", fontSize: 12.5, lineHeight: 1.5, color: "var(--text-2)" }}>
           {MODES.find((m) => m.id === mode)?.aide}
-          {" "}{sortieDeLAudio(moteur)}
+          {" "}{moteur === "ligne" ? "L'audio part chez Mistral AI, entreprise française, pour être transcrit en direct." : sortieDeLAudio(moteur)}
         </p>
         {/* Le formulaire se valide à l'Entrée : on pose l'ordinateur et ça part. */}
         <button type="submit" hidden />
@@ -156,6 +168,14 @@ export default function Reunions() {
   const [choix, setChoix] = React.useState<{ texte: string; debut: number; fin: number } | null>(null);
   const [reformule, setReformule] = React.useState(false);
   const encadre = React.useRef<HTMLTextAreaElement | null>(null);
+  // Ce que montre la réunion : la conversation, le texte à corriger, ou le compte rendu de l'IA s'il y en a un.
+  const [vue, setVue] = React.useState<"dialogue" | "corriger" | "compteRendu">("dialogue");
+  // La personne qu'on renomme, et le nom de chaque voix reconnue dans l'écoute en cours.
+  const [aRenommer, setARenommer] = React.useState<string | null>(null);
+  const noms = React.useRef(new Map<string, string>());
+  // Mistral en direct pour les réunions, même quand les Réglages transcrivent sur l'ordinateur.
+  const [transcription, setTranscription] = React.useState<Transcription>("");
+  const [reglagesLocal, setReglagesLocal] = React.useState(true);
 
   // Ce que les rappels du micro et des minuteurs doivent lire : ils vivent
   // plus longtemps qu'un rendu, et une valeur figée leur ferait résumer deux
@@ -185,9 +205,6 @@ export default function Reunions() {
   // peu plus tard, c'est tout.
   const secondesRelues = React.useRef(0);
   const secondesRef = React.useRef(0);
-  // Un booléen, pas l'objet : `courante` change à chaque enregistrement, et
-  // en dépendre relancerait le minuteur du résumé sans arrêt.
-  const ouverte = !!courante;
 
   /**
    * Relit les réglages qui commandent la réunion.
@@ -198,10 +215,12 @@ export default function Reunions() {
    * l'application — et la réunion suivante repartait chez Mistral.
    */
   const relireLeMoteur = React.useCallback(async () => {
-    const c = await choixIci("reunions");
+    const [c, voulue] = await Promise.all([choixIci("reunions"), api.settingGet(CLE_TRANSCRIPTION).catch(() => null)]);
+    setReglagesLocal(!("moteur" in c) || c.moteur === "local");
+    setTranscription(voulue === "direct" ? "direct" : "");
     // Un modèle voulu mais absent : l'écoute reste ici, et chaque passage dit
     // pourquoi il ne s'écrit pas — rien ne part en ligne à sa place.
-    const choix: Choix = "erreur" in c ? { moteur: "local", modele: "" } : c;
+    const choix: Choix = voulue === "direct" ? { moteur: "ligne" } : "erreur" in c ? { moteur: "local", modele: "" } : c;
     choixRef.current = choix;
     setMoteur(choix.moteur);
   }, []);
@@ -225,6 +244,10 @@ export default function Reunions() {
   const choisirMode = (m: ModeIA) => {
     setMode(m);
     api.settingSet(CLE_MODE, m).catch(() => {});
+  };
+  const choisirTranscription = (v: Transcription) => {
+    setTranscription(v);
+    void api.settingSet(CLE_TRANSCRIPTION, v).catch(() => {}).then(() => relireLeMoteur());
   };
 
   const charger = React.useCallback(async () => {
@@ -375,22 +398,20 @@ export default function Reunions() {
     }
   }, [majResume, majReunion]);
 
-  // Deux phrases de plus, et le rangement part — après un court repos, pour
-  // ne pas couper un mot en train de s'écrire. Le même chemin sert à la
-  // dictée et à la frappe.
-  //
-  // Le minuteur ne dépend **pas** du texte : sinon chaque arrivée le remet à
-  // zéro, et si la parole arrive plus vite que le repos, il ne part jamais.
-  // Le défaut s'était déjà produit ; il ne se reproduira pas.
-  const assez = assezPourResumer(phrasesEnAttente(texte, resumes).phrases.length);
-  // `mode` et `horsLigne` en font partie : reprendre « Ranger », ou retrouver
-  // le réseau, doit rattraper ce qui attend — sans quoi il faut reparler pour
-  // que le rangement reparte.
-  React.useEffect(() => {
-    if (!ouverte || !assez) return;
-    const t = window.setTimeout(() => { void integrerSiBesoin(); }, REPOS_MS);
-    return () => window.clearTimeout(t);
-  }, [ouverte, assez, integrerSiBesoin, mode, horsLigne]);
+  // Rien ne se range pendant la réunion : « ne reformule rien, juste tu
+  // transcris » (2026-11-02). Le compte rendu de l'IA ne se fait plus qu'à la
+  // demande, après (voir `rediger`), à côté de la conversation qui reste telle
+  // qu'elle a été dite.
+
+  /** Le compte rendu de l'IA, à la demande : il range la conversation sans y toucher. */
+  const rediger = async () => {
+    if (!compteRenduRef.current.trim()) {
+      compteRenduRef.current = texteRef.current;
+      setCompteRendu(texteRef.current);
+    }
+    setVue("compteRendu");
+    await integrerSiBesoin(true);
+  };
 
   // ── L'écoute ────────────────────────────────────────────────────────────
 
@@ -407,28 +428,41 @@ export default function Reunions() {
   // toutes les cinq secondes.
   const sauveLeDirect = React.useRef(0);
 
+  /** La conversation telle qu'elle s'écrit : rien d'autre ne change (« ne reformule rien », 2026-11-02). */
+  const ecrireLaConversation = React.useCallback((suite: string) => {
+    texteRef.current = suite;
+    setTexte(suite);
+    const toutDeSuite = Date.now() - sauveLeDirect.current > 5000;
+    if (toutDeSuite) sauveLeDirect.current = Date.now();
+    majReunion({ texte: suite }, toutDeSuite);
+  }, [majReunion]);
+
+  /** Des mots sans voix reconnue : au fil de la parole, un nouveau paragraphe après un silence. */
   const ecrireLeDirect = React.useCallback((morceau: string) => {
     const nouveau = apresUnSilence.current;
     if (morceau.trim()) apresUnSilence.current = false;
-    const texteSuite = ajouterLeDirectAuTexte(texteRef.current, morceau, nouveau);
-    const document = ajouterLeDirectAuDocument(compteRenduRef.current, morceau, nouveau);
-    texteRef.current = texteSuite;
-    setTexte(texteSuite);
-    compteRenduRef.current = document;
-    setCompteRendu(document);
-    const toutDeSuite = Date.now() - sauveLeDirect.current > 5000;
-    if (toutDeSuite) sauveLeDirect.current = Date.now();
-    majReunion({ texte: texteSuite, compteRendu: document }, toutDeSuite);
-  }, [majReunion]);
+    ecrireLaConversation(ajouterLeDirectAuDocument(texteRef.current, morceau, nouveau));
+  }, [ecrireLaConversation]);
+
+  /** Un tour de parole, sous le nom de sa voix — « Personne 2 », ou le nom que l'enseignant lui a donné. */
+  const ecrireUnTour = React.useCallback((morceau: string, intervenant: string | null) => {
+    const nom = (intervenant && noms.current.get(intervenant)) || nomParDefaut(intervenant);
+    if (intervenant && !noms.current.has(intervenant)) noms.current.set(intervenant, nom);
+    ecrireLaConversation(ajouterUnTour(texteRef.current, nom, morceau));
+  }, [ecrireLaConversation]);
 
   /** En ligne, le direct s'ouvre avec l'écoute ; sur cet ordinateur (Whisper), rien ne change. */
   const ouvrirDirect = React.useCallback(() => {
     direct.current = null;
     if (choixRef.current.moteur !== "ligne") return;
     apresUnSilence.current = true;
+    // Les voix d'une liaison ne valent que pour elle : chaque écoute repart des siennes.
+    noms.current = new Map([...noms.current].filter(([, nom]) => !/^Personne \d+$/.test(nom)));
     const d = ouvrirLeDirect({
       jeton: () => api.mistralJetonTempsReel(),
       surTexte: ecrireLeDirect,
+      diarize: true,
+      surTour: ecrireUnTour,
       surPanne: (raison) => {
         if (direct.current === d) direct.current = null;
         journal(`RÉUNION direct de Voxtral interrompu : ${raison}`);
@@ -436,7 +470,7 @@ export default function Reunions() {
       },
     });
     direct.current = d;
-  }, [ecrireLeDirect]);
+  }, [ecrireLeDirect, ecrireUnTour]);
 
   /** Les derniers mots du direct, puis il se ferme. */
   const fermerDirect = React.useCallback(async () => {
@@ -462,14 +496,8 @@ export default function Reunions() {
         r.readAsDataURL(t.blob);
       });
       const morceau = await transcrire(b64, choixRef.current);
-      // Deux endroits, un seul visible : la source garde le mot à mot, et
-      // l'encadré reçoit la parole brute à la suite — c'est elle qu'on voit
-      // s'écrire, et que l'agent rangera au prochain passage.
-      poserTexte(ajouterAuTexte(texteRef.current, morceau), true);
-      const suite = ajouterAuDocument(compteRenduRef.current, morceau);
-      compteRenduRef.current = suite;
-      setCompteRendu(suite);
-      majReunion({ compteRendu: suite }, true);
+      // Un passage, un paragraphe de la conversation, sans nom : ces moteurs ne reconnaissent pas les voix.
+      poserTexte(ajouterUnTour(texteRef.current, "", morceau), true);
     } catch (e) {
       const message = texteErreur(e);
       if (estUnePanneDeReseau(message) && moteurRef.current === "ligne") signalerLaPanne();
@@ -491,6 +519,7 @@ export default function Reunions() {
   const ouvrir = (r: Reunion) => {
     if (ecoute.etat !== "repos") { toast("Terminez l'écoute en cours avant de changer de réunion.", { icone: "🎧" }); return; }
     setCourante(r);
+    setVue("dialogue");
     // Une réunion d'avant ce changement n'a que ses tranches de cinq minutes :
     // on en refait un texte suivi et des résumés, une fois pour toutes.
     const ancienne = !r.texte.trim() && !lireResumes(r.resumesJson).length && r.tranchesJson.length > 2;
@@ -520,6 +549,7 @@ export default function Reunions() {
     const r = { ...nouvelleReunion(), ...i };
     await enregistrer(r);
     setCourante(r);
+    setVue("dialogue");
     texteRef.current = ""; setTexte("");
     resumesRef.current = []; setResumes([]);
     setCompteRendu("");
@@ -562,9 +592,8 @@ export default function Reunions() {
   const terminer = () => {
     ecoute.arreter();
     majReunion({ dureeS: ecoute.secondes }, true);
-    // Ce qui reste sous les dix phrases mérite quand même son résumé, une
-    // fois la dernière transcription arrivée — en direct, ses derniers mots.
-    void fermerDirect().then(() => { window.setTimeout(() => { void integrerSiBesoin(true); }, 1500); });
+    // En direct, les derniers mots arrivent encore ; rien ne se range ensuite.
+    void fermerDirect();
   };
 
   // ── Le compte rendu ─────────────────────────────────────────────────────
@@ -700,7 +729,7 @@ export default function Reunions() {
   const aExpliquer = !enCours && !aDuTexte && !consentementVu && !dejaExplique.current;
 
   return (
-    <Page titre="Réunions" sous="Le texte s'écrit tout seul, et se range au fil de la parole"
+    <Page titre="Réunions" sous="Le texte s'écrit tout seul, au fil de la parole"
       actions={<button className="btn primary" onClick={creer}>＋ Nouvelle réunion</button>}>
 
       {fiche && (
@@ -712,6 +741,7 @@ export default function Reunions() {
             : { titre: "", genre: GENRES[0], date: aujourdhui(), participants: "" }}
           onClose={() => setFiche(null)}
           mode={mode} setMode={choisirMode} moteur={moteur}
+          transcription={transcription} setTranscription={choisirTranscription} reglagesLocal={reglagesLocal}
           onValider={(i) => { const pour = fiche.pour; void (pour ? reprendreLaFiche(pour, i) : commencer(i)); }}
         />
       )}
@@ -797,6 +827,10 @@ export default function Reunions() {
                     <button className="btn" disabled={!!occupe} onClick={() => { void auPropre(); }}
                       title="Rédiger le compte rendu au propre (l'IA, noms masqués)">✍️ Mettre au propre</button>
                   )}
+                  {rangeEnLigne(mode) && texte.trim() && planVide(lirePlan(compteRendu)) && (
+                    <button className="btn" disabled={!!occupe} onClick={() => { void rediger(); }}
+                      title="L'IA range la conversation en compte rendu, à côté d'elle : la conversation ne change pas (noms masqués)">🗂 Compte rendu par l'IA</button>
+                  )}
                   <button className="btn primary" onClick={demarrer}>🎧 Écouter</button>
                   <button className="btn ghost" onClick={() => setCourante(null)}>← Mes réunions</button>
                 </>
@@ -816,10 +850,37 @@ export default function Reunions() {
               </p>
             )}
 
-            {/* L'encadré, et rien d'autre. Surligner un passage fait
-                apparaître « Reformuler » — la seule IA qu'on appelle à la
-                main, et la parole continue de s'écrire pendant ce temps. */}
-            <div style={{ position: "relative" }}>
+            {/* La conversation, telle qu'elle a été dite ; le texte, à corriger ; et le compte rendu de l'IA, s'il y en a un. */}
+            {(aDuTexte || compteRendu.trim()) && (
+              <div className="seg" role="tablist" aria-label="Ce qu'on regarde" style={{ marginBottom: 10 }}>
+                <button type="button" className={vue === "dialogue" ? "active" : ""} onClick={() => setVue("dialogue")}>💬 La conversation</button>
+                <button type="button" className={vue === "corriger" ? "active" : ""} onClick={() => setVue("corriger")}>✏️ Corriger</button>
+                {compteRendu.trim() && (
+                  <button type="button" className={vue === "compteRendu" ? "active" : ""} onClick={() => setVue("compteRendu")}>📄 Compte rendu</button>
+                )}
+              </div>
+            )}
+            {vue === "dialogue" && <DialogueReunion dialogue={texte} enCours={enCours} onRenommer={setARenommer} />}
+            {vue === "corriger" && (
+              <ZoneVivante cible={texte} minHauteur="62vh" anime={false}
+                onChange={(v) => poserTexte(v)}
+                placeholder="La conversation, un paragraphe par tour de parole : « Nom : ce qui est dit »." />
+            )}
+            {aRenommer !== null && (
+              <Demander titre={`Renommer « ${aRenommer} »`} label="Son nom, pour toute la conversation" valeur={aRenommer}
+                onClose={() => setARenommer(null)}
+                onValider={(v) => {
+                  const ancien = aRenommer;
+                  setARenommer(null);
+                  const nouveau = nomPropre(v);
+                  if (!nouveau || nouveau === ancien) return;
+                  for (const [voix, nom] of noms.current) if (nom === ancien) noms.current.set(voix, nouveau);
+                  poserTexte(renommer(texteRef.current, ancien, nouveau), true);
+                }} />
+            )}
+            {/* Le compte rendu de l'IA. Surligner un passage fait apparaître
+                « Reformuler » — à la main seulement. */}
+            {vue === "compteRendu" && <div style={{ position: "relative" }}>
               <ZoneVivante cible={compteRendu} minHauteur="62vh" anime={enCours || transcrit}
                 zoneRef={encadre} onSelection={rangeEnLigne(mode) ? setChoix : undefined}
                 onChange={(v) => { compteRenduRef.current = v; setCompteRendu(v); majReunion({ compteRendu: v }); }}
@@ -836,7 +897,7 @@ export default function Reunions() {
                   {reformule ? "Reformulation…" : "✨ Reformuler"}
                 </button>
               )}
-            </div>
+            </div>}
           </>
         )}
       </div>

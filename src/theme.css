@@ -506,6 +506,19 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .chat-images-note { font-size: 12px; flex: 1 1 220px; }
 .chat-images + .chat-input { border-top: 0; }
 .msg-images { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+
+/* La réunion comme une conversation (DialogueReunion.tsx) : une bulle par tour de parole, une couleur par voix. */
+.dialogue { min-height: 62vh; max-height: 70vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 18px;
+  border: 1px solid var(--border); border-radius: var(--r-carte, 14px); background: var(--panel); }
+.dialogue-vide { margin: auto; color: var(--text-2); }
+.dialogue-tour { max-width: 82%; display: flex; flex-direction: column; align-items: flex-start; --voix: var(--text-2); }
+.dialogue-nom { border: 0; background: none; padding: 0 0 3px 6px; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--voix); cursor: pointer; }
+.dialogue-nom:hover { text-decoration: underline; }
+.dialogue-bulle { background: var(--panel-2); border-left: 4px solid var(--voix); border-radius: 12px; padding: 8px 12px; line-height: 1.55;
+  white-space: pre-wrap; overflow-wrap: anywhere; }
+.dialogue-tour.voix-0 { --voix: #4a86e8; } .dialogue-tour.voix-1 { --voix: #d9822b; } .dialogue-tour.voix-2 { --voix: #2f9e6e; }
+.dialogue-tour.voix-3 { --voix: #9b59b6; } .dialogue-tour.voix-4 { --voix: #d64545; } .dialogue-tour.voix-5 { --voix: #1f9bb0; }
+.dialogue-tour.voix-6 { --voix: #b8860b; } .dialogue-tour.voix-7 { --voix: #c2185b; }
 .msg-images img { display: block; max-height: 200px; max-width: 100%; border-radius: 8px; background: #fff; }
 
 /* ── Notes flottantes ─────────────────────────────────── */

@@ -13,6 +13,12 @@
 // texte revient par morceaux (`transcription.text.delta`). Un jeton n'ouvre
 // qu'une liaison : une liaison tombée en reprend un autre. Trois échecs de
 // suite, et le direct rend la main : la réunion continue par passages.
+//
+// Puis : « je veux de la reconnaissance de voix avec les personnages qui
+// parlent, comme un tchat » (2026-11-02). Avec `diarize`, Voxtral reconnaît
+// les voix : le texte arrive alors par tours de parole
+// (`transcription.segment`), chacun avec son intervenant (« speaker_1 »…).
+// La documentation prévient que ces noms ne valent que pour une liaison.
 
 /** Le direct de Voxtral, chez Mistral. */
 export const ADRESSE_DU_DIRECT = "wss://api.mistral.ai/v1/audio/transcriptions/realtime";
@@ -76,6 +82,10 @@ export interface OptionsDuDirect {
   jeton: () => Promise<{ jeton: string; modele: string }>;
   /** Les mots qui arrivent, tels quels : avec leurs espaces. */
   surTexte: (morceau: string) => void;
+  /** Reconnaître les voix : le texte arrive par tours de parole, chacun avec son intervenant. */
+  diarize?: boolean;
+  /** Un tour de parole et son intervenant (« speaker_1 »…), quand les voix sont reconnues. */
+  surTour?: (texte: string, intervenant: string | null) => void;
   /** Le direct a lâché pour de bon : la réunion continue sans lui. */
   surPanne: (raison: string) => void;
   creerSocket?: (adresse: string, protocoles: string[]) => SocketDuDirect;
@@ -141,17 +151,21 @@ export function ouvrirLeDirect(o: OptionsDuDirect): Direct {
     // Une liaison qui ne s'ouvre pas, sans même se fermer, compte pour un échec.
     const delai = setTimeout(() => { if (ws === s && !pret) s.close(); }, OUVERTURE_MAX_MS);
     s.onmessage = (m) => {
-      let ev: { type?: string; text?: string };
+      let ev: { type?: string; text?: string; speaker_id?: string | null };
       try { ev = JSON.parse(String(m.data)); } catch { return; }
       if (ev.type === "session.created") {
         clearTimeout(delai);
         s.send(JSON.stringify({ type: "session.update", session: {
           audio_format: { encoding: "pcm_s16le", sample_rate: TAUX_DU_DIRECT }, target_streaming_delay_ms: DELAI_DU_DIRECT_MS, language: "fr",
+          ...(o.diarize ? { diarize: true } : {}),
         } }));
         pret = true; enCours = false; echecs = 0;
         vider(false);
       } else if (ev.type === "transcription.text.delta" && ev.text) {
         o.surTexte(ev.text);
+      } else if (ev.type === "transcription.segment" && ev.text) {
+        if (o.surTour) o.surTour(ev.text, ev.speaker_id ?? null);
+        else o.surTexte(ev.text);
       } else if (ev.type === "transcription.done") {
         finDuTexte?.();
       } else if (ev.type === "error") {
