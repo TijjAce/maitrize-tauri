@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import {
   FEUILLE_BANDES_MM, LARGEUR_BANDE_MM, SCRIPTS_DES_BANDES, STYLE_BANDES, STYLE_BANDES_DU_JOURNAL,
-  corpsDesBandes, creneauxEnBandes, estUnePause, heuresDeLaBande, largeurDesBandes, pasDeLaBande,
+  corpsDesBandes, creneauxEnBandes, estUnePause, heuresDeLaBande, largeurDesBandes, pasDeLaBande, pasDeLaBandeDe, planningsDesEleves,
 } from "./journeeEnBandes";
 import { documentImprimable } from "./print";
 
@@ -75,6 +75,45 @@ describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octob
     const avecPhoto = pasDeLaBande(c, undefined, [], "", [sequence], [{ ...seance, numero: 1 } as Seance], [oie], photos);
     expect(avecPhoto.map((p) => p.picto)).toEqual([undefined, undefined, -7]);
     expect(pasDeLaBande(c, undefined, [], "", [sequence], [{ ...seance, numero: 1 } as Seance], [oie], photos.slice(1)).every((p) => p.picto === undefined)).toBe(true);
+  });
+
+  it("donne à chaque élève d'un groupe son planning : ce qui est à tous, puis sa part du prévu (« Pour Prénom : », 2026-11-02)", async () => {
+    // Un créneau de groupe comme celui de l'enseignant, prénoms inventés : la séance de l'un, le jeu de l'autre.
+    const sequence = { id: "q1", titre: "Comparer des quantités", matiere: "Mathématiques", competences: "[]" } as unknown as Sequence;
+    const oie = { id: "j1", titre: "jeu de l’oie" } as Jeu;
+    const lesSeances = [{ ...seance, numero: 1 } as Seance];
+    const groupe = creneau("c2", "14:10", "15:00", "Lina-Tom", {
+      elevesJson: '["e1","e2"]',
+      prevu: "matériel base 10\nPour Lina: 📚 Comparer des quantités · séance 1 : Comparer des collections\n\nPour Tom :\nbande numérique jusqu'à 30\njeu de l’oie",
+    });
+    const deLina = pasDeLaBandeDe(groupe, "Lina", ["Lina", "Tom"], undefined, [], "", [sequence], lesSeances, [oie]);
+    const deTom = pasDeLaBandeDe(groupe, "Tom", ["Lina", "Tom"], undefined, [], "", [sequence], lesSeances, [oie]);
+    expect(deLina.map((p) => p.texte)).toEqual(["Rituel", "Comparer des collections"]);
+    expect(deTom.map((p) => p.texte)).toEqual(["Rituel", "Jeu de l’oie"]);
+    // La bande de la classe, elle, garde tout.
+    expect(pasDeLaBande(groupe, undefined, [], "", [sequence], lesSeances, [oie]).map((p) => p.texte)).toEqual(["Rituel", "Comparer des collections", "Jeu de l’oie"]);
+    // Les plannings : un par élève nommé, avec les créneaux de toute la classe et ceux de son groupe seulement.
+    const jour = [
+      creneau("c1", "08:30", "09:00", "Accueil", { prevu: "🔁 L'appel" }),
+      groupe,
+      creneau("c3", "15:00", "15:45", "Zoé", { elevesJson: '["e3"]', prevu: "Lecture" }),
+    ];
+    const eleves = [{ id: "e1", prenom: "Lina" }, { id: "e2", prenom: "Tom" }, { id: "e3", prenom: "Zoé" }, { id: "e4", prenom: "Noé" }];
+    const { plannings } = await planningsDesEleves(jour, eleves, lesSeances, [sequence], [], [oie]);
+    expect(plannings.map((p) => [p.prenom, p.bandes.map((b) => b.heures)])).toEqual([
+      ["Lina", ["8h30 – 9h00", "14h10 – 15h00"]],
+      ["Tom", ["8h30 – 9h00", "14h10 – 15h00"]],
+      ["Zoé", ["8h30 – 9h00", "15h00 – 15h45"]],
+    ]);
+    expect(plannings[0].bandes[1].cadres).toContain("Comparer des collections");
+    expect(plannings[0].bandes[1].cadres).not.toContain("oie");
+    expect(plannings[1].bandes[1].cadres).toContain("Jeu de l’oie");
+    // Une journée où aucun créneau ne nomme ses élèves : pas de planning par élève, chacun serait celui de la classe.
+    expect((await planningsDesEleves([jour[0]], eleves, [], [], [])).plannings).toEqual([]);
+    // La page d'un élève : son prénom en titre, « Mon planning », sans second script.
+    const page = corpsDesBandes("Lina — Lundi 2 novembre", plannings[0].bandes, "", "Mon planning", false);
+    expect(page).toContain("<h1>Lina — Lundi 2 novembre</h1><span>Mon planning</span>");
+    expect(page).not.toContain("<script>");
   });
 
   it("met les bandes côte à côte, regroupées, d'une largeur fixe, sur une page à la suite du cahier journal", () => {

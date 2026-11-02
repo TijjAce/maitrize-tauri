@@ -28,6 +28,7 @@ import type { RefPicto } from "./pictosAppoint";
 import { escapeHtml } from "./print";
 import type { PhotoDeJeu } from "./supportsDeTravail";
 import { titresDesRituels } from "./rituels";
+import { prevuDeLEleve } from "./prevuParEleve";
 
 /** Les temps sans enseignement : la récréation, le repas, la sieste… */
 export const estUnePause = (matiere: string): boolean => /r[ée]cr[ée]|pause|accueil|repas|cantine|sieste/i.test(matiere ?? "");
@@ -65,10 +66,82 @@ export function pasDeLaBande(
   const debut = (eleves.length ? deroulementDe(eleves[0]) : deroulementDe()).filter((p) => !p.fiche);
   const leurs = eleves.flatMap((eleve) => deroulementDe(eleve).filter((p) => p.fiche).map((p) => ({ ...p, eleve })));
   if (debut.length || leurs.length) return [...debut, ...leurs];
+  return carteSeule(c);
+}
+
+/** Un créneau sans séance, ni jeu, ni fiche : une seule carte, ses rituels s'il en cite, sinon sa matière. */
+function carteSeule(c: Pick<Creneau, "prevu" | "matiere">): PasDuDeroulement[] {
   const rituels = titresDesRituels(c.prevu ?? "");
   if (rituels.length) return [{ texte: rituels.join(" · "), matiere: "Rituel", rituel: true }];
   const matiere = (c.matiere ?? "").trim();
   return [{ texte: matiere || "Créneau", matiere: "", ...(matiere ? { domaine: matiere } : {}) }];
+}
+
+// ── Le planning de chaque élève ───────────────────────────────────────────
+//
+// « Il faudrait sur le planning pouvoir distinguer les élèves pour que chaque
+// élève ait son picto — son planning de créneaux » (demande de l'enseignant,
+// 2026-11-02). Quand des créneaux nomment leurs élèves — un groupe —, chaque
+// élève peut avoir sa page : les bandes des créneaux où il est, ceux de son
+// groupe et ceux de toute la classe, chacune avec ce qui est à lui — la part
+// du prévu à son prénom (voir prevuParEleve.ts), ses fiches, ses séances.
+
+/** Les élèves qu'un créneau nomme, par leur identifiant ; aucun : toute la classe. */
+function elevesNommes(c: Pick<Creneau, "elevesJson">): string[] {
+  try {
+    const ids: unknown = JSON.parse(c.elevesJson || "[]");
+    return Array.isArray(ids) ? ids.filter((x): x is string => typeof x === "string") : [];
+  } catch { return []; }
+}
+
+/** Le déroulement d'un créneau pour un élève : ce qui est à tous, sa part du prévu, ses fiches et ses séances. */
+export function pasDeLaBandeDe(
+  c: Pick<Creneau, "prevu" | "matiere">, prenom: string, prenomsDuGroupe: string[], seance: Seance | undefined, fiches: MaterielItem[],
+  domaineDeSeance = "", sequences: Sequence[] = [], seances: Seance[] = [], jeux: Jeu[] = [], photos: PhotoDeJeu[] = [],
+): PasDuDeroulement[] {
+  const sien = { ...c, prevu: prevuDeLEleve(c.prevu ?? "", prenom, prenomsDuGroupe) };
+  const pas = pasDuDeroulement(sien, seance, fiches, domaineDeSeance, prenom, sequences, seances, jeux, photos);
+  return pas.length ? pas : carteSeule(sien);
+}
+
+/** Le planning d'un élève : son prénom, et les bandes de ses créneaux. */
+export interface PlanningDEleve { prenom: string; bandes: Bande[] }
+
+/**
+ * Les plannings des élèves que les créneaux du jour nomment, dans l'ordre de
+ * la classe ; aucun si aucun créneau ne nomme ses élèves — chaque planning
+ * serait celui de la classe.
+ */
+export async function planningsDesEleves(
+  creneaux: Creneau[], eleves: { id: string; prenom: string }[], seances: Seance[], sequences: Sequence[], materiel: MaterielItem[],
+  jeux: Jeu[] = [], photos: PhotoDeJeu[] = [],
+): Promise<{ plannings: PlanningDEleve[]; refs: RefPicto[] }> {
+  const enBandes = creneauxEnBandes(creneaux);
+  const nommes = new Set(enBandes.flatMap(elevesNommes));
+  const lesEleves = eleves.filter((e) => nommes.has(e.id) && e.prenom.trim());
+  if (!lesEleves.length) return { plannings: [], refs: [] };
+  const pictos = await pictosDuDeroulement();
+  const fiches = materiel.filter(estUneFicheDEleve);
+  const prenomDe = new Map(eleves.map((e) => [e.id, e.prenom]));
+  const plannings: PlanningDEleve[] = [];
+  const montres: RefPicto[] = [];
+  for (const eleve of lesEleves) {
+    const bandes: Bande[] = [];
+    for (const c of enBandes) {
+      const ids = elevesNommes(c);
+      if (ids.length && !ids.includes(eleve.id)) continue;
+      const seance = c.seanceId ? seances.find((s) => s.id === c.seanceId) : undefined;
+      const domaine = seance ? domaineDeLaSeance(seance, sequences.find((q) => q.id === seance.sequenceId)) : "";
+      const groupe = ids.map((id) => prenomDe.get(id) ?? "").filter(Boolean);
+      const pas = pasDeLaBandeDe(c, eleve.prenom, groupe, seance, fiches, domaine, sequences, seances, jeux, photos);
+      // Sur sa page, ses fiches sont les siennes : son prénom n'a pas à y être redit.
+      const { html, refs } = await cadresDuDeroulement(pas.map(({ eleve: _eleve, ...p }) => p), pictos);
+      bandes.push({ heures: heuresDeLaBande(c), matiere: c.matiere ?? "", cadres: html });
+      montres.push(...refs);
+    }
+    if (bandes.length) plannings.push({ prenom: eleve.prenom, bandes });
+  }
+  return { plannings, refs: [...new Set(montres)] };
 }
 
 /** La feuille, en millimètres : celle qui suit le cahier journal, en portrait, dans ses marges de 11 mm. */
@@ -162,7 +235,7 @@ export interface Bande { heures: string; matiere: string; cadres: string }
  * même largeur, regroupées —, et ce qui finit la feuille (la mention des
  * pictos). La feuille commence une page : celle qui suit le cahier journal.
  */
-export function corpsDesBandes(titre: string, bandes: Bande[], fin = ""): string {
+export function corpsDesBandes(titre: string, bandes: Bande[], fin = "", sous = "La journée", avecScript = true): string {
   const largeur = largeurDesBandes(bandes.length);
   const colonnes = bandes.length
     ? bandes.map((b) => `<div class="bande" style="width:${largeur}mm"><div class="bande-tete"><span class="bande-heure">${escapeHtml(b.heures)}</span>`
@@ -171,9 +244,10 @@ export function corpsDesBandes(titre: string, bandes: Bande[], fin = ""): string
     : `<div class="bandes-vide">Aucun créneau à imprimer ce jour-là.</div>`;
   return `<div class="bandes-alerte" hidden>La journée est trop longue pour la page, même réduite : le bas d'une bande est coupé. `
     + `Cochez « ne pas imprimer » sur un créneau, ou raccourcissez une séance.</div>`
-    + `<div class="feuille-bandes" lang="fr"><div class="bandes-tete"><h1>${escapeHtml(titre)}</h1><span>La journée</span></div>`
+    + `<div class="feuille-bandes" lang="fr"><div class="bandes-tete"><h1>${escapeHtml(titre)}</h1><span>${escapeHtml(sous)}</span></div>`
     + `<div class="bandes">${colonnes}</div><div class="bandes-fin">${fin}</div></div>`
-    + `<script>${CORPS_BANDES}</script>`;
+    // Un seul script pour toutes les feuilles : il réduit ensemble les cartes de toutes les bandes de la page.
+    + (avecScript ? `<script>${CORPS_BANDES}</script>` : "");
 }
 
 /** Les bandes du jour : le déroulement de chaque créneau qui en a une, dessiné comme pour les tablettes, avec les pictos que l'enseignant a choisis. */
