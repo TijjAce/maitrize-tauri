@@ -9,6 +9,7 @@ import { ouvrirOnglet } from "./ui";
 import { demanderMinuteur, EVT_FERMER_AFFICHAGE } from "../demandeMinuteur";
 import { etatDuMinuteur, piloterLeMinuteur, preparerSon } from "../pages/SupportsVisuels";
 import { zoomerDeLoin } from "../theme";
+import { DIRECT_COUPE } from "../voxtralDirect";
 import { EVT_CHERCHER_BUREAU } from "../bureauAteliers";
 import { annulerDeLoin } from "../annulation";
 import { seanceACreer, sequenceACreer, sequenceToutefaiteACreer, type Demander } from "../creationsALaVoix";
@@ -402,11 +403,11 @@ export function CarteTelecommande() {
           {info ? "Fermer" : "Ouvrir la télécommande"}
         </button>
       </div>
-      <label className="pb-coche" style={{ marginTop: 10 }}>
+      {!DIRECT_COUPE && <label className="pb-coche" style={{ marginTop: 10 }}>
         <input type="checkbox" checked={direct} disabled={verifie} onChange={(e) => void basculerLeDirect(e.target.checked)} />
         <span>Écoute en direct par Voxtral Realtime (en ligne, plus rapide){verifie ? " — vérification…" : ""}</span>
-      </label>
-      <label className="pb-coche">
+      </label>}
+      <label className="pb-coche" style={DIRECT_COUPE ? { marginTop: 10 } : undefined}>
         <input type="checkbox" checked={secoursVoulu} onChange={(e) => basculerLeSecours(e.target.checked)} />
         <span>Mistral pour les phrases complexes, et celles qui ne sont pas comprises (en ligne)</span>
       </label>

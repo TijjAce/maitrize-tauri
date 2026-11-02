@@ -7,7 +7,7 @@ import { confirmer } from "../components/confirmer";
 import { openCtx } from "../components/ctxmenu";
 import { printHTML, escapeHtml } from "../print";
 import { useEcoute, type TrancheAudio } from "../ecoute";
-import { ouvrirLeDirect, type Direct } from "../voxtralDirect";
+import { DIRECT_COUPE, ouvrirLeDirect, type Direct } from "../voxtralDirect";
 import { DialogueReunion } from "../components/DialogueReunion";
 import { ajouterUnTour, enAttenteDeVoix, nombreDeMots, nomParDefaut, nomPropre, renommer } from "../dialogueReunion";
 import { ZoneVivante } from "../components/ZoneVivante";
@@ -112,13 +112,15 @@ function FicheReunion({ infos, titre, bouton, onValider, onClose, mode, setMode,
           {reglagesLocal ? (
             <div className="seg" role="group" aria-label="Où la parole est transcrite">
               <button type="button" className={transcription === "direct" ? "active" : ""} onClick={() => setTranscription("direct")}
-                title="La voix part chez Mistral, en direct : chaque personne qui parle est reconnue, comme dans une conversation.">
-                ☁️ Mistral en direct — les voix reconnues</button>
+                title={DIRECT_COUPE
+                  ? "La voix part chez Mistral, dans l'Union européenne, et s'écrit par passages."
+                  : "La voix part chez Mistral, en direct : chaque personne qui parle est reconnue, comme dans une conversation."}>
+                {DIRECT_COUPE ? "☁️ Mistral, par passages" : "☁️ Mistral en direct — les voix reconnues"}</button>
               <button type="button" className={transcription === "direct" ? "" : "active"} onClick={() => setTranscription("")}
                 title="Whisper, sur cet ordinateur : l'audio ne sort pas, mais les voix ne sont pas reconnues.">
                 🔒 Sur cet ordinateur</button>
             </div>
-          ) : <div className="meta">☁️ Mistral en direct — les voix reconnues (Réglages · IA)</div>}
+          ) : <div className="meta">{DIRECT_COUPE ? "☁️ Mistral, par passages" : "☁️ Mistral en direct — les voix reconnues"} (Réglages · IA)</div>}
         </Field>
         <Field label="L'IA, après la réunion">
           <div className="seg" role="group" aria-label="Ce qui part en ligne">
@@ -130,7 +132,9 @@ function FicheReunion({ infos, titre, bouton, onValider, onClose, mode, setMode,
         </Field>
         <p style={{ margin: "2px 0 0", fontSize: 12.5, lineHeight: 1.5, color: "var(--text-2)" }}>
           {MODES.find((m) => m.id === mode)?.aide}
-          {" "}{moteur === "ligne" ? "L'audio part chez Mistral AI, entreprise française, pour être transcrit en direct." : sortieDeLAudio(moteur)}
+          {" "}{moteur !== "ligne" ? sortieDeLAudio(moteur) : DIRECT_COUPE
+            ? "L'audio part chez Mistral AI, entreprise française, pour être transcrit par passages, dans l'Union européenne."
+            : "L'audio part chez Mistral AI, entreprise française, pour être transcrit en direct."}
         </p>
         {/* Le formulaire se valide à l'Entrée : on pose l'ordinateur et ça part. */}
         <button type="submit" hidden />
@@ -489,7 +493,7 @@ export default function Reunions() {
     instant.current = null;
     oublierLAttente();
     voixSansNoms.current = false;
-    if (choixRef.current.moteur !== "ligne") return;
+    if (choixRef.current.moteur !== "ligne" || DIRECT_COUPE) return;
     apresUnSilence.current = true;
     // Les voix d'une liaison ne valent que pour elle : chaque écoute repart des siennes.
     noms.current = new Map([...noms.current].filter(([, nom]) => !/^Personne \d+$/.test(nom)));

@@ -20,8 +20,14 @@
 // (`transcription.segment`), chacun avec son intervenant (« speaker_1 »…).
 // La documentation prévient que ces noms ne valent que pour une liaison.
 
-/** Le direct de Voxtral, chez Mistral. */
-export const ADRESSE_DU_DIRECT = "wss://api.mistral.ai/v1/audio/transcriptions/realtime";
+/** Le direct de Voxtral, à l'adresse européenne de Mistral (voir ai.rs, `MISTRAL`). */
+export const ADRESSE_DU_DIRECT = "wss://api.eu.mistral.ai/v1/audio/transcriptions/realtime";
+/**
+ * Le direct n'existe pas encore à l'adresse européenne : Mistral y répond
+ * « introuvable » au jeton d'écoute, quel que soit le modèle (essayé le
+ * 2 novembre 2026). Coupé, comme dans ai.rs : la voix s'écrit par passages.
+ */
+export const DIRECT_COUPE = true;
 /** La voix comme Voxtral la veut : 16 000 échantillons par seconde. */
 export const TAUX_DU_DIRECT = 16000;
 /** Ce que Voxtral attend avant d'écrire : un demi-seconde, comme au téléphone. */

@@ -29,7 +29,7 @@
         "img-src": "'self' data: blob: https: http:",
         "media-src": "'self' data: blob: https: http:",
         "font-src": "'self' data:",
-        "connect-src": "'self' ipc: http://ipc.localhost data: blob: wss://api.mistral.ai",
+        "connect-src": "'self' ipc: http://ipc.localhost data: blob: wss://api.eu.mistral.ai",
         "frame-src": "'self' blob: data: https://www.youtube.com https://www.youtube-nocookie.com",
         "worker-src": "'self' blob:",
         "object-src": "'none'",

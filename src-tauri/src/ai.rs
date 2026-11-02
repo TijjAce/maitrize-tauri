@@ -22,6 +22,19 @@ pub(crate) const MODELE_DEFAUT: &str = "ministral-8b-latest";
 /// Nombre de réessais après un refus passager pour cause de débit.
 const REESSAIS_429: u32 = 3;
 
+/// L'adresse européenne de Mistral : les demandes y sont traitées dans l'Union européenne — « il faut que
+/// les données restent en Europe » (l'enseignant, 2 novembre 2026). Les agents, les conversations et les
+/// fichiers n'y existent pas : la recherche sur le web et le dessin d'un picto, qui passent par eux et par
+/// des services américains (Brave, Black Forest Labs), sont coupés (`AGENTS_COUPES`).
+pub const MISTRAL: &str = "https://api.eu.mistral.ai";
+/// La recherche sur le web et le dessin d'un picto sortiraient de l'Union européenne : coupés.
+const AGENTS_COUPES: bool = true;
+const HORS_EUROPE: &str = "Coupé pour que vos données restent en Europe : chez Mistral, cette fonction passe par des services hors de l'Union européenne.";
+/// Le direct de Voxtral (`client/sessions`, jeton « rt_ ») n'existe pas à l'adresse européenne : Mistral y
+/// répond « introuvable », quel que soit le modèle (essayé le 2 novembre 2026). Coupé : la voix s'écrit par
+/// passages, ou sur l'ordinateur.
+const DIRECT_COUPE: bool = true;
+
 /// Attente avant le n-ième réessai : 1 s, 2 s, 4 s.
 fn attente_avant_reessai(essai: u32) -> std::time::Duration {
     std::time::Duration::from_millis(1000u64 << (essai.saturating_sub(1).min(3)))
@@ -185,6 +198,8 @@ fn tarif(modele: &str) -> (f64, f64) {
 const DOLLARS_PAR_RECHERCHE: f64 = 0.03;
 /// La transcription en ligne se paie à la minute d'audio, pas au jeton.
 const DOLLARS_PAR_MINUTE_AUDIO: f64 = 0.003;
+/// L'adresse européenne (`MISTRAL`) se paie 10 % de plus que l'adresse mondiale.
+const SURCOUT_EUROPE: f64 = 1.10;
 
 /// Le compte, tel que le réglage le garde.
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
@@ -289,7 +304,7 @@ fn noter_depense(db: &Db, d: Depense) {
     }
     let c = db.lock();
     let jour = chrono::Local::now().format("%Y-%m-%d").to_string();
-    let compte = ajouter_jetons(lire_jetons(&c), d, &jour);
+    let compte = ajouter_jetons(lire_jetons(&c), Depense { dollars: d.dollars * SURCOUT_EUROPE, ..d }, &jour);
     if let Ok(json) = serde_json::to_string(&compte) {
         let _ = crate::sync::set_setting(&c, CLE_JETONS, &json);
     }
@@ -349,7 +364,7 @@ pub async fn mistral_chat(
     let mut essai = 0u32;
     let resp = loop {
         let resp = client
-            .post("https://api.mistral.ai/v1/chat/completions")
+            .post(format!("{MISTRAL}/v1/chat/completions"))
             .bearer_auth(&cle)
             .json(&body)
             .send()
@@ -411,7 +426,7 @@ pub async fn mistral_vision(
     let mut essai = 0u32;
     let resp = loop {
         let resp = client
-            .post("https://api.mistral.ai/v1/chat/completions")
+            .post(format!("{MISTRAL}/v1/chat/completions"))
             .bearer_auth(&cle)
             .json(&body)
             .send()
@@ -534,6 +549,9 @@ pub async fn mistral_recherche_web(
     db: State<'_, Db>,
     question: String,
 ) -> Result<ReponseWeb, String> {
+    if AGENTS_COUPES {
+        return Err(HORS_EUROPE.into());
+    }
     let cle = cle_mistral(&db)?;
     let agent = agent_recherche(&db, &cle).await?;
 
@@ -705,6 +723,9 @@ pub async fn mistral_dessiner_picto(
     mot: String,
     precision: Option<String>,
 ) -> Result<String, String> {
+    if AGENTS_COUPES {
+        return Err(HORS_EUROPE.into());
+    }
     use base64::Engine;
     let mot = mot.trim().to_string();
     if mot.is_empty() {
@@ -809,7 +830,7 @@ pub async fn mistral_modeles_disponibles(
             "max_tokens": 1,
         });
         let rep = client
-            .post("https://api.mistral.ai/v1/chat/completions")
+            .post(format!("{MISTRAL}/v1/chat/completions"))
             .bearer_auth(&cle)
             .json(&body)
             .send()
@@ -939,7 +960,7 @@ async fn lit_les_images(client: &reqwest::Client, cle: &str, modele: &str) -> Op
         return Some(v);
     }
     let rep = client
-        .get(format!("https://api.mistral.ai/v1/models/{modele}"))
+        .get(format!("{MISTRAL}/v1/models/{modele}"))
         .bearer_auth(cle)
         .send()
         .await
@@ -987,7 +1008,7 @@ pub async fn mistral_chat_stream(
     let messages: Vec<serde_json::Value> = messages.iter().map(pour_mistral).collect();
     let demander = |modele: &str| {
         client
-            .post("https://api.mistral.ai/v1/chat/completions")
+            .post(format!("{MISTRAL}/v1/chat/completions"))
             .bearer_auth(&cle)
             .json(&serde_json::json!({ "model": modele, "messages": messages, "temperature": 0.4, "stream": true }))
             .send()
@@ -1094,7 +1115,7 @@ pub async fn transcrire_audio(
         .part("file", partie);
 
     let rep = reqwest::Client::new()
-        .post("https://api.mistral.ai/v1/audio/transcriptions")
+        .post(format!("{MISTRAL}/v1/audio/transcriptions"))
         .bearer_auth(cle)
         .multipart(formulaire)
         .send()
@@ -1141,9 +1162,12 @@ pub struct JetonTempsReel {
 
 /// Demande à Mistral un jeton pour écouter en direct : le téléphone s'en sert, et ne voit jamais la clé.
 pub(crate) async fn jeton_temps_reel(db: &State<'_, Db>, modele: &str) -> Result<JetonTempsReel, String> {
+    if DIRECT_COUPE {
+        return Err("Mistral ne l'offre pas à son adresse européenne : la voix s'écrit par passages, en Europe.".into());
+    }
     let cle = cle_mistral(db)?;
     let rep = reqwest::Client::new()
-        .post("https://api.mistral.ai/v1/client/sessions")
+        .post(format!("{MISTRAL}/v1/client/sessions"))
         .bearer_auth(cle)
         .json(&serde_json::json!({ "purpose": "realtime", "model": modele }))
         .send()
@@ -1218,7 +1242,7 @@ pub async fn voix_lire(db: State<'_, Db>, texte: String) -> Result<String, Strin
     let mut essai = 0;
     let (statut, quota, texte_rep) = loop {
         let rep = client
-            .post("https://api.mistral.ai/v1/audio/speech")
+            .post(format!("{MISTRAL}/v1/audio/speech"))
             .bearer_auth(&cle)
             .json(&corps)
             .timeout(std::time::Duration::from_secs(60))

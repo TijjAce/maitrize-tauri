@@ -1846,7 +1846,8 @@ let tcLimite = null;
  * le texte part au Mac avec le son : compris, c'est fait tout de suite ; sinon le Mac transcrit le son lui-même.
  * Sans réseau, sans jeton ou sans réponse à temps, le son part seul, comme avant : la phrase n'est jamais perdue.
  */
-const DIRECT = "wss://api.mistral.ai/v1/audio/transcriptions/realtime";
+// L'adresse européenne de Mistral : la voix est traitée dans l'Union européenne.
+const DIRECT = "wss://api.eu.mistral.ai/v1/audio/transcriptions/realtime";
 /** Ce qu'on attend du direct après le lâcher, au plus ; au-delà, le Mac transcrit. */
 const DIRECT_DELAI = 3000;
 let tcJeton = null;  // { jeton, modele, recu } — en mémoire seulement, prêt pour la phrase suivante

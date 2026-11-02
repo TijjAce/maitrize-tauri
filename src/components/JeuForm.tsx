@@ -1,6 +1,6 @@
 import React from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { api, Jeu, SourceWeb, TYPES_JEU, texteErreur } from "../api";
+import { AGENTS_COUPES, api, Jeu, SourceWeb, TYPES_JEU, texteErreur } from "../api";
 import { Modal, Field, Input, Textarea, Select, ColorPicker } from "./ui";
 import { FichierImg } from "./Deroulement";
 import { fileToBase64 } from "./SeanceParts";
@@ -95,10 +95,10 @@ export function JeuForm({ j, nouveau = !j.titre, onClose, onSaved }: {
           placeholder="Règle simplifiée, adaptations pour certains élèves… Elle s'affiche dans le cahier journal et le PDF du jour quand le jeu y est cité."
           onChange={(e) => up({ regles: e.target.value })} />
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
-          <button className="btn sm" disabled={!v.titre.trim() || recherche} onClick={chercherRegle}
+          {!AGENTS_COUPES && <button className="btn sm" disabled={!v.titre.trim() || recherche} onClick={chercherRegle}
             title="Demande la règle à l'assistant, qui la cherche en ligne. Seul le nom du jeu est envoyé.">
             {recherche ? "Recherche en cours…" : "✨ Chercher la règle en ligne"}
-          </button>
+          </button>}
           {sources.length > 0 && (
             <span style={{ fontSize: 12, color: "var(--text-2)" }}>
               Sources :{" "}

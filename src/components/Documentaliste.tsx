@@ -1,6 +1,6 @@
 import React from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { texteErreur } from "../api";
+import { AGENTS_COUPES, texteErreur } from "../api";
 import { Modal, Input } from "./ui";
 import { Markdown } from "./Markdown";
 import { toast } from "./Toaster";
@@ -47,7 +47,7 @@ function Trouvaille({ c }: { c: TrouvailleBO }) {
 
 export function Documentaliste({ onClose }: { onClose: () => void }) {
   const [question, setQuestion] = React.useState("");
-  const [avecWeb, setAvecWeb] = React.useState(true);
+  const [avecWeb, setAvecWeb] = React.useState(!AGENTS_COUPES);
   const [occupe, setOccupe] = React.useState("");
   const [reponse, setReponse] = React.useState<ReponseDocumentaliste | null>(null);
   const [erreur, setErreur] = React.useState("");
@@ -82,10 +82,10 @@ export function Documentaliste({ onClose }: { onClose: () => void }) {
         </button>
       </form>
 
-      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, margin: "8px 0 0", color: "var(--text-2)" }}>
+      {!AGENTS_COUPES && <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, margin: "8px 0 0", color: "var(--text-2)" }}>
         <input type="checkbox" checked={avecWeb} onChange={(e) => setAvecWeb(e.target.checked)} />
         Aller aussi voir les guides Éduscol en ligne
-      </label>
+      </label>}
 
       {!reponse && !occupe && !erreur && (
         <div style={{ marginTop: 12 }}>

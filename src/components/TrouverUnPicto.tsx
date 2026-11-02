@@ -1,5 +1,5 @@
 import React from "react";
-import { api, texteErreur, type PictoAppoint, type PictoArasaac } from "../api";
+import { AGENTS_COUPES, api, texteErreur, type PictoAppoint, type PictoArasaac } from "../api";
 import { Field, Input, Modal } from "./ui";
 import { toast, toastAnnulable } from "./Toaster";
 import { confirmer } from "./confirmer";
@@ -222,7 +222,7 @@ export function TrouverUnPicto({ onClose }: { onClose: () => void }) {
                   ? `Aucun de vos symboles Makaton pour « ${mot} ».`
                   : "Les symboles Makaton appartiennent à la Makaton Charity : l'application n'en livre aucun. Importez les vôtres, un fichier par mot."))}
 
-            {rienDansLesBanques || dessinOuvert ? (
+            {AGENTS_COUPES ? null : rienDansLesBanques || dessinOuvert ? (
               <div className="tp-dessin">
                 <b>{rienDansLesBanques ? `Ni ARASAAC, ni Sclera, ni vos symboles Makaton ou vos pictos gardés n'ont « ${mot} ».` : `Faire dessiner « ${mot} »`}</b>
                 <p className="meta" style={{ fontSize: 12.5, margin: "4px 0 8px", lineHeight: 1.5 }}>

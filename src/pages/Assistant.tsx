@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { api, ChatMessage, Sequence, Seance, PiloteConversation, CYCLES, MATIERES, MODELES_MISTRAL, MODELE_DEFAUT, nouvelleSequence, nouvelleSeance, couleurPourMatiere, newId, nowIso } from "../api";
+import { AGENTS_COUPES, api, ChatMessage, Sequence, Seance, PiloteConversation, CYCLES, MATIERES, MODELES_MISTRAL, MODELE_DEFAUT, nouvelleSequence, nouvelleSeance, couleurPourMatiere, newId, nowIso } from "../api";
 import { Modal, Field, Input, Select, Demander, useAsync } from "../components/ui";
 import { construireContexteIA } from "../contexteIA";
 import { nomsAMasquer } from "../nomsAMasquer";
@@ -420,11 +420,11 @@ export default function Assistant() {
             ? "L'IA reçoit le contexte de la classe (niveau, nombre d'élèves, séquences, programmation). Aucune donnée personnelle d'élève n'est transmise."
             : "L'IA ne reçoit aucun contexte sur ta classe."}>
           🏫 Contexte&nbsp;: {contexteActif ? "activé" : "désactivé"}</button>
-        <button className="btn sm" aria-pressed={surLeWeb} onClick={() => setSurLeWeb((v) => !v)}
+        {!AGENTS_COUPES && <button className="btn sm" aria-pressed={surLeWeb} onClick={() => setSurLeWeb((v) => !v)}
           title={surLeWeb
             ? "La question part à un agent qui interroge le web et cite ses sources. Plus lent."
             : "L'assistant répond de mémoire : il ignore tout ce qui suit son entraînement."}>
-          🔎 Web&nbsp;: {surLeWeb ? "activé" : "désactivé"}</button>
+          🔎 Web&nbsp;: {surLeWeb ? "activé" : "désactivé"}</button>}
         <button className="btn sm" aria-pressed={modeDocument} onClick={() => setModeDocument((v) => !v)}
           title={modeDocument
             ? "L'assistant écrit un document imprimable — fiche, mot aux familles, affiche, grille — à imprimer ou à déposer sur le bureau en PDF."

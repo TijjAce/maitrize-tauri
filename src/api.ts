@@ -1153,6 +1153,12 @@ export const MODELES_MISTRAL = [
 export const MODELE_DEFAUT = "ministral-8b-latest";
 /** Modèle des tâches internes (ranger, classer, reformuler) : rapide et ouvert. */
 export const MODELE_TACHES = "ministral-8b-latest";
+/**
+ * La recherche sur le web et le dessin d'un picto passent, chez Mistral, par
+ * ses agents et par des services hors de l'Union européenne : coupés, comme
+ * dans ai.rs, pour que les données restent en Europe. Leurs boutons disparaissent.
+ */
+export const AGENTS_COUPES = true;
 
 /**
  * Identifiants qui ne sont plus proposés — retirés par Mistral, ou réservés
