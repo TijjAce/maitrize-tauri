@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { elevesDuPassage, estPartage, prevuDeLEleve, segmentsDuPrevu, surlignerPour } from "./prevuParEleve";
+import { elevesDuPassage, estPartage, prevuDeLEleve, prevuSansTetes, segmentsDuPrevu, surlignerPour } from "./prevuParEleve";
 
 // Prénoms inventés : jamais ceux de la classe.
 const groupe = ["Lina", "Tom", "Zoé"];
@@ -82,6 +82,15 @@ describe("le prévu d'un créneau de groupe, élève par élève (demandes de l'
     expect(surlignerPour(ancien, ...entre(ancien, "Pour Tom :"), "Lina", groupe)!.texte).toBe("Lina : bande numérique\njeu de l'oie");
     const date = "🔁 La date\nle loto";
     expect(surlignerPour(date, date.length - 2, date.length - 2, "Zoé", groupe)!.texte).toBe("🔁 La date\nZoé : le loto");
+    // Une ligne qui commence par un signe — 📚, 🔁, 📄 — ne se lit qu'en tête de ligne : le prénom se pose au-dessus.
+    const seance = "🔁 La date\n📚 Les nombres · séance 1\njeu de l'oie\non range";
+    const r = surlignerPour(seance, ...entre(seance, "📚", "jeu de l'oie"), "Lina", groupe)!;
+    expect(r.texte).toBe("🔁 La date\nLina :\n📚 Les nombres · séance 1\njeu de l'oie\nTout le groupe : on range");
+    expect(prevuDeLEleve(r.texte, "Lina", groupe)).toBe("🔁 La date\n📚 Les nombres · séance 1\njeu de l'oie\non range");
+    expect(surlignerPour("Lina : la frise\n🔁 La comptine", 0, 4, "Tom", groupe)!.texte).toBe("Tom : la frise\n🔁 La comptine");
+    expect(surlignerPour("Lina : la frise\n🔁 La comptine", 7, 15, "Tom", groupe)!.texte).toBe("Tom : la frise\nLina :\n🔁 La comptine");
+    // Pour la classe, le prévu se lit sans ses têtes.
+    expect(prevuSansTetes("Lina : 📚 Les nombres\nTom :\n🔁 La date\non range", groupe)).toBe("📚 Les nombres\n🔁 La date\non range");
     // Rien à surligner sur une ligne vide.
     expect(surlignerPour("la frise\n\nle loto", 9, 9, "Tom", groupe)).toBeNull();
     expect(elevesDuPassage("la frise\n\nle loto", 9, 9, groupe)).toEqual([]);

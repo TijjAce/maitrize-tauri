@@ -21,14 +21,13 @@
 
 import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import {
-  aFaireDuCreneau, cadresDuDeroulement, domaineDeLaSeance, elevesDuCreneau, estUneFicheDEleve, pasDuDeroulement, pictosDuDeroulement,
-  STYLE_DU_DEROULEMENT, type PasDuDeroulement,
+  aFaireDuCreneau, cadresDuDeroulement, carteSeule, domaineDeLaSeance, elevesDuCreneau, estUneFicheDEleve, pasDeLEleve, pasDuDeroulement,
+  pictosDuDeroulement, STYLE_DU_DEROULEMENT, type PasDuDeroulement,
 } from "./journalTelephone";
 import type { RefPicto } from "./pictosAppoint";
 import { escapeHtml } from "./print";
 import type { PhotoDeJeu } from "./supportsDeTravail";
-import { titresDesRituels } from "./rituels";
-import { estPartage, prevuDeLEleve } from "./prevuParEleve";
+import { elevesDesParties } from "./prevuParEleve";
 
 /** Les temps sans enseignement : la récréation, le repas, la sieste… */
 export const estUnePause = (matiere: string): boolean => /r[ée]cr[ée]|pause|accueil|repas|cantine|sieste/i.test(matiere ?? "");
@@ -69,53 +68,6 @@ export function pasDeLaBande(
   return carteSeule(c);
 }
 
-/** Un créneau sans séance, ni jeu, ni fiche : une seule carte, ses rituels s'il en cite, sinon sa matière. */
-function carteSeule(c: Pick<Creneau, "prevu" | "matiere">): PasDuDeroulement[] {
-  const rituels = titresDesRituels(c.prevu ?? "");
-  if (rituels.length) return [{ texte: rituels.join(" · "), matiere: "Rituel", rituel: true }];
-  const matiere = (c.matiere ?? "").trim();
-  return [{ texte: matiere || "Créneau", matiere: "", ...(matiere ? { domaine: matiere } : {}) }];
-}
-
-// ── Une bande par élève ───────────────────────────────────────────────────
-//
-// « Il faudrait sur le planning pouvoir distinguer les élèves pour que chaque
-// élève ait son picto », puis : « un bouton qui permet de surligner l'élève et
-// ce qu'il doit faire, et après ça suit dans l'ordre chronologique »
-// (demandes de l'enseignant, 2026-11-02). Un créneau qui nomme ses élèves — un
-// groupe — et dont le prévu donne une partie à l'un d'eux (« Lina : … », voir
-// prevuParEleve.ts) se partage : une bande par élève du groupe, son prénom en
-// tête, avec les séances et les jeux de ce qui est à tous et de ses parties,
-// dans l'ordre où ils sont écrits, et ses fiches.
-
-/** Les élèves qu'un créneau nomme, par leur identifiant ; aucun : toute la classe. */
-function elevesNommes(c: Pick<Creneau, "elevesJson">): string[] {
-  try {
-    const ids: unknown = JSON.parse(c.elevesJson || "[]");
-    return Array.isArray(ids) ? ids.filter((x): x is string => typeof x === "string") : [];
-  } catch { return []; }
-}
-
-/** Les prénoms du groupe d'un créneau, dans l'ordre où il les nomme. */
-export const prenomsDuGroupe = (c: Pick<Creneau, "elevesJson">, eleves: { id: string; prenom: string }[]): string[] =>
-  elevesNommes(c).map((id) => eleves.find((e) => e.id === id)?.prenom.trim() ?? "").filter(Boolean);
-
-/** Les élèves dont le créneau a la bande : ceux de son groupe, si son prévu donne une partie à l'un d'eux ; sinon aucun — une bande pour tous. */
-export function elevesEnBandes(c: Pick<Creneau, "elevesJson" | "prevu">, eleves: { id: string; prenom: string }[]): string[] {
-  const groupe = prenomsDuGroupe(c, eleves);
-  return groupe.length && estPartage(c.prevu ?? "", groupe) ? groupe : [];
-}
-
-/** Le déroulement d'un créneau pour un élève : ce qui est à tous et ses parties, dans l'ordre du prévu, ses fiches et ses séances. */
-export function pasDeLaBandeDe(
-  c: Pick<Creneau, "prevu" | "matiere">, prenom: string, prenomsDuGroupe: string[], seance: Seance | undefined, fiches: MaterielItem[],
-  domaineDeSeance = "", sequences: Sequence[] = [], seances: Seance[] = [], jeux: Jeu[] = [], photos: PhotoDeJeu[] = [],
-): PasDuDeroulement[] {
-  const sien = { ...c, prevu: prevuDeLEleve(c.prevu ?? "", prenom, prenomsDuGroupe) };
-  const pas = pasDuDeroulement(sien, seance, fiches, domaineDeSeance, prenom, sequences, seances, jeux, photos);
-  // Sur sa bande, ses fiches sont les siennes : son prénom n'a pas à y être redit.
-  return pas.length ? pas.map(({ eleve: _eleve, ...p }) => p) : carteSeule(sien);
-}
 
 /** La feuille, en millimètres : celle qui suit le cahier journal, en portrait, dans ses marges de 11 mm. */
 export const FEUILLE_BANDES_MM = { largeur: 186, hauteur: 262 };
@@ -224,7 +176,13 @@ export function corpsDesBandes(titre: string, bandes: Bande[], fin = ""): string
 
 /**
  * Les bandes du jour : le déroulement de chaque créneau qui en a une, dessiné comme pour les tablettes, avec les pictos
- * que l'enseignant a choisis ; celui d'un groupe dont le prévu a des parts, une bande par élève (`elevesEnBandes`).
+ * que l'enseignant a choisis.
+ *
+ * « Il faudrait sur le planning pouvoir distinguer les élèves pour que chaque élève ait son picto », puis : « un bouton
+ * qui permet de surligner l'élève et ce qu'il doit faire, et après ça suit dans l'ordre chronologique » (demandes de
+ * l'enseignant, 2026-11-02). Un créneau de groupe dont le prévu donne une partie à l'un de ses élèves (« Lina : … »,
+ * voir prevuParEleve.ts) a une bande par élève du groupe, son prénom en tête : le déroulement de sa tablette
+ * (`pasDeLEleve`), avec les séances et les jeux de ce qui est à tous et de ses parties, dans l'ordre où ils sont écrits.
  */
 export async function bandesDuJour(
   creneaux: Creneau[], seances: Seance[], sequences: Sequence[], materiel: MaterielItem[], jeux: Jeu[] = [], photos: PhotoDeJeu[] = [],
@@ -237,10 +195,10 @@ export async function bandesDuJour(
   for (const c of creneauxEnBandes(creneaux)) {
     const seance = c.seanceId ? seances.find((s) => s.id === c.seanceId) : undefined;
     const domaine = seance ? domaineDeLaSeance(seance, sequences.find((q) => q.id === seance.sequenceId)) : "";
-    const parEleve = elevesEnBandes(c, eleves);
+    const parEleve = elevesDesParties(c, eleves);
     if (parEleve.length) {
       for (const prenom of parEleve) {
-        const { html, refs } = await cadresDuDeroulement(pasDeLaBandeDe(c, prenom, parEleve, seance, fiches, domaine, sequences, seances, jeux, photos), pictos);
+        const { html, refs } = await cadresDuDeroulement(pasDeLEleve(c, prenom, parEleve, seance, fiches, domaine, sequences, seances, jeux, photos), pictos);
         bandes.push({ heures: heuresDeLaBande(c), matiere: prenom, cadres: html });
         montres.push(...refs);
       }

@@ -3,7 +3,7 @@ import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import {
   aFaireDuCreneau, cleDeLaSeance, deLaClasse, minuteurDeLaSeance,
   aidesDuCreneau, cleDuDeroulement, cleDuDeroulementDe, dureeDuMinuteur, estUneAide, estUneFicheDEleve, fichesDuCreneau, journalDes, joursPublies, minuteurDuCreneau, MINUTEURS_DES_TABLETTES,
-  domaineDeLaSeance, pasDuDeroulement,
+  domaineDeLaSeance, pasDeLEleve, pasDuDeroulement,
   pageDeLaConsigne, signatureDuJournal, titreDeLAide, titrePourLesTablettes,
 } from "./journalTelephone";
 
@@ -310,6 +310,31 @@ describe("ce que le prévu cite pour la classe, sur les tablettes (demande de l'
       .toBe(cleDuDeroulement("c2"));
     expect(journalDes(["2026-11-02"], [creneau("c3", "2026-11-02", { prevu: "On range la classe." })], [], [], [], [oie]).jours[0].creneaux[0].deroule)
       .toBe("");
+  });
+
+  it("donne à chaque élève d'un groupe sa partie du prévu : son déroulement, et les aides des séances qu'il y trouve (2026-11-02)", () => {
+    // « Fais suivre les parties sur les tablettes aussi. » Prénoms inventés : le jeu puis la séance pour l'une, le jeu seul pour l'autre.
+    const aide = materiel("m5", "Ce que je vais faire — Les nombres jusqu'à 9", "s5", "sequentiel");
+    const groupe = creneau("c4", "2026-11-02", {
+      heureDebut: "14:10", elevesJson: '["e1","e2"]',
+      prevu: "🔁 La date\nLina : jeu de l’oie\n📚 Les nombres jusqu'à 59 (CP) · séance 1/6 : Dire, lire et écrire les nombres jusqu'à 59\nTom : jeu de l’oie",
+    });
+    const eleves = [{ id: "e1", prenom: "Lina" }, { id: "e2", prenom: "Tom" }, { id: "e3", prenom: "Zoé" }];
+    const x = journalDes(["2026-11-02"], [groupe], [dire], [aide], [nombres], [oie], eleves).jours[0].creneaux[0];
+    expect(x.deroules).toEqual({ Lina: cleDuDeroulementDe("c4", "Lina"), Tom: cleDuDeroulementDe("c4", "Tom") });
+    expect(pasDeLEleve(groupe, "Lina", ["Lina", "Tom"], undefined, [], "", [nombres], [dire], [oie]).map((p) => p.texte))
+      .toEqual(["La date", "Jeu de l’oie", "Dire, lire et écrire les nombres jusqu'à 59"]);
+    expect(pasDeLEleve(groupe, "Tom", ["Lina", "Tom"], undefined, [], "", [nombres], [dire], [oie]).map((p) => p.texte)).toEqual(["La date", "Jeu de l’oie"]);
+    // L'aide de la séance part à la tablette de Lina seule, à la place de la séance dans son déroulement.
+    expect(x.aides).toEqual([{ id: "m5", titre: "Ce que je vais faire — Les nombres jusqu'à 9", minuteur: 0, etape: 2, eleve: "Lina" }]);
+    // La classe garde son déroulement, lu sans les prénoms ; sans les élèves, le créneau part comme avant.
+    expect([x.seance, x.deroule]).toEqual(["Dire, lire et écrire les nombres jusqu'à 59", cleDuDeroulement("c4")]);
+    const avant = journalDes(["2026-11-02"], [groupe], [dire], [aide], [nombres], [oie]).jours[0].creneaux[0];
+    expect([avant.aides, avant.deroules]).toEqual([[{ id: "m5", titre: "Ce que je vais faire — Les nombres jusqu'à 9", minuteur: 0, etape: 2 }], undefined]);
+    // Une séance à tous va à chacun, à sa place dans son déroulement ; une tête devant la ligne 📚 ne la cache pas.
+    const atous = { ...groupe, prevu: "📚 Les nombres jusqu'à 59 (CP) · séance 1/6 : Dire, lire et écrire les nombres jusqu'à 59\nLina : jeu de l’oie\nTom : 📚 Les nombres jusqu'à 59 (CP) · séance 1/6 : Dire, lire et écrire les nombres jusqu'à 59" };
+    expect(journalDes(["2026-11-02"], [atous], [dire], [aide], [nombres], [oie], eleves).jours[0].creneaux[0].aides.map((a) => [a.eleve, a.etape]))
+      .toEqual([["Lina", 1], ["Tom", 1]]);
   });
 
   it("laisse à chaque élève ce qui suit « En autonomie », ne cherche pas de jeu dans la ligne 📚, et ne double pas la séance posée", () => {

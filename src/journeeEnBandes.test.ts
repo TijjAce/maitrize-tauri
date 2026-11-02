@@ -2,8 +2,10 @@ import { describe, it, expect } from "vitest";
 import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import {
   FEUILLE_BANDES_MM, LARGEUR_BANDE_MM, SCRIPTS_DES_BANDES, STYLE_BANDES, STYLE_BANDES_DU_JOURNAL,
-  bandesDuJour, corpsDesBandes, creneauxEnBandes, elevesEnBandes, estUnePause, heuresDeLaBande, largeurDesBandes, pasDeLaBande, pasDeLaBandeDe,
+  bandesDuJour, corpsDesBandes, creneauxEnBandes, estUnePause, heuresDeLaBande, largeurDesBandes, pasDeLaBande,
 } from "./journeeEnBandes";
+import { pasDeLEleve } from "./journalTelephone";
+import { elevesDesParties } from "./prevuParEleve";
 import { documentImprimable } from "./print";
 
 const creneau = (id: string, heureDebut: string, heureFin: string, matiere: string, autre: Partial<Creneau> = {}): Creneau => ({
@@ -86,21 +88,21 @@ describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octob
       elevesJson: '["e1","e2"]',
       prevu: "matériel base 10\nLina : 📚 Comparer des quantités · séance 1 : Comparer des collections\n\nTom : bande numérique jusqu'à 30 à plastifier\nObjectif : comparer\n\njeu de l’oie",
     });
-    const deLina = pasDeLaBandeDe(groupe, "Lina", ["Lina", "Tom"], undefined, [], "", [sequence], lesSeances, [oie]);
-    const deTom = pasDeLaBandeDe(groupe, "Tom", ["Lina", "Tom"], undefined, [], "", [sequence], lesSeances, [oie]);
+    const deLina = pasDeLEleve(groupe, "Lina", ["Lina", "Tom"], undefined, [], "", [sequence], lesSeances, [oie]);
+    const deTom = pasDeLEleve(groupe, "Tom", ["Lina", "Tom"], undefined, [], "", [sequence], lesSeances, [oie]);
     expect(deLina.map((p) => p.texte)).toEqual(["Rituel", "Comparer des collections"]);
     expect(deTom.map((p) => p.texte)).toEqual(["Rituel", "Jeu de l’oie"]);
     // « Deux élèves peuvent faire la même chose, mais pas au même moment » : chacun ses séances et ses jeux, dans l'ordre où ils sont écrits.
     const tour = { ...groupe, prevu: "Lina : 📚 Comparer des quantités · séance 1 : Comparer des collections\njeu de l’oie\nTom : jeu de l’oie\n📚 Comparer des quantités · séance 1 : Comparer des collections" };
-    expect(pasDeLaBandeDe(tour, "Lina", ["Lina", "Tom"], undefined, [], "", [sequence], lesSeances, [oie]).map((p) => p.texte))
+    expect(pasDeLEleve(tour, "Lina", ["Lina", "Tom"], undefined, [], "", [sequence], lesSeances, [oie]).map((p) => p.texte))
       .toEqual(["Rituel", "Comparer des collections", "Jeu de l’oie"]);
-    expect(pasDeLaBandeDe(tour, "Tom", ["Lina", "Tom"], undefined, [], "", [sequence], lesSeances, [oie]).map((p) => p.texte))
+    expect(pasDeLEleve(tour, "Tom", ["Lina", "Tom"], undefined, [], "", [sequence], lesSeances, [oie]).map((p) => p.texte))
       .toEqual(["Rituel", "Jeu de l’oie", "Comparer des collections"]);
     const eleves = [{ id: "e1", prenom: "Lina" }, { id: "e2", prenom: "Tom" }, { id: "e3", prenom: "Zoé" }];
     // Qui a sa bande : le groupe dont le prévu a des parts ; un groupe sans parts, ou la classe, garde une bande pour tous.
-    expect(elevesEnBandes(groupe, eleves)).toEqual(["Lina", "Tom"]);
-    expect(elevesEnBandes({ ...groupe, prevu: "Lecture à deux" }, eleves)).toEqual([]);
-    expect(elevesEnBandes(creneau("c1", "08:30", "09:00", "Accueil", { prevu: "Lina : la date" }), eleves)).toEqual([]);
+    expect(elevesDesParties(groupe, eleves)).toEqual(["Lina", "Tom"]);
+    expect(elevesDesParties({ ...groupe, prevu: "Lecture à deux" }, eleves)).toEqual([]);
+    expect(elevesDesParties(creneau("c1", "08:30", "09:00", "Accueil", { prevu: "Lina : la date" }), eleves)).toEqual([]);
     const jour = [creneau("c1", "08:30", "09:00", "Accueil", { prevu: "🔁 L'appel" }), groupe];
     const { bandes } = await bandesDuJour(jour, lesSeances, [sequence], [], [oie], [], eleves);
     expect(bandes.map((b) => [b.heures, b.matiere])).toEqual([["8h30 – 9h00", "Accueil"], ["14h10 – 15h00", "Lina"], ["14h10 – 15h00", "Tom"]]);

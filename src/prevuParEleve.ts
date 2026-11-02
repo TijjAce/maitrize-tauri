@@ -19,6 +19,7 @@
 // le cahier journal surligne chaque partie de la couleur de son élève
 // (`segmentsDuPrevu`).
 
+import type { Creneau } from "./api";
 import type { Segment } from "./surlignage";
 
 const sansAccents = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim();
@@ -73,6 +74,12 @@ const memes = (a: string[], b: string[]) => a.length === b.length && a.every((x)
 const teteDe = (qui: string[]) => `${qui.length ? nommer(qui) : TETE_A_TOUS} : `;
 /** Ce qu'une ligne dit, sans sa tête. */
 const sansTete = (l: { ligne: string; tete: Tete | null }) => (l.tete ? l.ligne.slice(l.tete.debutDuReste) : l.ligne);
+/**
+ * Une ligne avec la tête de sa partie ; la tête seule au-dessus d'une ligne qui commence par un signe — 📚, 🔁, 📄,
+ * ⏰… — : on ne les reconnaît qu'en tête de ligne.
+ */
+const avecSaTete = (qui: string[], ligne: string): string[] =>
+  (/^\s*\p{Extended_Pictographic}/u.test(ligne) ? [teteDe(qui).trimEnd(), ligne] : [teteDe(qui) + ligne.replace(/^\s+/, "")]);
 
 /** Les élèves de chacune de ces lignes — une ligne vide n'en dit rien. */
 function deToutes(lignes: { ligne: string; qui: string[] }[], prenoms: string[]): string[] {
@@ -80,8 +87,34 @@ function deToutes(lignes: { ligne: string; qui: string[] }[], prenoms: string[])
   return pleines.length ? prenoms.filter((x) => pleines.every((l) => l.qui.includes(x))) : [];
 }
 
+/** Le prévu sans ses têtes, pour qui le lit en entier — la classe : « Lina : 📚 … » y cite sa séance comme « 📚 … ». */
+export const prevuSansTetes = (prevu: string, prenoms: string[]): string =>
+  lignesDuPrevu(prevu, prenoms).flatMap((l) => (l.tete && !sansTete(l).trim() ? [] : [sansTete(l)])).join("\n");
+
 /** Le prévu donne-t-il une partie à l'un des élèves ? */
 export const estPartage = (prevu: string, prenoms: string[]): boolean => lignesDuPrevu(prevu, prenoms).some((l) => l.qui.length);
+
+/** Les élèves qu'un créneau nomme, par leur identifiant ; aucun : toute la classe. */
+function elevesNommes(c: Pick<Creneau, "elevesJson">): string[] {
+  try {
+    const ids: unknown = JSON.parse(c.elevesJson || "[]");
+    return Array.isArray(ids) ? ids.filter((x): x is string => typeof x === "string") : [];
+  } catch { return []; }
+}
+
+/** Les prénoms du groupe d'un créneau, dans l'ordre où il les nomme. */
+export const prenomsDuGroupe = (c: Pick<Creneau, "elevesJson">, eleves: { id: string; prenom: string }[]): string[] =>
+  elevesNommes(c).map((id) => eleves.find((e) => e.id === id)?.prenom.trim() ?? "").filter(Boolean);
+
+/**
+ * Les élèves qui ont chacun leur prévu au créneau — leur bande au planning,
+ * leur déroulement sur leur tablette : ceux de son groupe, si le prévu donne
+ * une partie à l'un d'eux ; sinon aucun, tout est à tous.
+ */
+export function elevesDesParties(c: Pick<Creneau, "elevesJson" | "prevu">, eleves: { id: string; prenom: string }[]): string[] {
+  const groupe = prenomsDuGroupe(c, eleves);
+  return groupe.length && estPartage(c.prevu ?? "", groupe) ? groupe : [];
+}
 
 /**
  * Le prévu tel qu'un élève le vit, dans l'ordre où il est écrit : ce qui est
@@ -199,7 +232,7 @@ export function surlignerPour(
   if (!memes(leurs, avant)) {
     const k = passage.findIndex((l) => l.trim());
     if (k < 0) passage.push(teteDe(leurs).trimEnd());
-    else passage[k] = teteDe(leurs) + passage[k].replace(/^\s+/, "");
+    else passage.splice(k, 1, ...avecSaTete(leurs, passage[k]));
   }
   // Ce qui suit : une tête qui redit les mêmes élèves s'efface ; une ligne qui était d'une autre partie redit la sienne.
   const suite = lignes.slice(derniere + 1).map((l) => l.ligne);
@@ -208,7 +241,7 @@ export function surlignerPour(
     const l = lignes[derniere + 1 + k];
     if (l.tete && memes(l.tete.qui, leurs)) {
       if (sansTete(l).trim()) suite[k] = sansTete(l); else suite.splice(k, 1);
-    } else if (!l.tete && !memes(l.qui, leurs)) suite[k] = teteDe(l.qui) + l.ligne.replace(/^\s+/, "");
+    } else if (!l.tete && !memes(l.qui, leurs)) suite.splice(k, 1, ...avecSaTete(l.qui, l.ligne));
   }
   const debutDuPassage = premiere ? lignes.slice(0, premiere).map((l) => l.ligne).join("\n").length + 1 : 0;
   return {

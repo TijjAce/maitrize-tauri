@@ -854,14 +854,16 @@ async function envoyerLAide(c, choisie) {
  * Envoie aux tablettes ce qu'un créneau a prévu pour elles : son aide — celle
  * qu'on a touchée, s'il en a plusieurs : une aide de sa séance, ou la fiche
  * d'un élève, qui va à sa tablette — et son minuteur, qui démarre aussitôt.
- * Ce que l'écran visé montrait avant s'en va.
+ * Ce que l'écran visé montrait avant s'en va. `eleve` : celui dont on touche
+ * la ligne — au créneau d'un groupe à parties, une même aide part à chacun des
+ * élèves qui ont sa séance.
  */
-async function envoyerAuxTablettes(creneauId, aideId) {
+async function envoyerAuxTablettes(creneauId, aideId, eleve) {
   if (envoiCreneau) return;
   const c = ((cahier && cahier.creneaux) || []).find((x) => x.id === creneauId);
   if (!c) return;
   const aides = c.aides || [];
-  const choisie = aides.find((a) => a.id === aideId) || aides.find((a) => !a.eleve) || null;
+  const choisie = aides.find((a) => a.id === aideId && (eleve === undefined || (a.eleve || "") === eleve)) || aides.find((a) => !a.eleve) || null;
   envoiCreneau = creneauId; envoiEleve = (choisie && choisie.eleve) || ""; envoiSouci = null;
   rendre();
   try {
@@ -875,9 +877,13 @@ async function envoyerAuxTablettes(creneauId, aideId) {
   }
 }
 
-/** Les élèves d'un créneau qui y ont des fiches, dans l'ordre du prévu, chacun avec les siennes. */
+/**
+ * Les élèves d'un créneau qui y ont leur déroulement — leur partie du prévu
+ * d'un groupe, ou des fiches —, chacun avec ses fiches et ses aides, dans
+ * l'ordre du prévu ; un élève sans aucune n'a que son déroulement.
+ */
 function elevesDuCreneau(c) {
-  const parEleve = new Map();
+  const parEleve = new Map(Object.keys(c.deroules || {}).map((e) => [e, []]));
   for (const a of c.aides || []) {
     if (!a.eleve) continue;
     if (!parEleve.has(a.eleve)) parEleve.set(a.eleve, []);
@@ -909,7 +915,10 @@ function titreSansLEleve(a, eleve) {
 }
 
 
-/** Chaque élève reçoit sur sa tablette sa fiche suivante — la première, pour commencer —, avec son minuteur. */
+/**
+ * Chaque élève reçoit sur sa tablette sa fiche suivante — la première, pour
+ * commencer —, avec son minuteur ; celui qui n'en a pas, son déroulement.
+ */
 async function envoyerAChacun(creneauId) {
   if (envoiCreneau) return;
   const c = ((cahier && cahier.creneaux) || []).find((x) => x.id === creneauId);
@@ -919,7 +928,13 @@ async function envoyerAChacun(creneauId) {
   const sansTablette = [];
   try {
     for (const { eleve, fiches } of elevesDuCreneau(c)) {
-      if (!tabletteDe(eleve)) { sansTablette.push(eleve); continue; }
+      const t = tabletteDe(eleve);
+      if (!t) { sansTablette.push(eleve); continue; }
+      if (!fiches.length) {
+        const cle = (c.deroules || {})[eleve];
+        if (cle) { await portailOuvert(); await envoyerSonDeroulement(c, t, cle); }
+        continue;
+      }
       const { suivante } = ouEnEst(c, eleve, fiches);
       if (suivante) await envoyerLAide(c, suivante);
     }
@@ -931,6 +946,15 @@ async function envoyerAChacun(creneauId) {
     envoiCreneau = "";
     rendre();
   }
+}
+
+/** Montre à la tablette d'un élève son déroulement seul, sans minuteur. */
+async function envoyerSonDeroulement(c, tablette, cle) {
+  const lue = await invoke("aide_lire", { id: cle });
+  portail = await invoke("portail_envoyer", {
+    creneau: c.id, aide: { id: cle, titre: lue.titre, html: lue.html, etapes: etapesDeLAide(lue.html) }, secondes: 0, etape: null, plan: false,
+    tablette: tablette.numero,
+  });
 }
 
 /**
@@ -950,12 +974,7 @@ async function montrerAChacun(creneauId, depuisLeDebut) {
     await portailOuvert();
     for (const { eleve } of elevesDuCreneau(c)) {
       const t = tabletteDe(eleve), cle = (c.deroules || {})[eleve];
-      if (!t || !cle) continue;
-      const lue = await invoke("aide_lire", { id: cle });
-      portail = await invoke("portail_envoyer", {
-        creneau: c.id, aide: { id: cle, titre: lue.titre, html: lue.html, etapes: etapesDeLAide(lue.html) }, secondes: 0, etape: null, plan: false,
-        tablette: t.numero,
-      });
+      if (t && cle) await envoyerSonDeroulement(c, t, cle);
     }
     portailSouci = "";
   } catch (e) {
@@ -1553,8 +1572,10 @@ function ligneDeLEleve(c, eleve, fiches, occupe) {
   const t = tabletteDe(eleve);
   const { ecran, ici, suivante } = ouEnEst(c, eleve, fiches);
   const n = fiches.length, combien = `${n} fiche${n > 1 ? "s" : ""}`;
+  const sonDeroulement = ecran && ecran.montreeId === (c.deroules || {})[eleve];
   const place = ici >= 0 ? `Fiche ${ici + 1} sur ${n} : ${echapper(titreSansLEleve(fiches[ici], eleve))}`
-    : ecran && ecran.montreeId === (c.deroules || {})[eleve] ? `Ce qui va se passer · ${combien}` : combien;
+    : sonDeroulement ? (n ? `Ce qui va se passer · ${combien}` : "Ce qui va se passer")
+    : n ? combien : "Son déroulement seul";
   const m = ecran && ecran.minuteur;
   const minuteur = m ? `<div class="cj-eleve-minuteur">${icone("horloge", "petit")}
       ${roueDuMinuteur(m, t.numero, `Changer le temps qui reste à ${eleve}`, `data-reste-tablette="${t.numero}"`)}
@@ -1564,9 +1585,9 @@ function ligneDeLEleve(c, eleve, fiches, occupe) {
   const envoi = suivante ? `<div class="cj-eleve-envoi">
       <span class="cj-eleve-suite">${ici >= 0 ? "Suivante : " : ""}${echapper(titreSansLEleve(suivante, eleve))}</span>
       ${minutesDe(suivante) ? `<span class="cj-aide-duree">${icone("horloge", "petit")}${dureeLisible(minutesDe(suivante))}</span>` : ""}
-      <button class="btn-mini" data-envoyer-creneau="${echapper(c.id)}" data-aide="${echapper(suivante.id)}" ${t ? occupe : "disabled"}>
+      <button class="btn-mini" data-envoyer-creneau="${echapper(c.id)}" data-aide="${echapper(suivante.id)}" data-eleve="${echapper(eleve)}" ${t ? occupe : "disabled"}>
         ${envoiCreneau === c.id && envoiEleve === eleve ? "Envoi…" : ici >= 0 ? "Suivante" : "Envoyer"}</button>
-    </div>` : `<p class="cj-eleve-aide">Toutes ses fiches sont passées.</p>`;
+    </div>` : n ? `<p class="cj-eleve-aide">Toutes ses fiches sont passées.</p>` : "";
   return `<div class="cj-eleve${ecran ? " on" : ""}">
     <div class="cj-eleve-tete"><b>${echapper(eleve)}</b>${choixDeTablette(eleve, t)}</div>
     <div class="cj-eleve-place">${place}</div>
@@ -1721,7 +1742,7 @@ function aidesDuJour() {
     return `${titre}<p class="carte-info seule">${icone("nuage")}<span>Les aides arrivent avec le cahier journal, par Nuage : reliez le dictaphone dans les réglages.</span></p>`;
   }
   if (!cahier) return `${titre}<div class="carte cj">${cahierAbsent()}</div>`;
-  const pourTablettes = cahier.creneaux.filter((c) => (c.aides || []).length || c.deroule || minutesDuCreneau(c));
+  const pourTablettes = cahier.creneaux.filter((c) => (c.aides || []).length || c.deroule || Object.keys(c.deroules || {}).length || minutesDuCreneau(c));
   if (!pourTablettes.length) {
     return `${titre}<div class="groupe"><div class="rang vide-ok"><span class="ico">${icone("liste")}</span>
       <span class="rang-texte">Aucune aide au cahier journal ${estAujourdHui() ? "aujourd'hui" : "ce jour-là"}</span></div></div>`;
@@ -2382,7 +2403,7 @@ function rendre() {
     b.onclick = () => { creneauOuvert = creneauOuvert === b.dataset.ouvrirCreneau ? "" : b.dataset.ouvrirCreneau; rendre(); };
   });
   el.querySelectorAll("[data-envoyer-creneau]").forEach((b) => {
-    b.onclick = () => { void envoyerAuxTablettes(b.dataset.envoyerCreneau, b.dataset.aide); };
+    b.onclick = () => { void envoyerAuxTablettes(b.dataset.envoyerCreneau, b.dataset.aide, b.dataset.eleve); };
   });
   el.querySelectorAll("[data-deroule]").forEach((b) => {
     b.onclick = () => { void montrerLeDeroulement(b.dataset.deroule); };
