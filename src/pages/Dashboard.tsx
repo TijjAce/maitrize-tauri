@@ -173,41 +173,50 @@ export default function Dashboard() {
 /**
  * Les séquences telles que le cahier journal les voit : celles qui sont en
  * classe en ce moment, avec leur avancement et la prochaine séance, ou
- * l'alerte quand rien n'est posé. Celles qu'on prépare ne s'étalent pas
- * ici — elles chargeaient l'accueil — : un compte, qui mène au plan de
- * travail où elles se filtrent.
+ * l'alerte quand rien n'est posé. Celles qu'on prépare, et celles qu'on a
+ * mises en pause (« les séances en pause, je ne veux pas les voir ici »,
+ * 2026-11-02), ne s'étalent pas ici — elles chargeaient l'accueil — : un
+ * compte, qui mène au plan de travail où elles se filtrent.
  */
 function SuiviDuTableauDeBord({ ouvrirLeJournal }: { ouvrirLeJournal: (iso: string) => void }) {
   const nav = useNavigate();
   const { suivis, aujourdHui, chargement } = useSuiviSequences();
   const tous = [...suivis.values()];
-  const enClasse = rangerParActivite(tous.filter((s) => s.etat === "classe" || s.etat === "pause"));
+  const enClasse = rangerParActivite(tous.filter((s) => s.etat === "classe"));
   const enPreparation = tous.filter((s) => s.etat === "preparation").length;
+  const enPause = tous.filter((s) => s.etat === "pause").length;
   const terminees = tous.filter((s) => s.etat === "terminee").length;
-  // Le plan de travail, filtré sur les séquences en préparation.
-  const voirLaPreparation = () => {
-    demanderEtatDuPlan("preparation");
+  // Le plan de travail, filtré sur les séquences de cet état.
+  const voirDansLePlan = (etat: "preparation" | "pause") => {
+    demanderEtatDuPlan(etat);
     nav("/plan");
   };
+  const comptes = [
+    enPreparation > 0 && (
+      <button key="preparation" type="button" className="lien" onClick={() => voirDansLePlan("preparation")} title="Les voir dans le plan de travail">
+        {enPreparation} en préparation
+      </button>
+    ),
+    enPause > 0 && (
+      <button key="pause" type="button" className="lien" onClick={() => voirDansLePlan("pause")} title="Les voir dans le plan de travail">
+        {enPause} en pause
+      </button>
+    ),
+    terminees > 0 && <span key="terminees">{terminees} terminée{terminees > 1 ? "s" : ""} cette année</span>,
+  ].filter(Boolean);
   return (
     <div className="card" style={{ marginTop: 16 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
         <h3 style={{ marginTop: 0 }}>📚 En classe en ce moment</h3>
-        {(enPreparation > 0 || terminees > 0) && (
-          <span className="meta">
-            {enPreparation > 0 && (
-              <button type="button" className="lien" onClick={voirLaPreparation} title="Les voir dans le plan de travail">
-                {enPreparation} en préparation
-              </button>
-            )}
-            {enPreparation > 0 && terminees > 0 && " · "}
-            {terminees > 0 && `${terminees} terminée${terminees > 1 ? "s" : ""} cette année`}
-          </span>
+        {comptes.length > 0 && (
+          <span className="meta">{comptes.map((c, i) => <React.Fragment key={i}>{i > 0 && " · "}{c}</React.Fragment>)}</span>
         )}
       </div>
       {chargement ? null : enClasse.length === 0 ? (
         <p style={{ color: "var(--text-2)", margin: 0 }}>
-          Aucune séquence démarrée : une séquence entre ici dès qu'une de ses séances est posée dans le cahier journal.
+          {enPause > 0
+            ? "Aucune séquence en classe en ce moment."
+            : "Aucune séquence démarrée : une séquence entre ici dès qu'une de ses séances est posée dans le cahier journal."}
         </p>
       ) : enClasse.map((s) => (
         <LigneSuivi key={s.sequence.id} suivi={s} aujourdHui={aujourdHui} onOuvrir={() => nav(`/sequences/${s.sequence.id}`)} onJournal={ouvrirLeJournal} />
