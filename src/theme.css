@@ -519,6 +519,9 @@ table.tbl.compact .input { padding: 5px 8px; border-radius: 6px; font-size: 13px
 .dialogue-tour.voix-0 { --voix: #4a86e8; } .dialogue-tour.voix-1 { --voix: #d9822b; } .dialogue-tour.voix-2 { --voix: #2f9e6e; }
 .dialogue-tour.voix-3 { --voix: #9b59b6; } .dialogue-tour.voix-4 { --voix: #d64545; } .dialogue-tour.voix-5 { --voix: #1f9bb0; }
 .dialogue-tour.voix-6 { --voix: #b8860b; } .dialogue-tour.voix-7 { --voix: #c2185b; }
+/* Les mots dits à l'instant, en attente de la bulle de leur personne. */
+.dialogue-tour.en-attente .dialogue-nom { cursor: default; color: var(--text-2); }
+.dialogue-tour.en-attente .dialogue-bulle { color: var(--text-2); font-style: italic; border-left-style: dashed; }
 .msg-images img { display: block; max-height: 200px; max-width: 100%; border-radius: 8px; background: #fff; }
 
 /* ── Notes flottantes ─────────────────────────────────── */

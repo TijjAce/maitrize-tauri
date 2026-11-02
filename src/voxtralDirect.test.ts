@@ -89,6 +89,33 @@ describe("une réunion écrite en direct par Voxtral Realtime (demande de l'ense
     expect(pannes).toEqual(["Le direct de Mistral ne répond pas."]);
   });
 
+  it("compte pour un échec une liaison prête puis refusée aussitôt, au lieu de la rouvrir sans fin", async () => {
+    const { direct, sockets, pannes } = essai();
+    for (let i = 0; i < 5; i++) {
+      await tourDeBoucle();
+      const s = sockets[sockets.length - 1];
+      s.recevoir({ type: "session.created" });
+      s.recevoir({ type: "error", error: { message: "diarize indisponible" } });
+      direct.envoyer(dixieme(), 48000);
+    }
+    expect(sockets).toHaveLength(3);
+    expect(pannes).toEqual(["Le direct de Mistral ne répond pas."]);
+  });
+
+  it("garde le compte à zéro tant qu'une liaison rend du texte avant de tomber", async () => {
+    const { direct, sockets, pannes } = essai();
+    for (let i = 0; i < 4; i++) {
+      await tourDeBoucle();
+      const s = sockets[sockets.length - 1];
+      s.recevoir({ type: "session.created" });
+      s.recevoir({ type: "transcription.text.delta", text: " mot" });
+      s.close();
+      direct.envoyer(dixieme(), 48000);
+    }
+    expect(sockets).toHaveLength(4);
+    expect(pannes).toEqual([]);
+  });
+
   it("à la fin, envoie le reste de la voix, attend les derniers mots, puis ferme", async () => {
     const { direct, sockets, textes } = essai();
     await tourDeBoucle();

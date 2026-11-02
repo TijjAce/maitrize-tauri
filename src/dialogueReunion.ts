@@ -59,3 +59,17 @@ export function renommer(dialogue: string, ancien: string, nouveau: string): str
   const echappe = ancien.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return dialogue.replace(new RegExp(`(^|\\n\\n)${echappe} : `, "g"), `$1${n} : `);
 }
+
+/** Le nombre de mots d'un texte. */
+export const nombreDeMots = (texte: string) => texte.trim().split(/\s+/).filter(Boolean).length;
+
+/**
+ * Les mots déjà écrits à l'instant mais pas encore posés dans une bulle :
+ * ceux de l'écoute instantanée au-delà des `motsPoses` que la reconnaissance
+ * des voix a rendus. Les deux écoutes entendent la même voix : on compte les
+ * mots (« ça écrit, puis quand ça identifie la personne ça met la bulle »,
+ * 2026-11-02).
+ */
+export function enAttenteDeVoix(instantane: string, motsPoses: number): string {
+  return instantane.trim().split(/\s+/).filter(Boolean).slice(motsPoses).join(" ");
+}

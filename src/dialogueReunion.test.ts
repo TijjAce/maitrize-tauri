@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ajouterUnTour, lireLeDialogue, nomParDefaut, nomPropre, renommer } from "./dialogueReunion";
+import { ajouterUnTour, enAttenteDeVoix, lireLeDialogue, nombreDeMots, nomParDefaut, nomPropre, renommer } from "./dialogueReunion";
 
 describe("une réunion comme une conversation (demande de l'enseignant, 2026-11-02)", () => {
   it("écrit un paragraphe par tour de parole, et prolonge celui de la personne qui parle encore", () => {
@@ -34,5 +34,14 @@ describe("une réunion comme une conversation (demande de l'enseignant, 2026-11-
     expect(nomParDefaut("speaker_2")).toBe("Personne 2");
     expect(nomParDefaut("agent")).toBe("agent");
     expect(nomParDefaut(null)).toBe("");
+  });
+
+  it("garde en attente les mots écrits à l'instant, jusqu'à ce que la bulle de leur personne arrive", () => {
+    const instantane = "Bonjour à tous, merci d'être venus. On commence par le projet";
+    expect(enAttenteDeVoix(instantane, 0)).toBe(instantane);
+    // La première phrase a trouvé sa personne : il ne reste que la suite.
+    expect(enAttenteDeVoix(instantane, nombreDeMots("Bonjour à tous, merci d'être venus."))).toBe("On commence par le projet");
+    expect(enAttenteDeVoix(instantane, 99)).toBe("");
+    expect(nombreDeMots("  ")).toBe(0);
   });
 });

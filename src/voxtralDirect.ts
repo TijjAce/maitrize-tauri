@@ -36,6 +36,8 @@ const PAR_ENVOI = TAUX_DU_DIRECT / 10;
 const ATTENTE_DE_LA_FIN_MS = 4000;
 /** Ce qu'on laisse à une liaison pour s'ouvrir. */
 const OUVERTURE_MAX_MS = 8000;
+/** Une liaison prête qui n'a rien rendu compte quand même comme une réussite au-delà de ce temps : une salle silencieuse. */
+const TENUE_MIN_MS = 10000;
 
 /** Une trame de voix ramenée à `vers` échantillons par seconde, par moyenne : rien de la voix ne se perd sous 8 kHz. */
 export function reechantillonner(trame: Float32Array, de: number, vers = TAUX_DU_DIRECT): Float32Array {
@@ -150,6 +152,11 @@ export function ouvrirLeDirect(o: OptionsDuDirect): Direct {
     ws = s;
     // Une liaison qui ne s'ouvre pas, sans même se fermer, compte pour un échec.
     const delai = setTimeout(() => { if (ws === s && !pret) s.close(); }, OUVERTURE_MAX_MS);
+    // Prête, puis refusée aussitôt — une option que le modèle n'accepte pas — : un échec aussi. Elle ne compte comme
+    // réussie qu'une fois du texte rendu, ou après avoir tenu un moment.
+    let rendu = false;
+    let preteA = 0;
+    const reussie = () => { rendu = true; echecs = 0; };
     s.onmessage = (m) => {
       let ev: { type?: string; text?: string; speaker_id?: string | null };
       try { ev = JSON.parse(String(m.data)); } catch { return; }
@@ -159,11 +166,13 @@ export function ouvrirLeDirect(o: OptionsDuDirect): Direct {
           audio_format: { encoding: "pcm_s16le", sample_rate: TAUX_DU_DIRECT }, target_streaming_delay_ms: DELAI_DU_DIRECT_MS, language: "fr",
           ...(o.diarize ? { diarize: true } : {}),
         } }));
-        pret = true; enCours = false; echecs = 0;
+        pret = true; enCours = false; preteA = Date.now();
         vider(false);
       } else if (ev.type === "transcription.text.delta" && ev.text) {
+        reussie();
         o.surTexte(ev.text);
       } else if (ev.type === "transcription.segment" && ev.text) {
+        reussie();
         if (o.surTour) o.surTour(ev.text, ev.speaker_id ?? null);
         else o.surTexte(ev.text);
       } else if (ev.type === "transcription.done") {
@@ -176,13 +185,14 @@ export function ouvrirLeDirect(o: OptionsDuDirect): Direct {
     s.onclose = () => {
       clearTimeout(delai);
       if (ws !== s) return;
-      const etaitPret = pret;
+      const aTenu = rendu || (preteA > 0 && Date.now() - preteA >= TENUE_MIN_MS);
       ws = null; pret = false; enCours = false;
       finDuTexte?.();
       if (ferme) return;
-      // Une liaison qui n'a jamais été prête est un échec ; une liaison prête qui se ferme (une longue réunion, un
+      // Une liaison qui n'a rien donné est un échec ; une liaison qui a tenu et se ferme (une longue réunion, un
       // réseau qui hoquette) se rouvre à la voix suivante.
-      if (!etaitPret && ++echecs >= ECHECS_AVANT_PANNE) panne("Le direct de Mistral ne répond pas.");
+      if (aTenu) echecs = 0;
+      else if (++echecs >= ECHECS_AVANT_PANNE) panne("Le direct de Mistral ne répond pas.");
     };
   };
 

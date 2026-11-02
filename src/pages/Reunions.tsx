@@ -9,7 +9,7 @@ import { printHTML, escapeHtml } from "../print";
 import { useEcoute, type TrancheAudio } from "../ecoute";
 import { ouvrirLeDirect, type Direct } from "../voxtralDirect";
 import { DialogueReunion } from "../components/DialogueReunion";
-import { ajouterUnTour, nomParDefaut, nomPropre, renommer } from "../dialogueReunion";
+import { ajouterUnTour, enAttenteDeVoix, nombreDeMots, nomParDefaut, nomPropre, renommer } from "../dialogueReunion";
 import { ZoneVivante } from "../components/ZoneVivante";
 import {
   choixIci, paroleMinimale, plafondDuMorceau, sortieDeLAudio, transcrire, type Choix, type Moteur,
@@ -421,8 +421,29 @@ export default function Reunions() {
   // ligne, la parole part au fil de l'eau (voir voxtralDirect.ts) et les mots
   // s'écrivent pendant qu'on parle. Le silence qui fermait un passage ouvre
   // maintenant un paragraphe. Si le direct lâche, les passages reprennent.
+  //
+  // Puis : « je veux les deux en même temps : ça écrit, puis quand ça
+  // identifie la personne ça met la bulle » (2026-11-02). Deux écoutes chez
+  // Mistral, sur la même voix : l'une, sans les voix, écrit les mots à
+  // l'instant, en attente sous la conversation ; l'autre reconnaît les voix
+  // et pose chaque phrase dans la bulle de sa personne, à la place des mots
+  // en attente. C'est elle seule qui s'enregistre. Le direct coûte deux fois
+  // plus. Si la reconnaissance lâche, les mots à l'instant s'écrivent eux-mêmes,
+  // sans les noms ; si les deux lâchent, les passages reprennent.
 
+  /** L'écoute qui reconnaît les voix : ce qui s'enregistre. */
   const direct = React.useRef<Direct | null>(null);
+  /** L'écoute instantanée, sans les voix : ce qu'on voit d'abord. */
+  const instant = React.useRef<Direct | null>(null);
+  // Les mots entendus à l'instant depuis le début de l'écoute, et combien ont déjà trouvé leur bulle.
+  const instantane = React.useRef("");
+  const motsPoses = React.useRef(0);
+  const [enAttente, setEnAttente] = React.useState("");
+  const majEnAttente = React.useCallback(() => setEnAttente(enAttenteDeVoix(instantane.current, motsPoses.current)), []);
+  const oublierLAttente = React.useCallback(() => { instantane.current = ""; motsPoses.current = 0; setEnAttente(""); }, []);
+  // Si Mistral rend des mots sans les voix sur l'écoute qui devait les reconnaître, elle écrit déjà à l'instant :
+  // l'autre se tait, sinon chaque mot paraîtrait deux fois.
+  const voixSansNoms = React.useRef(false);
   const apresUnSilence = React.useRef(true);
   // Au fil de la parole, la sauvegarde attend une pause de la frappe : une longue tirade est quand même gardée,
   // toutes les cinq secondes.
@@ -449,41 +470,82 @@ export default function Reunions() {
     const nom = (intervenant && noms.current.get(intervenant)) || nomParDefaut(intervenant);
     if (intervenant && !noms.current.has(intervenant)) noms.current.set(intervenant, nom);
     ecrireLaConversation(ajouterUnTour(texteRef.current, nom, morceau));
-  }, [ecrireLaConversation]);
+    // Ces mots ont trouvé leur bulle : ils quittent l'attente.
+    motsPoses.current += nombreDeMots(morceau);
+    majEnAttente();
+  }, [ecrireLaConversation, majEnAttente]);
 
-  /** En ligne, le direct s'ouvre avec l'écoute ; sur cet ordinateur (Whisper), rien ne change. */
+  /** Les mots à l'instant : en attente de leur bulle tant que les voix suivent ; écrits eux-mêmes si elles ont lâché. */
+  const ecrireAInstant = React.useCallback((morceau: string) => {
+    if (!instant.current || voixSansNoms.current) return;
+    if (!direct.current) { ecrireLeDirect(morceau); return; }
+    instantane.current += morceau;
+    majEnAttente();
+  }, [ecrireLeDirect, majEnAttente]);
+
+  /** En ligne, les deux écoutes s'ouvrent avec le micro ; sur cet ordinateur (Whisper), rien ne change. */
   const ouvrirDirect = React.useCallback(() => {
     direct.current = null;
+    instant.current = null;
+    oublierLAttente();
+    voixSansNoms.current = false;
     if (choixRef.current.moteur !== "ligne") return;
     apresUnSilence.current = true;
     // Les voix d'une liaison ne valent que pour elle : chaque écoute repart des siennes.
     noms.current = new Map([...noms.current].filter(([, nom]) => !/^Personne \d+$/.test(nom)));
-    const d = ouvrirLeDirect({
+    const voix = ouvrirLeDirect({
       jeton: () => api.mistralJetonTempsReel(),
-      surTexte: ecrireLeDirect,
+      surTexte: (morceau) => {
+        if (!voixSansNoms.current) { voixSansNoms.current = true; oublierLAttente(); }
+        ecrireLeDirect(morceau);
+      },
       diarize: true,
       surTour: ecrireUnTour,
       surPanne: (raison) => {
-        if (direct.current === d) direct.current = null;
-        journal(`RÉUNION direct de Voxtral interrompu : ${raison}`);
-        toast("Le direct de Mistral s'est interrompu : la réunion continue de s'écrire par passages.", { icone: "📡", duree: 7000 });
+        if (direct.current !== voix) return;
+        direct.current = null;
+        journal(`RÉUNION reconnaissance des voix interrompue : ${raison}`);
+        // Les mots en attente ne trouveront plus de bulle : ils s'écrivent tels quels, et la suite avec eux.
+        const reste = enAttenteDeVoix(instantane.current, motsPoses.current);
+        oublierLAttente();
+        if (instant.current) {
+          if (reste) { apresUnSilence.current = true; ecrireLeDirect(reste); }
+          toast("La reconnaissance des voix s'est interrompue : la réunion continue de s'écrire, sans les noms.", { icone: "📡", duree: 7000 });
+        } else {
+          toast("Le direct de Mistral s'est interrompu : la réunion continue de s'écrire par passages.", { icone: "📡", duree: 7000 });
+        }
       },
     });
-    direct.current = d;
-  }, [ecrireLeDirect, ecrireUnTour]);
+    direct.current = voix;
+    const mots = ouvrirLeDirect({
+      jeton: () => api.mistralJetonTempsReel(),
+      surTexte: ecrireAInstant,
+      surPanne: (raison) => {
+        if (instant.current !== mots) return;
+        instant.current = null;
+        oublierLAttente();
+        journal(`RÉUNION écoute instantanée interrompue : ${raison}`);
+        if (!direct.current) toast("Le direct de Mistral s'est interrompu : la réunion continue de s'écrire par passages.", { icone: "📡", duree: 7000 });
+      },
+    });
+    instant.current = mots;
+  }, [ecrireLeDirect, ecrireUnTour, ecrireAInstant, oublierLAttente]);
 
-  /** Les derniers mots du direct, puis il se ferme. */
+  /** La fin : l'écoute instantanée se tait, les dernières bulles arrivent, puis tout se ferme. */
   const fermerDirect = React.useCallback(async () => {
-    const d = direct.current;
+    const voix = direct.current, mots = instant.current;
+    instant.current = null;
+    void mots?.fermer();
+    await voix?.fermer();
     direct.current = null;
-    await d?.fermer();
-  }, []);
-  React.useEffect(() => () => { void direct.current?.fermer(); }, []);
+    oublierLAttente();
+  }, [oublierLAttente]);
+  React.useEffect(() => () => { void direct.current?.fermer(); void instant.current?.fermer(); }, []);
 
   const surMorceau = React.useCallback(async (t: TrancheAudio) => {
     // En direct, la parole est déjà écrite : le passage ne dit plus qu'un silence, et le mot suivant ouvre un
     // paragraphe.
-    if (direct.current) { apresUnSilence.current = true; return; }
+    if (direct.current || instant.current) { apresUnSilence.current = true; return; }
     // Sans réseau, un envoi de plus, c'est quarante-cinq secondes d'attente
     // pour le même échec. On s'arrête jusqu'à ce que l'enseignant redemande.
     if (horsLigneRef.current && moteurRef.current === "ligne") return;
@@ -507,7 +569,7 @@ export default function Reunions() {
 
   const ecoute = useEcoute({
     onTranche: (t) => { void surMorceau(t); },
-    onTrame: (trame, taux) => direct.current?.envoyer(trame, taux),
+    onTrame: (trame, taux) => { direct.current?.envoyer(trame, taux); instant.current?.envoyer(trame, taux); },
     minimumParole: paroleMinimale(moteur),
     plafond: plafondDuMorceau(moteur),
   });
@@ -809,7 +871,7 @@ export default function Reunions() {
                 {ecoute.etat === "pause" ? "en pause"
                   : occupe ? occupe
                   : horsLigne ? (moteur === "local" ? "hors ligne — le texte s'écrit seul" : "hors ligne — rien ne s'écrit")
-                  : enCours ? (direct.current ? "à l'écoute — s'écrit en direct" : "à l'écoute")
+                  : enCours ? (direct.current || instant.current ? "à l'écoute — s'écrit en direct" : "à l'écoute")
                   : "écoute arrêtée"}
               </span>
               <div className="spacer" style={{ flex: 1 }} />
@@ -860,7 +922,7 @@ export default function Reunions() {
                 )}
               </div>
             )}
-            {vue === "dialogue" && <DialogueReunion dialogue={texte} enCours={enCours} onRenommer={setARenommer} />}
+            {vue === "dialogue" && <DialogueReunion dialogue={texte} enCours={enCours} onRenommer={setARenommer} enAttente={enAttente} />}
             {vue === "corriger" && (
               <ZoneVivante cible={texte} minHauteur="62vh" anime={false}
                 onChange={(v) => poserTexte(v)}
