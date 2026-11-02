@@ -7,12 +7,14 @@ import { confirmer } from "../components/confirmer";
 import { openCtx } from "../components/ctxmenu";
 import { printHTML, escapeHtml } from "../print";
 import { useEcoute, type TrancheAudio } from "../ecoute";
+import { ouvrirLeDirect, type Direct } from "../voxtralDirect";
 import { ZoneVivante } from "../components/ZoneVivante";
 import {
   choixIci, paroleMinimale, plafondDuMorceau, sortieDeLAudio, transcrire, type Choix, type Moteur,
 } from "../transcription";
 import {
-  GENRES, ajouterAuDocument, ajouterAuTexte, apresLaPasse, assezPourResumer, convertirAnciennes,
+  GENRES, ajouterAuDocument, ajouterAuTexte, ajouterLeDirectAuDocument, ajouterLeDirectAuTexte, apresLaPasse,
+  assezPourResumer, convertirAnciennes,
   dureeLisible, ecrireResumes, lirePlan, lireResumes, mettreAuPropre,
   assezPourRelire, nomDeLaReunion, phrasesEnAttente, planVide, rangerLeDocument,
   reformulerPassage, relireLeDocument, texteACopier, type Resume,
@@ -392,7 +394,62 @@ export default function Reunions() {
 
   // ── L'écoute ────────────────────────────────────────────────────────────
 
+  // ── Le direct de Voxtral ────────────────────────────────────────────────
+  //
+  // « Branche sur réunion Mistral Realtime pour écrire » (2026-11-02) : en
+  // ligne, la parole part au fil de l'eau (voir voxtralDirect.ts) et les mots
+  // s'écrivent pendant qu'on parle. Le silence qui fermait un passage ouvre
+  // maintenant un paragraphe. Si le direct lâche, les passages reprennent.
+
+  const direct = React.useRef<Direct | null>(null);
+  const apresUnSilence = React.useRef(true);
+  // Au fil de la parole, la sauvegarde attend une pause de la frappe : une longue tirade est quand même gardée,
+  // toutes les cinq secondes.
+  const sauveLeDirect = React.useRef(0);
+
+  const ecrireLeDirect = React.useCallback((morceau: string) => {
+    const nouveau = apresUnSilence.current;
+    if (morceau.trim()) apresUnSilence.current = false;
+    const texteSuite = ajouterLeDirectAuTexte(texteRef.current, morceau, nouveau);
+    const document = ajouterLeDirectAuDocument(compteRenduRef.current, morceau, nouveau);
+    texteRef.current = texteSuite;
+    setTexte(texteSuite);
+    compteRenduRef.current = document;
+    setCompteRendu(document);
+    const toutDeSuite = Date.now() - sauveLeDirect.current > 5000;
+    if (toutDeSuite) sauveLeDirect.current = Date.now();
+    majReunion({ texte: texteSuite, compteRendu: document }, toutDeSuite);
+  }, [majReunion]);
+
+  /** En ligne, le direct s'ouvre avec l'écoute ; sur cet ordinateur (Whisper), rien ne change. */
+  const ouvrirDirect = React.useCallback(() => {
+    direct.current = null;
+    if (choixRef.current.moteur !== "ligne") return;
+    apresUnSilence.current = true;
+    const d = ouvrirLeDirect({
+      jeton: () => api.mistralJetonTempsReel(),
+      surTexte: ecrireLeDirect,
+      surPanne: (raison) => {
+        if (direct.current === d) direct.current = null;
+        journal(`RÉUNION direct de Voxtral interrompu : ${raison}`);
+        toast("Le direct de Mistral s'est interrompu : la réunion continue de s'écrire par passages.", { icone: "📡", duree: 7000 });
+      },
+    });
+    direct.current = d;
+  }, [ecrireLeDirect]);
+
+  /** Les derniers mots du direct, puis il se ferme. */
+  const fermerDirect = React.useCallback(async () => {
+    const d = direct.current;
+    direct.current = null;
+    await d?.fermer();
+  }, []);
+  React.useEffect(() => () => { void direct.current?.fermer(); }, []);
+
   const surMorceau = React.useCallback(async (t: TrancheAudio) => {
+    // En direct, la parole est déjà écrite : le passage ne dit plus qu'un silence, et le mot suivant ouvre un
+    // paragraphe.
+    if (direct.current) { apresUnSilence.current = true; return; }
     // Sans réseau, un envoi de plus, c'est quarante-cinq secondes d'attente
     // pour le même échec. On s'arrête jusqu'à ce que l'enseignant redemande.
     if (horsLigneRef.current && moteurRef.current === "ligne") return;
@@ -422,6 +479,7 @@ export default function Reunions() {
 
   const ecoute = useEcoute({
     onTranche: (t) => { void surMorceau(t); },
+    onTrame: (trame, taux) => direct.current?.envoyer(trame, taux),
     minimumParole: paroleMinimale(moteur),
     plafond: plafondDuMorceau(moteur),
   });
@@ -472,7 +530,7 @@ export default function Reunions() {
     if (dejaExplique.current) {
       const erreur = await ecoute.demarrer(0);
       if (erreur) toast(erreur, { icone: "🎙" });
-      else setConsentementVu(true);
+      else { setConsentementVu(true); ouvrirDirect(); }
     }
   };
 
@@ -498,14 +556,15 @@ export default function Reunions() {
     const erreur = await ecoute.demarrer(courante.dureeS);
     if (erreur) { toast(erreur, { icone: "🎙" }); return; }
     setConsentementVu(true);
+    ouvrirDirect();
   };
 
   const terminer = () => {
     ecoute.arreter();
     majReunion({ dureeS: ecoute.secondes }, true);
     // Ce qui reste sous les dix phrases mérite quand même son résumé, une
-    // fois la dernière transcription arrivée.
-    window.setTimeout(() => { void integrerSiBesoin(true); }, 1500);
+    // fois la dernière transcription arrivée — en direct, ses derniers mots.
+    void fermerDirect().then(() => { window.setTimeout(() => { void integrerSiBesoin(true); }, 1500); });
   };
 
   // ── Le compte rendu ─────────────────────────────────────────────────────
@@ -720,14 +779,14 @@ export default function Reunions() {
                 {ecoute.etat === "pause" ? "en pause"
                   : occupe ? occupe
                   : horsLigne ? (moteur === "local" ? "hors ligne — le texte s'écrit seul" : "hors ligne — rien ne s'écrit")
-                  : enCours ? "à l'écoute"
+                  : enCours ? (direct.current ? "à l'écoute — s'écrit en direct" : "à l'écoute")
                   : "écoute arrêtée"}
               </span>
               <div className="spacer" style={{ flex: 1 }} />
               {enCours ? (
                 <>
                   {ecoute.etat === "ecoute"
-                    ? <button className="btn" onClick={ecoute.pause}>⏸ Pause</button>
+                    ? <button className="btn" onClick={() => { apresUnSilence.current = true; ecoute.pause(); }}>⏸ Pause</button>
                     : <button className="btn primary" onClick={ecoute.reprendre}>▶️ Reprendre</button>}
                   <button className="btn" onClick={terminer}>⏹ Terminer</button>
                 </>

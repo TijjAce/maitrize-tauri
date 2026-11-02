@@ -60,8 +60,10 @@ export function messageMicro(e: unknown): string {
 /** En dessous, la tranche n'a rien à dire : on ne l'envoie pas transcrire. */
 export const MINIMUM_S = 1;
 
-export function useEcoute({ onTranche, minimumParole = 2, plafond = 15 }: {
+export function useEcoute({ onTranche, onTrame, minimumParole = 2, plafond = 15 }: {
   onTranche: (t: TrancheAudio) => void;
+  /** Chaque trame du micro, au fil de la parole, et le taux de son contexte : le direct de Voxtral la prend (voir voxtralDirect.ts). */
+  onTrame?: (trame: Float32Array, taux: number) => void;
   /** Secondes de parole en dessous desquelles on ne coupe pas. */
   minimumParole?: number;
   /** Secondes après lesquelles on coupe même en pleine phrase. */
@@ -89,6 +91,8 @@ export function useEcoute({ onTranche, minimumParole = 2, plafond = 15 }: {
   // Le rappel change à chaque rendu ; la capture, elle, vit plus longtemps.
   const rappel = React.useRef(onTranche);
   rappel.current = onTranche;
+  const rappelTrame = React.useRef(onTrame);
+  rappelTrame.current = onTrame;
 
   /** Ferme la tranche en cours et la remet au rappel, si elle dit quelque chose. */
   const clore = React.useCallback(() => {
@@ -124,6 +128,7 @@ export function useEcoute({ onTranche, minimumParole = 2, plafond = 15 }: {
       if (enPause.current) return;
       const trame = new Float32Array(e.inputBuffer.getChannelData(0));
       const secondesTrame = trame.length / ctx.sampleRate;
+      rappelTrame.current?.(trame, ctx.sampleRate);
       morceaux.current.push(trame);
       duree.current += secondesTrame;
       if (estSilencieux(trame)) {

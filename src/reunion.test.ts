@@ -17,6 +17,7 @@ vi.mock("./api", () => ({
 
 import {
   PHRASES_PAR_RANGEMENT, SECONDES_PAR_RELECTURE, RUBRIQUES, TRANCHE_S, ajouterAuTexte, apresLaPasse,
+  ajouterLeDirectAuDocument, ajouterLeDirectAuTexte,
   assezPourRelire, assezPourResumer, convertirAnciennes,
   decouperEnPhrases, dureeLisible, ecrirePlan, ecrireResumes, fusionnerPlan,
   lirePlan, lireResumes, lireTranches, mettreAuPropre, nettoyer, nomDeLaReunion, promptRelecture,
@@ -389,5 +390,20 @@ describe("reformuler un passage surligné", () => {
 
   it("refuse un passage trop court pour être une phrase", async () => {
     await expect(reformulerPassage("oui")).rejects.toThrow(/un peu plus long/);
+  });
+
+  it("écrit le direct de Voxtral au fil de la parole, et un nouveau paragraphe après un silence (2026-11-02)", () => {
+    let doc = "", texte = "";
+    for (const m of ["Bonjour", " à tous", "."]) { doc = ajouterLeDirectAuDocument(doc, m, false); texte = ajouterLeDirectAuTexte(texte, m, false); }
+    expect(doc).toBe("Bonjour à tous.");
+    expect(texte).toBe("Bonjour à tous.");
+    doc = ajouterLeDirectAuDocument(doc, " On commence", true);
+    texte = ajouterLeDirectAuTexte(texte, " On commence", true);
+    expect(doc).toBe("Bonjour à tous.\n\nOn commence");
+    expect(texte).toBe("Bonjour à tous. On commence");
+    // Un silence sans point : le texte en met un, pour ne pas coller deux phrases.
+    expect(ajouterLeDirectAuTexte("On commence", " Le premier point", true)).toBe("On commence. Le premier point");
+    // Un morceau vide après un silence ne change rien.
+    expect(ajouterLeDirectAuDocument("Un.", "  ", true)).toBe("Un.");
   });
 });

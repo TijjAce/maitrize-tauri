@@ -287,6 +287,22 @@ export function ajouterAuTexte(texte: string, morceau: string): string {
   return fin + separateur + propre;
 }
 
+/**
+ * Un morceau du direct de Voxtral (voir voxtralDirect.ts) au bout du
+ * document : tel quel au fil de la parole — il porte ses espaces —, ou en
+ * nouveau paragraphe après un silence, comme un passage.
+ */
+export function ajouterLeDirectAuDocument(document: string, morceau: string, apresUnSilence: boolean): string {
+  if (apresUnSilence || !document.trim()) return ajouterAuDocument(document, morceau);
+  return document + morceau;
+}
+
+/** Le même morceau au texte de la réunion : tel quel, ou comme un nouveau passage après un silence. */
+export function ajouterLeDirectAuTexte(texte: string, morceau: string, apresUnSilence: boolean): string {
+  if (apresUnSilence || !texte.trim()) return ajouterAuTexte(texte, morceau);
+  return texte + morceau;
+}
+
 // ── Ce qu'on demande au modèle ────────────────────────────────────────────
 
 /** Le compte rendu final, à partir des résumés de tranches. */
