@@ -30,6 +30,7 @@ import { EVT_JOUR } from "./components/CommandPalette";
 import { verifierLaSauvegarde } from "./verifSauvegarde";
 import { QuoiDeNeuf } from "./components/QuoiDeNeuf";
 import { demarrerLaVeille } from "./veille";
+import { estInviteDuRelais } from "./relaisDev";
 import { surveillerLeChiffrement } from "./chiffrementDisque";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { NotesPanel } from "./components/NotesPanel";
@@ -162,12 +163,17 @@ export default function App() {
   useAnnonceDuRetour();
   // Ce que dit l'enseignant à son iPhone, quand la télécommande du tableau est ouverte.
   useTelecommande();
+  // Sur un autre ordinateur, par le relais de développement, les tâches de fond restent à la fenêtre du Mac :
+  // elles ne tournent pas deux fois (voir relaisDev.ts).
+  const surLeMac = !estInviteDuRelais();
   // Une base abîmée ou disparue a été remplacée au démarrage par le dernier état sain : le dire.
   React.useEffect(() => {
+    if (!surLeMac) return;
     api.reparationAnnonce().then((t) => { if (t) toast(t, { icone: "🛟", duree: 60000 }); }).catch(() => {});
   }, []);
   // La session d'avant s'est arrêtée sur une erreur, figée ou fermée brutalement : proposer d'en envoyer le rapport.
   React.useEffect(() => {
+    if (!surLeMac) return;
     const id = window.setTimeout(() => { void proposerApresUnIncident(); }, 4000);
     return () => window.clearTimeout(id);
   }, []);
@@ -175,11 +181,11 @@ export default function App() {
   React.useEffect(() => { getVersion().then(setVersion).catch(() => {}); }, []);
   // Synchronisation de fond : rien à cliquer, les écrans se relisent d'eux-mêmes
   // quand des données arrivent de l'autre machine.
-  React.useEffect(() => demarrerSyncAuto(), []);
+  React.useEffect(() => (surLeMac ? demarrerSyncAuto() : undefined), []);
   // Ce que le dictaphone a déposé sur Nuage se relève de la même façon, sans rien cliquer.
-  React.useEffect(() => demarrerReleveTelephone(), []);
+  React.useEffect(() => (surLeMac ? demarrerReleveTelephone() : undefined), []);
   // Un vocal arrivé — par le WiFi ou par Nuage — se transcrit aussitôt, où que l'on soit.
-  React.useEffect(() => demarrerVocauxEnFond(), []);
+  React.useEffect(() => (surLeMac ? demarrerVocauxEnFond() : undefined), []);
   // « Voir », sur une dictée qui attend son créneau : droit aux vocaux du téléphone.
   React.useEffect(() => {
     const voir = () => { navigate("/reglages"); setTimeout(() => ouvrirOnglet("reglages", "partage"), 140); };
@@ -197,12 +203,12 @@ export default function App() {
     return () => window.removeEventListener(EVT_VOIR_JOUR, voir);
   }, [navigate]);
   // Une fenêtre figée ne dit rien d'elle-même : la veille en laisse une trace.
-  React.useEffect(() => demarrerLaVeille(), []);
+  React.useEffect(() => (surLeMac ? demarrerLaVeille() : undefined), []);
   // Un disque non chiffré se dit, une fois par mois au plus : les dossiers des élèves y sont.
-  React.useEffect(() => surveillerLeChiffrement(() => {
+  React.useEffect(() => (surLeMac ? surveillerLeChiffrement(() => {
     navigate("/reglages");
     setTimeout(() => ouvrirOnglet("reglages", "donnees"), 140);
-  }), [navigate]);
+  }) : undefined), [navigate]);
 
   // Liseré lumineux : met l'animation en pause quand la fenêtre perd le focus
   // (économie de batterie). L'attribut est lu par le CSS [data-winfocus].
@@ -253,8 +259,9 @@ export default function App() {
         if (recus.length > 0) window.dispatchEvent(new Event("maitrize:recu"));
       } catch { /* hors-ligne / non configuré */ }
     };
-    verifier();
-    const id = window.setInterval(verifier, 120000);
+    // Sur l'autre ordinateur, la boîte aux lettres ne se relève qu'à la demande.
+    if (surLeMac) verifier();
+    const id = surLeMac ? window.setInterval(verifier, 120000) : undefined;
     const onManuel = () => verifier();
     window.addEventListener("maitrize:relever", onManuel);
     return () => { arrete = true; window.clearInterval(id); window.removeEventListener("maitrize:relever", onManuel); };
@@ -313,7 +320,7 @@ export default function App() {
       <IndicateurTranscription />
       <ConfirmerHost />
       <LecteurMarkdownHost />
-      <UpdateBanner />
+      {surLeMac && <UpdateBanner />}
       <NotesPanel />
       <BoutonPictos />
       <CommandPalette />
@@ -321,9 +328,9 @@ export default function App() {
       <ChercherDansLaPage />
       <Onboarding />
       {/* L'été : proposer de laisser place à la classe suivante (voir finDAnnee.ts). */}
-      <FinDAnneeHost />
+      {surLeMac && <FinDAnneeHost />}
       <ContextMenuHost />
-      <CopieDuBureau />
+      {surLeMac && <CopieDuBureau />}
     </div>
     </CguGate>
   );

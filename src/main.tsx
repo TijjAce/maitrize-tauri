@@ -1,3 +1,6 @@
+// Le relais de développement, avant tout le reste : dans le navigateur d'un autre ordinateur, le pont vers le Mac
+// doit être là avant la première demande (voir relaisDev.ts). Rien dans l'application publiée.
+import "./relaisDev";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
