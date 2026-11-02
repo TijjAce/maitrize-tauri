@@ -1363,7 +1363,7 @@ table.prog-ime .prog-ime-p { width: 46px; padding-left: 4px; padding-right: 4px;
 .surligneur-fond mark { color: transparent; padding: 0; border-radius: 3px; }
 mark.surligne-phrase { background: color-mix(in srgb, var(--accent) 26%, transparent); }
 mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparent); }
-/* Au prévu d'un groupe, l'étape d'un élève surlignée de sa couleur, son prénom un ton plus fort ; celle de plusieurs en gris,
+/* Au prévu d'un groupe, la partie d'un élève surlignée de sa couleur, son prénom un ton plus fort ; celle de plusieurs en gris,
    chaque prénom de sa couleur (voir prevuParEleve.ts). */
 mark.surligne-eleve { background: color-mix(in srgb, var(--eleve, var(--accent)) 22%, transparent); }
 mark.surligne-eleves { background: color-mix(in srgb, var(--text-2) 16%, transparent); }

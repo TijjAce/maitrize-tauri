@@ -83,10 +83,10 @@ function carteSeule(c: Pick<Creneau, "prevu" | "matiere">): PasDuDeroulement[] {
 // élève ait son picto », puis : « un bouton qui permet de surligner l'élève et
 // ce qu'il doit faire, et après ça suit dans l'ordre chronologique »
 // (demandes de l'enseignant, 2026-11-02). Un créneau qui nomme ses élèves — un
-// groupe — et dont le prévu donne une étape à l'un d'eux (« Lina : … », voir
+// groupe — et dont le prévu donne une partie à l'un d'eux (« Lina : … », voir
 // prevuParEleve.ts) se partage : une bande par élève du groupe, son prénom en
-// tête, avec ce qui est à tous et ses étapes dans l'ordre où elles sont
-// écrites, ses fiches et ses séances.
+// tête, avec les séances et les jeux de ce qui est à tous et de ses parties,
+// dans l'ordre où ils sont écrits, et ses fiches.
 
 /** Les élèves qu'un créneau nomme, par leur identifiant ; aucun : toute la classe. */
 function elevesNommes(c: Pick<Creneau, "elevesJson">): string[] {
@@ -100,20 +100,19 @@ function elevesNommes(c: Pick<Creneau, "elevesJson">): string[] {
 export const prenomsDuGroupe = (c: Pick<Creneau, "elevesJson">, eleves: { id: string; prenom: string }[]): string[] =>
   elevesNommes(c).map((id) => eleves.find((e) => e.id === id)?.prenom.trim() ?? "").filter(Boolean);
 
-/** Les élèves dont le créneau a la bande : ceux de son groupe, si son prévu donne une étape à l'un d'eux ; sinon aucun — une bande pour tous. */
+/** Les élèves dont le créneau a la bande : ceux de son groupe, si son prévu donne une partie à l'un d'eux ; sinon aucun — une bande pour tous. */
 export function elevesEnBandes(c: Pick<Creneau, "elevesJson" | "prevu">, eleves: { id: string; prenom: string }[]): string[] {
   const groupe = prenomsDuGroupe(c, eleves);
   return groupe.length && estPartage(c.prevu ?? "", groupe) ? groupe : [];
 }
 
-/** Le déroulement d'un créneau pour un élève : ce qui est à tous et ses étapes, dans l'ordre du prévu, ses fiches et ses séances. */
+/** Le déroulement d'un créneau pour un élève : ce qui est à tous et ses parties, dans l'ordre du prévu, ses fiches et ses séances. */
 export function pasDeLaBandeDe(
   c: Pick<Creneau, "prevu" | "matiere">, prenom: string, prenomsDuGroupe: string[], seance: Seance | undefined, fiches: MaterielItem[],
   domaineDeSeance = "", sequences: Sequence[] = [], seances: Seance[] = [], jeux: Jeu[] = [], photos: PhotoDeJeu[] = [],
 ): PasDuDeroulement[] {
-  const { texte, etapes } = prevuDeLEleve(c.prevu ?? "", prenom, prenomsDuGroupe);
-  const sien = { ...c, prevu: texte };
-  const pas = pasDuDeroulement(sien, seance, fiches, domaineDeSeance, prenom, sequences, seances, jeux, photos, etapes);
+  const sien = { ...c, prevu: prevuDeLEleve(c.prevu ?? "", prenom, prenomsDuGroupe) };
+  const pas = pasDuDeroulement(sien, seance, fiches, domaineDeSeance, prenom, sequences, seances, jeux, photos);
   // Sur sa bande, ses fiches sont les siennes : son prénom n'a pas à y être redit.
   return pas.length ? pas.map(({ eleve: _eleve, ...p }) => p) : carteSeule(sien);
 }

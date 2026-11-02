@@ -277,18 +277,18 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
     setJeuEdite(connu ? { jeu: connu, nouveau: false } : { jeu: { ...nouveauJeu(), titre: nom }, nouveau: true });
   };
 
-  // ── Le prévu d'un groupe : le passage surligné devient l'étape d'un élève (voir prevuParEleve.ts) ──
+  // ── Le prévu d'un groupe : le passage sélectionné devient la partie d'un élève (voir prevuParEleve.ts) ──
   const passageSelectionne = (c: Creneau) => {
     const zone = zonesPrevu.current[c.id];
     return zone && ouvertes.current.has(c.id) ? { debut: zone.selectionStart, fin: zone.selectionEnd } : null;
   };
-  const surligner = (c: Creneau, prenom: string | null, groupe: string[]) => {
+  const surligner = (c: Creneau, prenom: string | null, groupe: string[], ajouter = false) => {
     const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
     const p = passageSelectionne(c);
-    const r = p ? surlignerPour(prevu, p.debut, p.fin, prenom, groupe) : null;
+    const r = p ? surlignerPour(prevu, p.debut, p.fin, prenom, groupe, ajouter) : null;
     if (!r) { toast("Sélectionnez d'abord, dans le prévu, ce que l'élève doit faire.", { icone: "🖍" }); return; }
     modifier(c.id, "prevu", r.texte, true);
-    // Le passage reste sélectionné : on peut le donner aussi à un autre élève.
+    // Le passage reste sélectionné : on peut le donner encore, à un autre élève ou à deux.
     requestAnimationFrame(() => zonesPrevu.current[c.id]?.setSelectionRange(r.debut, r.fin));
   };
 
@@ -499,7 +499,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                     <span>🖼 consignes en pictos à l'impression</span>
                   </label>
                 )}
-                {/* À plusieurs, chaque prénom avec sa couleur : celle de ses étapes au prévu. */}
+                {/* À plusieurs, chaque prénom avec sa couleur : celle de sa partie au prévu. */}
                 {prenoms.length > 0 && (
                   <span style={{ fontSize: 12, color: "var(--text-2)" }}>👥 {prenoms.length > 1
                     ? prenoms.map((p, i) => (
@@ -616,9 +616,8 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                                   <>
                                     {prenoms.map((prenom, i) => (
                                       <button key={prenom} className={`ctx-item${siens.includes(prenom) ? " coche" : ""}`}
-                                        onClick={() => { fermer(); surligner(c, prenom, prenoms); }}
-                                        title={siens.includes(prenom) ? `Ce passage ne sera plus à ${prenom}`
-                                          : `Ce passage est à ${prenom} : il prend sa couleur et vient à son rang dans son planning`}>
+                                        onClick={(e) => { fermer(); surligner(c, prenom, prenoms, e.shiftKey); }}
+                                        title={`Ce passage est à ${prenom} : il prend sa couleur et vient à son rang dans son planning. ⇧-clic : à ${prenom} aussi.`}>
                                         <span className="ctx-ico" aria-hidden="true">{siens.includes(prenom) ? "✓" : ""}</span>
                                         <span className={`pastille-eleve eleve-c${i % 8}`} aria-hidden="true" />{prenom}
                                       </button>
@@ -645,7 +644,7 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                         style: { width: "100%", resize: "vertical", fontSize: 13.5, lineHeight: 1.45 } as React.CSSProperties,
                       };
                       // Le bilan montre en couleur ce qui part dans les notes des élèves. Le prévu d'un groupe surligne
-                      // l'étape de chaque élève de sa couleur (« Lina : … », voir prevuParEleve.ts).
+                      // la partie de chaque élève de sa couleur (« Lina : … », voir prevuParEleve.ts).
                       if (champ === "bilan") {
                         return <ZoneSurlignee {...proprietes} segments={segmentsDuBilan(b.bilan, prenomsDeLaClasse)}
                           ref={(el) => { zones.current[c.id] = el; }} />;

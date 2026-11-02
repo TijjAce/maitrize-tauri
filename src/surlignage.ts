@@ -10,7 +10,7 @@ export interface Segment {
   texte: string;
   /**
    * « phrase » : elle part dans les notes ; « nom » : le prénom qui l'y envoie. Au prévu d'un groupe (voir
-   * prevuParEleve.ts) : « eleve », l'étape d'un élève ; « eleves », celle de plusieurs ; « eleve-nom », un prénom en tête.
+   * prevuParEleve.ts) : « eleve », la partie d'un élève ; « eleves », celle de plusieurs ; « eleve-nom », un prénom en tête.
    */
   genre: "" | "phrase" | "nom" | "eleve" | "eleves" | "eleve-nom";
   /** Au prévu d'un groupe, la couleur de l'élève : son rang dans le groupe. */
