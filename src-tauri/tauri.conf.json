@@ -13,6 +13,7 @@
     "windows": [
       {
         "title": "Maitrize V2",
+        "backgroundThrottling": "disabled",
         "width": 1280,
         "height": 820,
         "minWidth": 900,
