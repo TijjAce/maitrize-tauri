@@ -18,6 +18,28 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.42",
+    titre: "Mistral reste en Europe, chaque élève reçoit sa part du prévu, et les grilles d'observables",
+    points: [
+      { quoi: "L'IA de Mistral passe par son adresse européenne : tout ce que Maitrize lui envoie est traité dans l'Union européenne. La recherche sur le web et le dessin d'un picto, qui passaient par des services hors de l'Union, ne sont plus proposés, et une réunion en ligne s'écrit par passages.", ou: "Réglages › IA" },
+      { quoi: "Un avertissement dit où interdire à Mistral d'entraîner ses modèles avec vos demandes. Il reste affiché jusqu'à « C'est fait ».", ou: "Réglages › IA" },
+      { quoi: "Au prévu d'un créneau de groupe, « 🖍 Surligner » donne un passage à un élève : plusieurs lignes forment une seule partie, et le prénom ne s'écrit qu'une fois. Dans la journée en bandes, la bande de l'élève ne montre que sa part.", ou: "Planning › un créneau" },
+      { quoi: "Les grilles d'observables des séquences en cours, avec les élèves qui les ont eues au cahier journal. Une séquence finie range sa grille dans le dossier Maitrize du Bureau.", ou: "Élèves › Évaluations › Sommative" },
+      { quoi: "Le tableau à double entrée : jusqu'à huit lignes et neuf couleurs, des pictogrammes recoloriés ou des images à colorier ; et des dés personnalisés. Une séquence toute faite du CP s'en sert, pour une classe hétérogène.", ou: "Fabriquer › Données" },
+      { quoi: "Les familles d'addition, à afficher.", ou: "Fabriquer › Affichages" },
+      { quoi: "⌘F cherche dans ce que l'écran montre, partout, sans se soucier des accents ni des majuscules.", ou: "Partout" },
+      { quoi: "L'assistant lit les images : collez-les avec ⌘V, ou déposez-les dans la conversation.", ou: "Assistant IA" },
+      { quoi: "Une synthèse rédigée par l'agent reste marquée « ✨ Rédigée par l'IA · à relire » jusqu'à ce que vous la marquiez relue.", ou: "Élèves › Dossier › Synthèse" },
+      { quoi: "Réunions : la conversation s'écrit telle qu'elle est dite, sans reformulation ; le compte rendu par l'IA se fait à la demande, après la réunion.", ou: "Réunions" },
+      { quoi: "Une photo peut illustrer un jeu — elle s'affiche au cahier journal avec sa règle —, du matériel, un outil ou un affichage.", ou: "Réglages › Personnalisation" },
+      { quoi: "Au cahier journal, le déroulement se numérote sans « Temps 1 – », et le choix d'une séquence ne propose que celles en cours.", ou: "Planning › un créneau" },
+      { quoi: "Au CP, les types de phrases et les classes de mots arrivent en simple approche.", ou: "Fabriquer › 📚 Séquences toutes faites" },
+      { quoi: "La feuille de numération du CP met son corrigé sur la même page, avec de grandes cases pour qui écrit gros ; les cartes à pinces n'ont plus de numéro au recto ; les phrases en puzzle mettent le point au bout du complément.", ou: "Fabriquer" },
+      { quoi: "L'accueil ne mêle plus les séquences en pause à celles en classe : elles deviennent un compte, qui ouvre le plan de travail.", ou: "Accueil" },
+      { quoi: "Corrigé : glisser une capture d'écran dans la fenêtre arrêtait l'application ; un emoji faisait planter la recherche ⌘F ; la fenêtre cachée se mettait en pause au bout de quelques minutes. Les exemples de saisie ne montrent plus de numéro de téléphone." },
+    ],
+  },
+  {
     version: "1.6.41",
     titre: "Six lotos des sons, un assistant qui pose tous les réglages, et la journée en bandes dans le cahier journal",
     points: [
