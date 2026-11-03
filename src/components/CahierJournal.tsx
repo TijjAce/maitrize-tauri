@@ -34,6 +34,9 @@ import { zoomReelDuJournal } from "../zoomPince";
 import { insererLigne, ligneDeSequence, sequencesCitees, totalDesSeances } from "../sequencesCitees";
 import { SeanceReadView } from "../pages/SequenceDetail";
 import { ManuelDuJournal } from "./ManuelDuJournal";
+import { ChoixDesPages, PagesDesManuels, useMesManuels, usePagesAttachees, type PagesChoisies } from "./PagesDesManuels";
+import { avecLesChoix, avecLesPages, numerosCites, pagesEnTexte, remettreLesPages, retirerLesPages } from "../pagesDesManuels";
+import type { Manuel, PageManuel } from "../manuels";
 import { ChoixCompetence } from "./ChoixCompetence";
 import type { CompetenceSelectionnee } from "./CompetenceTree";
 import { FichierImg } from "./Deroulement";
@@ -60,7 +63,9 @@ import {
 // Un jeu de la ludothèque nommé dans le prévu montre sa règle juste dessous ;
 // une séquence citée, ses objectifs et le déroulement de sa séance. Un manuel
 // du coffre-fort se cite de même, et l'exercice qu'on y découpe se pose dans
-// le prévu, à l'écran comme dans le PDF du jour. Une compétence des
+// le prévu, à l'écran comme dans le PDF du jour. Des pages de mes manuels
+// (Adapter une fiche › Manuels) s'y attachent en une ligne : leurs vignettes
+// suivent le prévu, et les pages, le journal imprimé. Une compétence des
 // référentiels s'y pose aussi, en une ligne. Un PDF du bureau se cite sans
 // séance : il rejoint le matériel imprimé à la suite du journal.
 
@@ -442,6 +447,36 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
     }
   };
 
+  // ── Des pages de mes manuels, attachées au créneau (voir pagesDesManuels.ts) ──
+  const manuels = useMesManuels();
+  const pagesDuPrevu = usePagesAttachees(manuels);
+  const [pagesPour, setPagesPour] = React.useState<{ creneau: Creneau; manuelId?: string } | null>(null);
+  /** Le choix fait : chaque manuel touché cite ses pages. Ce qui en part se remet par « Annuler », ou ⌘Z. */
+  const attacherDesPages = (c: Creneau, choix: PagesChoisies[]) => {
+    const avant = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
+    const apres = avecLesChoix(avant, choix.map(({ manuel, numeros }) => ({ titre: manuel.titre, numeros })), curseurDe(c));
+    if (apres === avant) return;
+    modifier(c.id, "prevu", apres, true);
+    const retirees = choix.flatMap(({ manuel, numeros }) => numerosCites(avant, manuel.titre).filter((n) => !numeros.includes(n)));
+    if (!retirees.length) return;
+    toastAnnulable(`${retirees.length > 1 ? "Pages retirées" : "Page retirée"} du créneau.`, () => {
+      const actuel = aEcrire.current[c.id]?.prevu ?? "";
+      // Rien n'a bougé depuis : le prévu d'avant revient tel quel ; sinon, chaque manuel retrouve ses pages d'avant.
+      modifier(c.id, "prevu", actuel === apres ? avant
+        : choix.reduce((texte, { manuel }) => avecLesPages(texte, manuel.titre, numerosCites(avant, manuel.titre)), actuel), true);
+    }, "📖");
+  };
+  /** Une croix sur une vignette, ou « Retirer du créneau » sur la page en grand : « Annuler » (ou ⌘Z) la remet à sa place. */
+  const retirerDesPages = (c: Creneau, manuel: Manuel, pages: PageManuel[]) => {
+    const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
+    const numeros = pages.map((p) => p.numero);
+    const r = retirerLesPages(prevu, manuel.titre, numeros);
+    if (r.texte === prevu) return;
+    modifier(c.id, "prevu", r.texte, true);
+    toastAnnulable(`${numeros.length > 1 ? "Pages" : "Page"} ${pagesEnTexte(numeros)} retirée${numeros.length > 1 ? "s" : ""} du créneau.`,
+      () => modifier(c.id, "prevu", remettreLesPages(aEcrire.current[c.id]?.prevu ?? "", manuel.titre, numeros, r.ligne), true), "📖");
+  };
+
   // Le journal se zoome au pincement, comme la grille du planning à côté ; retenu par ordinateur.
   const { zoom, majZoom, cadre } = useZoomPince("journal-zoom");
 
@@ -601,9 +636,12 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                                 <button className="ctx-item" onClick={() => { fermer(); setPdfPour(c); }}
                                   title="Citer un PDF posé sur le plan de travail, sans passer par une séance : il se voit sous le créneau et s'imprime à la suite du cahier journal">
                                   <span className="ctx-ico" aria-hidden="true">📄</span>Un PDF du bureau</button>
+                                <button className="ctx-item" onClick={() => { fermer(); setPagesPour({ creneau: c }); }}
+                                  title="Choisir une page ou plusieurs dans vos manuels (Adapter une fiche › Manuels) : leurs vignettes se posent sous le prévu, et les pages s'impriment à la suite du cahier journal">
+                                  <span className="ctx-ico" aria-hidden="true">📖</span>Des pages de mes manuels</button>
                                 <button className="ctx-item" onClick={() => { fermer(); setManuelPour(c); }}
                                   title="Citer une page d'un manuel du coffre-fort, et y découper l'exercice : son image se pose dans le prévu et s'imprime avec le jour">
-                                  <span className="ctx-ico" aria-hidden="true">📖</span>Un manuel</button>
+                                  <span className="ctx-ico" aria-hidden="true">📖</span>Un manuel du coffre-fort</button>
                               </>
                             )}
                           </MenuDeroulant>
@@ -673,6 +711,10 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                           modifier(c.id, "prevu", retirerImage(b.prevu, nom), true);
                           toastAnnulable("Image retirée du prévu.", () => modifier(c.id, "prevu", avant, true), "🖼");
                         }} />
+                        {/* Les pages de mes manuels que le prévu attache : leurs vignettes, en grand d'un clic. */}
+                        <PagesDesManuels attachees={pagesDuPrevu(b.prevu)} masques={masques[c.id]} onMasquer={(cle) => masquer(c.id, cle)}
+                          onRetirer={(manuel, pages) => retirerDesPages(c, manuel, pages)}
+                          onChoisir={(manuel) => setPagesPour({ creneau: c, manuelId: manuel.id })} />
                         {/* Les jeux du prévu, et ceux du déroulement de la séance liée : ce sont eux qui s'impriment. */}
                         <ReglesDesJeux jeux={citesDans(seance?.deroulement ? `${b.prevu}\n${sansMarqueurs(seance.deroulement)}` : b.prevu)} onModifier={(jeu) => setJeuEdite({ jeu, nouveau: false })}
                           masques={masques[c.id]} onMasquer={(cle) => masquer(c.id, cle)} />
@@ -750,6 +792,11 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
               + "le PDF se voit sous le créneau et s'imprime à la suite du cahier journal ; il reste à sa place sur le bureau.",
             bouton: "📄 Citer", enCours: "…", fait: "✓ Cité", echec: "PDF non cité",
           }} />
+      )}
+      {pagesPour && (
+        <ChoixDesPages manuels={manuels} manuelId={pagesPour.manuelId}
+          prevu={aEcrire.current[pagesPour.creneau.id]?.prevu ?? pagesPour.creneau.prevu ?? ""}
+          onClose={() => setPagesPour(null)} onAttacher={(choix) => attacherDesPages(pagesPour.creneau, choix)} />
       )}
       {manuelPour && (
         <ManuelDuJournal onClose={() => setManuelPour(null)}

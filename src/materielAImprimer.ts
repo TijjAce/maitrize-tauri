@@ -23,6 +23,8 @@ import type { PageRendue } from "./pdfRendu";
 
 export interface AnnexeAImprimer {
   seanceId: string;
+  /** Le créneau d'où vient la feuille : les pages de manuel qu'il cite la suivent (voir pagesDesManuels.ts). */
+  creneau?: string;
   /** « lundi 28 septembre · 09:00 · Lecture » : d'où vient la feuille. */
   quand: string;
   titre: string;
@@ -64,7 +66,7 @@ export function echellesDesReglages(reglages: Record<string, string>): Record<st
   return sortie;
 }
 
-type CreneauMinimal = Pick<Creneau, "seanceId" | "heureDebut" | "matiere" | "date" | "prevu">;
+type CreneauMinimal = Pick<Creneau, "seanceId" | "heureDebut" | "matiere" | "date" | "prevu"> & { id?: string };
 type Liens = { seances: Set<string>; sequences: Set<string> };
 
 /** Les séances et les séquences qu'un créneau désigne : son lien, et ce que son prévu cite. */
@@ -137,6 +139,12 @@ export const titresDuMateriel = (
 
 const hhmm = (h: string) => h.slice(0, 5);
 
+/** D'où vient une feuille jointe : « lundi 28 septembre · 09:00 · Lecture » — le jour, l'heure, la séance ou l'intitulé. */
+export function quandDuCreneau(c: Pick<Creneau, "seanceId" | "heureDebut" | "matiere">, seances: Pick<Seance, "id" | "titre">[], jour = ""): string {
+  const seance = seances.find((s) => s.id === c.seanceId)?.titre.trim();
+  return [jour.trim(), hhmm(c.heureDebut), seance || c.matiere.trim()].filter(Boolean).join(" · ");
+}
+
 /**
  * Les PDF à joindre, dans l'ordre des créneaux (jour puis heure), chaque
  * fichier une seule fois. `jour` donne le libellé du jour, vide pour le
@@ -151,15 +159,17 @@ export function annexesDesCreneaux(
   const vus = new Set<string>();
   const sortie: AnnexeAImprimer[] = [];
   for (const c of ordre) {
-    const seance = seances.find((s) => s.id === c.seanceId)?.titre.trim();
-    const quand = [jour(c).trim(), hhmm(c.heureDebut), seance || c.matiere.trim()].filter(Boolean).join(" · ");
+    const quand = quandDuCreneau(c, seances, jour(c));
     for (const m of materielDuCreneau(c, sequences, seances, materiels)) {
       const eleve = eleveDeLaFiche(m);
       const titre = (eleve ? titreSansLEleve(m.titre.trim(), eleve.prenom) : m.titre.trim()) || "Matériel";
       for (const fichier of lirePdfs(m.pdfsJson)) {
         if (vus.has(fichier)) continue;
         vus.add(fichier);
-        sortie.push({ seanceId: m.seanceId ?? c.seanceId ?? "", quand, titre, fichier, echelle: echelles[m.id] ?? 1, ...(eleve ? { eleve: true as const } : {}) });
+        sortie.push({
+          seanceId: m.seanceId ?? c.seanceId ?? "", ...(c.id ? { creneau: c.id } : {}), quand, titre, fichier, echelle: echelles[m.id] ?? 1,
+          ...(eleve ? { eleve: true as const } : {}),
+        });
       }
     }
   }
@@ -204,6 +214,9 @@ export function echellePourUneFeuille(pages: Pick<PageRendue, "largeur" | "haute
   return Math.max(ECHELLE_MIN, Math.min(100, pourcent));
 }
 
+/** Le type d'une image en base64 : une page de PDF est en PNG, une photo de manuel en JPEG (« /9j/ », ses premiers octets). */
+export const typeDeLImage = (base64: string) => (base64.startsWith("/9j/") ? "image/jpeg" : "image/png");
+
 /**
  * Les pages jointes du journal HTML : chaque document commence une feuille,
  * ses pages s'y suivent en images, et la première porte un bandeau qui dit
@@ -233,7 +246,7 @@ export function annexesHtml(rendues: AnnexeRendue[]): string {
     // plus haute dans la page — pour rester à la même échelle. Agrandie, l'image grossit depuis le haut
     // dans son cadre, qui rogne ce qui dépasse : elle n'empiète ni sur le bandeau ni sur la suivante.
     const reglage = `--limite:${limiteMm(pages)}mm` + (annexe.echelle && Math.abs(annexe.echelle - 1) > 0.001 ? `;--echelle:${annexe.echelle}` : "");
-    return `<section class="annexe${i === 0 ? "" : " annexe-suite"}" data-annexe="${k}" style="${reglage}">${bandeau}<div class="annexe-cadre"><img src="data:image/png;base64,${p.image}" alt="${escapeHtml(annexe.titre)} — page ${i + 1}"></div></section>`;
+    return `<section class="annexe${i === 0 ? "" : " annexe-suite"}" data-annexe="${k}" style="${reglage}">${bandeau}<div class="annexe-cadre"><img src="data:${typeDeLImage(p.image)};base64,${p.image}" alt="${escapeHtml(annexe.titre)} — page ${i + 1}"></div></section>`;
   }));
   return sections.length ? sections.join("") + SCRIPT_ANNEXES : "";
 }

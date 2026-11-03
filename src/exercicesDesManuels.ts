@@ -9,7 +9,7 @@ import {
   CLE_INDEX, STYLE_FICHE_ADAPTEE, cleManuel, htmlFicheAdaptee, lireIndex, lireManuel, nomExercice, texteExercice,
   type ExerciceTrouve, type Manuel, type PageManuel, type Zone,
 } from "./manuels";
-import { rendrePage } from "./pdfRendu";
+import { rendrePage, type PageRendue } from "./pdfRendu";
 import { documentImprimable, escapeHtml } from "./print";
 
 const mimeDe = (fichier: string) => (fichier.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg");
@@ -40,20 +40,43 @@ export async function imageDeLaPage(m: Manuel, p: PageManuel): Promise<string> {
   return `data:image/png;base64,${(await rendrePage(await octetsDuPdfDuManuel(m), p.numero)).image}`;
 }
 
-/** La miniature d'une page photographiée : la photo réduite, en JPEG. */
-export async function miniatureDeLaPhoto(fichier: string, largeur = 140): Promise<string> {
+/** Une photo de Fichiers/, redessinée à `largeur` pixels sur fond blanc — sans l'agrandir, si `agrandir` est faux. */
+async function photoRedessinee(fichier: string, largeur: number, agrandir = true): Promise<HTMLCanvasElement> {
   const img = new Image();
   const source = `data:${mimeDe(fichier)};base64,${await api.fichierRead(fichier)}`;
   await new Promise<void>((ok, ko) => { img.onload = () => ok(); img.onerror = () => ko(new Error("Image illisible")); img.src = source; });
+  const l = agrandir ? largeur : Math.min(largeur, Math.max(1, img.width));
   const toile = document.createElement("canvas");
-  toile.width = largeur;
-  toile.height = Math.max(1, Math.round((img.height * largeur) / Math.max(1, img.width)));
+  toile.width = l;
+  toile.height = Math.max(1, Math.round((img.height * l) / Math.max(1, img.width)));
   const ctx = toile.getContext("2d");
   if (!ctx) throw new Error("Rendu impossible dans cette fenêtre.");
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, toile.width, toile.height);
   ctx.drawImage(img, 0, 0, toile.width, toile.height);
-  return toile.toDataURL("image/jpeg", 0.75);
+  return toile;
+}
+
+/** La miniature d'une page photographiée : la photo réduite, en JPEG. */
+export async function miniatureDeLaPhoto(fichier: string, largeur = 140): Promise<string> {
+  return (await photoRedessinee(fichier, largeur)).toDataURL("image/jpeg", 0.75);
+}
+
+/**
+ * Des pages d'un manuel, prêtes à imprimer : une photo réduite à `largeur`
+ * pixels au plus, en JPEG — assez fine pour la feuille, assez légère pour le
+ * cahier journal ; une page de PDF rendue à cette largeur, ses marges unies
+ * rognées. Pour les pages attachées à un créneau (voir pagesDesManuels.ts).
+ */
+export async function pagesAImprimer(m: Manuel, pages: PageManuel[], largeur = 1500): Promise<PageRendue[]> {
+  const sortie: PageRendue[] = [];
+  for (const p of pages) {
+    if (!p.fichier) { sortie.push(await rendrePage(await octetsDuPdfDuManuel(m), p.numero, { largeur })); continue; }
+    const toile = await photoRedessinee(p.fichier, largeur, false);
+    const url = toile.toDataURL("image/jpeg", 0.85);
+    sortie.push({ numero: p.numero, image: url.slice(url.indexOf(",") + 1), largeur: toile.width, hauteur: toile.height });
+  }
+  return sortie;
 }
 
 /** L'encadré d'une page, découpé dans son image — avec un liseré pour ne pas couper une lettre —, en PNG base64. */

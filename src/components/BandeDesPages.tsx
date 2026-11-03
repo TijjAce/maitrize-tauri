@@ -15,16 +15,25 @@ const MINIATURES = new Map<string, string>();
 const MAX_MINIATURES = 800;
 const cleDe = (m: Manuel, p: PageManuel) => `${m.id}:${p.fichier || `pdf-${p.numero}`}`;
 
-/** Les miniatures d'un manuel, rendues à la demande, une à la fois. */
-function useMiniatures(manuel: Manuel) {
+/**
+ * Les miniatures d'un manuel, rendues à la demande, une à la fois. Le choix
+ * des pages d'un créneau (PagesDesManuels.tsx) s'en sert aussi : une page vue
+ * ici n'y est pas rendue deux fois. `oublier` retire de la file une page qui
+ * a quitté l'écran avant son tour : on défile vite dans un manuel de deux cents
+ * pages, et celles qu'on regarde passent d'abord.
+ */
+export function useMiniatures(manuel: Manuel) {
   const [, redessiner] = React.useState(0);
   const manuelCourant = React.useRef(manuel);
   manuelCourant.current = manuel;
   const file = React.useRef<PageManuel[]>([]);
   const enCours = React.useRef(false);
   const pdf = React.useRef<RenduDeMiniatures | null>(null);
+  // Change avec le manuel, ou quand on s'en va : un PDF qui finit de s'ouvrir après n'est plus le bon.
+  const tour = React.useRef(0);
   // Le PDF ouvert pour les miniatures se ferme avec le manuel.
   React.useEffect(() => () => {
+    tour.current++;
     pdf.current?.fermer();
     pdf.current = null;
     file.current = [];
@@ -42,7 +51,13 @@ function useMiniatures(manuel: Manuel) {
           let url: string;
           if (p.fichier) url = await miniatureDeLaPhoto(p.fichier);
           else {
-            pdf.current ??= await miniaturesDuPdf(await octetsDuPdfDuManuel(m));
+            if (!pdf.current) {
+              const avant = tour.current;
+              const ouvert = await miniaturesDuPdf(await octetsDuPdfDuManuel(m));
+              // On a changé de manuel, ou fermé, pendant l'ouverture : ce PDF-là se referme aussitôt.
+              if (avant !== tour.current) { ouvert.fermer(); continue; }
+              pdf.current = ouvert;
+            }
             url = await pdf.current.miniature(p.numero);
           }
           MINIATURES.set(cle, url);
@@ -59,7 +74,10 @@ function useMiniatures(manuel: Manuel) {
     file.current.push(p);
     void traiter();
   }, [traiter]);
-  return { miniatureDe: (p: PageManuel) => MINIATURES.get(cleDe(manuel, p)), demander };
+  const oublier = React.useCallback((p: PageManuel) => {
+    file.current = file.current.filter((x) => x !== p);
+  }, []);
+  return { miniatureDe: (p: PageManuel) => MINIATURES.get(cleDe(manuel, p)), demander, oublier };
 }
 
 export function BandeDesPages({ manuel, pageId, onChoisir }: { manuel: Manuel; pageId: string; onChoisir: (pageId: string) => void }) {

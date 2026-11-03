@@ -19,12 +19,18 @@ import { jeuxCites, reglesImprimees, sansMarqueurs, STYLE_REGLES } from "../jeux
 import { sequencesCitees, sequencesImprimees, STYLE_SEQUENCES } from "../sequencesCitees";
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
 import { organisationPour, natureDuSlot, type SlotEdt } from "../organisation";
-import { annexesDesCreneaux, annexesHtml, echellesDesReglages, moletteDuJournalHtml, octetsDeBase64, SCRIPTS_DU_JOURNAL, STYLE_ANNEXES, titresDuMateriel, type AnnexeRendue } from "../materielAImprimer";
-import { rendrePagesAImprimer } from "../pdfRendu";
+import {
+  annexesDesCreneaux, annexesHtml, echellesDesReglages, moletteDuJournalHtml, octetsDeBase64, quandDuCreneau, SCRIPTS_DU_JOURNAL, STYLE_ANNEXES, titresDuMateriel,
+  type AnnexeAImprimer, type AnnexeRendue,
+} from "../materielAImprimer";
+import { rendrePagesAImprimer, type PageRendue } from "../pdfRendu";
+import { chargerLesManuels, pagesAImprimer } from "../exercicesDesManuels";
+import { cleDuManuel, pagesAttachees, titreDesPages } from "../pagesDesManuels";
+import type { Manuel } from "../manuels";
 import { CLE_RITUELS, STYLE_RITUELS_IMPRIMES, avecRituels, deroulementEnHtml, lireRituels, rituelsCites, rituelsImprimes } from "../rituels";
 import { avecImages } from "../components/imagesTexte";
 import { IndicateurZoom, useZoomPince } from "../components/ZoomPince";
-import { aImprimer, creneauMasque, masqueJeu, masqueRituel, masqueSequence, masquesDesReglages } from "../journalMasques";
+import { aImprimer, creneauMasque, masqueJeu, masqueManuel, masqueRituel, masqueSequence, masquesDesReglages } from "../journalMasques";
 import { SCRIPTS_DES_BANDES, STYLE_BANDES_DU_JOURNAL, bandesDuJour, corpsDesBandes } from "../journeeEnBandes";
 import { JOURS_DE_RECUL, STYLE_VEILLE, bilansDeLaVeilleHtml, veilleDe } from "../bilansVeille";
 import { niveauDeProgrammation } from "../programmation";
@@ -259,6 +265,10 @@ export default function Planning() {
     const jourCreneaux = liste.filter((c) => c.date === iso(ancre) && !creneauMasque(masques, c.id)).sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
     // Le matériel des séances : annoncé dans le créneau, joint à la suite, à son échelle.
     const materiels = await api.materielList().catch((): MaterielItem[] => []);
+    // Les pages de mes manuels que le prévu attache : annoncées de même, et jointes après le matériel du créneau
+    // (voir pagesDesManuels.ts) — sauf celles qu'on a cochées « ne pas imprimer ».
+    const manuels = await chargerLesManuels().catch((): Manuel[] => []);
+    const pagesDe = (c: Creneau) => aImprimer(pagesAttachees(c.prevu ?? "", manuels), (x) => masqueManuel(cleDuManuel(x.manuel.titre)), masques[c.id] ?? []);
     const reImg = /\[img:([^\]]+)\]/g;
     const echelles = echellesDesReglages(reglages);
     // Les rituels cités dans le prévu : leur déroulement s'imprime sous lui.
@@ -375,6 +385,7 @@ export default function Planning() {
       if (aDesPhases(s?.deroulement || "")) grid = [];
       const prenoms = prenomsDe(c);
       const observees = observationsDe(c);
+      const aJoindre = [...titresDuMateriel(c, sequences ?? [], seances ?? [], materiels), ...pagesDe(c).map(titreDesPages)];
       const body = [
         prenoms.length ? champ("Élèves", escapeHtml(prenoms.join(", "))) : "",
         observees.length ? champ("Observation", observees.map((o) => {
@@ -385,8 +396,7 @@ export default function Planning() {
         s?.objectifs ? champ("Objectifs", escapeHtml(s.objectifs)) : "",
         deroul ? `<div class="f"><span class="fl">Activités :</span></div><div class="txt">${escapeHtml(deroul)}</div>` : "",
         comps.length ? champ("Compétences", comps.map((x) => escapeHtml(labelCourt(x))).join("<br>")) : "",
-        titresDuMateriel(c, sequences ?? [], seances ?? [], materiels).length
-          ? champ("Matériel à imprimer", `${titresDuMateriel(c, sequences ?? [], seances ?? [], materiels).map(escapeHtml).join(", ")} — joint à la suite`) : "",
+        aJoindre.length ? champ("Matériel à imprimer", `${aJoindre.map(escapeHtml).join(", ")} — joint à la suite`) : "",
         grid.length ? `<div class="fl" style="margin-top:4px">Tableau :</div><table>${colonnesDuTableau(grid[0])}${grid.map((row, r) => `<tr>${row.map((cell) => r === 0 ? `<th>${escapeHtml(cell)}</th>` : `<td>${rendreCell(cell)}</td>`).join("")}</tr>`).join("")}</table>` : "",
         illus.length ? `<div class="imgs">${illus.map(imgTag).join("")}</div>` : "",
         tapuscrits[c.id] ? `<div class="f"><span class="fl">Consignes en pictogrammes :</span></div>${tapuscrits[c.id]}` : "",
@@ -455,18 +465,28 @@ export default function Planning() {
     `;
     // Le matériel à la suite du journal : chaque page de PDF devient une
     // image, entière, assez fine pour l'imprimante. Un fichier illisible ne
-    // retient pas le journal.
+    // retient pas le journal. Après le matériel de chaque créneau, les pages
+    // de mes manuels qu'il attache, en images elles aussi.
     const rendues: AnnexeRendue[] = [];
-    for (const annexe of annexesDesCreneaux(jourCreneaux, sequences ?? [], seances ?? [], materiels, () => "", echelles)) {
+    const joindre = async (annexe: AnnexeAImprimer, rendre: () => Promise<PageRendue[]>) => {
       try {
-        const octets = octetsDeBase64(await api.fichierRead(annexe.fichier));
-        // Chaque page réduite à son contenu : les pages d'un document se suivent sur la feuille.
-        const pages = await rendrePagesAImprimer(octets, 1500);
+        const pages = await rendre();
         if (pages.length) rendues.push({ annexe, pages });
       } catch (e) {
         toast(`« ${annexe.titre} » n'a pas pu être joint : ${texteErreur(e)}`, { icone: "⚠️", duree: 8000 });
       }
+    };
+    // Chaque page réduite à son contenu : les pages d'un document se suivent sur la feuille.
+    const duPdf = (annexe: AnnexeAImprimer) => joindre(annexe, async () => rendrePagesAImprimer(octetsDeBase64(await api.fichierRead(annexe.fichier)), 1500));
+    const annexes = annexesDesCreneaux(jourCreneaux, sequences ?? [], seances ?? [], materiels, () => "", echelles);
+    for (const c of jourCreneaux) {
+      for (const annexe of annexes.filter((a) => a.creneau === c.id)) await duPdf(annexe);
+      for (const x of pagesDe(c)) {
+        await joindre({ seanceId: c.seanceId ?? "", creneau: c.id, quand: quandDuCreneau(c, seances ?? []), titre: titreDesPages(x), fichier: "", echelle: 1 },
+          () => pagesAImprimer(x.manuel, x.pages));
+      }
     }
+    for (const annexe of annexes.filter((a) => !jourCreneaux.some((c) => c.id === a.creneau))) await duPdf(annexe);
     // Le logo se réduit ici : sans lui, le pied garde l'adresse.
     const logo = await logoImprimable().catch(() => "");
     // Puis la journée en bandes, regroupées sur une page — les cartes des tablettes, toutes de la même taille (demande de

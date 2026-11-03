@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { MaterielItem, Seance, Sequence } from "./api";
 import {
   annexesDesCreneaux, annexesHtml, cleEchelle, SCRIPTS_DU_JOURNAL, echellesDesReglages, liensDuCreneau, ligneDuPdf, lireEchelle, materielDuCreneau, moletteDuJournalHtml,
-  echellePourUneFeuille, limiteMm, octetsDeBase64, pdfsCites, STYLE_ANNEXES, titresDuMateriel,
+  echellePourUneFeuille, limiteMm, octetsDeBase64, pdfsCites, quandDuCreneau, STYLE_ANNEXES, titresDuMateriel, typeDeLImage,
 } from "./materielAImprimer";
 import { eleveDeLaFiche, titreSansLEleve } from "./materielSeance";
 
@@ -144,6 +144,22 @@ describe("le matériel des séances du journal", () => {
     const scripts = [...`${moletteDuJournalHtml()}${annexesHtml([{ annexe, pages: [{ numero: 1, image: "IMG", largeur: 10, hauteur: 14 }] }])}`
       .matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
     expect(scripts).toEqual(SCRIPTS_DU_JOURNAL);
+  });
+
+  it("dit de quel créneau vient chaque feuille, pour que les pages de manuel du créneau la suivent", () => {
+    const avecId = { ...creneau("2026-09-28", "09:00", "s1"), id: "c1" };
+    const annexes = annexesDesCreneaux([avecId], sequences, seances, materiels);
+    expect(annexes.map((a) => a.creneau)).toEqual(["c1", "c1"]);
+    expect(quandDuCreneau(avecId, seances)).toBe("09:00 · Les syllabes");
+    expect(quandDuCreneau({ ...avecId, seanceId: null }, seances, "lundi 28 septembre")).toBe("lundi 28 septembre · 09:00 · Lecture");
+  });
+
+  it("joint la photo d'une page de manuel en JPEG, une page de PDF en PNG", () => {
+    const annexe = { seanceId: "", quand: "09:00 · Lecture", titre: "Mon fichier de maths · p. 3", fichier: "", echelle: 1 };
+    const html = annexesHtml([{ annexe, pages: [{ numero: 3, image: "/9j/4AAQ", largeur: 10, hauteur: 14 }, { numero: 4, image: "iVBOR", largeur: 10, hauteur: 14 }] }]);
+    expect(html).toContain('src="data:image/jpeg;base64,/9j/4AAQ"');
+    expect(html).toContain('src="data:image/png;base64,iVBOR"');
+    expect(typeDeLImage("iVBOR")).toBe("image/png");
   });
 
   it("relit les octets d'un fichier en base64", () => {

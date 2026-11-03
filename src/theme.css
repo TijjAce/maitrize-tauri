@@ -1833,6 +1833,54 @@ details.sous-pli-catalogue > :not(summary) { margin-left: 12px; }
 .man-vignette.on .man-vignette-num { color: var(--accent); }
 .man-vignette-ex { position: absolute; top: 1px; right: 1px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; display: grid; place-items: center;
   background: var(--accent); color: #fff; font-size: 10.5px; font-weight: 700; }
+/* Les pages de mes manuels attachées à un créneau du journal : la carte des blocs cités, en ambre, et leurs vignettes. */
+.regle-app.manuel-app { border-color: color-mix(in srgb, #b45309 26%, var(--border)); background: color-mix(in srgb, #b45309 6%, var(--panel)); }
+.manuel-app-pages { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 2px 15px; }
+.manuel-app-page { position: relative; }
+.man-vignette.manuel-app-vignette { width: 84px; background: var(--panel); }
+.manuel-app-vignette .man-vignette-image { width: 74px; height: 100px; }
+.manuel-app-retirer { position: absolute; top: -7px; right: -7px; width: 21px; height: 21px; padding: 0; border-radius: 50%; display: grid; place-items: center;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text-2); font-size: 11px; line-height: 1; cursor: pointer; opacity: .8; }
+.manuel-app-retirer:hover, .manuel-app-retirer:focus-visible { opacity: 1; color: #c0392b; border-color: #c0392b; }
+/* Le choix des pages : les manuels à gauche, les pages en vignettes à droite. */
+.modal.choix-pages { max-width: min(1120px, 96vw); }
+.choix-pages-corps { flex: 1; min-height: 0; display: flex; gap: 14px; padding: 12px 20px; }
+.choix-pages-manuels { flex: none; width: 230px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; padding: 2px; }
+.choix-pages-manuel { text-align: left; border: 1.5px solid var(--border); border-radius: 10px; background: var(--panel); color: var(--text); cursor: pointer;
+  padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; font: inherit; }
+.choix-pages-manuel b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.choix-pages-manuel .meta { font-size: 12px; }
+.choix-pages-manuel:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.choix-pages-manuel.on { border-color: var(--accent); background: var(--accent-soft); }
+.choix-pages-principal { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.choix-pages-outils { display: flex; align-items: center; gap: 8px; }
+.choix-pages-outils .meta { font-size: 12.5px; }
+.input.choix-pages-aller { width: 96px; padding: 5px 8px; }
+.choix-pages-grille { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px;
+  align-content: start; padding: 4px; user-select: none; -webkit-user-select: none; }
+.choix-page { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 6px 4px; font: inherit; color: var(--text);
+  border: 2px solid var(--border); border-radius: 10px; background: var(--panel-2); cursor: pointer; }
+.choix-page:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+.choix-page.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.choix-page-image { width: 100%; aspect-ratio: 3 / 4; border-radius: 4px; background: #fff; box-shadow: 0 0 0 1px var(--border); overflow: hidden;
+  display: grid; place-items: center; }
+.choix-page-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.choix-page-num { font-size: 13px; font-weight: 700; line-height: 1.1; }
+.choix-page.on .choix-page-num { color: var(--accent); }
+.choix-page-coche { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: #fff; font-size: 13px; font-weight: 800; }
+.choix-pages-vide { flex: 1; margin: 0; font-size: 13.5px; }
+.choix-pages-resume { margin-right: auto; align-self: center; font-size: 13px; color: var(--text-2); }
+/* Une page en grand, sur le fond gris d'un lecteur de PDF ; ‹ et › vont aux pages voisines du créneau. */
+.modal.page-en-grand { max-width: min(1100px, 96vw); width: 96vw; height: 94vh; max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; }
+.page-en-grand .modal-head .meta { margin: 0; }
+.page-en-grand-corps { flex: 1; min-height: 0; display: flex; align-items: center; gap: 8px; padding: 12px; background: #525659; }
+.page-en-grand-cadre { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; justify-content: center; }
+.page-en-grand-cadre img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; background: #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, .35); }
+.page-en-grand-attente { width: min(60%, 520px); aspect-ratio: 3 / 4; max-height: 100%; background: #fff; opacity: .5; border-radius: 4px; }
+.btn.ghost.page-en-grand-pas { flex: none; width: 44px; height: 64px; padding: 0; font-size: 30px; color: #fff; }
+.btn.ghost.page-en-grand-pas:hover { background: rgba(255, 255, 255, .12); }
+.btn.ghost.page-en-grand-pas:disabled { opacity: .25; }
 .man-nav { display: flex; align-items: center; gap: 6px; }
 .man-nav .input { width: 54px; padding: 4px 6px; text-align: center; font-weight: 700; }
 .man-exo { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; background: none; border: none; border-top: 1px solid var(--border); padding: 8px 4px; cursor: pointer; color: var(--text); font: inherit; }

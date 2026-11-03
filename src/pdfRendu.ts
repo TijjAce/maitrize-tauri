@@ -32,7 +32,7 @@ function pdfjsCharge(): Promise<typeof TypesPdfjs> {
 
 export interface PageRendue {
   numero: number;
-  /** PNG en base64, sans préfixe. */
+  /** PNG en base64, sans préfixe — JPEG pour la photo d'une page de manuel. */
   image: string;
   largeur: number;
   hauteur: number;

@@ -24,6 +24,11 @@ export const EVT_MASQUES = "maitrize:journal-masques";
 export const masqueJeu = (id: string) => `jeu:${id}`;
 export const masqueSequence = (sequenceId: string, seanceId?: string | null) => `sequence:${sequenceId}|${seanceId ?? ""}`;
 export const masqueRituel = (id: string) => `rituel:${id}`;
+/**
+ * Les pages d'un de mes manuels attachées au créneau, par la clé de son titre (`cleDuManuel`, pagesDesManuels.ts) : le
+ * manuel reste sur son ordinateur, la case voyage avec le créneau.
+ */
+export const masqueManuel = (cleDuManuel: string) => `manuel:${cleDuManuel}`;
 /** Le créneau tout entier. */
 export const MASQUE_CRENEAU = "creneau";
 
