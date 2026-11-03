@@ -239,6 +239,7 @@ pub fn run() {
             telecommande::telecommande_ouvrir, telecommande::telecommande_fermer, telecommande::telecommande_etat,
             telecommande::telecommande_repondre,
             ai::mistral_jeton_temps_reel,
+            ai::mistral_jeton_dictee_assistant,
             telephone::telephone_etat, telephone::telephone_comptes, telephone::telephone_relier,
             telephone::telephone_code, telephone::telephone_code_ordinateur, telephone::telephone_code_appliquer,
             telephone::telephone_oublier, telephone::telephone_relever, telephone::telephone_publier_journal,

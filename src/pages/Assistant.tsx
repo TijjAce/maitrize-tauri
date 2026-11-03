@@ -12,6 +12,7 @@ import { Markdown } from "../components/Markdown";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useDictee, mmss } from "../dictee";
+import { aLaSuite, useDicteeEnDirect } from "../dicteeEnDirect";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { ClasserDansLesFiches } from "../components/ClasserDansLesFiches";
 import { STYLE_DOCUMENT_IA, SUGGESTIONS_DOCUMENT, consigneDocument, feuilleDeLaReponse } from "../documentIa";
@@ -169,6 +170,21 @@ export default function Assistant() {
   // Dictée : on remplit la zone de saisie, sans envoyer — l'enseignant relit
   // et complète avant de lancer la demande.
   const dictee = useDictee();
+  // La dictée en direct : les mots s'écrivent pendant qu'on parle, chuchotés compris (Voxtral, hors de l'Union
+  // européenne : voir dicteeEnDirect.ts, et l'avertissement sous la conversation). Si le direct ne répond pas, la
+  // dictée d'avant prend le relais.
+  const premierMot = React.useRef(true);
+  const enDirect = useDicteeEnDirect({
+    surMots: (m) => {
+      const premier = premierMot.current;
+      premierMot.current = false;
+      setInput((v) => aLaSuite(v, m, premier));
+    },
+    surPanne: (raison) => {
+      toast(`Le direct de Mistral ne répond pas (${raison}) : la dictée continue par passages.`, { icone: "📡", duree: 7000 });
+      void dictee.demarrer().then((e) => { if (e) toast(e, { icone: "🎙" }); });
+    },
+  });
   // Classement dans les fiches élèves : on part du texte en cours de saisie,
   // sinon du dernier message envoyé — on raconte souvent avant d'y penser.
   const { data: eleves } = useAsync(() => api.elevesList(), []);
@@ -187,6 +203,7 @@ export default function Assistant() {
     setAClasser(texte);
   };
   const basculerDictee = async () => {
+    if (enDirect.etat === "ecoute") { await enDirect.arreter(); return; }
     if (dictee.etat === "enregistrement") {
       const { texte, erreur } = await dictee.arreter();
       if (erreur) { toast("Transcription impossible : " + erreur, { icone: "⚠️" }); return; }
@@ -194,7 +211,8 @@ export default function Assistant() {
       setInput((v) => (v.trim() ? v.trimEnd() + " " : "") + texte);
       return;
     }
-    const erreur = await dictee.demarrer();
+    premierMot.current = true;
+    const erreur = await enDirect.demarrer();
     if (erreur) toast(erreur, { icone: "🎙" });
   };
 
@@ -499,22 +517,30 @@ export default function Assistant() {
           <span className="meta chat-images-note">Les images partent telles quelles chez Mistral : un prénom écrit dessus n'est pas masqué.</span>
         </div>
       )}
+      {/* « Mets un panneau d'avertissement : là, les données ne sont pas traitées [en Europe], il ne faut pas en
+          envoyer ici » (l'enseignant, 3 novembre 2026). Toujours en vue : c'est un avertissement, pas une aide. */}
+      <p className="assistant-avertissement" role="note">
+        ⚠️ <b>Ici, la dictée n'est pas traitée en Europe.</b> Votre voix part chez Mistral, hors de l'Union européenne :
+        n'y dites rien sur vos élèves — ni prénom, ni santé, ni famille.
+      </p>
       <div className="chat-input">
         <textarea className="textarea" rows={2} ref={saisie}
-          placeholder={dictee.etat === "enregistrement" ? "Enregistrement en cours…" : modeDocument ? "Décrivez le document à fabriquer : pour qui, quoi, combien d'exercices…" : "Écrivez ou dictez votre demande…"} value={input}
+          placeholder={enDirect.etat === "ecoute" ? "Parlez : les mots s'écrivent en direct…" : dictee.etat === "enregistrement" ? "Enregistrement en cours…" : modeDocument ? "Décrivez le document à fabriquer : pour qui, quoi, combien d'exercices…" : "Écrivez ou dictez votre demande…"} value={input}
           onChange={(e) => setInput(e.target.value)} onPaste={surCollage}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } }} />
         <button className="btn" onClick={classer} disabled={loading}
           title="Ranger ce récit dans les fiches élèves, après relecture">
           👧 Classer
         </button>
-        <button className={"btn" + (dictee.etat === "enregistrement" ? " danger" : "")}
-          onClick={basculerDictee} disabled={loading || dictee.etat === "transcription"}
-          title={dictee.etat === "enregistrement"
-            ? "Terminer la dictée et transcrire"
-            : "Dicter votre demande — l'audio part chez Mistral pour être transcrit"}
-          aria-pressed={dictee.etat === "enregistrement"}>
-          {dictee.etat === "enregistrement" ? `⏹ ${mmss(dictee.secondes)}`
+        <button className={"btn" + (dictee.etat === "enregistrement" || enDirect.etat === "ecoute" ? " danger" : "")}
+          onClick={basculerDictee} disabled={loading || dictee.etat === "transcription" || enDirect.etat === "fin"}
+          title={enDirect.etat === "ecoute" ? "Terminer la dictée"
+            : dictee.etat === "enregistrement" ? "Terminer la dictée et transcrire"
+            : "Dicter en direct : les mots s'écrivent pendant que vous parlez — la voix part chez Mistral, hors de l'Union européenne"}
+          aria-pressed={dictee.etat === "enregistrement" || enDirect.etat === "ecoute"}>
+          {enDirect.etat === "ecoute" ? `⏹ ${mmss(enDirect.secondes)}`
+            : enDirect.etat === "fin" ? "⏳"
+            : dictee.etat === "enregistrement" ? `⏹ ${mmss(dictee.secondes)}`
             : dictee.etat === "transcription" ? "⏳" : "🎙"}
         </button>
         {loading ? (

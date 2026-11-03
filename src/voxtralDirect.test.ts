@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ADRESSE_DU_DIRECT, ouvrirLeDirect, reechantillonner, versPcm16, type SocketDuDirect } from "./voxtralDirect";
+import { ADRESSE_DU_DIRECT, ADRESSE_DU_DIRECT_MONDIAL, ouvrirLeDirect, reechantillonner, versPcm16, type SocketDuDirect } from "./voxtralDirect";
+import { aLaSuite } from "./dicteeEnDirect";
 
 /** Un WebSocket d'essai : il garde ce qu'on lui envoie, et l'on joue Mistral à sa place. */
 class FausseSocket implements SocketDuDirect {
@@ -150,6 +151,28 @@ describe("une réunion écrite en direct par Voxtral Realtime (demande de l'ense
     sockets[0].recevoir({ type: "transcription.segment", text: "Bonjour à tous.", start: null, end: null, speaker_id: "speaker_1" });
     sockets[0].recevoir({ type: "transcription.segment", text: "Bonjour !", start: null, end: null, speaker_id: "speaker_2" });
     expect(tours).toEqual([["Bonjour à tous.", "speaker_1"], ["Bonjour !", "speaker_2"]]);
+  });
+
+  it("se lie à l'adresse européenne, sauf la dictée de l'Assistant, qui part à l'adresse habituelle (2026-11-03)", async () => {
+    expect(ADRESSE_DU_DIRECT).toMatch(/^wss:\/\/api\.eu\.mistral\.ai\//);
+    expect(ADRESSE_DU_DIRECT_MONDIAL).toMatch(/^wss:\/\/api\.mistral\.ai\//);
+    const sockets: FausseSocket[] = [];
+    ouvrirLeDirect({
+      jeton: async () => ({ jeton: "rt_a", modele: "voxtral-mini-transcribe-realtime-3" }),
+      surTexte: () => {}, surPanne: () => {}, adresse: ADRESSE_DU_DIRECT_MONDIAL,
+      creerSocket: (a, p) => { const s = new FausseSocket(a, p); sockets.push(s); return s; },
+    });
+    await tourDeBoucle();
+    expect(sockets[0].adresse).toBe(`${ADRESSE_DU_DIRECT_MONDIAL}?model=voxtral-mini-transcribe-realtime-3`);
+  });
+
+  it("met les mots dictés à la suite de ce qui est écrit, un espace entre les deux s'il le faut", () => {
+    expect(aLaSuite("", "Bonjour", true)).toBe("Bonjour");
+    expect(aLaSuite("Une idée :", "Bonjour", true)).toBe("Une idée : Bonjour");
+    expect(aLaSuite("Une idée : ", "Bonjour", true)).toBe("Une idée : Bonjour");
+    // Ensuite, les mots de Voxtral portent leurs espaces.
+    expect(aLaSuite("Bonjour", " à tous", false)).toBe("Bonjour à tous");
+    expect(aLaSuite("Bonjour", "-là", false)).toBe("Bonjour-là");
   });
 
   it("ramène la voix à 16 kHz par moyenne, et l'écrit en 16 bits", () => {

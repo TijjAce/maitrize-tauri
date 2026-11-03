@@ -989,6 +989,8 @@ export const api = {
   telecommandeOuvrir: (invite: string) => invoke<InfoTelecommande>("telecommande_ouvrir", { invite }),
   /** Un jeton de Voxtral Realtime : la clé l'ouvre-t-elle ? (la case de la télécommande le demande en se cochant) */
   mistralJetonTempsReel: () => invoke<{ jeton: string; modele: string; expire: string }>("mistral_jeton_temps_reel"),
+  /** Le jeton de la dictée en direct de l'Assistant IA : pris à l'adresse habituelle de Mistral, hors de l'Union européenne. */
+  mistralJetonDicteeAssistant: () => invoke<{ jeton: string; modele: string; expire: string }>("mistral_jeton_dictee_assistant"),
   telecommandeFermer: () => invoke<void>("telecommande_fermer"),
   telecommandeEtat: () => invoke<InfoTelecommande | null>("telecommande_etat"),
   telecommandeRepondre: (attente: string, reponse: ReponseTelecommande) => invoke<void>("telecommande_repondre", { attente, reponse }),

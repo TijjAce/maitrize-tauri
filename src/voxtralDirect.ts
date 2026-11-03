@@ -23,6 +23,11 @@
 /** Le direct de Voxtral, à l'adresse européenne de Mistral (voir ai.rs, `MISTRAL`). */
 export const ADRESSE_DU_DIRECT = "wss://api.eu.mistral.ai/v1/audio/transcriptions/realtime";
 /**
+ * Le direct à l'adresse habituelle de Mistral, hors garantie européenne : la seule qui l'offre. Seule la dictée
+ * de l'Assistant IA s'en sert, sous son avertissement (voir dicteeEnDirect.ts, et `MISTRAL_MONDIAL` dans ai.rs).
+ */
+export const ADRESSE_DU_DIRECT_MONDIAL = "wss://api.mistral.ai/v1/audio/transcriptions/realtime";
+/**
  * Le direct n'existe pas encore à l'adresse européenne : Mistral y répond
  * « introuvable » au jeton d'écoute, quel que soit le modèle (essayé le
  * 2 novembre 2026). Coupé, comme dans ai.rs : la voix s'écrit par passages.
@@ -96,6 +101,8 @@ export interface OptionsDuDirect {
   surTour?: (texte: string, intervenant: string | null) => void;
   /** Le direct a lâché pour de bon : la réunion continue sans lui. */
   surPanne: (raison: string) => void;
+  /** Où se lier : l'adresse européenne, sauf pour la dictée de l'Assistant (voir `ADRESSE_DU_DIRECT_MONDIAL`). */
+  adresse?: string;
   creerSocket?: (adresse: string, protocoles: string[]) => SocketDuDirect;
 }
 
@@ -149,7 +156,7 @@ export function ouvrirLeDirect(o: OptionsDuDirect): Direct {
     }
     if (ferme) { enCours = false; return; }
     let s: SocketDuDirect;
-    try { s = creer(`${ADRESSE_DU_DIRECT}?model=${encodeURIComponent(j.modele)}`, ["realtime", j.jeton]); }
+    try { s = creer(`${o.adresse ?? ADRESSE_DU_DIRECT}?model=${encodeURIComponent(j.modele)}`, ["realtime", j.jeton]); }
     catch (e) {
       enCours = false;
       if (++echecs >= ECHECS_AVANT_PANNE) panne(String((e as Error)?.message ?? e));

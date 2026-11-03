@@ -34,6 +34,10 @@ const HORS_EUROPE: &str = "Coupé pour que vos données restent en Europe : chez
 /// répond « introuvable », quel que soit le modèle (essayé le 2 novembre 2026). Coupé : la voix s'écrit par
 /// passages, ou sur l'ordinateur.
 const DIRECT_COUPE: bool = true;
+/// L'adresse habituelle de Mistral, sans garantie européenne. Une seule chose y passe : la dictée en direct de
+/// l'Assistant IA, à la demande de l'enseignant (3 novembre 2026) — « on laisse libre, mais que pour cette
+/// partie » —, sous un avertissement qui dit de n'y rien dire des élèves. Tout le reste part à `MISTRAL`.
+pub const MISTRAL_MONDIAL: &str = "https://api.mistral.ai";
 
 /// Attente avant le n-ième réessai : 1 s, 2 s, 4 s.
 fn attente_avant_reessai(essai: u32) -> std::time::Duration {
@@ -1165,9 +1169,14 @@ pub(crate) async fn jeton_temps_reel(db: &State<'_, Db>, modele: &str) -> Result
     if DIRECT_COUPE {
         return Err("Mistral ne l'offre pas à son adresse européenne : la voix s'écrit par passages, en Europe.".into());
     }
+    jeton_a(db, MISTRAL, modele).await
+}
+
+/// Un jeton d'écoute demandé à cette adresse de Mistral.
+async fn jeton_a(db: &State<'_, Db>, adresse: &str, modele: &str) -> Result<JetonTempsReel, String> {
     let cle = cle_mistral(db)?;
     let rep = reqwest::Client::new()
-        .post(format!("{MISTRAL}/v1/client/sessions"))
+        .post(format!("{adresse}/v1/client/sessions"))
         .bearer_auth(cle)
         .json(&serde_json::json!({ "purpose": "realtime", "model": modele }))
         .send()
@@ -1195,6 +1204,13 @@ fn lire_le_jeton(corps: &str, modele: &str) -> Result<JetonTempsReel, String> {
 #[tauri::command]
 pub async fn mistral_jeton_temps_reel(db: State<'_, Db>, modele: Option<String>) -> Result<JetonTempsReel, String> {
     jeton_temps_reel(&db, modele.as_deref().unwrap_or(MODELE_TEMPS_REEL)).await
+}
+
+/// La dictée en direct de l'Assistant IA, et elle seule : son jeton vient de l'adresse habituelle de Mistral, la
+/// seule qui offre le direct, hors de l'Union européenne (voir `MISTRAL_MONDIAL`).
+#[tauri::command]
+pub async fn mistral_jeton_dictee_assistant(db: State<'_, Db>) -> Result<JetonTempsReel, String> {
+    jeton_a(&db, MISTRAL_MONDIAL, MODELE_TEMPS_REEL).await
 }
 
 const MODELE_VOIX: &str = "voxtral-mini-tts-latest";
@@ -1335,7 +1351,22 @@ mod tests_voix {
 
 #[cfg(test)]
 mod tests_temps_reel {
-    use super::lire_le_jeton;
+    use super::{lire_le_jeton, MISTRAL, MISTRAL_MONDIAL};
+
+    #[test]
+    fn tout_part_en_europe_sauf_la_dictee_de_l_assistant() {
+        // L'adresse de toutes les demandes reste l'européenne ; l'habituelle n'est qu'à la dictée en direct de l'Assistant.
+        assert_eq!(MISTRAL, "https://api.eu.mistral.ai");
+        assert_eq!(MISTRAL_MONDIAL, "https://api.mistral.ai");
+        // Dans le code, hors commentaires et hors essais : sa définition, et la commande de la dictée — rien d'autre.
+        let source = include_str!("ai.rs");
+        let code = &source[..source.find("#[cfg(test)]").unwrap_or(source.len())];
+        let lignes: Vec<&str> = code.lines().map(str::trim)
+            .filter(|l| l.contains("MISTRAL_MONDIAL") && !l.starts_with("//"))
+            .collect();
+        assert_eq!(lignes, ["pub const MISTRAL_MONDIAL: &str = \"https://api.mistral.ai\";",
+            "jeton_a(&db, MISTRAL_MONDIAL, MODELE_TEMPS_REEL).await"]);
+    }
 
     #[test]
     fn lit_le_jeton_de_mistral_et_rien_d_autre() {
