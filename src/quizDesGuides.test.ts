@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   apresLaReponse, avecLaSerie, citationDansLaPage, consigneDuQuiz, couvertureDuGuide, cycleDeLaClasse, debutDeLaCitation, demandeDeCorrection,
   demandeDuQuiz, derniereSerie, estUnGuideEnPdf, fichesDues, lireARevoir, lireHistorique, lireLaCorrection, lireLesQuestions, melangee,
-  nettoyerLaPage, pageInterrogeable, pageTronquee, pagesAEssayer, pagesDejaVues, plusJours, pointsDuVerdict, scoreEnClair,
+  nettoyerLaPage, pageInterrogeable, pageTronquee, pagesAEssayer, pagesDejaVues, pagesDuTheme, plusJours, pointsDuVerdict, progresDuQuiz,
+  racinesDuTheme, sansLaQuestion, scoreDuTheme, scoreEnClair,
   type FicheARevoir, type PageLue, type QuestionAChoix, type QuestionOuverte,
 } from "./quizDesGuides";
 import { hasard } from "./hasard";
@@ -74,7 +75,13 @@ describe("le quiz des guides Éduscol (demande de l'enseignant, 3 novembre 2026)
     // Un mot changé, la casse, une apostrophe courbe : c'est la phrase du guide qui revient.
     expect(citationDansLaPage("il est conseillé de ne pas multiplier les questions pendant la lecture, pour que les élèves suivent le fil du récit", PAGE_12))
       .toBe(exacte);
-    expect(citationDansLaPage("Les élèves reformulent l’histoire avec leurs mots", PAGE_12)).toBe("Les élèves reformulent l'histoire avec leurs mots");
+    expect(citationDansLaPage("Les élèves reformulent l’histoire avec leurs mots", PAGE_12))
+      .toBe("Les élèves reformulent l'histoire avec leurs mots : la reformulation est le premier outil de la compréhension.");
+    // Un morceau pris au milieu d'une phrase s'étend à la phrase entière, ponctuation comprise.
+    expect(citationDansLaPage("explicite les liens entre les personnages", PAGE_12))
+      .toBe("Le maître choisit des textes résistants, les lit plusieurs fois et explicite les liens entre les personnages.");
+    expect(citationDansLaPage("on s'arrête ici pour voir", "Que faire ? on s'arrête ici pour voir la suite ? Oui."))
+      .toBe("on s'arrête ici pour voir la suite ?");
     // Une phrase que la page ne dit pas, ou trop courte pour prouver quoi que ce soit : rien.
     expect(citationDansLaPage("Il faut corriger chaque erreur de lecture à voix haute immédiatement devant la classe.", PAGE_12)).toBeNull();
     expect(citationDansLaPage("la lecture", PAGE_12)).toBeNull();
@@ -110,7 +117,7 @@ describe("le quiz des guides Éduscol (demande de l'enseignant, 3 novembre 2026)
     // Selon la graine, la bonne réponse change de place : le modèle ne la met plus toujours en tête.
     const places = new Set([1, 2, 3, 4, 5, 6, 7, 8].map((g) => (lireLesQuestions(brut, pages, g)[0] as { bonne: number }).bonne));
     expect(places.size).toBeGreaterThan(1);
-    expect((qs[2] as QuestionOuverte).citation).toBe("On mesure les progrès en comptant les mots lus correctement en une minute, trois fois par période");
+    expect((qs[2] as QuestionOuverte).citation).toBe("On mesure les progrès en comptant les mots lus correctement en une minute, trois fois par période, et l'on montre ses progrès à l'élève.");
     // Ce qui ne se lit pas ne donne rien ; un JSON noyé dans du texte se lit.
     expect(lireLesQuestions("pas du JSON", pages, 1)).toEqual([]);
     expect(lireLesQuestions(`Voici :\n${JSON.stringify({ questions: [choix()] })}\nBonne lecture.`, pages, 1)).toHaveLength(1);
@@ -218,6 +225,41 @@ describe("le quiz des guides Éduscol (demande de l'enseignant, 3 novembre 2026)
     expect(couvertureDuGuide(h, url)).toEqual({ vues: 5, total: 48 });
     expect(lireHistorique(JSON.stringify(h))[0].total).toBe(48);
     expect(couvertureDuGuide([{ ...h[0], total: undefined }], url)).toBeNull();
+  });
+
+  it("révise un thème : les pages qui en parlent d'abord, et des questions sur lui (« continue l'amélioration »)", () => {
+    expect(racinesDuTheme("La fluence")).toEqual(["fluenc"]);
+    expect(racinesDuTheme("compréhension orale des élèves")).toEqual(["compre", "oral"]);
+    expect(racinesDuTheme("dys")).toEqual(["dys"]);
+    expect(racinesDuTheme("comment faire en classe ?")).toEqual([]);
+    // La page 14 parle de fluence, la 12 non ; la prosodie aussi est sur la 14.
+    expect(scoreDuTheme(PAGE_14, racinesDuTheme("fluence"))).toBeGreaterThan(100);
+    expect(scoreDuTheme(PAGE_12, racinesDuTheme("fluence"))).toBe(0);
+    expect(pagesDuTheme(pages, "la fluence", [])).toEqual([14]);
+    expect(pagesDuTheme(pages, "la reformulation", [])).toEqual([12]);
+    expect(pagesDuTheme(pages, "géométrie", [])).toEqual([]);
+    // Deux pages qui en parlent : celle qu'aucune série n'a prise d'abord, puis la plus riche.
+    const lecture = [{ numero: 3, texte: PAGE_12 }, { numero: 9, texte: PAGE_14 }];
+    const avant = pagesDuTheme(lecture, "lecture des textes", []);
+    expect(avant).toHaveLength(2);
+    expect(pagesDuTheme(lecture, "lecture des textes", [avant[0]])).toEqual([avant[1], avant[0]]);
+    const consigne = consigneDuQuiz("Guide", 5, "  la   fluence ");
+    expect(consigne).toContain("L'enseignant veut réviser ce thème : « la fluence ».");
+    expect(consigneDuQuiz("Guide")).not.toContain("réviser ce thème");
+  });
+
+  it("écarte une question mal posée, et dit où l'on en est, toutes séries confondues", () => {
+    const guide = { titre: "Guide", url: "u" };
+    const q = lireLesQuestions(JSON.stringify({ questions: [choix()] }), pages, 1)[0];
+    const fiches = apresLaReponse([], guide, q, 0, "2026-11-03");
+    expect(sansLaQuestion(fiches, "u", q.question.toLowerCase())).toEqual([]);
+    expect(sansLaQuestion(fiches, "autre", q.question)).toHaveLength(1);
+    expect(progresDuQuiz([], fiches)).toBeNull();
+    const h = [
+      { url: "u", titre: "Guide", date: "2026-11-03", points: 3.5, sur: 5, pages: [] },
+      { url: "v", titre: "Autre", date: "2026-11-03", points: 4, sur: 4, pages: [] },
+    ];
+    expect(progresDuQuiz(h, fiches)).toEqual({ series: 2, pourcentage: 83, enRevision: 1 });
   });
 
   it("propose d'abord les guides du cycle de la classe, et seulement des PDF", () => {

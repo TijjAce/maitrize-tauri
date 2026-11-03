@@ -22,6 +22,11 @@
 // pas » vaut mieux qu'une réponse au hasard ; et une question manquée
 // revient — tout de suite, puis trois jours, puis sept jours après chaque
 // bonne réponse —, jusqu'à ce qu'elle soit sue.
+//
+// Puis, « continue l'amélioration » : un thème à réviser dans un guide — ses
+// pages qui en parlent d'abord, et des questions sur lui ; une question mal
+// posée s'écarte — elle ne compte pas et ne revient pas ; et une ligne dit
+// où l'on en est, toutes séries confondues.
 
 import { aplatir } from "./rechercheDansPdf";
 import { hasard, melanger } from "./hasard";
@@ -97,12 +102,13 @@ export function pagesAEssayer(nombre: number, dejaVues: readonly number[], grain
 // ── Ce qui part chez Mistral ──────────────────────────────────────────────
 
 /** La consigne : des questions sur ces pages seulement, chacune avec la phrase qui la justifie. */
-export function consigneDuQuiz(titre: string, combien = QUESTIONS_PAR_SERIE): string {
+export function consigneDuQuiz(titre: string, combien = QUESTIONS_PAR_SERIE, theme = ""): string {
+  const sujet = theme.replace(/\s+/g, " ").trim();
   return `Vous préparez un petit test pour un enseignant de l'école primaire, sur le guide d'Éduscol « ${titre} ». \
 Vous recevez quelques pages de ce guide, chacune précédée de son numéro.
 
 Écrivez ${combien} questions qui vérifient qu'il en connaît l'essentiel : ce que le guide recommande, pourquoi, et comment le faire en classe.
-- Chaque question porte sur une seule page, et sa réponse se lit dans le texte de cette page : n'ajoutez rien que la page ne dise.
+${sujet ? `- L'enseignant veut réviser ce thème : « ${sujet} ». Les questions portent sur ce que les pages en disent.\n` : ""}- Chaque question porte sur une seule page, et sa réponse se lit dans le texte de cette page : n'ajoutez rien que la page ne dise.
 - Pas de question sur la mise en page, les numéros, les dates, les auteurs, les sigles seuls, ni sur ce que la page ne fait que nommer.
 - ${combien - 1} questions à choix : quatre propositions courtes, une seule juste d'après la page, les autres plausibles mais fausses d'après elle. Jamais « toutes les réponses » ni « aucune ». Pour chaque proposition, « pourquoi » dit en une phrase, d'après la page, pourquoi elle est juste ou fausse.
 - Au moins deux questions partent d'une situation de classe (« Un élève… », « Pendant une séance… ») et demandent ce que le guide préconise.
@@ -126,12 +132,19 @@ export const demandeDuQuiz = (pages: readonly PageLue[]): string =>
 
 const texte = (x: unknown): string => (typeof x === "string" ? x.replace(/\s+/g, " ").trim() : "");
 
-/** Les mots d'un texte, tels qu'écrits, et leur forme comparable : sans accents, sans casse, sans la ponctuation qui les entoure. */
-function motsDe(t: string): { brut: string; plat: string }[] {
-  return t.split(/\s+/).filter(Boolean)
-    .map((brut) => ({ brut, plat: aplatir([brut]).texte.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "") }))
+/**
+ * Les morceaux d'un texte séparés par les blancs, tels qu'écrits — un « : »
+ * ou un « ? » isolé compris, la typographie française les détache —, et ses
+ * mots : leur forme comparable, sans accents, sans casse, sans la
+ * ponctuation qui les entoure, et leur rang parmi les morceaux.
+ */
+function jetonsDe(t: string): { bruts: string[]; mots: { brut: string; plat: string; i: number }[] } {
+  const bruts = (t ?? "").split(/\s+/).filter(Boolean);
+  const mots = bruts.map((brut, i) => ({ brut, i, plat: aplatir([brut]).texte.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "") }))
     .filter((m) => m.plat);
+  return { bruts, mots };
 }
+const motsDe = (t: string) => jetonsDe(t).mots;
 
 /**
  * La phrase du guide qu'une citation reprend, telle que la page l'écrit — ou
@@ -142,7 +155,7 @@ function motsDe(t: string): { brut: string; plat: string }[] {
  */
 export function citationDansLaPage(citation: string, page: string): string | null {
   const c = motsDe(citation);
-  const p = motsDe(page);
+  const { bruts, mots: p } = jetonsDe(page);
   if (c.length < 4 || !p.length) return null;
   let meilleur = { longueur: 0, finC: 0, finP: 0 };
   let precedente = new Array<number>(p.length + 1).fill(0);
@@ -158,18 +171,31 @@ export function citationDansLaPage(citation: string, page: string): string | nul
   if (meilleur.longueur < Math.min(4, c.length)) return null;
   // La fenêtre de la page alignée sur cette suite, de la longueur de la citation.
   const avant = meilleur.finC - meilleur.longueur;
-  const debut = Math.max(0, meilleur.finP - meilleur.longueur - avant);
-  const fenetre = p.slice(debut, Math.min(p.length, debut + c.length));
+  let debut = Math.max(0, meilleur.finP - meilleur.longueur - avant);
+  let fin = Math.min(p.length, debut + c.length);
   const reste = new Map<string, number>();
-  for (const m of fenetre) reste.set(m.plat, (reste.get(m.plat) ?? 0) + 1);
+  for (const m of p.slice(debut, fin)) reste.set(m.plat, (reste.get(m.plat) ?? 0) + 1);
   let communs = 0;
   for (const m of c) {
     const n = reste.get(m.plat) ?? 0;
     if (n > 0) { communs++; reste.set(m.plat, n - 1); }
   }
-  // Une virgule ou un deux-points de bout de fenêtre ne finit pas une citation.
-  return communs / c.length >= 0.75 ? fenetre.map((m) => m.brut).join(" ").replace(/[\s,;:–-]+$/u, "") : null;
+  if (communs / c.length < 0.75) return null;
+  // Une phrase entière se lit mieux qu'un morceau : la fenêtre qui commence en minuscule remonte au début de sa
+  // phrase, celle qui ne finit pas sur un point va jusqu'au bout — de quelques mots au plus. Ce qui sépare deux mots,
+  // ce sont les morceaux d'entre eux : « fin. », ou « fin ? » à la française.
+  const entre = (k: number) => [p[k - 1].brut, ...bruts.slice(p[k - 1].i + 1, p[k].i)];
+  const finit = (k: number, signes: RegExp) => [p[k].brut, ...bruts.slice(p[k].i + 1, p[k + 1]?.i ?? bruts.length)].some((b) => signes.test(b));
+  for (let n = 0; n < ETENDUE_MAX && debut > 0 && /^\p{Ll}/u.test(p[debut].brut) && !entre(debut).some((b) => /[.!?…:»]$/u.test(b)); n++) debut--;
+  for (let n = 0; n < ETENDUE_MAX && fin < p.length && !finit(fin - 1, /[.!?…»]$/u); n++) fin++;
+  // Les signes isolés qui suivent le dernier mot finissent la phrase avec lui ; une virgule ou un deux-points, non.
+  let dernier = p[fin - 1].i;
+  while (dernier + 1 < bruts.length && /^[.!?…»)]+$/u.test(bruts[dernier + 1])) dernier++;
+  return bruts.slice(p[debut].i, dernier + 1).join(" ").replace(/[\s,;:–-]+$/u, "");
 }
+
+/** Ce qu'une citation gagne, au plus, de chaque côté pour finir sa phrase : au-delà, on garde le morceau. */
+const ETENDUE_MAX = 25;
 
 /** Deux propositions, les mêmes au mot près ? Les accents, la casse et la ponctuation n'y font rien. */
 const memeTexte = (a: string, b: string) => motsDe(a).map((m) => m.plat).join(" ") === motsDe(b).map((m) => m.plat).join(" ");
@@ -441,3 +467,61 @@ export function apresLaReponse(
 /** Les questions dont c'est le jour, les plus en retard d'abord. */
 export const fichesDues = (fiches: readonly FicheARevoir[], aujourdhui: string): FicheARevoir[] =>
   fiches.filter((f) => f.echeance <= aujourdhui).sort((a, b) => a.echeance.localeCompare(b.echeance));
+
+/** Une question écartée par l'enseignant — mal posée — : elle ne reviendra pas. */
+export const sansLaQuestion = (fiches: readonly FicheARevoir[], url: string, question: string): FicheARevoir[] =>
+  fiches.filter((f) => cleDeLaQuestion(f.guide.url, f.question.question) !== cleDeLaQuestion(url, question));
+
+// ── Où l'on en est ────────────────────────────────────────────────────────
+
+/** Toutes séries confondues : combien, la part de bonnes réponses, les questions en révision ; rien avant la première série. */
+export function progresDuQuiz(historique: readonly SerieFaite[], fiches: readonly FicheARevoir[]): { series: number; pourcentage: number; enRevision: number } | null {
+  if (!historique.length) return null;
+  const points = historique.reduce((n, s) => n + s.points, 0);
+  const sur = historique.reduce((n, s) => n + s.sur, 0);
+  return { series: historique.length, pourcentage: sur ? Math.round((points / sur) * 100) : 0, enRevision: fiches.length };
+}
+
+// ── Un thème à réviser ────────────────────────────────────────────────────
+
+/** Les mots qu'un thème n'apporte pas : « le », « de », « comment »… */
+const MOTS_VIDES = new Set([...LIAISONS, "de", "en", "au", "aux", "sur", "avec", "ce", "ces", "se", "sa", "son", "ses", "leur", "leurs",
+  "comment", "quoi", "quel", "quelle", "quels", "quelles", "faire", "eleve", "eleves", "classe"]);
+
+/**
+ * Ce qu'on cherche d'un thème, dans les pages : le début de chacun de ses
+ * mots, sans accents ni casse — « fluence » cherche « fluenc », qui trouve
+ * « fluence » et « fluences » ; « compréhension », « compre », qui trouve aussi
+ * « comprendre ».
+ */
+export function racinesDuTheme(theme: string): string[] {
+  const mots = aplatir([theme ?? ""]).texte.split(/[^a-z0-9]+/).filter((m) => m.length >= 3 && !MOTS_VIDES.has(m));
+  return [...new Set(mots.map((m) => m.slice(0, Math.max(3, Math.min(6, m.length - 1)))))];
+}
+
+/** Ce qu'une page dit d'un thème : chaque mot du thème qu'elle porte compte beaucoup, chaque occurrence un peu. */
+export function scoreDuTheme(texte: string, racines: readonly string[]): number {
+  if (!racines.length) return 0;
+  const trouvees = new Set<string>();
+  let occurrences = 0;
+  for (const m of aplatir([texte ?? ""]).texte.split(/[^a-z0-9]+/)) {
+    const r = racines.find((x) => m.startsWith(x));
+    if (r) { trouvees.add(r); occurrences++; }
+  }
+  return trouvees.size * 100 + occurrences;
+}
+
+/**
+ * Les pages de texte qui parlent du thème, dans l'ordre où les prendre :
+ * celles que les séries d'avant n'ont pas prises d'abord, puis les plus
+ * riches en premier. Aucune si le guide n'en dit rien.
+ */
+export function pagesDuTheme(pages: readonly PageLue[], theme: string, dejaVues: readonly number[]): number[] {
+  const racines = racinesDuTheme(theme);
+  const vues = new Set(dejaVues);
+  return pages.filter((p) => pageInterrogeable(p.texte))
+    .map((p) => ({ numero: p.numero, score: scoreDuTheme(p.texte, racines), vue: vues.has(p.numero) }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => Number(a.vue) - Number(b.vue) || b.score - a.score || a.numero - b.numero)
+    .map((x) => x.numero);
+}
