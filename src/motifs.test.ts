@@ -78,8 +78,31 @@ describe("les motifs organisés, d'après les livrets de maternelle (2025)", () 
       const html = htmlMotifs(r({ niveau, exercice: "completer", structure: "AB", combien: 4 }), {}, hasard(5));
       const page = html.split('<div class="page')[1];
       expect((page.match(/mo-case mo-vide/g) ?? []).length, niveau).toBe(4 * trous);
-      expect((html.match(/carte mo-piece/g) ?? []).length, niveau).toBe(4 * trous);
+      expect((html.match(/class="mo-piece"/g) ?? []).length, niveau).toBe(4 * trous);
     }
+  });
+
+  it("taille les éléments à découper comme les cases où ils se collent, et met tout sur une page quand ça tient (« faut faire des économies »)", () => {
+    // Le cas de l'enseignant : reproduire A B en GS, deux bandes de douze cases, vingt-deux ronds à découper.
+    const html = htmlMotifs(r({ niveau: "GS", exercice: "reproduire", structure: "AB", matiere: "formes", combien: 2, elements: [
+      { forme: "rond", couleur: "vert", picto: null, mot: "" }, { forme: "rond", couleur: "jaune", picto: null, mot: "" }, ELEMENTS_PAR_DEFAUT[2],
+    ] }), {}, hasard(1));
+    const caseDesBandes = html.match(/class="mo-bande" style="--case:(\d+)mm"/)![1];
+    const rangees = [...html.matchAll(/class="mo-rangee" style="--case:(\d+)mm"/g)].map((m) => m[1]);
+    expect((html.match(/class="mo-piece"/g) ?? []).length).toBe(22);
+    expect(rangees.length).toBeGreaterThan(0);
+    expect(new Set(rangees)).toEqual(new Set([caseDesBandes]));
+    // Une page : le modèle, puis les bandes et les pièces à la suite, sous un pointillé.
+    const pages = html.match(/<div class="page[^>]*>/g)!;
+    expect(pages).toEqual(['<div class="page">', '<div class="page" data-a-la-suite>', '<div class="page" data-a-la-suite>']);
+    // Beaucoup de bandes : la suite passe sur d'autres pages, sans jamais couper une bande ; le corrigé garde la sienne.
+    const longue = htmlMotifs(r({ niveau: "PS", exercice: "completer", structure: "AB", combien: 12 }), {}, hasard(2));
+    const debuts = longue.match(/<div class="page[^>]*>/g)!;
+    expect(debuts.length).toBeGreaterThan(2);
+    expect(debuts.filter((d) => d.includes("corrige")).every((d) => !d.includes("data-a-la-suite"))).toBe(true);
+    // Le fil à linge : les chaussettes à découper ont la taille des pinces du fil.
+    const fil = htmlMotifs(r({ niveau: "PS", exercice: "fil", structure: "AB", combien: 2 }), {}, hasard(3));
+    expect(fil.match(/class="mo-fil" style="--case:(\d+)mm"/)![1]).toBe(fil.match(/class="mo-rangee" style="--case:(\d+)mm"/)![1]);
   });
 
   it("imprime la bande autocorrective au dos, l'intrus repéré ; sans elle, le corrigé", () => {

@@ -21,7 +21,7 @@
 // sa silhouette : le motif se lit aussi photocopié en noir et blanc.
 
 import { escapeHtml } from "./print";
-import { HAUTEUR_UTILE_MM, attributionPour, feuille, pagesDeCartes, pagesRectoVerso, type FormatGrille } from "./cartesImprimables";
+import { HAUTEUR_UTILE_MM, LARGEUR_CONTENU_MM, attributionPour, feuille, pagesRectoVerso, type FormatGrille } from "./cartesImprimables";
 import { melanger } from "./hasard";
 
 export type NiveauMotifs = "PS" | "MS" | "GS";
@@ -295,6 +295,8 @@ function hauteurDeBande(r: ReglagesMotifs, cases: number): number {
 
 /** Ce que prennent le titre, la ligne du prénom et la consigne en haut de la première page. */
 const ENTETE_MM = 48;
+/** Ce que prend en plus la règle du motif, quand on demande qu'elle s'imprime. */
+const RAPPEL_MM = 12;
 
 /**
  * Des bandes, des fils ou des cartes répartis en pages, chacun entier : la
@@ -310,6 +312,45 @@ function enPages(entete: string, blocs: { html: string; hauteur: number }[], cla
     reste -= b.hauteur;
   }
   return pages.map((p, i) => `<div class="${pageClasse}">${i === 0 ? entete : ""}<div class="${classe}">${p.join("")}</div></div>`).join("");
+}
+
+/** Une partie de la feuille : son en-tête, puis des blocs entiers — bandes, fils, rangées de pièces —, de hauteurs connues en mm. */
+interface Partie { entete: string; hauteurEntete: number; blocs: { html: string; hauteur: number }[]; classe: string }
+
+/** Entre deux parties d'une même page : le pointillé où l'on coupe (voir `data-a-la-suite` dans STYLE_FEUILLE). */
+const ENTRE_PARTIES_MM = 14;
+
+/**
+ * Les parties à la suite, pour économiser le papier (« essaye de mettre moins
+ * de pages, faut faire des économies », l'enseignant, 3 novembre 2026) : le
+ * modèle, les bandes des élèves et les éléments à découper se suivent sur la
+ * même page, séparés par un pointillé. Chaque partie commence sous la
+ * précédente si son en-tête et son premier bloc y tiennent, sinon en haut d'une
+ * page ; un bloc ne se coupe jamais. Le corrigé n'en est pas : il garde sa page.
+ */
+function aLaSuite(parties: (Partie | null)[]): string {
+  const PAGE = HAUTEUR_UTILE_MM - 12;
+  let reste = 0;
+  let html = "";
+  for (const p of parties) {
+    if (!p) continue;
+    let suit = reste - ENTRE_PARTIES_MM >= p.hauteurEntete + (p.blocs[0]?.hauteur ?? 0);
+    let place = (suit ? reste - ENTRE_PARTIES_MM : PAGE) - p.hauteurEntete;
+    let entete = p.entete;
+    let tranche: string[] = [];
+    const poser = () => {
+      html += `<div class="page"${suit ? " data-a-la-suite" : ""}>${entete}<div class="${p.classe}">${tranche.join("")}</div></div>`;
+      suit = false; entete = ""; tranche = [];
+    };
+    for (const b of p.blocs) {
+      if (b.hauteur > place && tranche.length) { poser(); place = PAGE; }
+      tranche.push(b.html);
+      place -= b.hauteur;
+    }
+    poser();
+    reste = place;
+  }
+  return html;
 }
 
 /** Des trous dans la suite, hors des deux premières cases : un avant 4 ans, deux ou trois ensuite. */
@@ -329,13 +370,22 @@ export function avecIntrus(suite: number[], employes: number, alea: () => number
   return { cases: suite.map((x, i) => (i === place ? { el, intrus: true } : { el: x })), place };
 }
 
-/** Les éléments à découper : un par case vide, mélangés, en cartes carrées. */
-function aDecouper(r: ReglagesMotifs, manquants: number[], images: Record<number, string>, titre: string): string {
-  if (!r.decouper || !manquants.length) return "";
-  const cote = Math.min(26, tailleDeCase(r, 1) + 2);
-  const format: FormatGrille = { colonnes: Math.floor(165 / cote), lignes: Math.floor(250 / cote), hauteurMm: cote, carre: true };
-  const cellules = manquants.map((el) => `<div class="carte mo-piece">${dessinElement(r.elements[el], el, r.matiere, images)}</div>`);
-  return pagesDeCartes(cellules, format, `<div class="titre">${escapeHtml(titre)}</div>`);
+/**
+ * Les éléments à découper : un par case vide, mélangés, de la taille des cases
+ * où ils se collent (« ils font pas la bonne taille, les ronds », l'enseignant,
+ * 3 novembre 2026 : ils prenaient la plus grande case du niveau). En rangées
+ * qui passent à la ligne quand la page est plus étroite, comme dans l'aperçu.
+ */
+function aDecouper(r: ReglagesMotifs, manquants: number[], images: Record<number, string>, nom: string, cote: number): Partie | null {
+  if (!r.decouper || !manquants.length) return null;
+  const parRangee = Math.max(1, Math.floor(LARGEUR_CONTENU_MM / cote));
+  const pieces = manquants.map((el) => `<span class="mo-piece">${dessinElement(r.elements[el], el, r.matiere, images)}</span>`);
+  return {
+    entete: `<div class="titre">${escapeHtml(nom)}</div>`, hauteurEntete: 10, classe: "mo-pieces",
+    blocs: Array.from({ length: Math.ceil(pieces.length / parRangee) }, (_, k) => ({
+      html: `<div class="mo-rangee" style="--case:${cote}mm">${pieces.slice(k * parRangee, (k + 1) * parRangee).join("")}</div>`, hauteur: cote,
+    })),
+  };
 }
 
 // ── Les consignes ─────────────────────────────────────────────────────────
@@ -378,26 +428,41 @@ function filALinge(r: ReglagesMotifs, suite: number[], vide: boolean, images: Re
 
 function feuilleFil(r: ReglagesMotifs, images: Record<number, string>): string {
   const suite = suiteDuMotif(r.structure, r.niveau === "PS" ? 6 : 7);
-  // La page du modèle est celle de l'adulte : la règle s'y dit, comme dans le livret, pour la verbaliser avec les élèves.
-  const modele = `<div class="page">${titre("Le fil à linge de la mascotte", "Le modèle : à accrocher loin des élèves — au coin poupées —, ou à cacher.")}
-    ${filALinge(r, suite, false, images)}
-    <div class="mo-note">La règle, à dire avec les élèves : « ${escapeHtml(regleDuMotif({ ...r, matiere: "chaussettes" }))} »<br>
-    Séance 2 : plusieurs voyages pour regarder le modèle. Séance 3 : un seul voyage.</div></div>`;
-  const hauteurFil = (r.niveau === "PS" ? 25 : 21) + 22;
-  const fils = Array.from({ length: r.combien }, () => ({ html: `<div class="mo-fil-eleve">${filALinge(r, suite, true, images)}</div>`, hauteur: hauteurFil }));
-  const eleves = enPages(`${titre("Mon fil à linge")}${TETE}${regle("Je regarde comment la mascotte a étendu ses chaussettes. Je retiens la règle. J'étends mes chaussettes comme elle, sur mon fil. Je compare avec son fil, chaussette par chaussette.")}`, fils, "mo-fils");
+  const t = r.niveau === "PS" ? 25 : 21;
+  // Le modèle est celui de l'adulte : la règle s'y dit, comme dans le livret, pour la verbaliser avec les élèves.
+  const modele: Partie = {
+    entete: titre("Le fil à linge de la mascotte", "Le modèle : à accrocher loin des élèves — au coin poupées —, ou à cacher."), hauteurEntete: 18, classe: "mo-modele-fil",
+    blocs: [{
+      html: `${filALinge(r, suite, false, images)}<div class="mo-note">La règle, à dire avec les élèves : « ${escapeHtml(regleDuMotif({ ...r, matiere: "chaussettes" }))} »<br>
+    Séance 2 : plusieurs voyages pour regarder le modèle. Séance 3 : un seul voyage.</div>`,
+      hauteur: t + 14 + 16,
+    }],
+  };
+  const fils = Array.from({ length: r.combien }, () => ({ html: `<div class="mo-fil-eleve">${filALinge(r, suite, true, images)}</div>`, hauteur: t + 22 }));
+  const eleves: Partie = {
+    entete: `${titre("Mon fil à linge")}${TETE}${regle("Je regarde comment la mascotte a étendu ses chaussettes. Je retiens la règle. J'étends mes chaussettes comme elle, sur mon fil. Je compare avec son fil, chaussette par chaussette.")}`,
+    hauteurEntete: ENTETE_MM, blocs: fils, classe: "mo-fils",
+  };
   const manquants = Array.from({ length: r.combien }, () => suite.slice(1)).flat();
-  return modele + eleves + aDecouper({ ...r, matiere: "chaussettes" }, manquants, images, "Les chaussettes à découper");
+  return aLaSuite([modele, eleves, aDecouper({ ...r, matiere: "chaussettes" }, manquants, images, "Les chaussettes à découper", t)]);
 }
 
 function feuilleReproduire(r: ReglagesMotifs, images: Record<number, string>): string {
   const suite = suiteDuMotif(r.structure, longueurRepetitive(r));
-  const modele = `<div class="page">${titre("Le modèle", "À poser loin des élèves, ou à cacher : on le regarde, on le retient, on revient le refaire.")}
-    ${bande(r, pleine(suite), images)}<div class="mo-note">La règle, à dire avec les élèves : « ${escapeHtml(regleDuMotif(r))} »</div></div>`;
+  const modele: Partie = {
+    entete: titre("Le modèle", "À poser loin des élèves, ou à cacher : on le regarde, on le retient, on revient le refaire."), hauteurEntete: 18, classe: "mo-bandes",
+    blocs: [{
+      html: `${bande(r, pleine(suite), images)}<div class="mo-note">La règle, à dire avec les élèves : « ${escapeHtml(regleDuMotif(r))} »</div>`,
+      hauteur: hauteurDeBande(r, suite.length) + 14,
+    }],
+  };
   const bandes = Array.from({ length: r.combien }, () => ({ html: bande(r, suite.map((el, i) => ({ el: i === 0 ? el : null })), images), hauteur: hauteurDeBande(r, suite.length) }));
-  const eleves = enPages(`${titre("Je refais le motif")}${TETE}${regle("Je regarde le modèle et je retiens sa règle. Je refais le même motif sur ma bande, sans le modèle sous les yeux. Je compare avec le modèle, case par case.")}`, bandes);
+  const eleves: Partie = {
+    entete: `${titre("Je refais le motif")}${TETE}${regle("Je regarde le modèle et je retiens sa règle. Je refais le même motif sur ma bande, sans le modèle sous les yeux. Je compare avec le modèle, case par case.")}`,
+    hauteurEntete: ENTETE_MM, blocs: bandes, classe: "mo-bandes",
+  };
   const manquants = Array.from({ length: r.combien }, () => suite.slice(1)).flat();
-  return modele + eleves + aDecouper(r, manquants, images, "Les éléments à découper");
+  return aLaSuite([modele, eleves, aDecouper(r, manquants, images, "Les éléments à découper", tailleDeCase(r, suite.length))]);
 }
 
 function feuilleCompleter(r: ReglagesMotifs, images: Record<number, string>, alea: () => number): string {
@@ -405,13 +470,16 @@ function feuilleCompleter(r: ReglagesMotifs, images: Record<number, string>, ale
     const suite = suiteDuMotif(r.structure, longueurRepetitive(r));
     return { suite, cases: avecTrous(suite, r.niveau, alea) };
   });
-  const page = enPages(`${titre("Je complète le motif")}${TETE}${rappel(regleDuMotif(r))}`
-    + `${regle(`Je trouve la règle du motif. Je complète chaque case vide${r.decouper ? " avec l'élément qui manque" : " : je dessine l'élément qui manque"}.`)}`,
-    lignes.map((l) => ({ html: bande(r, l.cases, images), hauteur: hauteurDeBande(r, l.cases.length) })));
+  const eleves: Partie = {
+    entete: `${titre("Je complète le motif")}${TETE}${rappel(regleDuMotif(r))}`
+      + `${regle(`Je trouve la règle du motif. Je complète chaque case vide${r.decouper ? " avec l'élément qui manque" : " : je dessine l'élément qui manque"}.`)}`,
+    hauteurEntete: ENTETE_MM + RAPPEL_MM, classe: "mo-bandes",
+    blocs: lignes.map((l) => ({ html: bande(r, l.cases, images), hauteur: hauteurDeBande(r, l.cases.length) })),
+  };
   const manquants = melanger(alea, lignes.flatMap((l) => l.cases.flatMap((c, i) => (c.trou ? [l.suite[i]] : []))));
   const corrige = enPages(titre("Je complète le motif — corrigé"), lignes.map((l) => ({ html: bande(r, pleine(l.suite), images), hauteur: hauteurDeBande(r, l.suite.length) })),
     "mo-bandes", "page corrige");
-  return page + aDecouper(r, manquants, images, "Les éléments à découper") + corrige;
+  return aLaSuite([eleves, aDecouper(r, manquants, images, "Les éléments à découper", tailleDeCase(r, lignes[0]?.cases.length ?? 1))]) + corrige;
 }
 
 function feuilleProlonger(r: ReglagesMotifs, images: Record<number, string>): string {
@@ -421,11 +489,14 @@ function feuilleProlonger(r: ReglagesMotifs, images: Record<number, string>): st
   const suite = evolutif ? suiteDuMotif(r.structure, 0, 3) : suiteDuMotif(r.structure, Math.max(longueurRepetitive(r), debut.length + 4));
   const cases: Case[] = suite.map((el, i) => (i < debut.length ? { el } : { el: null }));
   const bandes = Array.from({ length: r.combien }, () => ({ html: bande(r, cases, images), hauteur: hauteurDeBande(r, cases.length) }));
-  const page = enPages(`${titre("Je continue le motif")}${TETE}${rappel(regleDuMotif(r))}`
-    + `${regle(evolutif ? "Je trouve comment le motif grandit. Je fais l'étape suivante dans les cases vides." : "Je trouve la règle du motif. Je le continue jusqu'au bout de la bande.")}`, bandes);
+  const eleves: Partie = {
+    entete: `${titre("Je continue le motif")}${TETE}${rappel(regleDuMotif(r))}`
+      + `${regle(evolutif ? "Je trouve comment le motif grandit. Je fais l'étape suivante dans les cases vides." : "Je trouve la règle du motif. Je le continue jusqu'au bout de la bande.")}`,
+    hauteurEntete: ENTETE_MM + RAPPEL_MM, blocs: bandes, classe: "mo-bandes",
+  };
   const manquants = Array.from({ length: r.combien }, () => suite.slice(debut.length)).flat();
   const corrige = `<div class="page corrige">${titre("Je continue le motif — corrigé")}${bande(r, pleine(suite), images)}</div>`;
-  return page + aDecouper(r, manquants, images, "Les éléments à découper") + corrige;
+  return aLaSuite([eleves, aDecouper(r, manquants, images, "Les éléments à découper", tailleDeCase(r, cases.length))]) + corrige;
 }
 
 function feuilleIntrus(r: ReglagesMotifs, images: Record<number, string>, alea: () => number): string {
@@ -496,8 +567,12 @@ export const STYLE_MOTIFS = `
   .feuille.mo .mo-case.mo-intrus::after { content: ""; position: absolute; inset: -1.2mm; border: 1mm solid #e03131; border-radius: 50%; }
   .feuille.mo .mo-svg { width: 100%; height: 100%; display: block; }
   .feuille.mo .mo-case img, .feuille.mo .mo-piece img { max-width: 100%; max-height: 100%; object-fit: contain; margin: 0; }
+  /* Une pièce à découper a la taille de la case où elle se colle, et son dessin celle du dessin de la case. */
+  .feuille.mo .mo-pieces { margin-top: 2mm; }
+  .feuille.mo .mo-rangee { display: flex; flex-wrap: wrap; }
+  .feuille.mo .mo-piece { width: var(--case); height: var(--case); border: 1px dashed #9aa0b4; margin: 0 -1px -1px 0; box-sizing: border-box;
+    padding: 1mm; display: flex; align-items: center; justify-content: center; background: #fff; }
   .feuille.mo .mo-mot { font-size: 11px; font-weight: 700; text-align: center; line-height: 1.1; }
-  .feuille.mo .mo-piece { padding: 1.5mm; }
   .feuille.mo .mo-fil { position: relative; display: flex; gap: 1.5mm; padding-top: 6mm; margin: 6mm 0 2mm; border-top: 2.5px solid #8b5a2b; }
   .feuille.mo .mo-pince { position: relative; width: var(--case); display: flex; justify-content: center; }
   .feuille.mo .mo-pince::before { content: ""; position: absolute; top: -9mm; left: 50%; width: 2.6mm; height: 7mm; margin-left: -1.3mm;
