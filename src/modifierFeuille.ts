@@ -41,6 +41,13 @@ export interface Fabrication {
    * déroulement des tablettes montre sa photo.
    */
   support?: { photo: number; matiere: string };
+  /**
+   * La matière de la feuille et son domaine, écrits à sa fabrication (voir
+   * matiereDesFeuilles) : la carte d'une fiche sur les tablettes les lit au lieu
+   * de les deviner d'après son titre.
+   */
+  matiere?: string;
+  domaine?: string;
 }
 
 /** L'« atelier » d'une fiche faite d'un support de travail : la photo d'un objet ou d'un jeu de la classe, et ses règles. */
@@ -72,6 +79,8 @@ export function lireFabrication(json: string | null | undefined): Fabrication | 
       minuteur: typeof f.minuteur === "number" && f.minuteur >= 1 ? Math.min(MINUTEUR_MAX, Math.round(f.minuteur)) : undefined,
       support: estUnObjet(f.support) && typeof f.support.photo === "number" && typeof f.support.matiere === "string"
         ? { photo: f.support.photo, matiere: f.support.matiere } : undefined,
+      matiere: typeof f.matiere === "string" && f.matiere.trim() ? f.matiere.trim() : undefined,
+      domaine: typeof f.domaine === "string" && f.domaine.trim() ? f.domaine.trim() : undefined,
     };
   } catch {
     return null;

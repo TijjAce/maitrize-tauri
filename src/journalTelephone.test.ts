@@ -158,6 +158,14 @@ describe("les fiches d'« En retard », pour les tablettes", () => {
     expect(pasDuDeroulement(c, undefined, [meles], "", "ZENON").map((p) => p.texte)).toEqual(["Rituel", "Mots mêlés"]);
   });
 
+  it("montre la matière et le domaine qu'une feuille fabriquée emporte, sans les deviner d'après son titre (« pas d'erreur lorsque ça crée ce que doit faire l'élève »)", () => {
+    const c = creneau("c1", "2026-10-13", { prevu: "📄 Mots mêlés — ZENON, 13 oct." });
+    const marquee = fiche("f2", "Mots mêlés — ZENON, 13 oct.", "ZENON", { matiere: "Français", domaine: "Lecture" });
+    expect(pasDuDeroulement(c, undefined, [marquee], "", "ZENON").slice(1)).toEqual([{ texte: "Mots mêlés", matiere: "Français", domaine: "Lecture", fiche: true }]);
+    // Une fiche d'avant, sans matière : comme avant, elle se retrouve au dessin, par sa sorte.
+    expect(pasDuDeroulement(c, undefined, [meles], "", "ZENON").slice(1)).toEqual([{ texte: "Mots mêlés", matiere: "", fiche: true }]);
+  });
+
   it("commence toujours par le rituel — ceux du prévu par leur nom —, puis la séance, en une étape ; celui d'un élève finit par ses fiches", () => {
     const seanceDuJour = { ...seance("s1", "Les mots de l'automne"), tableauDeroulement: "[]" };
     const c = creneau("c1", "2026-10-13", { seanceId: "s1", prevu: "🔁 La date\n🔁 La météo\n" + prevu });

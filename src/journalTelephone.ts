@@ -285,9 +285,15 @@ export function pasDuDeroulement(
         const domaine = domaineDeLaSeance(x.seance, sequence);
         return { texte: x.seance.titre, matiere: sequence?.matiere ?? "", fiche: true, ...(domaine ? { domaine } : {}) };
       }
-      // Un support de travail montre sa photo, et dit sa matière ; une fiche la retrouve par sa sorte, au dessin.
-      const support = lireFabrication(x.fiche.fabricationJson)?.support;
-      return { texte: titrePourLesTablettes(x.fiche), matiere: support?.matiere ?? "", fiche: true, ...(support ? { picto: support.photo } : {}) };
+      // Un support de travail montre sa photo, et dit sa matière ; une feuille fabriquée porte la sienne et son domaine
+      // (voir matiereDesFeuilles) ; une fiche d'avant les retrouve par sa sorte, au dessin.
+      const fabrication = lireFabrication(x.fiche.fabricationJson);
+      const support = fabrication?.support;
+      const domaine = support ? "" : fabrication?.domaine ?? "";
+      return {
+        texte: titrePourLesTablettes(x.fiche), matiere: support?.matiere ?? fabrication?.matiere ?? "", fiche: true,
+        ...(domaine ? { domaine } : {}), ...(support ? { picto: support.photo } : {}),
+      };
     }),
   ];
 }
@@ -586,14 +592,15 @@ export async function cadresDuDeroulement(etapes: PasDuDeroulement[], pictos: Pi
   // Une fiche d'élève : sa matière, écrite au-dessus, et son domaine, retrouvés par sa sorte.
   const { domaineDeLaRecette, matiereDeLaRecette, recetteDuTitre } = await import("./fichesAutonomie");
   const pas = etapes.map((p) => {
-    const r = p.fiche && p.picto == null ? recetteDuTitre(p.texte) : undefined;
+    const r = p.fiche && p.picto == null && !p.matiere ? recetteDuTitre(p.texte) : undefined;
     return r ? { ...p, matiere: matiereDeLaRecette(r), domaine: domaineDeLaRecette(r) } : p;
   });
   // Le picto de la matière, par défaut ; celui du domaine si l'enseignant détaille la matière et l'a choisi — jamais
   // celui du verbe (demandes de l'enseignant). Le rituel a le sien, sous « Rituel ».
   const cibles = pas.map((p) => {
     if (p.rituel) return { nom: "Rituel", matiere: "Rituel" };
-    const nom = p.domaine ?? "";
+    // Une fiche qui n'a que sa matière prend le picto de sa matière.
+    const nom = p.domaine || (p.fiche ? p.matiere : "") || "";
     return nom ? { nom, matiere: (p.fiche && p.matiere) || matiereDuNom(nom, domaines) } : null;
   });
   const images: (string | undefined)[] = pas.map(() => undefined);

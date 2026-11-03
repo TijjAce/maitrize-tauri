@@ -250,6 +250,33 @@ export async function imprimerAtelier(atelier: string, titre: string, corps: str
 // la déposer dans une séance, la partager. Le matériel porte la première
 // compétence de l'atelier, pour que la tuile dise ce qu'elle travaille.
 
+/**
+ * La matière et le domaine d'une feuille, écrits dans son PDF (voir
+ * matiereDesFeuilles) : le choix de l'enseignant pour l'atelier, sinon la
+ * première compétence de la feuille, sinon la famille de l'atelier ; rien
+ * quand aucun ne le dit.
+ */
+export async function matiereDeLaFeuille(atelier: string, competences?: CompetenceSelectionnee[]): Promise<Pick<Fabrication, "matiere" | "domaine">> {
+  try {
+    const { api } = await import("./api");
+    const { cleMatiereDeLaFeuille, lireMatiereDeFeuille, matiereParDefaut, niveauxDeLaClasse } = await import("./matiereDesFeuilles");
+    const enClair = (m: { matiere: string; domaine: string } | null) => (m ? { matiere: m.matiere, ...(m.domaine ? { domaine: m.domaine } : {}) } : {});
+    const choisie = lireMatiereDeFeuille(await api.settingGet(cleMatiereDeLaFeuille(atelier)).catch(() => null));
+    if (choisie) return enClair(choisie);
+    const c = (competences ?? await competencesDeLAtelier(atelier)).find((x) => x.domaineTitre?.trim());
+    if (c) {
+      const { domainesParMatiere, matiereDuNom } = await import("./pictosMatieres");
+      const domaines = domainesParMatiere(await api.referentielsList().catch(() => []));
+      const domaine = (c.sousDomaineTitre || c.domaineTitre).trim();
+      const matiere = matiereDuNom(c.domaineTitre, domaines) ?? matiereDuNom(domaine, domaines);
+      if (matiere) return enClair({ matiere, domaine });
+    }
+    return enClair(matiereParDefaut(atelier, niveauxDeLaClasse(await api.settingsAll().catch((): Record<string, string> => ({})))));
+  } catch {
+    return {};
+  }
+}
+
 /** Le matériel du bureau qui porte ce PDF, à la racine, sans séance ni séquence. */
 export function materielDuBureau(
   atelier: string, titre: string, fichier: string, comps: CompetenceSelectionnee[], id: string, date: string,
@@ -278,7 +305,7 @@ export async function deposerSurLeBureau(atelier: string, titre: string, fichier
   const materiel: MaterielItem = {
     ...materielDuBureau(atelier, titre, fichier, await competencesDeLAtelier(atelier), newId(), nowIso()),
     ...(pour ? { seanceId: pour.seanceId, sequenceId: pour.sequenceId } : {}),
-    fabricationJson: ecrireFabrication(fabricationDuMoment(atelier, consigne ? { consigne } : {})),
+    fabricationJson: ecrireFabrication(fabricationDuMoment(atelier, { ...await matiereDeLaFeuille(atelier), ...(consigne ? { consigne } : {}) })),
   };
   await api.materielSave(materiel);
   return materiel;
@@ -326,6 +353,7 @@ async function remplacerLaFeuille(
   const apres: MaterielItem = {
     ...avant, pdfsJson: JSON.stringify([await pdf(m, avant.titre)]),
     fabricationJson: ecrireFabrication(fabricationDuMoment(atelier, {
+      ...await matiereDeLaFeuille(atelier, m.competences),
       competences: m.competences, eleve: m.eleve, ...(consigne ? { consigne } : {}), ...(minuteur ? { minuteur } : {}),
     })),
   };
@@ -357,7 +385,9 @@ export async function poserDansUneSeance(
   const consigne = await consignePourLesTablettes(atelier, corps);
   const materiel: MaterielItem = {
     ...materielDuBureau(atelier, titre, fichier, extras.competences ?? await competencesDeLAtelier(atelier), newId(), nowIso()), seanceId, sequenceId,
-    fabricationJson: ecrireFabrication({ atelier, ...extras.fabrication, competences: extras.competences, ...(consigne ? { consigne } : {}) }),
+    fabricationJson: ecrireFabrication({
+      atelier, ...await matiereDeLaFeuille(atelier, extras.competences), ...extras.fabrication, competences: extras.competences, ...(consigne ? { consigne } : {}),
+    }),
   };
   await api.materielSave(materiel);
   return materiel;
@@ -406,7 +436,9 @@ export async function ficheDeLEleve(
   const consigne = await consigneDeLaFiche(atelier, corps);
   const materiel: MaterielItem = {
     ...materielDuBureau(atelier, titre, fichier, await competencesDeLAtelier(atelier), newId(), nowIso()), dossier: eleve.dossier,
-    fabricationJson: ecrireFabrication({ atelier, ...refaire, eleve: { prenom: eleve.prenom, date: eleve.date }, ...(consigne ? { consigne } : {}) }),
+    fabricationJson: ecrireFabrication({
+      atelier, ...await matiereDeLaFeuille(atelier), ...refaire, eleve: { prenom: eleve.prenom, date: eleve.date }, ...(consigne ? { consigne } : {}),
+    }),
   };
   await api.materielSave(materiel);
   return materiel;
