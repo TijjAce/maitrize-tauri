@@ -1,6 +1,6 @@
 import React from "react";
 import { Aide, LibelleAvecAide } from "../components/Aide";
-import { Field, Input, Select } from "../components/ui";
+import { Field, Input, Select, Textarea } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
 import { toast } from "../components/Toaster";
 import { chargerImages, usePictoImages } from "../components/ChoixPicto";
@@ -11,9 +11,16 @@ import { BoutonBureau } from "../components/BoutonBureau";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import type { PictoPose } from "../supportsVisuels";
+import { api } from "../api";
+import { confirmer } from "../components/confirmer";
+import { PhotoTelephone } from "../components/PhotoTelephone";
+import { pngDeLaZone } from "../exercicesDesManuels";
+import { pseudonymiserTout, restaurer } from "../confidentialite";
+import { nomsAMasquer } from "../nomsAMasquer";
 import {
-  COULEURS, EXEMPLE_VISIBILEO, FLECHES_MAX, GENRES, PERSONNAGES_MAX, PIECES_MAX, REGLAGES_VISIBILEO, STYLE_VISIBILEO, VIERGES_MAX,
-  cequiManque, htmlVisibileo, idsDesImages, motsDeLExemple, personnageVide, personnagesNommes, pieceVide, reglagesSurs,
+  CONSIGNE_LECTURE_PAGE, CONSIGNE_VISIBILEO, COULEURS, EXEMPLE_VISIBILEO, FLECHES_MAX, GENRES, PERSONNAGES_MAX, PIECES_MAX, REGLAGES_VISIBILEO,
+  STYLE_VISIBILEO, VIERGES_MAX, ajouterPage, cequiManque, htmlVisibileo, idsDesImages, lirePremierJet, motsDeLExemple, personnageVide,
+  personnagesNommes, pieceVide, reglagesSurs,
   type Genre, type Piece, type ReglagesVisibileo, type Signe,
 } from "../visibileo";
 
@@ -22,9 +29,19 @@ import {
 // Les pièces pour construire avec la classe la trace d'un récit (voir
 // visibileo.ts) : on nomme les personnages, on écrit ce qu'on prévoit de
 // faire voir — ce qui se passe, ce qu'ils pensent, ce qu'ils disent —, et
-// les feuilles se voient à droite telles qu'elles s'imprimeront.
+// les feuilles se voient à droite telles qu'elles s'imprimeront. Le texte de
+// l'histoire se colle, ou se photographie avec le compagnon, page à page ;
+// « ✨ Construire avec l'IA » en tire un premier jet, à relire.
 
 const ATELIER = "visibileo";
+
+const MIME: Record<string, string> = { png: "image/png", webp: "image/webp", gif: "image/gif", heic: "image/heic" };
+/** Une photo reçue du téléphone, en PNG base64 : c'est ce que lit l'IA. */
+async function pngDeLaPhoto(nom: string): Promise<string> {
+  const ext = nom.split(".").pop()?.toLowerCase() ?? "";
+  const dataUrl = `data:${MIME[ext] ?? "image/jpeg"};base64,${await api.fichierRead(nom)}`;
+  return pngDeLaZone(dataUrl, { x: 0, y: 0, l: 1, h: 1 }, 2000);
+}
 
 const AJOUTER: Record<Genre, string> = { cadre: "＋ Un cadre", nuage: "＋ Un nuage", bulle: "＋ Une bulle" };
 const EXEMPLES: Record<Genre, string> = { cadre: "Le corbeau tient un fromage.", nuage: "Je veux ce fromage.", bulle: "Que vous êtes joli !" };
@@ -45,7 +62,58 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
   const [brut, maj] = useReglages<ReglagesVisibileo>(ATELIER, REGLAGES_VISIBILEO);
   const r = React.useMemo(() => reglagesSurs(brut), [brut]);
   // Rien d'écrit : l'exemple, ce que donneront les vôtres.
-  const vide = !r.titre.trim() && !r.pieces.length && !personnagesNommes(r).length;
+  const vide = !r.titre.trim() && !r.texte.trim() && !r.pieces.length && !personnagesNommes(r).length;
+  const [occupe, setOccupe] = React.useState("");
+
+  // Les pages photographiées arrivent une à une : chacune se lit à son tour, et son texte s'ajoute au précédent.
+  const texteRef = React.useRef(r.texte);
+  texteRef.current = r.texte;
+  const file = React.useRef(Promise.resolve());
+  const [lues, setLues] = React.useState(0);
+  const pageRecue = (nom: string) => {
+    file.current = file.current.then(async () => {
+      setOccupe("Lecture de la page…");
+      try {
+        const page = await api.mistralVision(CONSIGNE_LECTURE_PAGE, await pngDeLaPhoto(nom), await api.modeleActif());
+        texteRef.current = ajouterPage(texteRef.current, page);
+        maj({ texte: texteRef.current });
+        setLues((n) => n + 1);
+      } catch (e) {
+        toast(`Page reçue, mais illisible : ${String(e)}`, { icone: "⚠️", duree: 8000 });
+      } finally {
+        setOccupe("");
+        api.fichierDelete(nom).catch(() => {});
+      }
+    });
+  };
+
+  // Le premier jet de l'IA : les prénoms des élèves masqués à l'aller, remis au retour.
+  const construire = async () => {
+    if ((r.pieces.length || personnagesNommes(r).length)
+      && !(await confirmer("Remplacer les personnages et les pièces par ceux que l'IA propose ?", { oui: "Remplacer" }))) return;
+    setOccupe("L'IA lit l'histoire…");
+    try {
+      const masque = pseudonymiserTout([r.texte], await nomsAMasquer());
+      const brut = await api.mistralChat([
+        { role: "system", content: CONSIGNE_VISIBILEO },
+        { role: "user", content: `Le texte de l'histoire :\n\n${masque.textes[0]}` },
+      ], await api.modeleActif(), true);
+      const jet = lirePremierJet(restaurer(brut, masque.table).texte);
+      if (!jet) { toast("L'IA n'a rien rendu d'utilisable : réessayez.", { icone: "⚠️" }); return; }
+      const mots = await motsAvecImages([...jet.personnages.map((p) => p.image), ...jet.pieces.map((p) => p.image)].filter(Boolean));
+      const image = (m: string): PictoPose => ({ id: m ? mots.find((x) => x.mot === m)?.id ?? null : null, mot: m });
+      maj({
+        titre: r.titre.trim() || jet.titre,
+        personnages: jet.personnages.map((p, i) => ({ ...personnageVide(i), nom: p.nom, image: image(p.image) })),
+        pieces: jet.pieces.map((p): Piece => ({ genre: p.genre, texte: p.texte, qui: p.qui, image: image(p.image) })),
+      });
+      toast("✨ Le premier jet de l'IA est posé : relisez les pièces avant d'imprimer.", { icone: "✨", duree: 7000 });
+    } catch (e) {
+      toast(String(e), { icone: "⚠️", duree: 8000 });
+    } finally {
+      setOccupe("");
+    }
+  };
   const [exemple, setExemple] = React.useState<ReglagesVisibileo | null>(null);
   React.useEffect(() => {
     if (!vide || exemple) return;
@@ -103,6 +171,18 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
         </h3>
         <Field label="L'histoire">
           <Input value={r.titre} placeholder="Le Corbeau et le Renard" onChange={(e) => maj({ titre: e.target.value })} />
+        </Field>
+        <Field label="Le texte de l'histoire">
+          <Textarea value={r.texte} rows={Math.min(10, Math.max(3, r.texte.split("\n").length + 1))} aria-label="Le texte de l'histoire"
+            placeholder="Collez le tapuscrit, ou photographiez les pages avec le téléphone."
+            onChange={(e) => maj({ texte: e.target.value })} style={{ width: "100%", resize: "vertical" }} />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 6 }}>
+            <PhotoTelephone serie label="📱 Photographier le texte" className="btn sm" onPhoto={pageRecue}
+              onFin={(n) => { if (n) toast(`${n} page${n > 1 ? "s" : ""} reçue${n > 1 ? "s" : ""} : le texte se lit.`, { icone: "📱" }); }} />
+            <button type="button" className="btn sm" disabled={!r.texte.trim() || Boolean(occupe)} onClick={() => { void construire(); }}>
+              ✨ Construire avec l'IA</button>
+            {occupe ? <span className="meta">{occupe}</span> : lues ? <span className="meta">{lues} page{lues > 1 ? "s" : ""} lue{lues > 1 ? "s" : ""}</span> : null}
+          </div>
         </Field>
         <Field label={`Les personnages (${r.personnages.length})`}>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

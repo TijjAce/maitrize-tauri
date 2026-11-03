@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  EXEMPLE_VISIBILEO, REGLAGES_VISIBILEO, cequiManque, htmlMemo, htmlPieces, htmlPreparation, htmlVisibileo, idsDesImages, motsDeLExemple,
-  personnageVide, pieceVide, reglagesSurs, type ReglagesVisibileo,
+  CONSIGNE_VISIBILEO, EXEMPLE_VISIBILEO, REGLAGES_VISIBILEO, ajouterPage, cequiManque, htmlMemo, htmlPieces, htmlPreparation, htmlVisibileo,
+  idsDesImages, lirePremierJet, motsDeLExemple, personnageVide, pieceVide, reglagesSurs, type ReglagesVisibileo,
 } from "./visibileo";
 import { SOURCES_DES_ATELIERS } from "./sourcesDesAteliers";
 
@@ -81,5 +81,44 @@ describe("le Visibiléo : les pièces pour construire avec la classe la trace d'
     expect(motsDeLExemple()).toContain("corbeau");
     expect(EXEMPLE_VISIBILEO.pieces.every((p) => p.qui < EXEMPLE_VISIBILEO.personnages.length)).toBe(true);
     expect(SOURCES_DES_ATELIERS.visibileo).toMatch(/Marie-France Bishop/);
+  });
+
+  it("relit le premier jet de l'IA : un genre inconnu, un personnage qui n'existe pas, une pièce vide s'écartent (« elle se construit toute seule avec l'IA »)", () => {
+    const reponse = `Voici : ${JSON.stringify({
+      titre: "Le Corbeau et le Renard",
+      personnages: [{ nom: "Le corbeau", image: "corbeau" }, { nom: "Le renard", image: "renard" }, { nom: "", image: "x" }],
+      pieces: [
+        { genre: "cadre", texte: "Le corbeau tient un fromage.", qui: 1, image: "fromage" },
+        { genre: "nuage", texte: "Je veux ce fromage.", qui: 1, image: "vouloir" },
+        { genre: "bulle", texte: "« Que vous êtes joli ! »", qui: 1, image: "parler fort" },
+        { genre: "nuage", texte: "Je suis beau.", qui: 9, image: "fier" },
+        { genre: "carte", texte: "?", qui: 0, image: "" },
+        { genre: "cadre", texte: "   ", qui: -1, image: "rien" },
+      ],
+    })} — bonne lecture.`;
+    expect(lirePremierJet(reponse)).toEqual({
+      titre: "Le Corbeau et le Renard",
+      personnages: [{ nom: "Le corbeau", image: "corbeau" }, { nom: "Le renard", image: "renard" }],
+      pieces: [
+        // Un cadre n'est à personne ; les guillemets d'une bulle tombent, l'image garde un seul mot ; un personnage inconnu, personne.
+        { genre: "cadre", texte: "Le corbeau tient un fromage.", qui: -1, image: "fromage" },
+        { genre: "nuage", texte: "Je veux ce fromage.", qui: 1, image: "vouloir" },
+        { genre: "bulle", texte: "Que vous êtes joli !", qui: 1, image: "parler" },
+        { genre: "nuage", texte: "Je suis beau.", qui: -1, image: "fier" },
+      ],
+    });
+    expect(lirePremierJet("Je n'ai pas compris.")).toBeNull();
+    expect(lirePremierJet("{}")).toBeNull();
+    // La consigne dit la méthode et la forme de la réponse.
+    expect(CONSIGNE_VISIBILEO).toMatch(/nuages pour ce que pense, croit ou veut/);
+    expect(CONSIGNE_VISIBILEO).toMatch(/"pieces"/);
+  });
+
+  it("met les pages lues à la suite, une ligne vide entre deux, et garde le texte dans les réglages", () => {
+    expect(ajouterPage("", "  Il était une fois.  ")).toBe("Il était une fois.");
+    expect(ajouterPage("Il était une fois.", "Un corbeau.\n")).toBe("Il était une fois.\n\nUn corbeau.");
+    expect(ajouterPage("Il était une fois.", "   ")).toBe("Il était une fois.");
+    expect(reglagesSurs({ texte: "Maître Corbeau" }).texte).toBe("Maître Corbeau");
+    expect(reglagesSurs({ texte: 3 as never }).texte).toBe("");
   });
 });

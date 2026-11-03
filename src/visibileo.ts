@@ -22,6 +22,13 @@
 // la séance. Rien n'est repris des documents de l'IFÉ, dont les droits sont
 // réservés : les pièces, le mémo et la fiche sont dessinés et écrits pour
 // Maitrize.
+//
+// Puis (même jour) : « il faudrait pouvoir mettre le tapuscrit et elle se
+// construit toute seule avec l'IA, et depuis le téléphone je puisse lui
+// envoyer le texte ». Le texte se colle, ou se photographie page à page avec
+// le compagnon (le QR code de Fabriquer) et se lit ; Mistral en tire un
+// premier jet — personnages, cadres, nuages, bulles —, que l'enseignant
+// relit avant de préparer sa séance.
 
 import { escapeHtml } from "./print";
 import { attributionPour, feuille } from "./cartesImprimables";
@@ -45,6 +52,8 @@ export type Signe = Genre | "rouge" | "bleue";
 
 export interface ReglagesVisibileo {
   titre: string;
+  /** Le texte de l'histoire, le tapuscrit : collé, ou lu sur les pages photographiées. */
+  texte: string;
   personnages: Personnage[];
   pieces: Piece[];
   /** Les pièces vierges en plus, pour ce que la classe décidera : les cadres en tout, les nuages et les bulles par personnage. */
@@ -93,6 +102,7 @@ export const pieceVide = (genre: Genre, qui = -1): Piece => ({ genre, texte: "",
 
 export const REGLAGES_VISIBILEO: ReglagesVisibileo = {
   titre: "",
+  texte: "",
   personnages: [personnageVide(0), personnageVide(1)],
   pieces: [],
   vierges: { cadre: 4, nuage: 2, bulle: 1 },
@@ -135,6 +145,7 @@ export function reglagesSurs(brut: Partial<ReglagesVisibileo>): ReglagesVisibile
   const v = objet(brut.vierges), f = objet(brut.fleches), l = objet(brut.libelles), fe = objet(brut.feuilles);
   return {
     titre: typeof brut.titre === "string" ? brut.titre : "",
+    texte: typeof brut.texte === "string" ? brut.texte : "",
     personnages,
     pieces,
     vierges: {
@@ -366,6 +377,58 @@ export const STYLE_VISIBILEO = `
   .feuille.vb .vb-preparation ol { font-size: 13px; margin: 0; padding-left: 6mm; }
   .feuille.vb .vb-preparation ol li { margin: 0 0 1.5mm; }
 `;
+
+// ── Le premier jet de l'IA ────────────────────────────────────────────────
+//
+// Mistral lit le texte et propose ce qu'il y a à comprendre : les personnages,
+// ce qui se passe, ce qu'ils pensent et veulent, ce qu'ils disent. Il répond
+// en JSON ; chaque pièce porte un mot pour trouver son picto. Ce qu'il rend se
+// relit avant d'être cru : un genre inconnu, un personnage qui n'existe pas,
+// une pièce vide s'écartent ; les nombres restent dans les bornes de l'atelier.
+
+/** Ce qu'on demande à Mistral : la méthode, ses signes, et la forme de la réponse. */
+export const CONSIGNE_VISIBILEO = [
+  "Tu prépares un Visibiléo : la trace d'un récit qu'une classe construit avec son enseignant pour comprendre l'histoire, ce qui est dit comme ce qui ne l'est pas.",
+  "Ses signes : des cadres pour ce qui se passe — les situations et les actions importantes ; des nuages pour ce que pense, croit ou veut un personnage — ses mobiles, souvent implicites, ce que le texte ne dit pas mais qui explique ce qu'il fait ; des bulles pour ce qu'un personnage dit d'important, recopié du texte.",
+  "Réponds par un objet JSON, sans rien autour : {\"titre\": texte, \"personnages\": [{\"nom\": texte, \"image\": mot}], \"pieces\": [{\"genre\": \"cadre\" | \"nuage\" | \"bulle\", \"texte\": texte, \"qui\": nombre, \"image\": mot}]}.",
+  `Règles : de 1 à ${PERSONNAGES_MAX} personnages, les principaux ; de 3 à 8 cadres, dans l'ordre du récit, seulement ce qu'il faut pour comprendre ; pour chaque personnage principal, les nuages de ses mobiles qui expliquent ses actions, surtout ce que le texte ne dit pas ; de 0 à 3 bulles, les paroles qui comptent ; ${PIECES_MAX} pièces au plus.`,
+  "Phrases courtes — douze mots au plus —, simples, au présent, pour de jeunes élèves ; les nuages à la première personne (« Je veux… », « Je crois que… »).",
+  "« qui » : le rang du personnage dans la liste, à partir de 0 ; -1 pour un cadre. « image » : un seul mot concret, un nom ou un verbe à l'infinitif, pour trouver un pictogramme.",
+].join("\n");
+
+/** Ce qu'on demande à Mistral pour lire une page photographiée : son texte, rien d'autre. */
+export const CONSIGNE_LECTURE_PAGE = "Recopie exactement le texte du récit écrit sur cette page de livre, dans l'ordre de lecture, avec ses paragraphes. "
+  + "N'ajoute rien, ne commente rien, ne corrige rien ; laisse les numéros de page et ce qui n'est pas le texte du récit. S'il n'y a pas de texte, ne réponds rien.";
+
+export interface PremierJet {
+  titre: string;
+  personnages: { nom: string; image: string }[];
+  pieces: { genre: Genre; texte: string; qui: number; image: string }[];
+}
+
+const chaine = (v: unknown) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim() : "");
+
+/** La réponse de Mistral, relue : ce qui ne tient pas s'écarte ; null si rien n'en sort. */
+export function lirePremierJet(brut: string): PremierJet | null {
+  let v: unknown;
+  try { v = JSON.parse(brut.slice(brut.indexOf("{"), brut.lastIndexOf("}") + 1)); } catch { return null; }
+  const o = objet(v);
+  const personnages = (Array.isArray(o.personnages) ? o.personnages : []).slice(0, PERSONNAGES_MAX)
+    .map((p) => ({ nom: chaine(objet(p).nom), image: chaine(objet(p).image) })).filter((p) => p.nom);
+  const pieces = (Array.isArray(o.pieces) ? o.pieces : []).flatMap((p): PremierJet["pieces"] => {
+    const x = objet(p);
+    const genre = x.genre as Genre;
+    const texte = chaine(x.texte).replace(/^[«"“]\s*|\s*[»"”]$/g, "");
+    if (!GENRES.includes(genre) || !texte) return [];
+    const qui = typeof x.qui === "number" && Number.isInteger(x.qui) && x.qui >= 0 && x.qui < personnages.length && genre !== "cadre" ? x.qui : -1;
+    return [{ genre, texte, qui, image: chaine(x.image).split(" ")[0] ?? "" }];
+  }).slice(0, PIECES_MAX);
+  if (!pieces.length && !personnages.length) return null;
+  return { titre: chaine(o.titre), personnages, pieces };
+}
+
+/** Le texte d'une page lue ajouté à ce qu'on a déjà, une ligne vide entre deux pages. */
+export const ajouterPage = (texte: string, page: string) => [texte.trim(), page.trim()].filter(Boolean).join("\n\n");
 
 // ── L'exemple ─────────────────────────────────────────────────────────────
 //
