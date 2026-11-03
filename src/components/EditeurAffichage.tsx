@@ -2,8 +2,8 @@ import React from "react";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import type { Images } from "../supportsVisuels";
 import {
-  AFFICHE, BLEU, PLACE_MIN, ROUGE, STYLE_AFFICHAGE, STYLE_VISIBILEO, courbeVers, elementsDeLAffiche, htmlDeLElement, placeSure, placesDeLAffiche,
-  traitDeFleche, type Affichage, type CouleurFleche, type Fleche, type Place, type Point, type ReglagesVisibileo,
+  AFFICHE, BLEU, PLACE_MIN, ROUGE, STYLE_AFFICHAGE, STYLE_VISIBILEO, courbeVers, elementsDeLAffiche, htmlDeLElement, htmlDesEtapes, placeSure, placesDeLAffiche,
+  queuesDeLAffiche, traitDeFleche, type Affichage, type CouleurFleche, type Fleche, type Place, type Point, type ReglagesVisibileo,
 } from "../visibileo";
 
 // ── L'affiche du Visibiléo, à l'écran ─────────────────────────────────────
@@ -14,7 +14,9 @@ import {
 // ou « Flèche bleue », puis une pièce et une autre, relient la première à la
 // seconde ; une flèche choisie se plie par sa poignée, s'inverse, se redresse
 // ou se retire. L'affiche se montre en plein écran, pour le TNI : on y fait la
-// même chose, au doigt. Ce qui se voit est ce qui s'imprime, en A3.
+// même chose, au doigt. Ce qui se voit est ce qui s'imprime, en A3. Les numéros
+// des étapes, les pastilles des personnages et les queues des bulles suivent
+// la pièce qu'on déplace.
 
 /** L'affiche à l'échelle 1, en pixels d'écran. */
 const PX_PAR_MM = 96 / 25.4;
@@ -59,6 +61,7 @@ export function EditeurAffichage({ r, images, onChange, onImprimer }: {
   const vu = { ...r, affichage };
   const places = placesDeLAffiche(vu);
   const elements = elementsDeLAffiche(vu);
+  const queues = queuesDeLAffiche(vu, places);
 
   React.useEffect(() => {
     const el = cadre.current;
@@ -187,6 +190,8 @@ export function EditeurAffichage({ r, images, onChange, onImprimer }: {
           <div className="feuille vb vb-affichage" style={{ position: "absolute", left: 0, top: 0, transform: `scale(${k})`, transformOrigin: "0 0",
             boxShadow: "0 1px 6px rgba(0,0,0,.18)" }}>
             <div ref={plateau} className="vb-affiche" style={{ width: `${AFFICHE.largeur}mm`, height: `${AFFICHE.hauteur}mm`, background: "#fff" }}>
+              <svg className="vb-traits" viewBox={`0 0 ${AFFICHE.largeur} ${AFFICHE.hauteur}`} width={`${AFFICHE.largeur}mm`} height={`${AFFICHE.hauteur}mm`}
+                dangerouslySetInnerHTML={{ __html: queues.dessous }} />
               {elements.map((e) => (
                 <div key={e.id} className={`vb-pose${choix?.quoi === "piece" && choix.id === e.id ? " vb-choisie" : ""}${depart === e.id ? " vb-depart" : ""}`}
                   style={{ left: `${places[e.id].x}mm`, top: `${places[e.id].y}mm`, width: `${places[e.id].largeur}mm`, height: `${places[e.id].hauteur}mm` }}
@@ -196,6 +201,7 @@ export function EditeurAffichage({ r, images, onChange, onImprimer }: {
                 <div className="vb-coin" style={{ left: `${choisie.x + choisie.largeur}mm`, top: `${choisie.y + choisie.hauteur}mm` }}
                   onPointerDown={surCoin(choix.id)} aria-label="Agrandir la pièce" />
               )}
+              <div className="vb-etapes" dangerouslySetInnerHTML={{ __html: htmlDesEtapes(vu, places, images) }} />
               <svg className="vb-traits" viewBox={`0 0 ${AFFICHE.largeur} ${AFFICHE.hauteur}`} width={`${AFFICHE.largeur}mm`} height={`${AFFICHE.hauteur}mm`}>
                 <defs>
                   {(["rouge", "bleue"] as CouleurFleche[]).map((c) => (
@@ -204,6 +210,7 @@ export function EditeurAffichage({ r, images, onChange, onImprimer }: {
                     </marker>
                   ))}
                 </defs>
+                <g dangerouslySetInnerHTML={{ __html: queues.dessus }} />
                 {affichage.fleches.map((f, i) => {
                   if (!places[f.de] || !places[f.vers]) return null;
                   const { d, milieu } = traitDeFleche(places[f.de], places[f.vers], f.courbe);

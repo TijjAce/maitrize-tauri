@@ -22,7 +22,7 @@ import { singulier } from "../corpusAuto";
 import {
   CONSIGNE_IMAGES, CONSIGNE_LECTURE_PAGE, CONSIGNE_VISIBILEO, COULEURS, STYLE_AFFICHAGE, htmlAffichage, idLibre, EXEMPLE_VISIBILEO, FLECHES_MAX, GENRES, PERSONNAGES_MAX, PIECES_MAX, REGLAGES_VISIBILEO,
   STYLE_VISIBILEO, VIERGES_MAX, ajouterPage, cequiManque, demandeDesImages, htmlVisibileo, idsDesImages, lireChoixDesImages, lirePremierJet,
-  motsDeLExemple, personnageVide, personnagesNommes, pieceVide, reglagesSurs, type Fleche, type ImageACherche, type PremierJet,
+  motsDeLExemple, numerosDesEtapes, personnageVide, personnagesNommes, pieceVide, reglagesSurs, type Fleche, type ImageACherche, type PremierJet,
   type Genre, type Piece, type ReglagesVisibileo, type Signe,
 } from "../visibileo";
 
@@ -144,20 +144,15 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
       if (!jet) { toast("L'IA n'a rien rendu d'utilisable : réessayez.", { icone: "⚠️" }); return; }
       setOccupe("L'IA choisit les images…");
       const images = await pictosDuPremierJet(jet, modele);
-      // L'affiche repart rangée : les flèches rouges des causes, et les bleues de l'ordre des cadres.
+      // L'affiche repart rangée : les numéros des étapes disent l'ordre, les flèches rouges les causes.
       const idDe = (k: number) => `q${k + 1}`;
-      const cadres = jet.pieces.map((p, k) => ({ p, k })).filter(({ p }) => p.genre === "cadre");
       maj({
         titre: r.titre.trim() || jet.titre,
         personnages: jet.personnages.map((p, i) => ({ ...personnageVide(i), nom: p.nom, image: images.personnages[i] })),
-        pieces: jet.pieces.map((p, i): Piece => ({ id: idDe(i), genre: p.genre, texte: p.texte, qui: p.qui, image: images.pieces[i] })),
-        affichage: {
-          places: {},
-          fleches: [
-            ...cadres.slice(1).map(({ k }, j): Fleche => ({ de: idDe(cadres[j].k), vers: idDe(k), couleur: "bleue", courbe: 0 })),
-            ...jet.causes.map((c): Fleche => ({ de: idDe(c.de), vers: idDe(c.vers), couleur: "rouge", courbe: 0.25 })),
-          ],
-        },
+        pieces: jet.pieces.map((p, i): Piece => ({
+          id: idDe(i), genre: p.genre, texte: p.texte, qui: p.qui, acteurs: p.acteurs, etape: p.etape >= 0 ? idDe(p.etape) : "", image: images.pieces[i],
+        })),
+        affichage: { places: {}, fleches: jet.causes.map((c): Fleche => ({ de: idDe(c.de), vers: idDe(c.vers), couleur: "rouge", courbe: 0.25 })) },
       });
       toast("✨ Le premier jet de l'IA est posé : relisez les pièces avant d'imprimer.", { icone: "✨", duree: 7000 });
     } catch (e) {
@@ -180,7 +175,10 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
         setExemple({
           ...r, titre: EXEMPLE_VISIBILEO.titre,
           personnages: EXEMPLE_VISIBILEO.personnages.map((p, i) => ({ ...personnageVide(i), nom: p.nom, image: image(p.image) })),
-          pieces: EXEMPLE_VISIBILEO.pieces.map((p, k): Piece => ({ id: idDe(k), genre: p.genre, texte: p.texte, image: p.image ? image(p.image) : { id: null, mot: "" }, qui: p.qui })),
+          pieces: EXEMPLE_VISIBILEO.pieces.map((p, k): Piece => ({
+            id: idDe(k), genre: p.genre, texte: p.texte, image: p.image ? image(p.image) : { id: null, mot: "" }, qui: p.qui,
+            acteurs: p.acteurs, etape: p.etape >= 0 ? idDe(p.etape) : "",
+          })),
           affichage: { places: {}, fleches: EXEMPLE_VISIBILEO.fleches.map((f): Fleche => ({ ...f, de: idDe(f.de), vers: idDe(f.vers) })) },
         });
       }
@@ -206,13 +204,26 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
 
   const changerPersonnage = (i: number, p: Partial<ReglagesVisibileo["personnages"][number]>) =>
     maj({ personnages: r.personnages.map((x, k) => (k === i ? { ...x, ...p } : x)) });
-  // Un personnage qui part : les pensées et les paroles qu'on lui donnait ne sont plus à personne, celles des suivants gardent leur auteur.
+  // Un personnage qui part : les pensées et les paroles qu'on lui donnait ne sont plus à personne, et il quitte ses étapes ; les suivants gardent les leurs.
   const retirerPersonnage = (i: number) => maj({
     personnages: r.personnages.filter((_, k) => k !== i),
-    pieces: r.pieces.map((p) => ({ ...p, qui: p.qui === i ? -1 : p.qui > i ? p.qui - 1 : p.qui })),
+    pieces: r.pieces.map((p) => ({
+      ...p, qui: p.qui === i ? -1 : p.qui > i ? p.qui - 1 : p.qui, acteurs: p.acteurs.filter((a) => a !== i).map((a) => (a > i ? a - 1 : a)),
+    })),
   });
   const changerPiece = (i: number, p: Partial<Piece>) => maj({ pieces: r.pieces.map((x, k) => (k === i ? { ...x, ...p } : x)) });
+  // Une étape avance d'un rang : elle change de place avec le cadre d'avant, et les numéros suivent.
+  const avancer = (i: number) => {
+    let j = i - 1;
+    while (j >= 0 && r.pieces[j].genre !== "cadre") j--;
+    if (j < 0) return;
+    const pieces = [...r.pieces];
+    [pieces[j], pieces[i]] = [pieces[i], pieces[j]];
+    maj({ pieces });
+  };
   const nommes = r.personnages.map((p, i) => ({ p, i })).filter(({ p }) => p.nom.trim() || p.image.mot);
+  const numeros = numerosDesEtapes(r);
+  const etapes = r.pieces.filter((p) => numeros.has(p.id));
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(320px, 430px) 1fr", gap: 14, alignItems: "start" }}>
@@ -272,18 +283,53 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
           return (
             <Field key={genre} label={`${r.libelles[genre]} (${siennes.length})`}>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {siennes.map(({ p, i }) => (
-                  <div key={i} className="ct-categorie-tete">
-                    <CasePicto valeur={p.image} banque={banque} titre="L'image de la pièce" taille={30} onChange={(image) => changerPiece(i, { image })} />
-                    <Input value={p.texte} placeholder={EXEMPLES[genre]} aria-label={r.libelles[genre]} onChange={(e) => changerPiece(i, { texte: e.target.value })} />
-                    {genre !== "cadre" && (
-                      <Select value={String(p.qui)} aria-label="Qui pense ou qui parle" style={{ width: 120 }}
-                        onChange={(e) => changerPiece(i, { qui: Number(e.target.value) })}>
-                        <option value="-1">Personne</option>
-                        {nommes.map(({ p: x, i: k }) => <option key={k} value={k}>{x.nom.trim() || x.image.mot}</option>)}
-                      </Select>
-                    )}
-                    <button type="button" className="btn ghost sm" onClick={() => maj({ pieces: r.pieces.filter((_, k) => k !== i) })} aria-label="Retirer la pièce">✕</button>
+                {siennes.map(({ p, i }, rang) => (
+                  <div key={i} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div className="ct-categorie-tete">
+                      {genre === "cadre" && (
+                        <span aria-label={numeros.has(p.id) ? `Étape ${numeros.get(p.id)}` : "Étape sans numéro : elle est vide"} style={{
+                          width: 22, height: 22, borderRadius: "50%", flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          background: numeros.has(p.id) ? "var(--text)" : "transparent", color: "var(--bg)", fontSize: 12, fontWeight: 800,
+                          border: numeros.has(p.id) ? "none" : "1.5px dashed var(--border)",
+                        }}>{numeros.get(p.id) ?? ""}</span>
+                      )}
+                      <CasePicto valeur={p.image} banque={banque} titre="L'image de la pièce" taille={30} onChange={(image) => changerPiece(i, { image })} />
+                      <Input value={p.texte} placeholder={EXEMPLES[genre]} aria-label={r.libelles[genre]} onChange={(e) => changerPiece(i, { texte: e.target.value })} />
+                      {genre === "cadre" && (
+                        <button type="button" className="btn ghost sm" disabled={rang === 0} onClick={() => avancer(i)} title="Avancer d'une étape"
+                          aria-label="Avancer d'une étape">↑</button>
+                      )}
+                      <button type="button" className="btn ghost sm" onClick={() => maj({ pieces: r.pieces.filter((_, k) => k !== i) })} aria-label="Retirer la pièce">✕</button>
+                    </div>
+                    {genre === "cadre"
+                      ? nommes.length > 0 && (
+                        <div role="group" aria-label="Les personnages de l'étape" style={{ display: "flex", gap: 4, flexWrap: "wrap", marginLeft: 60 }}>
+                          {nommes.map(({ p: x, i: k }) => {
+                            const la = p.acteurs.includes(k);
+                            return (
+                              <button key={k} type="button" className="btn sm" aria-pressed={la}
+                                style={{ borderColor: la ? x.couleur : undefined, color: la ? x.couleur : undefined, fontWeight: la ? 700 : 400 }}
+                                onClick={() => changerPiece(i, { acteurs: la ? p.acteurs.filter((a) => a !== k) : [...p.acteurs, k] })}>
+                                <span aria-hidden style={{ display: "inline-block", width: 9, height: 9, borderRadius: "50%", background: x.couleur, marginRight: 5, opacity: la ? 1 : 0.35 }} />
+                                {x.nom.trim() || x.image.mot}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )
+                      : (
+                        <div style={{ display: "flex", gap: 6, marginLeft: 38 }}>
+                          <Select value={String(p.qui)} aria-label="Qui pense ou qui parle" style={{ width: 130 }}
+                            onChange={(e) => changerPiece(i, { qui: Number(e.target.value) })}>
+                            <option value="-1">Personne</option>
+                            {nommes.map(({ p: x, i: k }) => <option key={k} value={k}>{x.nom.trim() || x.image.mot}</option>)}
+                          </Select>
+                          <Select value={p.etape} aria-label="À quelle étape" style={{ width: 130 }} onChange={(e) => changerPiece(i, { etape: e.target.value })}>
+                            <option value="">Sans étape</option>
+                            {etapes.map((c) => <option key={c.id} value={c.id}>Étape {numeros.get(c.id)}</option>)}
+                          </Select>
+                        </div>
+                      )}
                   </div>
                 ))}
                 {r.pieces.length < PIECES_MAX && (
