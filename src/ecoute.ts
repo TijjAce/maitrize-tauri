@@ -48,6 +48,11 @@ export interface Ecoute {
   demarrer: (depuis?: number, micro?: string) => Promise<string | null>;
   /** Le niveau du son entendu, de 0 à 1, à la dernière trame : de quoi le montrer. */
   niveau: React.MutableRefObject<number>;
+  /**
+   * Depuis l'ouverture du micro : les secondes de parole, et celles du silence en cours — de quoi savoir qu'une
+   * question est finie, même chuchotée (voir conversationVocale.ts).
+   */
+  activite: React.MutableRefObject<{ parole: number; silence: number }>;
   /** Coupe la tranche en cours sans attendre le silence. */
   couper: () => void;
   pause: () => void;
@@ -88,6 +93,7 @@ export function useEcoute({ onTranche, onTrame, minimumParole = 2, plafond = 15 
   const enPause = React.useRef(false);
   const prise = React.useRef(nouvellePriseDeSon());
   const niveau = React.useRef(0);
+  const activite = React.useRef({ parole: 0, silence: 0 });
 
   // Ce qui s'accumule dans la tranche en cours.
   const morceaux = React.useRef<Float32Array[]>([]);
@@ -147,9 +153,11 @@ export function useEcoute({ onTranche, onTrame, minimumParole = 2, plafond = 15 
       duree.current += secondesTrame;
       if (!onParle) {
         silence.current += secondesTrame;
+        activite.current.silence += secondesTrame;
       } else {
         parole.current += secondesTrame;
         silence.current = 0;
+        activite.current = { parole: activite.current.parole + secondesTrame, silence: 0 };
       }
       if (fautIlCouper({
         parole: parole.current, silence: silence.current, total: duree.current,
@@ -225,6 +233,7 @@ export function useEcoute({ onTranche, onTrame, minimumParole = 2, plafond = 15 
           return navigator.mediaDevices.getUserMedia({ audio: contraintesDuMicro() });
         });
       enPause.current = false;
+      activite.current = { parole: 0, silence: 0 };
       total.current = depuis;
       debutTranche.current = depuis;
       setSecondes(depuis);
@@ -261,5 +270,5 @@ export function useEcoute({ onTranche, onTrame, minimumParole = 2, plafond = 15 
     setEtat("repos");
   }, [arreterLeCompteur, clore, liberer]);
 
-  return { etat, secondes, demarrer, couper, pause, reprendre, arreter, niveau };
+  return { etat, secondes, demarrer, couper, pause, reprendre, arreter, niveau, activite };
 }

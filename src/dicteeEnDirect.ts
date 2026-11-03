@@ -23,6 +23,8 @@ export interface DicteeEnDirect {
   secondes: number;
   /** Le niveau du son entendu, de 0 à 1 : de quoi le montrer. */
   niveau: React.MutableRefObject<number>;
+  /** Les secondes de parole et le silence en cours, depuis l'ouverture du micro (voir ecoute.ts). */
+  activite: React.MutableRefObject<{ parole: number; silence: number }>;
   /** Ouvre le micro et le direct ; l'erreur à dire, ou null. */
   demarrer: () => Promise<string | null>;
   /** Le micro se ferme, les derniers mots arrivent, puis le direct se ferme. */
@@ -83,7 +85,7 @@ export function useDicteeEnDirect({ surMots, surPanne }: {
   // L'écran qui se ferme en pleine dictée relâche le direct (le micro, l'écoute s'en charge).
   React.useEffect(() => () => { void direct.current?.fermer(); direct.current = null; }, []);
 
-  return { etat, secondes: ecoute.secondes, niveau: ecoute.niveau, demarrer, arreter };
+  return { etat, secondes: ecoute.secondes, niveau: ecoute.niveau, activite: ecoute.activite, demarrer, arreter };
 }
 
 /** Des mots qui arrivent à la suite de ce qui est écrit : un espace s'il en faut un entre les deux. */

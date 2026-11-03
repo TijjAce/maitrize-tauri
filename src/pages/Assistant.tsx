@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { AGENTS_COUPES, api, ChatMessage, Sequence, Seance, PiloteConversation, CYCLES, MATIERES, MODELES_MISTRAL, MODELE_DEFAUT, nouvelleSequence, nouvelleSeance, couleurPourMatiere, newId, nowIso } from "../api";
+import { AGENTS_COUPES, api, texteErreur, ChatMessage, Sequence, Seance, PiloteConversation, CYCLES, MATIERES, MODELES_MISTRAL, MODELE_DEFAUT, nouvelleSequence, nouvelleSeance, couleurPourMatiere, newId, nowIso } from "../api";
 import { Modal, Field, Input, Select, Demander, useAsync } from "../components/ui";
 import { construireContexteIA } from "../contexteIA";
 import { lieuxAMasquer, nomsAMasquer } from "../nomsAMasquer";
@@ -13,6 +13,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useDictee, mmss } from "../dictee";
 import { aLaSuite, useDicteeEnDirect } from "../dicteeEnDirect";
+import { CONSIGNE_ORALE, morceauxALire, questionFinie, texteALire } from "../conversationVocale";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { ClasserDansLesFiches } from "../components/ClasserDansLesFiches";
 import { STYLE_DOCUMENT_IA, SUGGESTIONS_DOCUMENT, consigneDocument, feuilleDeLaReponse } from "../documentIa";
@@ -174,17 +175,123 @@ export default function Assistant() {
   // européenne : voir dicteeEnDirect.ts, et l'avertissement sous la conversation). Si le direct ne répond pas, la
   // dictée d'avant prend le relais.
   const premierMot = React.useRef(true);
+  // Ce que la dictée a écrit, tenu à jour à chaque mot : la question d'une conversation part sans attendre l'écran.
+  const dite = React.useRef("");
+  // Les mots de la question en cours, et l'heure du dernier : deux secondes sans mot nouveau la finissent aussi.
+  const motsDuTour = React.useRef(0);
+  const dernierMot = React.useRef(0);
   const enDirect = useDicteeEnDirect({
     surMots: (m) => {
       const premier = premierMot.current;
       premierMot.current = false;
+      dite.current = aLaSuite(dite.current, m, premier);
+      if (m.trim()) { motsDuTour.current++; dernierMot.current = Date.now(); }
       setInput((v) => aLaSuite(v, m, premier));
     },
     surPanne: (raison) => {
+      if (oralRef.current !== "non") {
+        majOral("non");
+        toast(`Le direct de Mistral ne répond pas (${raison}) : la conversation s'arrête.`, { icone: "📡", duree: 7000 });
+        return;
+      }
       toast(`Le direct de Mistral ne répond pas (${raison}) : la dictée continue par passages.`, { icone: "📡", duree: 7000 });
       void dictee.demarrer().then((e) => { if (e) toast(e, { icone: "🎙" }); });
     },
   });
+  const enDirectRef = React.useRef(enDirect);
+  enDirectRef.current = enDirect;
+
+  // ── La conversation à voix haute ──
+  // « Je veux qu'il puisse me répondre également, et je veux bien pouvoir chuchoter » (3 novembre 2026) : on parle,
+  // même tout bas ; un silence d'une seconde et demie envoie la question ; la réponse, courte, est lue par la voix de
+  // Mistral (adresse européenne), puis l'écoute reprend. Le micro se tait pendant la lecture : il s'entendrait.
+  type EtatOral = "non" | "ecoute" | "envoi" | "reponse" | "lecture";
+  const [oral, setOral] = React.useState<EtatOral>("non");
+  const oralRef = React.useRef<EtatOral>("non");
+  const majOral = (e: EtatOral) => { oralRef.current = e; setOral(e); };
+  // L'état relu à chaque fois : entre deux attentes, un clic a pu finir la conversation.
+  const etatOral = (): EtatOral => oralRef.current;
+  const inputRef = React.useRef(input);
+  inputRef.current = input;
+  const messagesRef = React.useRef(messages);
+  messagesRef.current = messages;
+  // Les messages qu'il faudra pour que la réponse soit là : la question, puis la réponse.
+  const attendue = React.useRef(0);
+  const lecteur = React.useRef<HTMLAudioElement | null>(null);
+  const envoyerRef = React.useRef<(texte?: string, options?: { oral?: boolean }) => Promise<void>>(async () => {});
+
+  const ecouterLaQuestion = async () => {
+    premierMot.current = true;
+    dite.current = inputRef.current;
+    motsDuTour.current = 0;
+    majOral("ecoute");
+    const erreur = await enDirectRef.current.demarrer();
+    if (erreur) { toast(erreur, { icone: "🎙" }); majOral("non"); }
+  };
+  const envoyerLaQuestion = async () => {
+    if (etatOral() !== "ecoute") return;
+    majOral("envoi");
+    // Les derniers mots arrivent, puis la question part.
+    await enDirectRef.current.arreter();
+    if (etatOral() !== "envoi") return;
+    const question = dite.current.trim();
+    if (!question) { await ecouterLaQuestion(); return; }
+    attendue.current = messagesRef.current.length + 2;
+    majOral("reponse");
+    await envoyerRef.current(question, { oral: true });
+  };
+  const lireLaReponse = async (markdown: string) => {
+    majOral("lecture");
+    const morceaux = morceauxALire(texteALire(markdown));
+    // Le morceau suivant se prépare pendant qu'on écoute celui-ci.
+    let prochain: Promise<string> | null = morceaux.length ? api.voixLire(morceaux[0]) : null;
+    for (let i = 0; i < morceaux.length && prochain; i++) {
+      let b64: string;
+      try { b64 = await prochain; }
+      catch (e) { toast("La voix ne répond pas : la réponse reste écrite. " + texteErreur(e), { icone: "🔇", duree: 6000 }); break; }
+      prochain = i + 1 < morceaux.length ? api.voixLire(morceaux[i + 1]) : null;
+      prochain?.catch(() => {});
+      if (etatOral() !== "lecture") return;
+      await new Promise<void>((fin) => {
+        const a = new Audio(`data:audio/mpeg;base64,${b64}`);
+        lecteur.current = a;
+        a.onended = () => fin();
+        a.onerror = () => fin();
+        a.onpause = () => fin();
+        a.play().catch(() => fin());
+      });
+      lecteur.current = null;
+      if (etatOral() !== "lecture") return;
+    }
+    if (etatOral() === "lecture") await ecouterLaQuestion();
+  };
+  const finirLaConversation = async () => {
+    majOral("non");
+    lecteur.current?.pause();
+    lecteur.current = null;
+    if (enDirectRef.current.etat !== "repos") await enDirectRef.current.arreter();
+  };
+
+  // La question est finie quand, après avoir parlé, on se tait une seconde et demie — même chuchotée : c'est la prise
+  // de son qui dit qu'on parle (voir priseDeSon.ts) ; ou quand Voxtral n'écrit plus rien depuis deux secondes.
+  React.useEffect(() => {
+    if (oral !== "ecoute") return;
+    const t = window.setInterval(() => {
+      if (oralRef.current !== "ecoute" || !motsDuTour.current || !dite.current.trim()) return;
+      if (questionFinie(enDirectRef.current.activite.current) || Date.now() - dernierMot.current >= 2000) void envoyerLaQuestion();
+    }, 200);
+    return () => window.clearInterval(t);
+  }, [oral]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // La réponse finie, elle se lit.
+  React.useEffect(() => {
+    if (oral !== "reponse" || loading || messages.length < attendue.current) return;
+    const derniere = messages[messages.length - 1];
+    if (derniere?.role === "assistant" && derniere.content.trim()) void lireLaReponse(derniere.content);
+  }, [oral, loading, messages]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // L'écran qui se ferme se tait.
+  React.useEffect(() => () => { lecteur.current?.pause(); oralRef.current = "non"; }, []);
   // Classement dans les fiches élèves : on part du texte en cours de saisie,
   // sinon du dernier message envoyé — on raconte souvent avant d'y penser.
   const { data: eleves } = useAsync(() => api.elevesList(), []);
@@ -203,6 +310,7 @@ export default function Assistant() {
     setAClasser(texte);
   };
   const basculerDictee = async () => {
+    if (oralRef.current !== "non") return;
     if (enDirect.etat === "ecoute") { await enDirect.arreter(); return; }
     if (dictee.etat === "enregistrement") {
       const { texte, erreur } = await dictee.arreter();
@@ -212,6 +320,7 @@ export default function Assistant() {
       return;
     }
     premierMot.current = true;
+    dite.current = input;
     const erreur = await enDirect.demarrer();
     if (erreur) toast(erreur, { icone: "🎙" });
   };
@@ -279,7 +388,7 @@ export default function Assistant() {
     onRefus: (noms) => toast(`Seules les images vont à l'assistant : ${noms.slice(0, 2).join(", ")}${noms.length > 2 ? "…" : ""} reste${noms.length > 1 ? "nt" : ""} de côté.`, { icone: "ℹ️" }),
   });
 
-  const envoyer = async (texte?: string) => {
+  const envoyer = async (texte?: string, options: { oral?: boolean } = {}) => {
     const contenu = (texte ?? input).trim();
     const jointes = images;
     if ((!contenu && !jointes.length) || loading) return;
@@ -338,6 +447,8 @@ export default function Assistant() {
         prefixe = [{ role: "system", content: `${SYSTEME.content}\n\nContexte de la classe (données non personnelles, aucune information nominative sur les élèves) :\n${ctx}` }];
       }
       if (modeDocument) prefixe = [...prefixe, { role: "system", content: consigneDocument() }];
+      // À voix haute : une réponse qui s'écoute (voir conversationVocale.ts).
+      if (options.oral) prefixe = [...prefixe, { role: "system", content: CONSIGNE_ORALE }];
       // La conversation part sans les noms connus — élèves, contacts de
       // l'établissement —, masquée d'un seul tenant ; la réponse les retrouve
       // à mesure qu'elle s'écrit.
@@ -392,6 +503,9 @@ export default function Assistant() {
       setLoading(false);
     }
   };
+  envoyerRef.current = envoyer;
+  /** Envoyer : en pleine conversation, la question dite part comme après un silence. */
+  const envoyerOuParler = () => { if (oralRef.current === "ecoute") void envoyerLaQuestion(); else void envoyer(); };
 
   if (hasKey === false) {
     return (
@@ -525,28 +639,40 @@ export default function Assistant() {
       </p>
       <div className="chat-input">
         <textarea className="textarea" rows={2} ref={saisie}
-          placeholder={enDirect.etat === "ecoute" ? "Parlez : les mots s'écrivent en direct…" : dictee.etat === "enregistrement" ? "Enregistrement en cours…" : modeDocument ? "Décrivez le document à fabriquer : pour qui, quoi, combien d'exercices…" : "Écrivez ou dictez votre demande…"} value={input}
+          placeholder={oral === "ecoute" ? "Parlez, même tout bas : la question part quand vous vous taisez…"
+            : oral === "envoi" || oral === "reponse" ? "L'Assistant réfléchit…"
+            : oral === "lecture" ? "L'Assistant vous répond à voix haute…"
+            : enDirect.etat === "ecoute" ? "Parlez : les mots s'écrivent en direct…" : dictee.etat === "enregistrement" ? "Enregistrement en cours…" : modeDocument ? "Décrivez le document à fabriquer : pour qui, quoi, combien d'exercices…" : "Écrivez ou dictez votre demande…"} value={input}
           onChange={(e) => setInput(e.target.value)} onPaste={surCollage}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } }} />
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerOuParler(); } }} />
         <button className="btn" onClick={classer} disabled={loading}
           title="Ranger ce récit dans les fiches élèves, après relecture">
           👧 Classer
         </button>
-        <button className={"btn" + (dictee.etat === "enregistrement" || enDirect.etat === "ecoute" ? " danger" : "")}
-          onClick={basculerDictee} disabled={loading || dictee.etat === "transcription" || enDirect.etat === "fin"}
+        <button className={"btn" + (oral === "non" && (dictee.etat === "enregistrement" || enDirect.etat === "ecoute") ? " danger" : "")}
+          onClick={basculerDictee} disabled={loading || oral !== "non" || dictee.etat === "transcription" || enDirect.etat === "fin"}
           title={enDirect.etat === "ecoute" ? "Terminer la dictée"
             : dictee.etat === "enregistrement" ? "Terminer la dictée et transcrire"
             : "Dicter en direct : les mots s'écrivent pendant que vous parlez — la voix part chez Mistral, hors de l'Union européenne"}
           aria-pressed={dictee.etat === "enregistrement" || enDirect.etat === "ecoute"}>
-          {enDirect.etat === "ecoute" ? `⏹ ${mmss(enDirect.secondes)}`
-            : enDirect.etat === "fin" ? "⏳"
+          {oral === "non" && enDirect.etat === "ecoute" ? `⏹ ${mmss(enDirect.secondes)}`
+            : oral === "non" && enDirect.etat === "fin" ? "⏳"
             : dictee.etat === "enregistrement" ? `⏹ ${mmss(dictee.secondes)}`
             : dictee.etat === "transcription" ? "⏳" : "🎙"}
+        </button>
+        <button className={"btn" + (oral !== "non" ? " danger" : "")}
+          onClick={() => { void (oral === "non" ? ecouterLaQuestion() : finirLaConversation()); }}
+          disabled={oral === "non" && (loading || dictee.etat !== "repos" || enDirect.etat !== "repos")}
+          title={oral === "non"
+            ? "Parler avec l'Assistant : vous parlez, même tout bas, et il vous répond à voix haute — la voix part chez Mistral, hors de l'Union européenne"
+            : "Finir la conversation"}
+          aria-pressed={oral !== "non"}>
+          {oral === "non" ? "🗣" : oral === "ecoute" ? "⏹ 🎙" : oral === "lecture" ? "⏹ 🔊" : "⏹ ⏳"}
         </button>
         {loading ? (
           <button className="btn danger" onClick={() => arret.current?.()} title="Arrêter la réponse : ce qui est écrit reste, la suite ne vient pas">⏹ Arrêter</button>
         ) : (
-          <button className="btn primary" disabled={!input.trim() && !images.length} onClick={() => envoyer()}>Envoyer</button>
+          <button className="btn primary" disabled={!input.trim() && !images.length} onClick={envoyerOuParler}>Envoyer</button>
         )}
       </div>
       {aRetoucher !== null && messages[aRetoucher] && (

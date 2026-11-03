@@ -33,6 +33,13 @@ const COUPURE_HZ = 80;
 
 /** Le bruit de fond se lit sur les huit dernières secondes. */
 const FENETRE_FOND_S = 8;
+/**
+ * Les deux premières secondes, le bruit de fond ne dépasse pas celui d'une pièce calme : qui parle dès que le micro
+ * s'ouvre — en murmurant — ne doit pas être pris pour le fond, faute de silence à quoi le comparer.
+ */
+const DEBUT_S = 2;
+/** Au début, le seuil le plus bas : celui d'une pièce silencieuse (`SEUIL_MIN`). */
+const FOND_DE_DEPART = SEUIL_MIN / 2;
 
 /** Ce que la prise de son retient d'une trame à l'autre. */
 export interface PriseDeSon {
@@ -98,7 +105,8 @@ export function traiterLaTrame(etat: PriseDeSon, trame: Float32Array, taux: numb
   etat.recents.push(r);
   const garder = Math.max(1, Math.ceil(FENETRE_FOND_S / (n / (taux > 0 ? taux : 48_000))));
   if (etat.recents.length > garder) etat.recents.splice(0, etat.recents.length - garder);
-  etat.fond = Math.max(0.0003, Math.min(0.05, Math.min(...etat.recents)));
+  const auDebut = etat.recents.length * (n / (taux > 0 ? taux : 48_000)) < DEBUT_S;
+  etat.fond = Math.max(0.0003, Math.min(0.05, auDebut ? FOND_DE_DEPART : Infinity, Math.min(...etat.recents)));
   const parole = r > Math.max(SEUIL_MIN, etat.fond * AU_DESSUS_DU_FOND);
   if (parole) etat.voix += (r - etat.voix) * 0.25;
 

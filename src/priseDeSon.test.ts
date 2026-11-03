@@ -49,6 +49,14 @@ describe("entendre une voix basse en réunion (demande de l'enseignant, 3 novemb
     expect(rms(silences[1].sortie)).toBeLessThan(fin * 0.2);
   });
 
+  it("entend aussi qui murmure dès que le micro s'ouvre, sans silence avant pour mesurer le fond", () => {
+    const etat = nouvellePriseDeSon();
+    const tout = trames(40, 0.004, 0.0003).map((t) => traiterLaTrame(etat, t, TAUX));
+    // Les deux premières secondes comptent comme parole ; ensuite, le murmure reste au-dessus du fond qu'il a fixé lui-même
+    // seulement s'il y a un silence pour le mesurer : c'est la seconde moitié du test d'au-dessus.
+    expect(tout.slice(0, 20).filter((x) => x.parole).length).toBeGreaterThan(18);
+  });
+
   it("laisse une voix normale telle quelle, et arrondit les pics d'une voix forte au lieu d'écrêter", () => {
     const etat = nouvellePriseDeSon();
     const normale = trames(40, 0.25, 0.001).map((t) => traiterLaTrame(etat, t, TAUX));
