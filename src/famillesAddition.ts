@@ -10,13 +10,25 @@
 // les chiffres aux mêmes couleurs. Le programme de 2024 veut les tables
 // d'addition « dans les deux sens » : l'écriture se choisit, 4 + 3 = 7 ou
 // 7 = 4 + 3.
+//
+// Puis (2026-11-03) : « il me manque un générateur des tables d'addition,
+// comme tu avais fait la feuille dans une séquence ; rajoute ensuite outil
+// pour l'élève ». L'atelier fait aussi la table d'un nombre — 7 + 1 … 7 + 10 —
+// et la table de Pythagore de l'addition, les doubles en couleur ; et chaque
+// forme se fait pour le mur, une page chacune, ou pour l'élève : quatre par
+// page, à découper et à coller dans le cahier.
 
 import { feuille } from "./cartesImprimables";
 import { BILLE_BLEUE, BILLE_ROUGE, bille } from "./numerationCP";
 import { escapeHtml } from "./print";
 
+/** Ce qu'on imprime : la maison d'un nombre — ses façons de le faire en deux parties —, sa table, ou la table de Pythagore. */
+export type FormeDesTables = "maison" | "table" | "pythagore";
+/** Pour le mur, une page chacune ; pour l'élève, quatre par page, à coller dans le cahier. */
+export type FormatDesTables = "mur" | "eleve";
+
 export interface ReglagesFamilles {
-  /** Les nombres dont on affiche la famille, de 2 à 10 : une page chacun. */
+  /** Les nombres dont on affiche la famille ou la table, de 1 à 10 (la maison, à partir de 2) : une page chacun. */
   nombres: number[];
   /** 0 + 7 et 7 + 0 au premier étage. */
   avecZero: boolean;
@@ -24,24 +36,38 @@ export interface ReglagesFamilles {
   ecriture: "somme" | "decomposition";
   /** Le titre de chaque page, avant le nombre. */
   titre: string;
+  forme: FormeDesTables;
+  format: FormatDesTables;
 }
 
 export const NOMBRES_DES_FAMILLES = [2, 3, 4, 5, 6, 7, 8, 9, 10];
+export const NOMBRES_DES_TABLES = [1, ...NOMBRES_DES_FAMILLES];
 export const TITRE_DES_FAMILLES = "La famille du";
-export const REGLAGES_FAMILLES: ReglagesFamilles = { nombres: [7, 8, 9], avecZero: false, ecriture: "somme", titre: TITRE_DES_FAMILLES };
+const TITRE_DES_TABLES = "La table du";
+const TITRE_DE_PYTHAGORE = "La table d'addition";
+export const REGLAGES_FAMILLES: ReglagesFamilles = { nombres: [7, 8, 9], avecZero: false, ecriture: "somme", titre: TITRE_DES_FAMILLES, forme: "maison", format: "mur" };
 
 /** Des réglages lus de la mémoire, sans leur faire confiance ; sans nombre, ceux de l'exemple. */
 export function reglagesFamillesSurs(brut: Partial<ReglagesFamilles> | null | undefined): ReglagesFamilles {
   const b = brut ?? {};
+  const forme: FormeDesTables = b.forme === "table" || b.forme === "pythagore" ? b.forme : "maison";
+  // La maison d'un nombre commence à 2 : 1 n'a pas de façon de se faire en deux parties.
+  const permis = forme === "maison" ? NOMBRES_DES_FAMILLES : NOMBRES_DES_TABLES;
   const nombres = [...new Set((Array.isArray(b.nombres) ? b.nombres : [])
-    .filter((n): n is number => typeof n === "number" && NOMBRES_DES_FAMILLES.includes(n)))].sort((x, y) => x - y);
+    .filter((n): n is number => typeof n === "number" && permis.includes(n)))].sort((x, y) => x - y);
   return {
     nombres: nombres.length ? nombres : REGLAGES_FAMILLES.nombres,
     avecZero: b.avecZero === true,
     ecriture: b.ecriture === "decomposition" ? "decomposition" : "somme",
     titre: typeof b.titre === "string" && b.titre.trim() ? b.titre.trim() : TITRE_DES_FAMILLES,
+    forme,
+    format: b.format === "eleve" ? "eleve" : "mur",
   };
 }
+
+/** Le titre d'une forme : celui qu'on a écrit, sinon le sien — « La famille du », « La table du », « La table d'addition ». */
+const titreDeLaForme = (r: Pick<ReglagesFamilles, "titre" | "forme">) => (r.titre !== TITRE_DES_FAMILLES || r.forme === "maison" ? r.titre
+  : r.forme === "table" ? TITRE_DES_TABLES : TITRE_DE_PYTHAGORE);
 
 /** Les étages de la maison : chaque décomposition une fois, la plus petite partie d'abord — 1 et 6, 2 et 5, 3 et 4. */
 export function decompositions(n: number, avecZero = false): [number, number][] {
@@ -50,13 +76,19 @@ export function decompositions(n: number, avecZero = false): [number, number][] 
   return sortie;
 }
 
-/** « La famille du 7 » ; « Les familles du 7, du 8 et du 9 » — un autre titre garde sa forme : « La maison du 7, 8 et 9 ». */
-export function titreFamilles(r: Pick<ReglagesFamilles, "nombres" | "titre">): string {
-  const titre = r.titre.trim() || TITRE_DES_FAMILLES;
+/**
+ * « La famille du 7 » ; « Les familles du 7, du 8 et du 9 » ; « Les tables du
+ * 7 et du 8 » ; « La table d'addition » — un autre titre garde sa forme :
+ * « La maison du 7, 8 et 9 ».
+ */
+export function titreFamilles(r: Pick<ReglagesFamilles, "nombres" | "titre"> & Partial<Pick<ReglagesFamilles, "forme">>): string {
+  const forme = r.forme ?? "maison";
+  const titre = titreDeLaForme({ titre: r.titre.trim() || TITRE_DES_FAMILLES, forme });
+  if (forme === "pythagore") return titre;
   if (r.nombres.length === 1) return `${titre} ${r.nombres[0]}`;
   const liste = (mots: string[]) => `${mots.slice(0, -1).join(", ")} et ${mots[mots.length - 1]}`;
-  return titre === TITRE_DES_FAMILLES
-    ? `Les familles ${liste(r.nombres.map((n) => `du ${n}`))}`
+  return titre === TITRE_DES_FAMILLES ? `Les familles ${liste(r.nombres.map((n) => `du ${n}`))}`
+    : titre === TITRE_DES_TABLES ? `Les tables ${liste(r.nombres.map((n) => `du ${n}`))}`
     : `${titre} ${liste(r.nombres.map(String))}`;
 }
 
@@ -108,14 +140,51 @@ function maison(n: number, r: ReglagesFamilles): string {
   const etages = liste.map(([a, b]) => (a === b
     ? `<div class="fa-etage fa-double">${etage(a, b, n, r.ecriture, pas)}</div>`
     : `<div class="fa-etage">${etage(a, b, n, r.ecriture, pas)}${etage(b, a, n, r.ecriture, pas)}</div>`)).join("");
-  return `<div class="page fa-page"><div class="fa-titre">${escapeHtml(r.titre)} ${n}</div>${toit(n)}`
-    + `<div class="fa-maison" style="--fa-ecrit:${n2(ecrit)}mm">${etages}</div></div>`;
+  return `<div class="fa-titre">${escapeHtml(r.titre)} ${n}</div>${toit(n)}`
+    + `<div class="fa-maison" style="--fa-ecrit:${n2(ecrit)}mm">${etages}</div>`;
 }
 
-/** L'affichage : une maison par nombre, chacune sur sa page. */
+/** Une écriture, chaque partie à sa couleur : « 7 + 3 = 10 », ou « 10 = 7 + 3 ». */
+const ecriture = (a: number, b: number, e: ReglagesFamilles["ecriture"]) => {
+  const parties = `<span class="fa-a">${a}</span> + <span class="fa-b">${b}</span>`;
+  return e === "somme" ? `${parties} = ${a + b}` : `${a + b} = ${parties}`;
+};
+
+/** La table d'un nombre : 7 + 1, 7 + 2… 7 + 10 — 7 + 0 d'abord si on le demande —, une ligne chacun, qui remplissent la page. */
+function table(n: number, r: ReglagesFamilles): string {
+  const lignes = Array.from({ length: r.avecZero ? 11 : 10 }, (_, i) => i + (r.avecZero ? 0 : 1));
+  return `<div class="fa-titre">${escapeHtml(titreDeLaForme(r))} ${n}</div>`
+    + `<div class="fa-table" style="--fa-ecrit:${n2(Math.min(14, 200 / lignes.length * 0.55))}mm">`
+    + lignes.map((k) => `<div class="fa-ligne">${ecriture(n, k, r.ecriture)}</div>`).join("") + `</div>`;
+}
+
+/** La table de Pythagore de l'addition : la première partie en ligne, en bleu, la seconde en colonne, en rouge ; les doubles en couleur. */
+function pythagore(r: ReglagesFamilles): string {
+  const valeurs = Array.from({ length: r.avecZero ? 11 : 10 }, (_, i) => i + (r.avecZero ? 0 : 1));
+  const tete = `<div class="fa-pyth-coin">+</div>` + valeurs.map((b) => `<div class="fa-pyth-tete fa-b">${b}</div>`).join("");
+  const lignes = valeurs.map((a) => `<div class="fa-pyth-tete fa-a">${a}</div>`
+    + valeurs.map((b) => `<div class="fa-pyth-case${a === b ? " fa-pyth-double" : ""}">${a + b}</div>`).join("")).join("");
+  return `<div class="fa-titre">${escapeHtml(titreDeLaForme(r))}</div>`
+    + `<div class="fa-pyth" style="grid-template-columns: repeat(${valeurs.length + 1}, 1fr)">${tete}${lignes}</div>`;
+}
+
+/** Les pages d'une forme, avant de savoir où elles vont : une par nombre, ou la table de Pythagore seule. */
+function contenus(r: ReglagesFamilles): string[] {
+  if (r.forme === "pythagore") return [pythagore(r)];
+  return r.forme === "table" ? r.nombres.map((n) => table(n, r)) : r.nombres.filter((n) => n >= 2).map((n) => maison(n, r));
+}
+
+/**
+ * Pour le mur, chacune sur sa page ; pour l'élève, la même en petit, quatre
+ * fois sur une planche, à découper le long du pointillé et à coller dans le
+ * cahier — une planche pour quatre élèves.
+ */
 export function htmlFamilles(brut: Partial<ReglagesFamilles>): string {
   const r = reglagesFamillesSurs(brut);
-  return feuille(r.nombres.map((n) => maison(n, r)).join(""), "fa");
+  const pages = contenus(r);
+  return feuille(r.format === "eleve"
+    ? pages.map((c) => `<div class="page fa-planche">${`<div class="fa-petit"><div class="fa-page">${c}</div></div>`.repeat(4)}</div>`).join("")
+    : pages.map((c) => `<div class="page fa-page">${c}</div>`).join(""), "fa");
 }
 
 // La page fait la hauteur utile de l'A4 — 269 mm entre les marges de 14 mm, moins la marge du corps du document
@@ -135,4 +204,21 @@ export const STYLE_FAMILLES = `
   .feuille.fa .fa-ecrit { font-size: var(--fa-ecrit, 12mm); font-weight: 800; line-height: 1; white-space: nowrap; color: ${NOIR}; }
   .feuille.fa .fa-a { color: ${BILLE_BLEUE}; }
   .feuille.fa .fa-b { color: ${BILLE_ROUGE}; }
+  .feuille.fa .fa-table { width: 150mm; flex: 1; display: flex; flex-direction: column; justify-content: space-around; margin-top: 4mm;
+    border: 1.2mm solid ${NOIR}; border-radius: 3mm; padding: 4mm 0; box-sizing: border-box; }
+  .feuille.fa .fa-ligne { font-size: var(--fa-ecrit, 12mm); font-weight: 800; line-height: 1; text-align: center; color: ${NOIR}; white-space: nowrap; }
+  .feuille.fa .fa-pyth { display: grid; width: 180mm; margin-top: 6mm; border: 0.8mm solid ${NOIR}; }
+  .feuille.fa .fa-pyth > div { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 6.5mm; font-weight: 800;
+    border: 0.3mm solid #c9cfdc; color: ${NOIR}; }
+  .feuille.fa .fa-pyth-coin, .feuille.fa .fa-pyth-tete { background: #f1f3f8; }
+  .feuille.fa .fa-pyth-coin { color: #687087 !important; }
+  .feuille.fa .fa-pyth-tete.fa-a { color: ${BILLE_BLEUE}; }
+  .feuille.fa .fa-pyth-tete.fa-b { color: ${BILLE_ROUGE}; }
+  .feuille.fa .fa-pyth-double { background: #fff4dc; }
+  /* Pour l'élève : quatre par planche, centrées dans leur pointillé de découpe. Une case fait la moitié des 165 mm utiles de la page : la maison
+     et la table de Pythagore, 180 mm au mur, y tiennent à 0,43 avec leurs murs. */
+  .feuille.fa .fa-planche { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 250mm; box-sizing: border-box; }
+  .feuille.fa .fa-petit { zoom: 0.43; outline: 0.6mm dashed #9aa0b4; outline-offset: -1mm; box-sizing: border-box; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; }
+  .feuille.fa .fa-petit .fa-page { height: 246mm; }
 `;

@@ -56,4 +56,35 @@ describe("les familles d'addition (demande de l'enseignant, 2026-11-01)", () => 
     expect(titreFamilles({ nombres: [7, 8, 9], titre: "La maison du" })).toBe("La maison du 7, 8 et 9");
     expect(htmlFamilles({ nombres: [6], titre: "La maison <du>" })).toContain("La maison &lt;du&gt; 6");
   });
+
+  it("font la table d'un nombre et la table de Pythagore, chaque partie à sa couleur (« un générateur des tables d'addition »)", () => {
+    const tables = texte(htmlFamilles({ forme: "table", nombres: [1, 7] }));
+    expect(tables).toContain("La table du 1");
+    expect(tables).toContain("7 + 1 = 8");
+    expect(tables).toContain("7 + 10 = 17");
+    expect(tables).not.toContain("7 + 0");
+    expect(texte(htmlFamilles({ forme: "table", nombres: [7], avecZero: true }))).toContain("7 + 0 = 7");
+    expect(htmlFamilles({ forme: "table", nombres: [7] })).toContain('<span class="fa-a">7</span> + <span class="fa-b">3</span> = 10');
+    expect(titreFamilles({ forme: "table", nombres: [7, 8], titre: "La famille du" })).toBe("Les tables du 7 et du 8");
+    // La table de Pythagore : une seule page, 10 sur 10 (11 sur 11 avec le 0), les doubles en couleur.
+    const pyth = htmlFamilles({ forme: "pythagore" });
+    expect(pyth.match(/class="page fa-page"/g)).toHaveLength(1);
+    expect(pyth.match(/fa-pyth-case/g)).toHaveLength(100);
+    expect(pyth.match(/fa-pyth-double/g)).toHaveLength(10);
+    expect(htmlFamilles({ forme: "pythagore", avecZero: true }).match(/fa-pyth-case/g)).toHaveLength(121);
+    expect(titreFamilles({ forme: "pythagore", nombres: [7], titre: "La famille du" })).toBe("La table d'addition");
+    // La maison commence à 2 : 1 n'a pas de famille.
+    expect(reglagesFamillesSurs({ forme: "maison", nombres: [1, 7] }).nombres).toEqual([7]);
+    expect(reglagesFamillesSurs({ forme: "table", nombres: [1, 7] }).nombres).toEqual([1, 7]);
+  });
+
+  it("se font pour l'élève : quatre par planche, à découper et à coller dans le cahier (« rajoute outil pour l'élève »)", () => {
+    const html = htmlFamilles({ forme: "table", nombres: [7, 8], format: "eleve" });
+    expect(html.match(/class="page fa-planche"/g)).toHaveLength(2);
+    expect(html.match(/class="fa-petit"/g)).toHaveLength(8);
+    expect(html).not.toContain('class="page fa-page"');
+    expect(reglagesFamillesSurs({ format: "eleve" }).format).toBe("eleve");
+    expect(reglagesFamillesSurs({ format: "rien" as never }).format).toBe("mur");
+  });
 });
+

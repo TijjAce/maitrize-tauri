@@ -37,21 +37,29 @@ describe("le catalogue de Fabriquer", () => {
   });
 });
 
-describe("Fabriquer s'ouvre sur un choix : un support de séance ou un affichage (demande de l'enseignant, 2026-11-03)", () => {
-  const ids = (s: "support" | "affichage") => famillesDeSorte(s).flatMap((f) => f.outils.map((o) => o.id));
-  it("range les cartes des nombres avec les affichages, et ce qui fait aussi des feuilles dans les deux", () => {
+describe("Fabriquer s'ouvre sur un choix : un support de séance, un outil pour l'élève ou un affichage (demande de l'enseignant, 2026-11-03)", () => {
+  const ids = (s: "support" | "affichage" | "outil") => famillesDeSorte(s).flatMap((f) => f.outils.map((o) => o.id));
+  it("range les cartes des nombres avec les affichages, les tables d'addition au mur et dans le cahier, ce qui fait aussi des feuilles dans plusieurs", () => {
     expect(ids("affichage")).toEqual(expect.arrayContaining(["nombres", "carteMentale", "famillesAddition", "fractions", "frise", "codePhrase"]));
+    expect(ids("outil")).toEqual(expect.arrayContaining(["famillesAddition", "codePhrase", "codeLecture", "sequentiel", "lecteur", "gestes"]));
     expect(ids("support")).not.toContain("nombres");
-    expect(ids("support")).not.toContain("carteMentale");
-    for (const deux of ["fractions", "suiteNombres", "imagier", "frise", "visibileo"]) expect(ids("support"), deux).toContain(deux);
-    // Les générateurs de l'enseignant et les feuilles sont des supports ; une famille sans affichage s'efface du catalogue des affichages.
+    expect(ids("support")).not.toContain("famillesAddition");
+    for (const plusieurs of ["fractions", "suiteNombres", "imagier", "frise", "visibileo", "sequentiel", "gestes"]) expect(ids("support"), plusieurs).toContain(plusieurs);
+    // Les générateurs de l'enseignant et les feuilles sont des supports ; une famille vide s'efface d'un catalogue.
     expect(ids("support")).toEqual(expect.arrayContaining(["perso", "motsMeles", "heure"]));
     expect(famillesDeSorte("support").map((f) => f.id)).not.toContain("affichages");
     expect(famillesDeSorte("affichage").map((f) => f.id)).not.toContain("perso");
   });
 
-  it("garde chaque atelier dans au moins un des deux catalogues", () => {
-    const tous = new Set([...ids("support"), ...ids("affichage")]);
+  it("met les tables d'addition sous Mathématiques, avec le calcul — « il me manque un générateur des tables d'addition »", () => {
+    const maths = famillesDeSorte("affichage").find((f) => f.id === "maths")!;
+    expect(maths.outils.map((o) => o.id)).toContain("famillesAddition");
+    expect(partiesDeLaFamille(maths)?.find((p) => p.id === "calcul")?.outils.map((o) => o.id)).toContain("famillesAddition");
+    expect(FAMILLES.find((f) => f.id === "affichages")?.outils.map((o) => o.id)).not.toContain("famillesAddition");
+  });
+
+  it("garde chaque atelier dans au moins un des trois catalogues", () => {
+    const tous = new Set([...ids("support"), ...ids("affichage"), ...ids("outil")]);
     for (const f of FAMILLES_DE_SUPPORTS) for (const o of f.outils) expect(tous.has(o.id), o.id).toBe(true);
   });
 });

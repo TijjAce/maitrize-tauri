@@ -45,8 +45,12 @@ export interface Outil {
    * l'enseignant, 31 octobre 2026) ; il s'ouvre depuis la séquence, dans son dossier.
    */
   dansSonDossier?: true;
-  /** Un affichage — pour le mur ou le tableau —, ou les deux, quand il fait aussi des feuilles de séance ; absent : un support de séance. */
-  sorte?: "affichage" | "les deux";
+  /**
+   * Ce qu'il fabrique : des supports de séance, des affichages — pour le mur
+   * ou le tableau —, des outils pour l'élève — qu'il garde et consulte —, ou
+   * plusieurs de ces sortes ; absent : des supports de séance.
+   */
+  sortes?: SorteDeFabrication[];
 }
 
 export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outil[] }[] = [
@@ -89,7 +93,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Des planches et leurs cartes à découper : les pictogrammes d'un thème, ou vos propres images." },
       { id: "memory", nom: "Jeu de mémoire", icone: "🃏", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Des paires à retourner : image et image, ou image et mot." },
-      { id: "imagier", sorte: "les deux", nom: "Imagier", icone: "📖", pictos: true, cycles: "Cycles 1 et 2",
+      { id: "imagier", sortes: ["affichage", "support"], nom: "Imagier", icone: "📖", pictos: true, cycles: "Cycles 1 et 2",
         quoi: "Une page d'images légendées, à afficher ou à coller dans un cahier." },
       { id: "categoriser", nom: "Catégoriser les mots", icone: "🗂", pictos: true, cycles: "Cycle 1",
         quoi: "Les jeux d'Éduscol pour ranger les mots en catégories : boîtes de tri, intrus, loto aveugle, « J'appelle… », familles, mistigri — et leur séquence." },
@@ -97,7 +101,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Remettre dans l'ordre une histoire, un geste, une recette : les images à découper et les cases à remplir, en colonne ou fléchées — des pictos ou vos photos." },
       { id: "vilainPetitCanard", nom: "Le Vilain Petit Canard — MS, GS", icone: "🦢", pictos: true, cycles: "Cycle 1", sequence: true, dansSonDossier: true,
         quoi: "La séquence de vocabulaire du guide Éduscol de maternelle : familles d'animaux, documentaires, émotions ou synonymots, lieux, devinettes, plan du récit, tapis de conte — et la séquence entière." },
-      { id: "etiquettes", sorte: "les deux", nom: "Étiquettes à catégoriser", icone: "🏷", cycles: "Cycles 2 et 3",
+      { id: "etiquettes", sortes: ["affichage", "support"], nom: "Étiquettes à catégoriser", icone: "🏷", cycles: "Cycles 2 et 3",
         quoi: "Les mots collectés en grand pour le tableau, en petit par enveloppe, et la corolle lexicale." },
       { id: "ombres", nom: "Jeu des ombres", icone: "👤", cycles: "Cycles 1 et 2",
         quoi: "Chaque image retrouve sa silhouette : à poser dessus, ou à relier. Pictogrammes ou vos propres images." },
@@ -133,7 +137,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Le jeu de l'ascenseur : deux bandes qui glissent, la syllabe apparaît." },
       { id: "lettres", nom: "Les lettres", icone: "🔠", cycles: "Cycles 1 et 2",
         quoi: "Jeu de mémoire, mistigri et loto des lettres, majuscule et minuscule ; la planche de l'ophtalmologue." },
-      { id: "gestes", sorte: "les deux", nom: "Gestes Borel-Maisonny", icone: "🤲", cycles: "Cycles 1 et 2",
+      { id: "gestes", sortes: ["affichage", "outil", "support"], nom: "Gestes Borel-Maisonny", icone: "🤲", cycles: "Cycles 1 et 2",
         quoi: "Vos images des gestes en cartes à découper : petites pour les mains, grandes pour le tableau — et, d'un clic, en loto ou en mémory." },
       { id: "motsGestes", nom: "Mots codés en gestes", icone: "🫱", cycles: "Cycle 2",
         quoi: "La fiche d'un son en gestes Borel-Maisonny : colorier le bon dessin, relier au bon mot, ou écrire le mot." },
@@ -142,9 +146,9 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
       // Lecture et écriture
       { id: "comprehension", nom: "Comprendre un texte", icone: "📖", cycles: "Cycle 2",
         quoi: "Des récits, documentaires, règles, poèmes et scènes de théâtre à la longueur de chaque classe, lignes numérotées : questions à justifier, résumé, moments du récit, reprises, inférences, émotions, mots inconnus, types de textes, écoute — et le corrigé." },
-      { id: "visibileo", sorte: "les deux", nom: "Visibiléo", icone: "💭", pictos: true, cycles: "Cycles 1 à 3",
+      { id: "visibileo", sortes: ["affichage", "support"], nom: "Visibiléo", icone: "💭", pictos: true, cycles: "Cycles 1 à 3",
         quoi: "Construire avec la classe la trace d'un récit : les pièces à plastifier — cadres, nuages des pensées, bulles des paroles, flèches des causes et de l'ordre —, le mémo des signes et la fiche de préparation." },
-      { id: "lecteur", nom: "Carnet de lecteur", icone: "📚", cycles: "Cycle 2",
+      { id: "lecteur", sortes: ["outil", "support"], nom: "Carnet de lecteur", icone: "📚", cycles: "Cycle 2",
         quoi: "La page du carnet pour chaque livre lu, la carte d'identité d'un personnage, les personnages-types des contes, la mise en réseau, présenter un livre, choisir un livre, reconnaître les genres." },
       { id: "orthographe", nom: "Orthographe et dictées", icone: "✏️", cycles: "Cycle 2",
         quoi: "Les dictées des guides — préparée, de mots, phrase du jour, à choix multiples, autodictée, à trous, piégée — et mémoriser l'orthographe des mots : cartes et escalier, listes analogiques, lettre muette, s, c, g, m devant m, b, p, accents." },
@@ -180,6 +184,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     id: "maths", libelle: "🔢 Mathématiques",
     aide: "Les nombres, le calcul, les problèmes, les grandeurs, la géométrie, les données — comme les programmes.",
     outils: [
+      { id: "famillesAddition", sortes: ["affichage", "outil"], nom: "Les tables d'addition", icone: "➕", cycles: "Cycle 2",
+        quoi: "La maison de chaque nombre — ses façons de le faire en deux parties, en billes bleues et rouges —, la table de chaque nombre, la table de Pythagore : pour le mur, ou en petit pour le cahier de l'élève." },
       { id: "martiniere", nom: "Calcul mental", icone: "🧮", cycles: "Cycles 2 et 3",
         quoi: "Un fait numérique ou une procédure à la fois, d'après les programmes : à l'oral (La Martinière) ou en test de fluence." },
       { id: "compteEstBon", nom: "Le nombre cible", icone: "🎯", cycles: "Cycles 2 et 3",
@@ -202,7 +208,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Le fil à linge de la mascotte, des bandes à reproduire, compléter, prolonger, l'intrus et sa bande autocorrective, le motif qui grandit, la même règle avec d'autres dessins." },
       { id: "tangram", nom: "Le tangram — maternelle", icone: "🔶", cycles: "Cycles 1 et 2",
         quoi: "Le grand carré à découper, à la taille des pièces de la classe ; des modèles à recouvrir, de deux à sept pièces — chaque pièce dessinée, en couleur, en silhouette, plus petits, en petit livre — ; les sept pièces en désordre ; le parallélogramme tourné ou retourné." },
-      { id: "nombres", sorte: "affichage", nom: "Cartes des nombres", icone: "🔢", cycles: "Cycles 1 et 2",
+      { id: "nombres", sortes: ["affichage"], nom: "Cartes des nombres", icone: "🔢", cycles: "Cycles 1 et 2",
         quoi: "Chiffre, constellation, boîte de dix, mot : le même nombre sous toutes ses formes." },
       { id: "cubes", nom: "Nombres en cubes", icone: "🧱", cycles: "Cycle 2",
         quoi: "Cubes, barres de dix, plaques de cent : lire les cubes et écrire le nombre, grouper par dix, faire un nombre de plusieurs façons — du CP au CE2, avec la séquence du guide CP." },
@@ -210,7 +216,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Des billes dispersées à compter en faisant des paquets de dix, deux tas qui font un nombre ; un calot vaut dix billes : qui a gagné la partie ? — jusqu'à 100, avec le corrigé." },
       { id: "abaque", nom: "L'abaque", icone: "🎚", cycles: "Cycle 2",
         quoi: "Deux tiges, des jetons verts pour les unités, des rouges pour les dizaines : faire l'échange de dix jetons, lire l'abaque, dessiner les jetons d'un nombre — jusqu'à 99." },
-      { id: "suiteNombres", sorte: "les deux", nom: "La suite des nombres", icone: "🔟", cycles: "Cycle 2",
+      { id: "suiteNombres", sortes: ["affichage", "support"], nom: "La suite des nombres", icone: "🔟", cycles: "Cycle 2",
         quoi: "La frise à compléter, juste avant et juste après, ranger, comparer en chiffres, en mots, en abaques et en calots, le nom des nombres, les dizaines et les unités — jusqu'à 100." },
       { id: "demiDroite", nom: "La demi-droite graduée", icone: "🛤", cycles: "Cycle 2",
         quoi: "Compter les unités depuis 0, placer un nombre, lire celui d'un point, trouver le pas, les nombres qui manquent, la bande lacunaire — de un en un au CP, de dix en dix et de cent en cent au CE1, de mille en mille au CE2 — et l'évaluation." },
@@ -230,7 +236,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Additions et soustractions de décimaux, multiplications, divisions en potence par un ou deux chiffres, le quotient et le reste, le partage des centaines, dizaines et unités, les parenthèses — et le corrigé." },
       { id: "soustractionPosee", nom: "La soustraction posée — CE1", icone: "➖", cycles: "Cycle 2 (CE1)", sequence: true, dansSonDossier: true,
         quoi: "La séquence de CE1, d'après Éduscol : chaque séance s'ouvre sur le calcul mental La Martinière ; on retire avec les barres et les cubes, on casse une dizaine, puis une centaine, avant de poser — dix séances et leurs feuilles." },
-      { id: "fractions", sorte: "les deux", nom: "Fractions", icone: "🍰", cycles: "Cycle 3",
+      { id: "fractions", sortes: ["affichage", "support"], nom: "Fractions", icone: "🍰", cycles: "Cycle 3",
         quoi: "Cartes, bandes à plier, règle graduée en quarts ou en dixièmes, course des nageurs." },
       { id: "oie", nom: "Jeu de l'oie", icone: "🎲", cycles: "Cycles 1 et 2",
         quoi: "Une piste au dé, avec des nombres, des lettres ou des syllabes, et le patron du dé." },
@@ -274,7 +280,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     outils: [
       { id: "planClasse", nom: "Le plan de la classe", icone: "🗺", cycles: "Cycle 2 (CP)",
         quoi: "Le plan de votre classe vu de dessus, d'après le plan de salle : avec ou sans les noms, en couleurs avec sa légende ; la chasse au trésor ; le plan à coller ; l'évaluation ; les étiquettes des maquettes." },
-      { id: "frise", sorte: "les deux", nom: "Frises et calendriers", icone: "🗓", cycles: "Cycle 2",
+      { id: "frise", sortes: ["affichage", "support"], nom: "Frises et calendriers", icone: "🗓", cycles: "Cycle 2",
         quoi: "La journée, la semaine et sa roue, l'année et ses saisons, le calendrier du mois, la frise de la vie, les générations ; cent ans en décennies, les grandes périodes et leurs figures ; la Préhistoire, Rome, le royaume de France — complétées ou à compléter, avec les étiquettes." },
       { id: "paysage", nom: "Lire un paysage", icone: "🏞", cycles: "Cycle 2 (CE1, CE2)",
         quoi: "La fiche à poser à côté d'une photographie : premier plan, arrière-plan, éléments naturels et construits, le nom du paysage, le croquis et sa légende — ville et village, lieux de vie du monde, se loger, travailler." },
@@ -284,30 +290,28 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     id: "aides", libelle: "🧩 Aides à la tâche",
     aide: "Structurer la tâche pour que chacun y entre et la mène au bout, d'après Cap école inclusive (Canopé).",
     outils: [
-      { id: "sequentiel", nom: "Décomposer la tâche", icone: "📋", pictos: true, cycles: "De la maternelle au lycée",
+      { id: "sequentiel", sortes: ["outil", "support"], nom: "Décomposer la tâche", icone: "📋", pictos: true, cycles: "De la maternelle au lycée",
         quoi: "Les étapes d'une tâche, numérotées, avec le picto de chaque geste : check-list à cocher, séquentiel visuel, logigramme ou frise ; le chaînage qui cache l'étape apprise, le soliloque." },
-      { id: "priseDeParole", nom: "Préparer une prise de parole", icone: "🎤", pictos: true, cycles: "Cycles 1 à 4",
+      { id: "priseDeParole", sortes: ["outil", "support"], nom: "Préparer une prise de parole", icone: "🎤", pictos: true, cycles: "Cycles 1 à 4",
         quoi: "La carte mentale à compléter, le sujet au centre ; les mots pour enchaîner ses idées ; les cartes-images des mots-clés ; le dé à raconter." },
-      { id: "codePhrase", sorte: "les deux", nom: "Le code de la phrase", icone: "🖍", cycles: "Cycles 2 et 3",
+      { id: "codePhrase", sortes: ["affichage", "outil"], nom: "Le code de la phrase", icone: "🖍", cycles: "Cycles 2 et 3",
         quoi: "Vos couleurs et vos marques pour analyser la phrase — groupe sujet, verbe, compléments — : la carte du code pour l'élève, la table ou le mur ; les feuilles de grammaire les reprennent." },
-      { id: "codeLecture", sorte: "les deux", nom: "Le code de la lecture à voix haute", icone: "🎙", cycles: "Cycles 2 et 3",
+      { id: "codeLecture", sortes: ["affichage", "outil"], nom: "Le code de la lecture à voix haute", icone: "🎙", cycles: "Cycles 2 et 3",
         quoi: "Vos signes et vos couleurs pour préparer une lecture — la liaison, les pauses, l'intonation, les groupes de souffle — : la carte du code pour l'élève, la table ou le mur ; les feuilles « Lire à voix haute » les reprennent." },
-      { id: "resolution", nom: "Résoudre un problème pas à pas", icone: "🔎", cycles: "De l'école au collège",
+      { id: "resolution", sortes: ["outil", "support"], nom: "Résoudre un problème pas à pas", icone: "🔎", cycles: "De l'école au collège",
         quoi: "L'énoncé travaillé en couleurs, la question à part, puis quatre étapes : ce qu'on cherche, l'égalité, la résolution, la vérification et la phrase réponse." },
-      { id: "modelisation", nom: "De la figure à l'équation", icone: "🔺", cycles: "3e et 2de",
+      { id: "modelisation", sortes: ["outil", "support"], nom: "De la figure à l'équation", icone: "🔺", cycles: "3e et 2de",
         quoi: "Un problème de géométrie traduit en équation, en six étapes balisées : lire, expliquer, découper la figure, essayer, calculer avec x, contrôler." },
-      { id: "fonction", nom: "Modéliser par une fonction", icone: "📈", cycles: "Cycle 4 et lycée",
+      { id: "fonction", sortes: ["outil", "support"], nom: "Modéliser par une fonction", icone: "📈", cycles: "Cycle 4 et lycée",
         quoi: "Une figure à géométrie variable décortiquée : le texte et la figure aux mêmes couleurs, ce qui est fixe et ce qui bouge, le rôle des points, une partie à la fois." },
     ],
   },
   {
     id: "affichages", libelle: "📌 Affichages",
-    aide: "Ce qui se met au mur de la classe : la carte mentale d'un thème, d'une notion, d'une leçon ; les familles d'addition.",
+    aide: "Ce qui se met au mur de la classe : la carte mentale d'un thème, d'une notion, d'une leçon.",
     outils: [
-      { id: "carteMentale", sorte: "affichage", nom: "Carte mentale", icone: "🧠", pictos: true, cycles: "Cycles 1 à 3",
+      { id: "carteMentale", sortes: ["affichage"], nom: "Carte mentale", icone: "🧠", pictos: true, cycles: "Cycles 1 à 3",
         quoi: "Le thème au centre, ses branches autour, chacune à sa couleur avec ses idées en mots et en images : l'affiche de la classe, en A4 ou agrandie en A3." },
-      { id: "famillesAddition", sorte: "affichage", nom: "Les familles d'addition", icone: "🏠", cycles: "CP",
-        quoi: "La maison d'un nombre, une page chacun : toutes ses façons de le faire en deux parties — 3 + 4, 4 + 3… —, en billes bleues et rouges." },
     ],
   },
 ];
@@ -322,7 +326,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
  */
 export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[] = [
   { id: "nombres", nom: "Les nombres", outils: ["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "oie", "fractions", "numeration"] },
-  { id: "calcul", nom: "Le calcul", outils: ["martiniere", "calcul", "arbre", "posees", "rectangles", "pyramides", "compteEstBon", "coloriage", "calculCM"] },
+  { id: "calcul", nom: "Le calcul", outils: ["famillesAddition", "martiniere", "calcul", "arbre", "posees", "rectangles", "pyramides", "compteEstBon", "coloriage", "calculCM"] },
   { id: "problemes", nom: "Les problèmes", outils: ["partieTout", "multiplicatifs", "problemesCM"] },
   { id: "grandeurs", nom: "Grandeurs et mesures", outils: ["heure", "monnaie", "mesures", "grandeursCM"] },
   { id: "geometrie", nom: "Espace et géométrie", outils: ["motifs", "tangram", "geometrie", "solides", "deplacements", "geometrieCM"] },
@@ -363,16 +367,18 @@ export const FAMILLES_DE_SUPPORTS = FAMILLES.map((f) => ({ ...f, outils: f.outil
 
 /**
  * Ce qu'on fabrique : un support de séance — ce que les élèves ont en main
- * pendant la séance : fiches, jeux, cartes à manipuler — ou un affichage — ce
+ * pendant la séance : fiches, jeux, cartes à manipuler —, un affichage — ce
  * qui se met au mur ou au tableau : cartes des nombres, frises, codes, cartes
- * mentales. On le choisit avant tout : « avant d'arriver sur cette page, on
- * doit d'abord choisir si on veut créer un affichage ou un support de séance »
- * (l'enseignant, 3 novembre 2026). Un atelier qui fait les deux est dans les
- * deux catalogues.
+ * mentales —, ou un outil pour l'élève — ce qu'il garde et consulte : sa table
+ * d'addition, la carte du code, son séquentiel. On le choisit avant tout :
+ * « avant d'arriver sur cette page, on doit d'abord choisir si on veut créer
+ * un affichage ou un support de séance », puis « rajoute outil pour l'élève »
+ * (l'enseignant, 3 novembre 2026). Un atelier de plusieurs sortes est dans
+ * plusieurs catalogues.
  */
-export type SorteDeFabrication = "support" | "affichage";
-export const estDeSorte = (o: Pick<Outil, "sorte">, s: SorteDeFabrication): boolean =>
-  (s === "affichage" ? o.sorte === "affichage" || o.sorte === "les deux" : o.sorte !== "affichage");
+export type SorteDeFabrication = "support" | "affichage" | "outil";
+export const SORTES_DE_FABRICATION: SorteDeFabrication[] = ["support", "outil", "affichage"];
+export const estDeSorte = (o: Pick<Outil, "sortes">, s: SorteDeFabrication): boolean => (o.sortes ?? ["support"]).includes(s);
 
 /** Le catalogue d'une sorte : les familles des supports, leurs ateliers de cette sorte seulement ; une famille vide s'efface. */
 export const famillesDeSorte = (s: SorteDeFabrication) =>
