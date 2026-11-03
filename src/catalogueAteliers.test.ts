@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DOMAINES_DES_MATHS, FAMILLES, FAMILLES_DE_SUPPORTS, PARTIES_DU_FRANCAIS, partiesDeLaFamille } from "./catalogueAteliers";
+import { DOMAINES_DES_MATHS, FAMILLES, FAMILLES_DE_SUPPORTS, PARTIES_DU_FRANCAIS, famillesDeSorte, partiesDeLaFamille } from "./catalogueAteliers";
 
 describe("le catalogue de Fabriquer", () => {
   it("range les mathématiques par domaine, comme les programmes : chaque atelier dans un seul, aucun de côté", () => {
@@ -34,5 +34,24 @@ describe("le catalogue de Fabriquer", () => {
     // Un atelier qu'aucun domaine ne range ne se perd pas.
     const inconnu = { ...FAMILLES.find((f) => f.id === "maths")!, outils: [{ id: "jeux" as const, nom: "Loto", icone: "🎲", quoi: "" }] };
     expect(partiesDeLaFamille(inconnu)!.map((p) => p.nom)).toEqual(["Autres"]);
+  });
+});
+
+describe("Fabriquer s'ouvre sur un choix : un support de séance ou un affichage (demande de l'enseignant, 2026-11-03)", () => {
+  const ids = (s: "support" | "affichage") => famillesDeSorte(s).flatMap((f) => f.outils.map((o) => o.id));
+  it("range les cartes des nombres avec les affichages, et ce qui fait aussi des feuilles dans les deux", () => {
+    expect(ids("affichage")).toEqual(expect.arrayContaining(["nombres", "carteMentale", "famillesAddition", "fractions", "frise", "codePhrase"]));
+    expect(ids("support")).not.toContain("nombres");
+    expect(ids("support")).not.toContain("carteMentale");
+    for (const deux of ["fractions", "suiteNombres", "imagier", "frise", "visibileo"]) expect(ids("support"), deux).toContain(deux);
+    // Les générateurs de l'enseignant et les feuilles sont des supports ; une famille sans affichage s'efface du catalogue des affichages.
+    expect(ids("support")).toEqual(expect.arrayContaining(["perso", "motsMeles", "heure"]));
+    expect(famillesDeSorte("support").map((f) => f.id)).not.toContain("affichages");
+    expect(famillesDeSorte("affichage").map((f) => f.id)).not.toContain("perso");
+  });
+
+  it("garde chaque atelier dans au moins un des deux catalogues", () => {
+    const tous = new Set([...ids("support"), ...ids("affichage")]);
+    for (const f of FAMILLES_DE_SUPPORTS) for (const o of f.outils) expect(tous.has(o.id), o.id).toBe(true);
   });
 });

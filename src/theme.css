@@ -1442,6 +1442,15 @@ mark.surligne-eleve-nom { background: color-mix(in srgb, var(--eleve, var(--acce
 
 /* Fabriquer : les ateliers, avant d'entrer dans l'un d'eux. */
 .ateliers { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+/* Fabriquer s'ouvre sur un choix : un support de séance, ou un affichage. Deux grandes cartes, comme celles des ateliers. */
+.fabriquer-choix { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; max-width: 860px; }
+.fabriquer-sorte { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; text-align: left; background: var(--panel);
+  border: 1px solid var(--border); border-radius: var(--r-carte); padding: 22px 22px 18px; font: inherit; color: var(--text); cursor: pointer; }
+.fabriquer-sorte:hover, .fabriquer-sorte:focus-visible { border-color: var(--accent); background: var(--panel-2); }
+.fabriquer-sorte b { font-size: 17px; }
+.fabriquer-sorte-icone { font-size: 34px; line-height: 1; }
+.fabriquer-sorte-quoi { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+.fabriquer-sorte .pli-nombre { margin-top: 6px; }
 .atelier { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto;
   gap: 2px 12px; text-align: left; background: var(--panel); border: 1px solid var(--border);
   border-radius: var(--r-carte); padding: 14px 16px; font: inherit; color: var(--text); cursor: pointer; }

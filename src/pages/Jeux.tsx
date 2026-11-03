@@ -3,7 +3,7 @@ import { Aide } from "../components/Aide";
 import { listen } from "@tauri-apps/api/event";
 import { Page } from "../App";
 import { api, raccourci, EtatBanque, ImageFournie, PictoArasaac, OptionsJeu } from "../api";
-import { Field, Input, Select, Empty, Modal, Demander, useAsync, useOngletDemande } from "../components/ui";
+import { Field, Input, Select, Empty, Modal, Demander, PageVisibleContext, useAsync, useOngletDemande } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { libelleCategorie, EXCLUES_PAR_DEFAUT } from "../data/categoriesArasaac";
 import { PartieToutTab, MultiplicatifsTab } from "./ProblemesBarres";
@@ -76,8 +76,8 @@ import { BoutonMesImages, imagePourLePdf } from "../components/MesImages";
 import { gestesDemandes, gestesPourLesJeux, useNombreDeGestes } from "../components/BanqueDeGestes";
 import { estPerso } from "../imagesPerso";
 import { chercherPictos, lireLesSaisies, pictosDesMots } from "../mesPictos";
-import { FAMILLES, FAMILLES_DE_SUPPORTS, ONGLETS, SEQUENCES_TOUTES_FAITES, partiesDeLaFamille, type Onglet, type Outil } from "../catalogueAteliers";
-import { PliDuCatalogue, SousPliDuCatalogue, iconeEtNom } from "../components/PliDuCatalogue";
+import { FAMILLES, ONGLETS, SEQUENCES_TOUTES_FAITES, famillesDeSorte, partiesDeLaFamille, type Onglet, type Outil, type SorteDeFabrication } from "../catalogueAteliers";
+import { PliDuCatalogue, SUPPORTS, SousPliDuCatalogue, iconeEtNom, type Unite } from "../components/PliDuCatalogue";
 import { CatalogueParCompetence } from "../components/CatalogueParCompetence";
 
 // ── Loto et tableaux à partir des pictogrammes ARASAAC ────────────────────
@@ -275,11 +275,25 @@ export default function Jeux() {
     setRangementBrut(r);
     try { localStorage.setItem(RANGEMENT_MEMORISE, r); } catch { /* stockage indisponible */ }
   };
+  // Ce qu'on fabrique, choisi en arrivant (voir SorteDeFabrication) : un support de séance, ou un affichage. Chaque
+  // arrivée sur Fabriquer — la page reste vivante d'un écran à l'autre — repart du choix, sauf dans un atelier.
+  const [sorte, setSorte] = React.useState<SorteDeFabrication | null>(null);
+  const visible = React.useContext(PageVisibleContext);
+  const etaitVisible = React.useRef(visible);
+  React.useEffect(() => {
+    if (visible && !etaitVisible.current && !onglet) setSorte(null);
+    etaitVisible.current = visible;
+  }, [visible, onglet]);
+  const familles = famillesDeSorte(sorte ?? "support");
+  const affichages = sorte === "affichage";
+  const unite: Unite = affichages ? ["affichage", "affichages"] : SUPPORTS;
+  // Les affichages se lisent par domaine ; la lecture par compétence et les séquences toutes faites sont celles des supports.
+  const lecture: Rangement = affichages ? "famille" : rangement;
   const [plis, setPlis] = useMemoire<string[]>("plis", lirePlis);
   const plier = (cle: string, plie: boolean) => setPlis(plie ? [...new Set([...plis, cle])] : plis.filter((x) => x !== cle));
   // « Tout replier » vaut pour la lecture du moment : les familles et leurs domaines, ou les groupes de séquences.
-  const sectionsLues = rangement === "sequences" ? ["sequences:ecole", "sequences:maternelle"]
-      : FAMILLES_DE_SUPPORTS.flatMap((f) => [`famille:${f.id}`, ...(partiesDeLaFamille(f) ?? []).map((p) => `famille:${f.id}:${p.id}`)]);
+  const sectionsLues = lecture === "sequences" ? ["sequences:ecole", "sequences:maternelle"]
+      : familles.flatMap((f) => [`famille:${f.id}`, ...(partiesDeLaFamille(f) ?? []).map((p) => `famille:${f.id}:${p.id}`)]);
   const toutPlie = sectionsLues.every((c) => plis.includes(c));
   const setOnglet = React.useCallback((o: Onglet | "") => {
     setOngletBrut(o);
@@ -291,6 +305,7 @@ export default function Jeux() {
     if (!demande.startsWith("famille:")) return;
     const id = demande.slice("famille:".length);
     setOnglet(""); setRecherche(""); setRangement("famille");
+    setSorte(famillesDeSorte("support").some((f) => f.id === id) ? "support" : "affichage");
     plier(`famille:${id}`, false);
     window.setTimeout(() => document.getElementById(`famille-${id}`)?.scrollIntoView({ block: "start" }), 120);
   });
@@ -329,10 +344,46 @@ export default function Jeux() {
     try { localStorage.setItem("fabriquer:perso", JSON.stringify({ id: g?.id ?? "" })); } catch { /* stockage indisponible */ }
     setOnglet("perso");
   };
-  const trouves = chercherAteliers(FAMILLES_DE_SUPPORTS, recherche, usages);
+  const trouves = chercherAteliers(familles, recherche, usages);
+  // Rien dans cette sorte : ce que l'autre en a.
+  const autre: SorteDeFabrication = affichages ? "support" : "affichage";
+  const trouvesAilleurs = recherche.trim() && !trouves.length ? chercherAteliers(famillesDeSorte(autre), recherche, usages) : [];
   // Les générateurs de l'enseignant répondent aussi à la recherche : par leur titre, leur phrase, ce qu'il avait demandé.
   const plie = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const generateursTrouves = recherche.trim() ? generateurs.filter((g) => plie(`${g.nom} ${g.quoi} ${g.demande}`).includes(plie(recherche.trim()))) : [];
+
+  const boutonDuMateriel = (
+    <button className="btn ghost sm" onClick={() => setInventaireOuvert(true)}
+      title="Le matériel réel que les programmes nomment — balance, thermomètre, globe… — et ce que votre classe en possède">🧰 Le matériel de la classe</button>
+  );
+
+  // ── Le choix : un support de séance, ou un affichage ──
+  if (!onglet && !sorte) {
+    const nombre = (s: SorteDeFabrication) => famillesDeSorte(s).reduce((n, f) => n + f.outils.length, 0) + (s === "support" ? generateurs.length : 0);
+    const choix = (s: SorteDeFabrication, icone: string, titre: string, quoi: string, compte: string) => (
+      <button type="button" className="fabriquer-sorte" onClick={() => { setSorte(s); setRecherche(""); }}>
+        <span className="fabriquer-sorte-icone" aria-hidden="true">{icone}</span>
+        <b>{titre}</b>
+        <span className="fabriquer-sorte-quoi">{quoi}</span>
+        <span className="pli-nombre">{compte}</span>
+      </button>
+    );
+    return (
+      <Page titre="Fabriquer" sous="Que voulez-vous fabriquer ?" actions={boutonDuMateriel}>
+        {inventaireOuvert && <MaterielDeLaClasse onClose={() => setInventaireOuvert(false)} />}
+        <BandeauModification atelier="" onReprendre={(a) => setOnglet(a as Onglet)} />
+        <BandeauPourLaSeance />
+        <div className="fabriquer-choix">
+          {choix("support", "📄", "Un support de séance", "Ce que les élèves ont en main pendant la séance : fiches, jeux, cartes à manipuler, évaluations.",
+            `${nombre("support")} supports`)}
+          {choix("affichage", "📌", "Un affichage", "Ce qui se met au mur ou au tableau de la classe : cartes des nombres, frises, codes, cartes mentales.",
+            `${nombre("affichage")} affichages`)}
+        </div>
+        <button type="button" className="btn ghost sm" style={{ marginTop: 14 }} onClick={() => { setSorte("support"); setRangement("sequences"); }}
+          title="À part des supports : des séquences prêtes, leurs séances et toutes leurs feuilles">📚 Séquences toutes faites</button>
+      </Page>
+    );
+  }
 
   // ── Devant les ateliers ──
   if (!onglet) {
@@ -340,40 +391,48 @@ export default function Jeux() {
     // Un support se range dans un autre moment d'un clic droit ; une séquence toute faite n'a pas de moment.
     const carteRangeable = (o: Outil) => <CarteAtelier key={o.id} o={o} usage={usages[o.id]} onOuvrir={() => setOnglet(o.id)} onRanger={(u) => ranger(o.id, u)} />;
     return (
-      <Page titre="Fabriquer" sous="Jeux et feuilles à imprimer : langage, sons, lecture et écriture, mathématiques — du cycle 1 au cycle 3"
-        actions={<button className="btn ghost sm" onClick={() => setInventaireOuvert(true)}
-          title="Le matériel réel que les programmes nomment — balance, thermomètre, globe… — et ce que votre classe en possède">🧰 Le matériel de la classe</button>}>
+      <Page titre="Fabriquer" sous={affichages ? "Pour le mur et le tableau de la classe : nombres, frises, codes, cartes mentales — du cycle 1 au cycle 3"
+        : "Jeux et feuilles à imprimer : langage, sons, lecture et écriture, mathématiques — du cycle 1 au cycle 3"}
+        actions={boutonDuMateriel}>
         {inventaireOuvert && <MaterielDeLaClasse onClose={() => setInventaireOuvert(false)} />}
         <BandeauModification atelier="" onReprendre={(a) => setOnglet(a as Onglet)} />
         <BandeauPourLaSeance />
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-          {rangement !== "sequences" && (
-            <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
-              placeholder={rangement === "competence" ? "Chercher une compétence : décoder, addition, se repérer…"
-                : "Chercher un atelier : loto, syllabes, calcul mental, fractions, cycle 3, rituel…"}
-              aria-label={rangement === "competence" ? "Chercher une compétence" : "Chercher un atelier"} style={{ flex: "1 1 260px", maxWidth: 420 }} />
-          )}
-          <div className="seg" role="group" aria-label="Le catalogue">
-            <button className={rangement === "famille" ? "active" : ""} onClick={() => setRangement("famille")}>Par domaine</button>
-            <button className={rangement === "competence" ? "active" : ""} onClick={() => setRangement("competence")}
-              title="Les compétences des programmes, et les ateliers qui travaillent chacune">Par compétence</button>
-            <button className={rangement === "sequences" ? "active" : ""} onClick={() => setRangement("sequences")}
-              title="À part des supports : des séquences prêtes, leurs séances et toutes leurs feuilles">📚 Séquences toutes faites</button>
+          <div className="seg" role="group" aria-label="Ce qu'on fabrique">
+            <button className={!affichages ? "active" : ""} onClick={() => { setSorte("support"); setRecherche(""); }}>📄 Supports de séance</button>
+            <button className={affichages ? "active" : ""} onClick={() => { setSorte("affichage"); setRecherche(""); }}>📌 Affichages</button>
           </div>
-          {rangement === "famille" && (
+          {lecture !== "sequences" && (
+            <Input value={recherche} onChange={(e) => setRecherche(e.target.value)}
+              placeholder={lecture === "competence" ? "Chercher une compétence : décoder, addition, se repérer…"
+                : affichages ? "Chercher un affichage : nombres, frise, code de la phrase…"
+                : "Chercher un support : loto, syllabes, calcul mental, fractions, cycle 3, rituel…"}
+              aria-label={lecture === "competence" ? "Chercher une compétence" : affichages ? "Chercher un affichage" : "Chercher un support"}
+              style={{ flex: "1 1 260px", maxWidth: 420 }} />
+          )}
+          {!affichages && (
+            <div className="seg" role="group" aria-label="Le catalogue">
+              <button className={rangement === "famille" ? "active" : ""} onClick={() => setRangement("famille")}>Par domaine</button>
+              <button className={rangement === "competence" ? "active" : ""} onClick={() => setRangement("competence")}
+                title="Les compétences des programmes, et les supports qui travaillent chacune">Par compétence</button>
+              <button className={rangement === "sequences" ? "active" : ""} onClick={() => setRangement("sequences")}
+                title="À part des supports : des séquences prêtes, leurs séances et toutes leurs feuilles">📚 Séquences toutes faites</button>
+            </div>
+          )}
+          {lecture === "famille" && (
             <Aide titre="Par domaine, puis par moment" vers="droite">
               <p>Dans chaque domaine, les ateliers vont par moment de la séquence : la manipulation, en début de séquence ; l'entraînement, après la leçon ;
                 le réinvestissement, en fin de séquence ; le rituel, chaque jour. Un clic droit sur une carte la range dans un autre moment ; le rangement suit sur l'autre ordinateur.</p>
             </Aide>
           )}
-          {(rangement === "sequences" || !recherche.trim()) && rangement !== "competence" && (
+          {(lecture === "sequences" || !recherche.trim()) && lecture !== "competence" && (
             <button className="btn ghost sm" onClick={() => setPlis(toutPlie
               ? plis.filter((c) => !sectionsLues.includes(c)) : [...new Set([...plis, ...sectionsLues])])}>
               {toutPlie ? "▾ Tout déplier" : "▸ Tout replier"}
             </button>
           )}
         </div>
-        {rangement === "sequences" ? (
+        {lecture === "sequences" ? (
           [
             { cle: "sequences:ecole", icone: "📁", titre: "Du CP au CM2", aide: "Un dossier par classe, en tableau période par période.", outils: SEQUENCES_DE_L_ECOLE },
             { cle: "sequences:maternelle", icone: "🧸", titre: "Maternelle", aide: "Un dossier par section, en tableau période par période, avec leurs pictogrammes.", outils: SEQUENCES_DE_MATERNELLE },
@@ -385,21 +444,24 @@ export default function Jeux() {
               </PliDuCatalogue>
             </section>
           ))
-        ) : rangement === "competence" ? (
+        ) : lecture === "competence" ? (
           <CatalogueParCompetence recherche={recherche} onOuvrir={setOnglet} onOuvrirGenerateur={(id) => ouvrirGenerateur(generateurs.find((g) => g.id === id) ?? null)} />
         ) : recherche.trim() ? (
-          trouves.length || generateursTrouves.length ? (<>
+          trouves.length || (generateursTrouves.length && !affichages) ? (<>
             {trouves.length > 0 && <CartesParMoment outils={trouves} usages={usages} carte={carteRangeable} />}
-            {generateursTrouves.length > 0 && <div className="ateliers" style={{ marginTop: 12 }}><CartesDesGenerateurs generateurs={generateursTrouves} onOuvrir={ouvrirGenerateur} /></div>}
+            {generateursTrouves.length > 0 && !affichages && <div className="ateliers" style={{ marginTop: 12 }}><CartesDesGenerateurs generateurs={generateursTrouves} onOuvrir={ouvrirGenerateur} /></div>}
+          </>) : trouvesAilleurs.length ? (<>
+            <div className="meta" style={{ margin: "0 0 8px 2px" }}>{affichages ? "Aucun affichage ; parmi les supports de séance :" : "Aucun support de séance ; parmi les affichages :"}</div>
+            <div className="ateliers">{trouvesAilleurs.map((o) => <CarteAtelier key={o.id} o={o} usage={usages[o.id]} onOuvrir={() => { setSorte(autre); setOnglet(o.id); }} />)}</div>
           </>) : (
-            <Empty icone="🔍" titre="Aucun atelier" sous="Essayez « loto », « problèmes », « sons », « rituel »…" />
+            <Empty icone="🔍" titre={affichages ? "Aucun affichage" : "Aucun support"} sous={affichages ? "Essayez « nombres », « frise », « code »…" : "Essayez « loto », « problèmes », « sons », « rituel »…"} />
           )
-        ) : FAMILLES_DE_SUPPORTS.map((f) => {
+        ) : familles.map((f) => {
           // Le français en trois parties, les mathématiques par domaine du programme ; chaque partie se plie aussi. Dans chacune, les ateliers vont par moment.
           const parties = partiesDeLaFamille(f);
           return (
             <section key={f.id} id={`famille-${f.id}`} className="famille-catalogue">
-              <PliDuCatalogue ouvert={!plis.includes(`famille:${f.id}`)} onBasculer={(o) => plier(`famille:${f.id}`, !o)}
+              <PliDuCatalogue ouvert={!plis.includes(`famille:${f.id}`)} onBasculer={(o) => plier(`famille:${f.id}`, !o)} unite={unite}
                 icone={iconeEtNom(f.libelle)[0]} titre={iconeEtNom(f.libelle)[1]} aide={f.aide} nombre={f.outils.length + (f.id === "perso" ? generateurs.length : 0)}>
                 {f.id === "perso" ? (
                   <div className="ateliers">
@@ -408,7 +470,7 @@ export default function Jeux() {
                   </div>
                 ) : parties ? parties.map((p) => (
                   <SousPliDuCatalogue key={p.id} ouvert={!plis.includes(`famille:${f.id}:${p.id}`)} onBasculer={(o) => plier(`famille:${f.id}:${p.id}`, !o)}
-                    titre={p.nom} nombre={p.outils.length}>
+                    titre={p.nom} nombre={p.outils.length} unite={unite}>
                     <CartesParMoment outils={p.outils} usages={usages} carte={carteRangeable} />
                   </SousPliDuCatalogue>
                 )) : <CartesParMoment outils={f.outils} usages={usages} carte={carteRangeable} />}
@@ -424,7 +486,7 @@ export default function Jeux() {
   return (
     <ProjetDuMomentProvider>
     <Page titre={outil ? `${outil.icone} ${dossierDe(outil)}${outil.nom}` : "Fabriquer"} sous={outil?.dossier ? undefined : outil?.quoi}
-      actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>← Tous les ateliers</button>}>
+      actions={<button className="btn ghost sm" onClick={() => setOnglet("")}>{affichages ? "← Tous les affichages" : "← Tous les supports"}</button>}>
       <BandeauModification atelier={onglet} onReprendre={(a) => setOnglet(a as Onglet)} />
       <BandeauPourLaSeance />
       {outil && <FeuilleDeLAtelier atelier={outil.id} nom={outil.nom} />}
