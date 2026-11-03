@@ -39,9 +39,11 @@ describe("le catalogue de Fabriquer", () => {
 
 describe("Fabriquer s'ouvre sur un choix : un support de séance, un outil pour l'élève ou un affichage (demande de l'enseignant, 2026-11-03)", () => {
   const ids = (s: "support" | "affichage" | "outil") => famillesDeSorte(s).flatMap((f) => f.outils.map((o) => o.id));
-  it("range les cartes des nombres avec les affichages, les tables d'addition au mur et dans le cahier, ce qui fait aussi des feuilles dans plusieurs", () => {
+  it("range les cartes des nombres et les tables d'addition avec les affichages, ce qui fait aussi des feuilles dans plusieurs", () => {
     expect(ids("affichage")).toEqual(expect.arrayContaining(["nombres", "carteMentale", "famillesAddition", "fractions", "frise", "codePhrase"]));
-    expect(ids("outil")).toEqual(expect.arrayContaining(["famillesAddition", "codePhrase", "codeLecture", "sequentiel", "lecteur", "gestes"]));
+    // « Les tables d'addition, c'est plus un affichage de classe. »
+    expect(ids("outil")).not.toContain("famillesAddition");
+    expect(ids("outil")).toEqual(expect.arrayContaining(["codePhrase", "codeLecture", "sequentiel", "lecteur", "gestes"]));
     expect(ids("support")).not.toContain("nombres");
     expect(ids("support")).not.toContain("famillesAddition");
     for (const plusieurs of ["fractions", "suiteNombres", "imagier", "frise", "visibileo", "sequentiel", "gestes"]) expect(ids("support"), plusieurs).toContain(plusieurs);

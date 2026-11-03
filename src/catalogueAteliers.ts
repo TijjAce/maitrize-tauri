@@ -184,7 +184,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     id: "maths", libelle: "🔢 Mathématiques",
     aide: "Les nombres, le calcul, les problèmes, les grandeurs, la géométrie, les données — comme les programmes.",
     outils: [
-      { id: "famillesAddition", sortes: ["affichage", "outil"], nom: "Les tables d'addition", icone: "➕", cycles: "Cycle 2",
+      { id: "famillesAddition", sortes: ["affichage"], nom: "Les tables d'addition", icone: "➕", cycles: "Cycle 2",
         quoi: "La maison de chaque nombre — ses façons de le faire en deux parties, en billes bleues et rouges —, la table de chaque nombre, la table de Pythagore : pour le mur, ou en petit pour le cahier de l'élève." },
       { id: "martiniere", nom: "Calcul mental", icone: "🧮", cycles: "Cycles 2 et 3",
         quoi: "Un fait numérique ou une procédure à la fois, d'après les programmes : à l'oral (La Martinière) ou en test de fluence." },
@@ -369,8 +369,8 @@ export const FAMILLES_DE_SUPPORTS = FAMILLES.map((f) => ({ ...f, outils: f.outil
  * Ce qu'on fabrique : un support de séance — ce que les élèves ont en main
  * pendant la séance : fiches, jeux, cartes à manipuler —, un affichage — ce
  * qui se met au mur ou au tableau : cartes des nombres, frises, codes, cartes
- * mentales —, ou un outil pour l'élève — ce qu'il garde et consulte : sa table
- * d'addition, la carte du code, son séquentiel. On le choisit avant tout :
+ * mentales —, ou un outil pour l'élève — ce qu'il garde et consulte : la carte
+ * du code, son séquentiel, son carnet de lecteur. On le choisit avant tout :
  * « avant d'arriver sur cette page, on doit d'abord choisir si on veut créer
  * un affichage ou un support de séance », puis « rajoute outil pour l'élève »
  * (l'enseignant, 3 novembre 2026). Un atelier de plusieurs sortes est dans

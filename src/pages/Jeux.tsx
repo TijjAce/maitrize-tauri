@@ -173,10 +173,10 @@ const DIRE_LA_SORTE: Record<SorteDeFabrication, {
   },
   outil: {
     icone: "🎒", une: "Un outil pour l'élève", les: "Outils pour l'élève",
-    quoi: "Ce que l'élève garde et consulte : sa table d'addition, la carte du code, son séquentiel, son carnet de lecteur.",
-    sous: "Pour la trousse, le cahier ou la table de l'élève : tables, codes, aides à la tâche — du cycle 1 au cycle 3",
-    chercher: "Chercher un outil : table d'addition, code, séquentiel…",
-    aucun: "Aucun outil pour l'élève", essayez: "Essayez « table », « code », « séquentiel »…", tous: "Tous les outils", unite: ["outil", "outils"],
+    quoi: "Ce que l'élève garde et consulte : la carte du code, son séquentiel, les gestes, son carnet de lecteur.",
+    sous: "Pour la trousse, le cahier ou la table de l'élève : codes, gestes, aides à la tâche — du cycle 1 au cycle 3",
+    chercher: "Chercher un outil : code, séquentiel, gestes…",
+    aucun: "Aucun outil pour l'élève", essayez: "Essayez « code », « séquentiel », « gestes »…", tous: "Tous les outils", unite: ["outil", "outils"],
   },
   affichage: {
     icone: "📌", une: "Un affichage", les: "Affichages",
@@ -421,6 +421,11 @@ export default function Jeux() {
     const carte = (o: Outil) => <CarteAtelier key={o.id} o={o} usage={usages[o.id]} onOuvrir={() => setOnglet(o.id)} />;
     // Un support se range dans un autre moment d'un clic droit ; une séquence toute faite n'a pas de moment.
     const carteRangeable = (o: Outil) => <CarteAtelier key={o.id} o={o} usage={usages[o.id]} onOuvrir={() => setOnglet(o.id)} onRanger={(u) => ranger(o.id, u)} />;
+    // Les moments de la séquence — manipulation, entraînement… — sont ceux des supports de séance : un outil de l'élève, un
+    // affichage n'en ont pas (« dans outil pour l'élève, y a pas manipulation, entraînement », 3 novembre 2026).
+    const cartes = (outils: Outil[]) => (vue === "support"
+      ? <CartesParMoment outils={outils} usages={usages} carte={carteRangeable} />
+      : <div className="ateliers">{outils.map(carte)}</div>);
     return (
       <Page titre="Fabriquer" sous={dire.sous}
         actions={boutonDuMateriel}>
@@ -448,7 +453,7 @@ export default function Jeux() {
                 title="À part des supports : des séquences prêtes, leurs séances et toutes leurs feuilles">📚 Séquences toutes faites</button>
             </div>
           )}
-          {lecture === "famille" && (
+          {lecture === "famille" && vue === "support" && (
             <Aide titre="Par domaine, puis par moment" vers="droite">
               <p>Dans chaque domaine, les ateliers vont par moment de la séquence : la manipulation, en début de séquence ; l'entraînement, après la leçon ;
                 le réinvestissement, en fin de séquence ; le rituel, chaque jour. Un clic droit sur une carte la range dans un autre moment ; le rangement suit sur l'autre ordinateur.</p>
@@ -477,7 +482,7 @@ export default function Jeux() {
           <CatalogueParCompetence recherche={recherche} onOuvrir={setOnglet} onOuvrirGenerateur={(id) => ouvrirGenerateur(generateurs.find((g) => g.id === id) ?? null)} />
         ) : recherche.trim() ? (
           trouves.length || (generateursTrouves.length && vue === "support") ? (<>
-            {trouves.length > 0 && <CartesParMoment outils={trouves} usages={usages} carte={carteRangeable} />}
+            {trouves.length > 0 && cartes(trouves)}
             {generateursTrouves.length > 0 && vue === "support" && <div className="ateliers" style={{ marginTop: 12 }}><CartesDesGenerateurs generateurs={generateursTrouves} onOuvrir={ouvrirGenerateur} /></div>}
           </>) : trouvesAilleurs.length ? (<>
             <div className="meta" style={{ margin: "0 0 8px 2px" }}>{`${dire.aucun} ; ailleurs :`}</div>
@@ -500,9 +505,9 @@ export default function Jeux() {
                 ) : parties ? parties.map((p) => (
                   <SousPliDuCatalogue key={p.id} ouvert={!plis.includes(`famille:${f.id}:${p.id}`)} onBasculer={(o) => plier(`famille:${f.id}:${p.id}`, !o)}
                     titre={p.nom} nombre={p.outils.length} unite={unite}>
-                    <CartesParMoment outils={p.outils} usages={usages} carte={carteRangeable} />
+                    {cartes(p.outils)}
                   </SousPliDuCatalogue>
-                )) : <CartesParMoment outils={f.outils} usages={usages} carte={carteRangeable} />}
+                )) : cartes(f.outils)}
               </PliDuCatalogue>
             </section>
           );
