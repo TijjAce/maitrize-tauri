@@ -1,7 +1,7 @@
 import React from "react";
 import { Page } from "../App";
 import { api, journal, newId, nowIso, texteErreur, type Reunion } from "../api";
-import { Demander, Field, Input, Modal, Select } from "../components/ui";
+import { Demander, Field, Input, Modal, PageVisibleContext, Select } from "../components/ui";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { openCtx } from "../components/ctxmenu";
@@ -48,6 +48,46 @@ const aujourdhui = () => isoJour(new Date());
 
 /** L'accord donné une fois, gardé sur ce poste : l'écoute part seule ensuite. */
 const CLE_CONSENTEMENT = "reunionsConsentement";
+/** Le micro choisi pour les réunions — un petit micro posé près de soi —, retenu d'une réunion à l'autre. */
+const CLE_MICRO = "reunionsMicro";
+
+/**
+ * Les micros branchés, et de quoi relire la liste : leurs noms n'apparaissent
+ * qu'une fois le micro autorisé, et elle suit ce qu'on branche ou débranche.
+ */
+function useMicros(): { micros: { id: string; nom: string }[]; relire: () => void } {
+  const [micros, setMicros] = React.useState<{ id: string; nom: string }[]>([]);
+  const relire = React.useCallback(() => {
+    void navigator.mediaDevices?.enumerateDevices?.()
+      .then((ds) => setMicros(ds.filter((d) => d.kind === "audioinput" && d.deviceId && d.deviceId !== "default" && d.deviceId !== "communications")
+        .map((d, i) => ({ id: d.deviceId, nom: d.label || `Micro ${i + 1}` }))))
+      .catch(() => {});
+  }, []);
+  React.useEffect(() => {
+    const md = navigator.mediaDevices;
+    relire();
+    md?.addEventListener?.("devicechange", relire);
+    return () => md?.removeEventListener?.("devicechange", relire);
+  }, [relire]);
+  return { micros, relire };
+}
+
+/** Le son entendu, en direct : une barre qui bouge quand on parle — même tout bas, il est déjà ramené au niveau d'une voix. */
+function Vumetre({ niveau }: { niveau: React.MutableRefObject<number> }) {
+  const visible = React.useContext(PageVisibleContext);
+  const barre = React.useRef<HTMLSpanElement>(null);
+  React.useEffect(() => {
+    if (!visible) return;
+    let id = 0;
+    const suivre = () => {
+      if (barre.current) barre.current.style.width = `${Math.round(niveau.current * 100)}%`;
+      id = requestAnimationFrame(suivre);
+    };
+    id = requestAnimationFrame(suivre);
+    return () => cancelAnimationFrame(id);
+  }, [niveau, visible]);
+  return <span className="vumetre" title="Le son que le micro entend, ramené au niveau d'une voix" aria-hidden="true"><span ref={barre} /></span>;
+}
 /** « direct » : les réunions se transcrivent chez Mistral, en direct, les voix reconnues — quoi que disent les Réglages. */
 const CLE_TRANSCRIPTION = "reunionsTranscription";
 type Transcription = "direct" | "";
@@ -231,12 +271,14 @@ export default function Reunions() {
 
   React.useEffect(() => {
     void (async () => {
-      const [accord, choisi, ancienne] = await Promise.all([
+      const [accord, choisi, ancienne, leMicro] = await Promise.all([
         api.settingGet(CLE_CONSENTEMENT).catch(() => null),
         api.settingGet(CLE_MODE).catch(() => null),
         api.settingGet(CLE_RELECTURE).catch(() => null),
+        api.settingGet(CLE_MICRO).catch(() => null),
       ]);
       dejaExplique.current = accord === "1";
+      setMicro(leMicro ?? "");
       // Le mode ne se relit qu'ici : ensuite, c'est la fiche qui commande.
       // Le relire au démarrage de la réunion écrasait le choix qui venait
       // d'être fait, l'enregistrement n'étant pas encore revenu.
@@ -244,6 +286,13 @@ export default function Reunions() {
       await relireLeMoteur();
     })();
   }, [relireLeMoteur]);
+
+  const { micros, relire: relireLesMicros } = useMicros();
+  const [micro, setMicro] = React.useState("");
+  const choisirMicro = (id: string) => {
+    setMicro(id);
+    api.settingSet(CLE_MICRO, id).catch(() => {});
+  };
 
   const choisirMode = (m: ModeIA) => {
     setMode(m);
@@ -624,7 +673,8 @@ export default function Reunions() {
     // Rien à cliquer : on pose l'ordinateur et ça écoute. L'écran d'accord
     // ne revient que tant qu'il n'a pas été accepté une première fois.
     if (dejaExplique.current) {
-      const erreur = await ecoute.demarrer(0);
+      const erreur = await ecoute.demarrer(0, micro || undefined);
+      relireLesMicros();
       if (erreur) toast(erreur, { icone: "🎙" });
       else { setConsentementVu(true); ouvrirDirect(); }
     }
@@ -649,7 +699,9 @@ export default function Reunions() {
     // Le moteur a pu changer dans les Réglages depuis l'ouverture de la page.
     await relireLeMoteur();
     setHorsLigne(false); horsLigneRef.current = false;
-    const erreur = await ecoute.demarrer(courante.dureeS);
+    const erreur = await ecoute.demarrer(courante.dureeS, micro || undefined);
+    // Le micro autorisé, les noms des micros apparaissent.
+    relireLesMicros();
     if (erreur) { toast(erreur, { icone: "🎙" }); return; }
     setConsentementVu(true);
     ouvrirDirect();
@@ -878,6 +930,7 @@ export default function Reunions() {
                   : enCours ? (direct.current || instant.current ? "à l'écoute — s'écrit en direct" : "à l'écoute")
                   : "écoute arrêtée"}
               </span>
+              {ecoute.etat === "ecoute" && <Vumetre niveau={ecoute.niveau} />}
               <div className="spacer" style={{ flex: 1 }} />
               {enCours ? (
                 <>
@@ -896,6 +949,13 @@ export default function Reunions() {
                   {rangeEnLigne(mode) && texte.trim() && planVide(lirePlan(compteRendu)) && (
                     <button className="btn" disabled={!!occupe} onClick={() => { void rediger(); }}
                       title="L'IA range la conversation en compte rendu, à côté d'elle : la conversation ne change pas (noms masqués)">🗂 Compte rendu par l'IA</button>
+                  )}
+                  {micros.length > 1 && (
+                    <Select value={micros.some((m) => m.id === micro) ? micro : ""} onChange={(e) => choisirMicro(e.target.value)}
+                      style={{ width: "auto", maxWidth: 230 }} aria-label="Le micro qui écoute">
+                      <option value="">🎙 Micro du système</option>
+                      {micros.map((m) => <option key={m.id} value={m.id}>🎙 {m.nom}</option>)}
+                    </Select>
                   )}
                   <button className="btn primary" onClick={demarrer}>🎧 Écouter</button>
                   <button className="btn ghost" onClick={() => setCourante(null)}>← Mes réunions</button>

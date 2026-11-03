@@ -1,5 +1,6 @@
 import React from "react";
-import { estSilencieux, fautIlCouper, versWav } from "./audioWav";
+import { fautIlCouper, versWav } from "./audioWav";
+import { contraintesDuMicro, nouvellePriseDeSon, traiterLaTrame } from "./priseDeSon";
 
 // ── Écouter, et écrire au rythme de la parole ─────────────────────────────
 //
@@ -19,6 +20,11 @@ import { estSilencieux, fautIlCouper, versWav } from "./audioWav";
 // Les échantillons sont pris au vol et le fichier WAV écrit ici : c'est le
 // seul format que lit un moteur local, et le service en ligne l'accepte
 // aussi. L'audio ne touche jamais le disque de ce côté-ci.
+//
+// Le micro s'ouvre sans le traitement d'un appel vidéo, qui prenait un
+// chuchotement pour du bruit ; chaque trame passe par la prise de son (voir
+// priseDeSon.ts) : filtrée, ramenée au niveau d'une voix, et c'est elle qui
+// dit si l'on parle — d'après le bruit de la pièce, non plus un seuil fixe.
 
 export type EtatEcoute = "repos" | "ecoute" | "pause";
 
@@ -34,11 +40,14 @@ export interface Ecoute {
   /** Secondes écoutées depuis le début (pauses non comptées). */
   secondes: number;
   /**
-   * Ouvre le micro. `depuis` reprend le compte là où la réunion s'était
-   * arrêtée, pour que les horodatages suivent au lieu de repartir de zéro.
-   * Renvoie l'erreur à afficher, ou null.
+   * Ouvre le micro — `micro`, s'il est choisi et branché, sinon celui du
+   * système. `depuis` reprend le compte là où la réunion s'était arrêtée,
+   * pour que les horodatages suivent au lieu de repartir de zéro. Renvoie
+   * l'erreur à afficher, ou null.
    */
-  demarrer: (depuis?: number) => Promise<string | null>;
+  demarrer: (depuis?: number, micro?: string) => Promise<string | null>;
+  /** Le niveau du son entendu, de 0 à 1, à la dernière trame : de quoi le montrer. */
+  niveau: React.MutableRefObject<number>;
   /** Coupe la tranche en cours sans attendre le silence. */
   couper: () => void;
   pause: () => void;
@@ -77,6 +86,8 @@ export function useEcoute({ onTranche, onTrame, minimumParole = 2, plafond = 15 
   const capteur = React.useRef<ScriptProcessorNode | null>(null);
   const minuteur = React.useRef<number | null>(null);
   const enPause = React.useRef(false);
+  const prise = React.useRef(nouvellePriseDeSon());
+  const niveau = React.useRef(0);
 
   // Ce qui s'accumule dans la tranche en cours.
   const morceaux = React.useRef<Float32Array[]>([]);
@@ -124,14 +135,17 @@ export function useEcoute({ onTranche, onTrame, minimumParole = 2, plafond = 15 
     contexte.current = ctx;
     const source = ctx.createMediaStreamSource(f);
     const noeud = ctx.createScriptProcessor(4096, 1, 1);
+    prise.current = nouvellePriseDeSon();
     noeud.onaudioprocess = (e) => {
-      if (enPause.current) return;
-      const trame = new Float32Array(e.inputBuffer.getChannelData(0));
+      if (enPause.current) { niveau.current = 0; return; }
+      // La trame telle que le moteur doit l'entendre : filtrée, ramenée au niveau d'une voix, même chuchotée.
+      const { sortie: trame, parole: onParle, niveau: n } = traiterLaTrame(prise.current, e.inputBuffer.getChannelData(0), ctx.sampleRate);
+      niveau.current = n;
       const secondesTrame = trame.length / ctx.sampleRate;
       rappelTrame.current?.(trame, ctx.sampleRate);
       morceaux.current.push(trame);
       duree.current += secondesTrame;
-      if (estSilencieux(trame)) {
+      if (!onParle) {
         silence.current += secondesTrame;
       } else {
         parole.current += secondesTrame;
@@ -178,6 +192,7 @@ export function useEcoute({ onTranche, onTrame, minimumParole = 2, plafond = 15 
   }, []);
 
   const fermerCapture = () => {
+    niveau.current = 0;
     capteur.current?.disconnect();
     capteur.current = null;
     contexte.current?.close().catch(() => {});
@@ -201,9 +216,14 @@ export function useEcoute({ onTranche, onTrame, minimumParole = 2, plafond = 15 
     flux.current?.getTracks().forEach((t) => t.stop());
   }, [arreterLeCompteur]);
 
-  const demarrer = React.useCallback(async (depuis = 0) => {
+  const demarrer = React.useCallback(async (depuis = 0, micro?: string) => {
     try {
-      flux.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Le micro choisi ; débranché depuis, celui du système plutôt que rien.
+      flux.current = await navigator.mediaDevices.getUserMedia({ audio: contraintesDuMicro(micro) })
+        .catch((e) => {
+          if (!micro || /denied|NotAllowed/i.test(String((e as Error)?.message ?? e) + String((e as Error)?.name ?? ""))) throw e;
+          return navigator.mediaDevices.getUserMedia({ audio: contraintesDuMicro() });
+        });
       enPause.current = false;
       total.current = depuis;
       debutTranche.current = depuis;
@@ -241,5 +261,5 @@ export function useEcoute({ onTranche, onTrame, minimumParole = 2, plafond = 15 
     setEtat("repos");
   }, [arreterLeCompteur, clore, liberer]);
 
-  return { etat, secondes, demarrer, couper, pause, reprendre, arreter };
+  return { etat, secondes, demarrer, couper, pause, reprendre, arreter, niveau };
 }

@@ -1109,6 +1109,9 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .sv-apercu .sv-feuille + .sv-feuille { border-top: 1px dashed #c4c9d6; margin-top: 18px; padding-top: 18px; }
 .sv-apercu .sv-s-page { min-height: 0; padding: 18px 0; }
 .sv-apercu .sv-s-page + .sv-s-page { border-top: 1px dashed #c4c9d6; }
+/* Réunions : le niveau du son entendu, en direct. */
+.vumetre { display: inline-block; width: 64px; height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; vertical-align: middle; }
+.vumetre > span { display: block; height: 100%; width: 0; border-radius: 3px; background: var(--green); transition: width .08s linear; }
 /* Ressources › Quiz des guides : une question à la fois, la phrase du guide sous chaque correction. */
 .quiz { max-width: 860px; }
 .quiz-tete { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
