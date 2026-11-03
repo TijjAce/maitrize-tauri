@@ -4,7 +4,8 @@ import { Empty, Input, PageVisibleContext, Select, Textarea } from "./ui";
 import { Aide } from "./Aide";
 import { PdfViewer } from "./PdfViewer";
 import { toast } from "./Toaster";
-import { ouvrirPdf, textesDeLaPage, type DocumentPdf } from "../pdfRendu";
+import { ouvrirPdf } from "../pdfRendu";
+import { etiquettesDuPdf, lirePage, octetsDe, toutesLesPagesDuPdf } from "../textesDesPdf";
 import { graineAuHasard, hasard } from "../hasard";
 import { lireNiveaux } from "../classe";
 import { isoJour } from "../dates";
@@ -13,7 +14,7 @@ import { pseudonymiser, restaurer } from "../confidentialite";
 import {
   CLE_A_REVOIR, CLE_QUIZ_DES_GUIDES, PAGES_ESSAYEES_MAX, PAGES_PAR_SERIE, QUESTIONS_PAR_SERIE, apresLaReponse, avecLaSerie,
   consigneDeCorrection, consigneDeVerification, consigneDuQuiz, couvertureDuGuide, demandeDeVerification, questionsFideles, cycleDeLaClasse, debutDeLaCitation, demandeDeCorrection, demandeDuQuiz,
-  avecLeursNumeros, decalageImprime, derniereSerie, estUnGuideEnPdf, fichesDues, lireARevoir, lireHistorique, lireLaCorrection, lireLesQuestions, melangee, nettoyerLaPage,
+  avecLeursNumeros, decalageImprime, derniereSerie, estUnGuideEnPdf, fichesDues, lireARevoir, lireHistorique, lireLaCorrection, lireLesQuestions, melangee,
   pageInterrogeable, pagesAEssayer, pagesDejaVues, pagesDuTheme, pointsDuVerdict, progresDuQuiz, sansLaQuestion, scoreEnClair,
   type Correction, type FicheARevoir, type PageLue, type QuestionAChoix, type QuestionDuQuiz, type QuestionOuverte, type SerieFaite, type Verdict,
 } from "../quizDesGuides";
@@ -41,7 +42,6 @@ interface Serie { titre: string; questions: QuestionDeLaSerie[]; guide?: GuideDu
 /** La réponse à une question : la proposition choisie, ce qu'on a écrit et sa correction, ou « Je ne sais pas ». */
 type Reponse = { choisie: number } | { ecrite: string; correction: Correction } | { passe: true };
 
-const octetsDe = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 const aujourdhui = () => isoJour(new Date());
 const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? "s" : ""}`;
 
@@ -54,42 +54,8 @@ async function guideAuCoffre(g: GuideDuQuiz, dire: (m: string) => void): Promise
 }
 
 /** Le texte de toutes les pages d'un guide, lu une fois par visite : un thème s'y cherche partout. */
-const textesLus = new Map<string, PageLue[]>();
-
-/** Le numéro imprimé de chaque page, quand le PDF le donne et qu'il diffère de son rang. */
-async function etiquettesDuGuide(pdf: DocumentPdf): Promise<(string | undefined)[]> {
-  const etiquettes = await pdf.getPageLabels().catch(() => null);
-  return Array.from({ length: pdf.numPages }, (_, i) => {
-    const e = etiquettes?.[i]?.trim();
-    return e && e !== String(i + 1) ? e : undefined;
-  });
-}
-
-/** Une page lue : son texte tel qu'on le lit, celui que voit la recherche du lecteur, son numéro imprimé. */
-async function lirePage(pdf: DocumentPdf, numero: number, etiquette?: string): Promise<PageLue> {
-  const { suivi, brut } = await textesDeLaPage(pdf, numero).catch(() => ({ suivi: "", brut: "" }));
-  return { numero, texte: nettoyerLaPage(suivi), brut, ...(etiquette ? { etiquette } : {}) };
-}
-
-async function toutesLesPages(coffre: DocumentCoffre, dire: (m: string) => void, quoi: string): Promise<PageLue[]> {
-  const deja = textesLus.get(coffre.nomFichier);
-  if (deja) return deja;
-  const pdf = await ouvrirPdf(octetsDe(await api.fichierRead(coffre.nomFichier)));
-  try {
-    const etiquettes = await etiquettesDuGuide(pdf);
-    const toutes: PageLue[] = [];
-    for (let numero = 1; numero <= pdf.numPages; numero++) {
-      if (numero % 10 === 1) dire(`Recherche de « ${quoi} » dans le guide… page ${numero} sur ${pdf.numPages}`);
-      toutes.push(await lirePage(pdf, numero, etiquettes[numero - 1]));
-    }
-    // Le numéro imprimé de chaque page, quand le PDF ne le donne pas : lu en tête ou en pied de toutes ses pages.
-    const numerotees = avecLeursNumeros(toutes, decalageImprime(toutes));
-    textesLus.set(coffre.nomFichier, numerotees);
-    return numerotees;
-  } finally {
-    void pdf.destroy();
-  }
-}
+const toutesLesPages = (coffre: DocumentCoffre, dire: (m: string) => void, quoi: string): Promise<PageLue[]> =>
+  toutesLesPagesDuPdf(coffre.nomFichier, (page, total) => dire(`Recherche de « ${quoi} » dans le guide… page ${page} sur ${total}`));
 
 /**
  * Quelques pages de texte du guide, lues ici, et son nombre de pages. Sans
@@ -106,7 +72,7 @@ async function pagesDuGuide(coffre: DocumentCoffre, dejaVues: number[], graine: 
   }
   const pdf = await ouvrirPdf(octetsDe(await api.fichierRead(coffre.nomFichier)));
   try {
-    const etiquettes = await etiquettesDuGuide(pdf);
+    const etiquettes = await etiquettesDuPdf(pdf);
     const lues: PageLue[] = [];
     const essayees: PageLue[] = [];
     for (const numero of pagesAEssayer(pdf.numPages, dejaVues, graine).slice(0, PAGES_ESSAYEES_MAX)) {

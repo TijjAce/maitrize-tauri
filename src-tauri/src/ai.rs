@@ -27,16 +27,19 @@ const REESSAIS_429: u32 = 3;
 /// fichiers n'y existent pas : la recherche sur le web et le dessin d'un picto, qui passent par eux et par
 /// des services américains (Brave, Black Forest Labs), sont coupés (`AGENTS_COUPES`).
 pub const MISTRAL: &str = "https://api.eu.mistral.ai";
-/// La recherche sur le web et le dessin d'un picto sortiraient de l'Union européenne : coupés.
+/// La recherche sur le web et le dessin d'un picto sortiraient de l'Union européenne : coupés. Une exception, voulue
+/// par l'enseignant (3 novembre 2026) : la recherche de l'Assistant IA quand un document du coffre-fort ne répond pas
+/// (`mistral_recherche_web_assistant`), sous l'avertissement de l'Assistant.
 const AGENTS_COUPES: bool = true;
 const HORS_EUROPE: &str = "Coupé pour que vos données restent en Europe : chez Mistral, cette fonction passe par des services hors de l'Union européenne.";
 /// Le direct de Voxtral (`client/sessions`, jeton « rt_ ») n'existe pas à l'adresse européenne : Mistral y
 /// répond « introuvable », quel que soit le modèle (essayé le 2 novembre 2026). Coupé : la voix s'écrit par
 /// passages, ou sur l'ordinateur.
 const DIRECT_COUPE: bool = true;
-/// L'adresse habituelle de Mistral, sans garantie européenne. Une seule chose y passe : la dictée en direct de
-/// l'Assistant IA, à la demande de l'enseignant (3 novembre 2026) — « on laisse libre, mais que pour cette
-/// partie » —, sous un avertissement qui dit de n'y rien dire des élèves. Tout le reste part à `MISTRAL`.
+/// L'adresse habituelle de Mistral, sans garantie européenne. Seule l'Assistant IA y passe, à la demande de
+/// l'enseignant (3 novembre 2026) — « on laisse libre, mais que pour cette partie » —, sous un avertissement qui
+/// dit de n'y rien mettre des élèves : sa dictée en direct, et sa recherche sur le web (les agents, plus bas). Tout le
+/// reste part à `MISTRAL`.
 pub const MISTRAL_MONDIAL: &str = "https://api.mistral.ai";
 
 /// Attente avant le n-ième réessai : 1 s, 2 s, 4 s.
@@ -468,6 +471,8 @@ pub async fn mistral_vision(
 /// Modèle capable d'utiliser les connecteurs. Les Ministral en sont incapables,
 /// quel que soit leur niveau : ce n'est pas une question de puissance.
 const MODELE_RECHERCHE: &str = "mistral-medium-latest";
+/// Le modèle des questions sur un document du coffre-fort, dans l'Assistant IA, et de sa recherche sur le web.
+pub(crate) const MODELE_GRAND: &str = "mistral-large-latest";
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -547,6 +552,21 @@ async fn agent_recherche(db: &State<'_, Db>, cle: &str) -> Result<String, String
     }), false).await
 }
 
+/// L'agent de l'Assistant IA qui cherche sur le web quand un document du coffre-fort ne répond pas : Mistral Large,
+/// qui n'invente rien et cite ses sources. `renouveler` : celui qu'on gardait n'existe plus chez Mistral.
+async fn agent_recherche_grand(db: &State<'_, Db>, cle: &str, renouveler: bool) -> Result<String, String> {
+    agent_garde(db, cle, "agentRechercheGrandId", serde_json::json!({
+        "model": MODELE_GRAND,
+        "name": "Maitrize — recherche web (Assistant)",
+        "description": "Répond aux questions d'un enseignant d'après le web, en citant ses sources.",
+        "instructions": "Tu aides un enseignant de l'école primaire française. Cherche sur le web avant de répondre. \
+             N'écris rien que tes sources ne disent : chaque affirmation vient d'une source que tu cites. \
+             Si tu ne trouves pas, dis-le simplement. Privilégie les sources officielles : education.gouv.fr, eduscol, \
+             service-public. Réponds en français.",
+        "tools": [{ "type": "web_search" }],
+    }), renouveler).await
+}
+
 /// Pose une question en cherchant sur le web, et rapporte les sources.
 #[tauri::command]
 pub async fn mistral_recherche_web(
@@ -558,33 +578,57 @@ pub async fn mistral_recherche_web(
     }
     let cle = cle_mistral(&db)?;
     let agent = agent_recherche(&db, &cle).await?;
+    recherche_web(&db, &cle, &agent, &question, MODELE_RECHERCHE).await.map_err(|(_, m)| m)
+}
+
+/// La recherche sur le web de l'Assistant IA, et d'elle seule : quand le document du coffre-fort choisi ne répond pas,
+/// Mistral Large cherche sur le web — hors de l'Union européenne (les agents de Mistral, et Brave), à la demande de
+/// l'enseignant (3 novembre 2026), sous l'avertissement de l'Assistant. Tout le reste reste coupé (`AGENTS_COUPES`).
+#[tauri::command]
+pub async fn mistral_recherche_web_assistant(db: State<'_, Db>, question: String) -> Result<ReponseWeb, String> {
+    let cle = cle_mistral(&db)?;
+    // L'agent gardé a pu disparaître chez Mistral — une autre clé, un effacement depuis la console — : on en crée un
+    // autre, une fois.
+    let mut renouveler = false;
+    loop {
+        let agent = agent_recherche_grand(&db, &cle, renouveler).await?;
+        match recherche_web(&db, &cle, &agent, &question, MODELE_GRAND).await {
+            Err((404, _)) if !renouveler => renouveler = true,
+            r => return r.map_err(|(_, m)| m),
+        }
+    }
+}
+
+/// La question posée à un agent qui cherche sur le web ; sa réponse, ses sources, et ce qu'elle a coûté. Une erreur
+/// porte le code de Mistral (0 : le réseau, ou une réponse illisible).
+async fn recherche_web(db: &State<'_, Db>, cle: &str, agent: &str, question: &str, modele: &str) -> Result<ReponseWeb, (u16, String)> {
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(180))
         .build()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| (0, e.to_string()))?;
     // La question n'a pas à rester chez Mistral : « store: false » lui demande
     // de ne pas garder la conversation. Si son API refusait le champ, la
     // recherche ne doit pas en pâtir : on redemande sans.
     let envoyer = |garder: bool| {
         let mut corps = serde_json::json!({ "agent_id": agent, "inputs": question });
         if !garder { corps["store"] = serde_json::Value::Bool(false); }
-        client.post("https://api.mistral.ai/v1/conversations").bearer_auth(&cle).json(&corps).send()
+        client.post("https://api.mistral.ai/v1/conversations").bearer_auth(cle).json(&corps).send()
     };
-    let mut rep = envoyer(false).await.map_err(|e| format!("Réseau : {e}"))?;
+    let mut rep = envoyer(false).await.map_err(|e| (0, format!("Réseau : {e}")))?;
     if matches!(rep.status().as_u16(), 400 | 422) {
-        rep = envoyer(true).await.map_err(|e| format!("Réseau : {e}"))?;
+        rep = envoyer(true).await.map_err(|e| (0, format!("Réseau : {e}")))?;
     }
     if !rep.status().is_success() {
         let code = rep.status().as_u16();
         let quota = quota_minute(rep.headers());
         let txt = rep.text().await.unwrap_or_default();
-        return Err(message_erreur(code, &txt, quota));
+        return Err((code, message_erreur(code, &txt, quota)));
     }
-    let v: serde_json::Value = rep.json().await.map_err(|e| format!("Réponse : {e}"))?;
-    let mut depense = depense_texte(v.get("usage"), MODELE_RECHERCHE);
+    let v: serde_json::Value = rep.json().await.map_err(|e| (0, format!("Réponse : {e}")))?;
+    let mut depense = depense_texte(v.get("usage"), modele);
     depense.dollars += recherches_faites(&v) as f64 * DOLLARS_PAR_RECHERCHE;
-    noter_depense(&db, depense);
+    noter_depense(db, depense);
     Ok(lire_reponse_web(&v))
 }
 
@@ -1355,7 +1399,8 @@ mod tests_temps_reel {
 
     #[test]
     fn tout_part_en_europe_sauf_la_dictee_de_l_assistant() {
-        // L'adresse de toutes les demandes reste l'européenne ; l'habituelle n'est qu'à la dictée en direct de l'Assistant.
+        // L'adresse de toutes les demandes reste l'européenne ; l'habituelle n'est qu'à la dictée en direct de l'Assistant
+        // (et aux agents, plus bas : `seule_la_recherche_de_l_assistant_echappe_a_la_coupure_des_agents`).
         assert_eq!(MISTRAL, "https://api.eu.mistral.ai");
         assert_eq!(MISTRAL_MONDIAL, "https://api.mistral.ai");
         // Dans le code, hors commentaires et hors essais : sa définition, et la commande de la dictée — rien d'autre.
@@ -1366,6 +1411,50 @@ mod tests_temps_reel {
             .collect();
         assert_eq!(lignes, ["pub const MISTRAL_MONDIAL: &str = \"https://api.mistral.ai\";",
             "jeton_a(&db, MISTRAL_MONDIAL, MODELE_TEMPS_REEL).await"]);
+    }
+
+    #[test]
+    fn seule_la_recherche_de_l_assistant_echappe_a_la_coupure_des_agents() {
+        // Les agents de Mistral — la recherche sur le web, le dessin d'un picto — ne sont qu'à son adresse habituelle,
+        // hors d'Europe. Toute commande qui s'en sert, directement ou non, commence par `AGENTS_COUPES` ; sauf la
+        // recherche de l'Assistant IA, voulue par l'enseignant (3 novembre 2026) sous l'avertissement de l'Assistant.
+        let source = include_str!("ai.rs");
+        let code = &source[..source.find("#[cfg(test)]").unwrap_or(source.len())];
+        // Le code en fonctions : leur nom, leur texte, et si l'interface peut les appeler.
+        let mut fonctions: Vec<(String, String, bool)> = Vec::new();
+        let mut commande = false;
+        for ligne in code.lines() {
+            let signature = ["pub async fn ", "pub(crate) async fn ", "async fn ", "pub fn ", "pub(crate) fn ", "fn "]
+                .iter().find_map(|debut| ligne.strip_prefix(debut));
+            if let Some(reste) = signature {
+                let nom: String = reste.chars().take_while(|c| c.is_alphanumeric() || *c == '_').collect();
+                fonctions.push((nom, String::new(), commande));
+                commande = false;
+            } else if ligne.starts_with("#[tauri::command") {
+                commande = true;
+            }
+            if let Some(f) = fonctions.last_mut() {
+                if !ligne.trim_start().starts_with("//") { f.1.push_str(ligne); f.1.push('\n'); }
+            }
+        }
+        // Ce qui va chez les agents : leur adresse, puis toute fonction qui appelle l'une de celles qui y vont.
+        let mut y_vont: std::collections::BTreeSet<String> = fonctions.iter()
+            .filter(|(_, texte, _)| texte.contains("\"https://api.mistral.ai/"))
+            .map(|(nom, _, _)| nom.clone()).collect();
+        loop {
+            let avant = y_vont.len();
+            let appelantes: Vec<String> = fonctions.iter()
+                .filter(|(nom, texte, _)| y_vont.iter().any(|x| x != nom && texte.contains(&format!("{x}("))))
+                .map(|(nom, _, _)| nom.clone()).collect();
+            y_vont.extend(appelantes);
+            if y_vont.len() == avant { break; }
+        }
+        let commandes: Vec<&str> = fonctions.iter().filter(|(nom, _, c)| *c && y_vont.contains(nom)).map(|(nom, _, _)| nom.as_str()).collect();
+        assert_eq!(commandes, ["mistral_recherche_web", "mistral_recherche_web_assistant", "mistral_dessiner_picto"]);
+        let sans_coupure: Vec<&str> = fonctions.iter()
+            .filter(|(nom, texte, c)| *c && y_vont.contains(nom) && !texte.contains("if AGENTS_COUPES {"))
+            .map(|(nom, _, _)| nom.as_str()).collect();
+        assert_eq!(sans_coupure, ["mistral_recherche_web_assistant"]);
     }
 
     #[test]

@@ -168,27 +168,6 @@ export function titreDuDocument(markdown: string): string {
   return (propre || "Document").slice(0, 80);
 }
 
-/** Ce qu'on dit au modèle pour qu'il écrive un document, et rien d'autre. */
-export function consigneDocument(): string {
-  return [
-    "Tu fabriques un document imprimable pour une classe de primaire ou d'IME. Tu réponds par le document seul, en Markdown :",
-    "pas de phrase d'introduction ni de conclusion, pas de commentaire pour l'enseignant — sauf, si c'est utile, une dernière partie « ## Pour l'adulte ».",
-    "Règles de forme : un titre en « # » ; des parties en « ## » ; si le document est pour un élève, la ligne « Prénom : ______ Date : ______ » juste sous le titre ;",
-    "des consignes courtes, une action par phrase, un verbe d'action, des mots connus ; des exercices numérotés ;",
-    "« ______ » (six tirets bas) pour chaque ligne où l'élève écrit, une par réponse attendue ; « [ ] » pour une case à cocher ;",
-    "un tableau Markdown quand il faut aligner ; « [page] » seul sur une ligne pour changer de page ; ni image ni lien.",
-    "Pense aux élèves qui lisent peu : phrases courtes, un exercice par idée, de la place pour répondre.",
-  ].join(" ");
-}
-
-/** Des départs, pour apprendre le geste. */
-export const SUGGESTIONS_DOCUMENT = [
-  "Une fiche de 6 problèmes de partage pour des CE1, en gros caractères, une ligne pour chaque réponse.",
-  "Un mot aux familles pour annoncer la sortie au marché de vendredi, avec un coupon à découper.",
-  "Une affiche des règles de la classe en cinq phrases courtes, une case à cocher devant chacune.",
-  "Une grille d'observation d'un élève sur la semaine : autonomie, entrée dans l'activité, relations aux autres.",
-];
-
 /** Le style du document sur le papier. */
 /**
  * Plus un document en dit, plus son texte se resserre : une fiche courte

@@ -887,6 +887,12 @@ export const api = {
     invoke<string>("jeu_generer", { jeu, pictos, options, titre, ouvrir, images }),
   mistralRechercheWeb: (question: string) =>
     invoke<ReponseWeb>("mistral_recherche_web", { question }),
+  /**
+   * La recherche sur le web de l'Assistant IA, quand le document du coffre-fort choisi ne répond pas : Mistral Large,
+   * hors de l'Union européenne (agents de Mistral, Brave), sous l'avertissement de l'Assistant. Elle seule.
+   */
+  mistralRechercheWebAssistant: (question: string) =>
+    invoke<ReponseWeb>("mistral_recherche_web_assistant", { question }),
   /** Un picto dessiné par l'IA de Mistral à la manière d'ARASAAC, en base64 ; `precision` dit ce qu'on doit y voir. */
   mistralDessinerPicto: (mot: string, precision = "") =>
     invoke<string>("mistral_dessiner_picto", { mot, precision }),

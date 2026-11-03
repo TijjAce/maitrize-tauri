@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { AGENTS_COUPES, api, texteErreur, ChatMessage, Sequence, Seance, PiloteConversation, CYCLES, MATIERES, MODELES_MISTRAL, MODELE_DEFAUT, nouvelleSequence, nouvelleSeance, couleurPourMatiere, newId, nowIso } from "../api";
+import { AGENTS_COUPES, api, texteErreur, type DocumentCoffre, ChatMessage, Sequence, Seance, PiloteConversation, CYCLES, MATIERES, MODELES_MISTRAL, MODELE_DEFAUT, nouvelleSequence, nouvelleSeance, couleurPourMatiere, newId, nowIso } from "../api";
 import { Modal, Field, Input, Select, Demander, useAsync } from "../components/ui";
 import { construireContexteIA } from "../contexteIA";
 import { lieuxAMasquer, nomsAMasquer } from "../nomsAMasquer";
@@ -15,7 +15,14 @@ import { useDictee, mmss } from "../dictee";
 import { aLaSuite, useDicteeEnDirect } from "../dicteeEnDirect";
 import { CONSIGNE_ORALE, lecteurAuFil, questionFinie, type LecteurAuFil } from "../conversationVocale";
 import { toast, toastAnnulable } from "../components/Toaster";
-import { STYLE_DOCUMENT_IA, SUGGESTIONS_DOCUMENT, consigneDocument, feuilleDeLaReponse } from "../documentIa";
+import { STYLE_DOCUMENT_IA, feuilleDeLaReponse } from "../documentIa";
+import {
+  MODELE_GRAND, SUGGESTIONS_DU_DOCUMENT, bilanDesCitations, consigneDuDocument, demandeDuDocument, neLeDitPas, passagesDuDocument, passagesPourLaQuestion,
+  verifierLesCitations,
+} from "../questionsAuDocument";
+import { toutesLesPagesDuPdf } from "../textesDesPdf";
+import type { PageLue } from "../quizDesGuides";
+import { ChoixDuDocument } from "../components/ChoixDuDocument";
 import { enregistrerEnPdf, enregistrerEnWord } from "../exportsDocument";
 import { MiseEnPageReponse } from "../components/MiseEnPageReponse";
 import { documentImprimable, printHTML } from "../print";
@@ -63,8 +70,9 @@ export default function Assistant() {
   const [showLivres, setShowLivres] = React.useState(false);
   const [contexteActif, setContexteActif] = React.useState(true);
   const [surLeWeb, setSurLeWeb] = React.useState(false);
-  // Mode document : le modèle écrit un document imprimable, et rien d'autre.
-  const [modeDocument, setModeDocument] = React.useState(false);
+  // Le document du coffre-fort auquel l'Assistant répond (« 🗄️ Coffre-fort ») ; rien : il répond comme d'habitude.
+  const [documentChoisi, setDocumentChoisi] = React.useState<DocumentCoffre | null>(null);
+  const [choixDuDocument, setChoixDuDocument] = React.useState(false);
   const saisie = React.useRef<HTMLTextAreaElement>(null);
   const [model, setModel] = React.useState(MODELE_DEFAUT);
   const [convId, setConvId] = React.useState("");
@@ -105,12 +113,6 @@ export default function Assistant() {
     const h = () => setShowGen(true);
     window.addEventListener("maitrize:generer-sequence", h);
     return () => window.removeEventListener("maitrize:generer-sequence", h);
-  }, []);
-  // Action « Créer un document PDF » : le mode document, et la saisie prête.
-  React.useEffect(() => {
-    const h = () => { setModeDocument(true); setTimeout(() => saisie.current?.focus(), 50); };
-    window.addEventListener("maitrize:document-ia", h);
-    return () => window.removeEventListener("maitrize:document-ia", h);
   }, []);
 
   // Une question préparée ailleurs — un livre des listes de référence — vient
@@ -285,10 +287,10 @@ export default function Assistant() {
     return () => window.clearInterval(t);
   }, [oral]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // La réponse se lit pendant qu'elle s'écrit.
+  // La réponse se lit pendant qu'elle s'écrit — sur un document, une fois vérifiée (voir `provisoire`).
   React.useEffect(() => {
     const l = lecture.current;
-    if (!l || (oral !== "reponse" && oral !== "lecture") || messages.length < attendue.current) return;
+    if (!l || provisoire.current || (oral !== "reponse" && oral !== "lecture") || messages.length < attendue.current) return;
     const derniere = messages[messages.length - 1];
     if (derniere?.role === "assistant") l.suivre(derniere.content, !loading);
   }, [oral, loading, messages]);
@@ -351,6 +353,9 @@ export default function Assistant() {
 
   // La réponse en cours, qu'on peut arrêter si elle ne convient pas : ce qui est écrit reste, la suite ne vient pas.
   const arret = React.useRef<(() => void) | null>(null);
+  // Ce qui s'affiche n'est pas encore la réponse : « Lecture du document… », la réponse avant ses vérifications,
+  // « Recherche sur internet… ». À voix haute, rien ne se lit tant que c'est vrai.
+  const provisoire = React.useRef(false);
 
   // ⌘V : une image copiée — une capture, une photo — se colle dans la zone de saisie ; du texte se colle comme avant.
   const collerImages = async (fichiers: File[]) => {
@@ -422,28 +427,85 @@ export default function Assistant() {
       return;
     }
 
+    // Un document du coffre-fort choisi (« 🗄️ ») : Mistral Large répond d'après lui seul (voir questionsAuDocument.ts).
+    const doc = documentChoisi;
+    provisoire.current = !!doc;
+    const terminer = (final: ChatMessage[]) => {
+      provisoire.current = false;
+      setMessages(final); setLoading(false); sauvegarderConv(final);
+    };
     try {
       // Contexte désactivé → on n'envoie AUCUN message système (rien d'autre que
       // la conversation). Activé → rôle pédagogique + contexte non personnel.
-      // En mode document, la consigne du document s'ajoute — seule, si le
-      // contexte est désactivé.
+      // Sur un document, sa seule consigne : répondre d'après lui, en le citant.
       let prefixe: ChatMessage[] = [];
-      if (contexteActif) {
+      if (doc) prefixe = [{ role: "system", content: consigneDuDocument(doc.nom) }];
+      else if (contexteActif) {
         const ctx = await construireContexteIA();
         prefixe = [{ role: "system", content: `${SYSTEME.content}\n\nContexte de la classe (données non personnelles, aucune information nominative sur les élèves) :\n${ctx}` }];
       }
-      if (modeDocument) prefixe = [...prefixe, { role: "system", content: consigneDocument() }];
       // À voix haute : une réponse qui s'écoute (voir conversationVocale.ts).
       if (options.oral) prefixe = [...prefixe, { role: "system", content: CONSIGNE_ORALE }];
+      // Le document se lit ici — une fois : textesDesPdf.ts garde ses pages — ; ses passages qui parlent de la
+      // question partent avec elle, après les deux derniers échanges.
+      let aEnvoyer = suite;
+      let pagesDuDocument: PageLue[] = [];
+      if (doc) {
+        setMessages([...suite, { role: "assistant", content: `_📖 Lecture de « ${doc.nom} »…_` }]);
+        pagesDuDocument = await toutesLesPagesDuPdf(doc.nomFichier, (page, total) =>
+          setMessages([...suite, { role: "assistant", content: `_📖 Lecture de « ${doc.nom} »… page ${page} sur ${total}_` }]));
+        const passages = passagesPourLaQuestion(passagesDuDocument(pagesDuDocument), contenu);
+        if (!passages.length) {
+          terminer([...suite, { role: "assistant", content: `⚠️ « ${doc.nom} » n'a pas de texte que Maitrize sache lire — un document scanné, sans doute. Rien n'est parti chez Mistral.` }]);
+          return;
+        }
+        const question = suite[suite.length - 1];
+        aEnvoyer = [...suite.slice(0, -1).slice(-4), { ...question, content: demandeDuDocument(passages, contenu) }];
+      }
       // La conversation part sans les noms connus — élèves, contacts de
-      // l'établissement —, masquée d'un seul tenant ; la réponse les retrouve
-      // à mesure qu'elle s'écrit.
-      const masque = pseudonymiserTout(suite.map((m) => m.content), await nomsAMasquer(), { portee: "eleves", lieux: await lieuxAMasquer() });
+      // l'établissement —, masquée d'un seul tenant, les passages du document
+      // compris ; la réponse les retrouve à mesure qu'elle s'écrit.
+      const masque = pseudonymiserTout(aEnvoyer.map((m) => m.content), await nomsAMasquer(), { portee: "eleves", lieux: await lieuxAMasquer() });
       // La version retouchée d'une réponse reste ici : seul le texte part, avec les images les plus récentes.
       // Les images partent telles quelles : un prénom écrit dessus n'est pas masqué.
-      const parMessage = imagesDeLaDemande(suite);
-      const envoyes: ChatMessage[] = suite.map((m, i) => ({ role: m.role, content: masque.textes[i] ?? m.content, images: parMessage[i] }));
+      const parMessage = imagesDeLaDemande(aEnvoyer);
+      const envoyes: ChatMessage[] = aEnvoyer.map((m, i) => ({ role: m.role, content: masque.textes[i] ?? m.content, images: parMessage[i] }));
       const rendre = (t: string) => restaurer(t, masque.table).texte;
+      /**
+       * La réponse sur le document, finie : chaque citation retrouvée dans le document, ou signalée ; et, si le
+       * document ne dit rien de la question, ce qu'en dit internet — Mistral Large, sources citées, hors de l'Union
+       * européenne, sous l'avertissement de l'Assistant. `null` : la recherche a été arrêtée.
+       */
+      const apresLeDocument = async (texte: string): Promise<string | null> => {
+        if (!doc) return texte;
+        const v = verifierLesCitations(texte, pagesDuDocument);
+        const bilan = `\n\n_${bilanDesCitations(v, doc.nom)}_`;
+        if (!neLeDitPas(texte)) return v.texte + bilan;
+        // « Le document ne le dit pas » : ce qu'il dit tout de même garde son bilan, et internet prend le relais.
+        if (v.verifiees || v.introuvables) v.texte += bilan;
+        let arreteeLa = false;
+        arret.current = () => {
+          arreteeLa = true;
+          arret.current = null;
+          terminer([...suite, { role: "assistant", content: `${v.texte}\n\n_⏹ Recherche sur internet arrêtée._` }]);
+        };
+        setMessages([...suite, { role: "assistant", content: `${v.texte}\n\n_🔎 Recherche sur internet…_` }]);
+        try {
+          // La question part sans les noms connus, avec le titre du document : « ce document » ne dirait rien au moteur.
+          const q = pseudonymiserTout([`À propos du document « ${doc.nom} » : ${contenu}`], await nomsAMasquer(), { portee: "eleves", lieux: await lieuxAMasquer() });
+          const r = await api.mistralRechercheWebAssistant(q.textes[0]);
+          if (arreteeLa) return null;
+          const web = restaurer(r.texte || "", q.table).texte.trim();
+          const sources = r.sources.length ? "\n\n**Sources**\n" + r.sources.map((x) => `- [${x.titre}](${x.url})`).join("\n") : "";
+          const sansWeb = r.aCherche ? "" : "\n\n_⚠️ Internet n'a pas été consulté : cette réponse vient de la mémoire du modèle._";
+          return `${v.texte}\n\n🌐 **Sur internet**\n\n${web || "Rien de sûr n'a été trouvé."}${sources}${sansWeb}`;
+        } catch (e) {
+          if (arreteeLa) return null;
+          return `${v.texte}\n\n_🌐 La recherche sur internet n'a pas abouti : ${texteErreur(e)}_`;
+        } finally {
+          if (!arreteeLa) arret.current = null;
+        }
+      };
       // Streaming : la réponse s'affiche au fil des tokens via événements Tauri.
       const reqId = newId();
       let acc = "";
@@ -456,8 +518,7 @@ export default function Assistant() {
         // Le flux se ferme chez Mistral au morceau suivant : il n'écrit plus, et ne compte plus.
         invoke("mistral_chat_arreter", { requestId: reqId }).catch(() => {});
         const ecrit = rendre(acc).trim();
-        const final: ChatMessage[] = [...suite, { role: "assistant", content: (ecrit ? `${ecrit}\n\n` : "") + "_⏹ Réponse arrêtée._" }];
-        setMessages(final); setLoading(false); sauvegarderConv(final);
+        terminer([...suite, { role: "assistant", content: (ecrit ? `${ecrit}\n\n` : "") + "_⏹ Réponse arrêtée._" }]);
       };
       const unChunk = await listen<{ id: string; delta: string }>("mistral://chunk", (ev) => {
         if (ev.payload.id !== reqId) return;
@@ -468,23 +529,25 @@ export default function Assistant() {
         if (ev.payload.id !== reqId) return;
         cleanup();
         arret.current = null;
-        const final: ChatMessage[] = [...suite, { role: "assistant", content: rendre(acc) }];
-        setMessages(final); setLoading(false);
-        sauvegarderConv(final);
+        void apresLeDocument(rendre(acc)).then((texte) => {
+          if (texte !== null) terminer([...suite, { role: "assistant", content: texte }]);
+        });
       });
       const unErr = await listen<{ id: string; message: string }>("mistral://error", (ev) => {
         if (ev.payload.id !== reqId) return;
         cleanup();
         arret.current = null;
+        provisoire.current = false;
         setMessages([...suite, { role: "assistant", content: "⚠️ " + ev.payload.message }]); setLoading(false);
       });
       cleanup = () => { unChunk(); unDone(); unErr(); };
       await relireAvantEnvoi({ messages: [...prefixe, ...envoyes], image: envoyes.some((m) => m.images?.length) });
-      await invoke("mistral_chat_stream", { messages: [...prefixe, ...envoyes], model, requestId: reqId });
+      await invoke("mistral_chat_stream", { messages: [...prefixe, ...envoyes], model: doc ? MODELE_GRAND : model, requestId: reqId });
       if (arretee) return;
     } catch (e: any) {
       cleanup();
       arret.current = null;
+      provisoire.current = false;
       setMessages([...suite, { role: "assistant", content: "⚠️ " + String(e) }]);
       setLoading(false);
     }
@@ -531,8 +594,9 @@ export default function Assistant() {
         style={{ flex: 1, height: "100%", ...(depot.actif ? { outline: "2px dashed var(--accent)", outlineOffset: -4, background: "var(--accent-soft)" } : {}) }}>
       <div className="topbar"><h1>Assistant IA</h1><span className="sub">propulsé par Mistral</span>
         <div className="spacer" />
-        <Select value={model} onChange={(e) => choisirModele(e.target.value)} style={{ maxWidth: 200 }}
-          title="Modèle Mistral utilisé">
+        <Select value={documentChoisi ? MODELE_GRAND : model} onChange={(e) => choisirModele(e.target.value)} style={{ maxWidth: 200 }}
+          disabled={!!documentChoisi}
+          title={documentChoisi ? "Sur un document du coffre-fort, c'est toujours Mistral Large qui répond" : "Modèle Mistral utilisé"}>
           {MODELES_MISTRAL.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
         </Select>
         <button className="btn sm" aria-pressed={contexteActif} onClick={basculerContexte}
@@ -545,11 +609,13 @@ export default function Assistant() {
             ? "La question part à un agent qui interroge le web et cite ses sources. Plus lent."
             : "L'assistant répond de mémoire : il ignore tout ce qui suit son entraînement."}>
           🔎 Web&nbsp;: {surLeWeb ? "activé" : "désactivé"}</button>}
-        <button className="btn sm" aria-pressed={modeDocument} onClick={() => setModeDocument((v) => !v)}
-          title={modeDocument
-            ? "L'assistant écrit un document imprimable — fiche, mot aux familles, affiche, grille — à imprimer ou à déposer sur le bureau en PDF."
-            : "Demander un document imprimable plutôt qu'une réponse."}>
-          📄 Document&nbsp;: {modeDocument ? "activé" : "désactivé"}</button>
+        {documentChoisi
+          ? <button className="btn sm" aria-pressed onClick={() => setDocumentChoisi(null)}
+              title={`Mistral Large répond d'après « ${documentChoisi.nom} », en citant ses pages ; s'il n'y trouve rien, il cherche sur internet. Cliquer pour revenir à l'assistant habituel.`}>
+              📕 {documentChoisi.nom.length > 28 ? documentChoisi.nom.slice(0, 27) + "…" : documentChoisi.nom} ✕</button>
+          : <button className="btn sm" onClick={() => setChoixDuDocument(true)}
+              title="Choisir un document du coffre-fort : Mistral Large y répond en citant ses pages, sans rien inventer ; s'il n'y trouve rien, il cherche sur internet">
+              🗄️ Coffre-fort</button>}
         <button className="btn sm" onClick={() => setShowPictos(true)}
           title="Chercher un pictogramme dans ARASAAC, dans Sclera et vos pictos gardés ; s'il n'existe pas, le faire dessiner par l'IA">
           🧩 Pictos</button>
@@ -572,10 +638,9 @@ export default function Assistant() {
         {messages.length === 0 && (
           <div style={{ margin: "auto", maxWidth: 520, textAlign: "center" }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>✨</div>
-            <h2 style={{ marginTop: 0 }}>{modeDocument ? "Quel document fabriquer ?" : "Comment puis-je aider ?"}</h2>
-            {modeDocument && <p className="meta" style={{ fontSize: 13 }}>Le document se lit ici, puis s'imprime ou se dépose sur le bureau en PDF.</p>}
+            <h2 style={{ marginTop: 0 }}>{documentChoisi ? `Que voulez-vous savoir de « ${documentChoisi.nom} » ?` : "Comment puis-je aider ?"}</h2>
             <div style={{ display: "grid", gap: 10, marginTop: 18 }}>
-              {(modeDocument ? SUGGESTIONS_DOCUMENT : SUGGESTIONS).map((s) => (
+              {(documentChoisi ? SUGGESTIONS_DU_DOCUMENT : SUGGESTIONS).map((s) => (
                 <button key={s} className="btn" style={{ textAlign: "left" }} onClick={() => envoyer(s)}>{s}</button>
               ))}
             </div>
@@ -620,15 +685,16 @@ export default function Assistant() {
       {/* « Mets un panneau d'avertissement : là, les données ne sont pas traitées [en Europe], il ne faut pas en
           envoyer ici » (l'enseignant, 3 novembre 2026). Toujours en vue : c'est un avertissement, pas une aide. */}
       <p className="assistant-avertissement" role="note">
-        ⚠️ <b>Ici, la dictée n'est pas traitée en Europe.</b> Votre voix part chez Mistral, hors de l'Union européenne :
-        n'y dites rien sur vos élèves — ni prénom, ni santé, ni famille.
+        ⚠️ <b>Ici, la dictée et la recherche sur internet ne sont pas traitées en Europe.</b> Votre voix, et vos questions
+        quand un document du coffre-fort n'y répond pas, partent chez Mistral, hors de l'Union européenne : n'y mettez rien
+        sur vos élèves — ni prénom, ni santé, ni famille.
       </p>
       <div className="chat-input">
         <textarea className="textarea" rows={2} ref={saisie}
           placeholder={oral === "ecoute" ? "Parlez, même tout bas : la question part quand vous vous taisez…"
             : oral === "reponse" ? "L'Assistant réfléchit…"
             : oral === "lecture" ? "L'Assistant vous répond à voix haute…"
-            : enDirect.etat === "ecoute" ? "Parlez : les mots s'écrivent en direct…" : dictee.etat === "enregistrement" ? "Enregistrement en cours…" : modeDocument ? "Décrivez le document à fabriquer : pour qui, quoi, combien d'exercices…" : "Écrivez ou dictez votre demande…"} value={input}
+            : enDirect.etat === "ecoute" ? "Parlez : les mots s'écrivent en direct…" : dictee.etat === "enregistrement" ? "Enregistrement en cours…" : documentChoisi ? `Une question sur « ${documentChoisi.nom} »…` : "Écrivez ou dictez votre demande…"} value={input}
           onChange={(e) => setInput(e.target.value)} onPaste={surCollage}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerOuParler(); } }} />
         <button className={"btn" + (oral === "non" && (dictee.etat === "enregistrement" || enDirect.etat === "ecoute") ? " danger" : "")}
@@ -657,6 +723,10 @@ export default function Assistant() {
           <button className="btn primary" disabled={!input.trim() && !images.length} onClick={envoyerOuParler}>Envoyer</button>
         )}
       </div>
+      {choixDuDocument && (
+        <ChoixDuDocument onClose={() => setChoixDuDocument(false)}
+          onChoisir={(d) => { setDocumentChoisi(d); setChoixDuDocument(false); setTimeout(() => saisie.current?.focus(), 50); }} />
+      )}
       {aRetoucher !== null && messages[aRetoucher] && (
         <MiseEnPageReponse markdown={messages[aRetoucher].content} mise={messages[aRetoucher].mise}
           onFermer={() => setARetoucher(null)} onGarder={(html) => garderRetouche(aRetoucher, html)} onBureau={feuilleSurLeBureau} />

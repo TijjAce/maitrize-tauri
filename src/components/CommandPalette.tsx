@@ -445,7 +445,6 @@ export function CommandPalette() {
     { id: "a-genia", ico: "✨", label: "Générer une séquence (IA)", sous: "Action · assistant", famille: "action", run: goAction("/assistant", "maitrize:generer-sequence") },
     { id: "a-rituel", ico: "🔁", label: "Nouveau rituel", sous: "Action · cahier journal", famille: "action", run: goAction("/planning", EVT_NOUVEAU_RITUEL) },
     { id: "a-retard", ico: "⏰", label: "En retard : des fiches d'autonomie pour chaque élève", sous: "Action · planning · à son niveau, sur ses créneaux du jour, au cahier journal", famille: "action", run: goAction("/planning", EVT_EN_RETARD) },
-    { id: "a-docia", ico: "📄", label: "Créer un document PDF (IA)", sous: "Action · assistant · fiche, mot aux familles, affiche", famille: "action", run: goAction("/assistant", "maitrize:document-ia") },
     { id: "a-assist", ico: "🪄", label: "Ouvrir l'assistant IA", sous: "Action", famille: "action", run: goNav("/assistant") },
     { id: "a-pictos", ico: "🧩", label: "Trouver un pictogramme (par son mot ou son numéro)", sous: "Action · ARASAAC, Sclera, Makaton, Mes pictos", famille: "action",
       run: () => { setOpen(false); window.dispatchEvent(new Event(EVT_OUVRIR_PICTOS)); } },

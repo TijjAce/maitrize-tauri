@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { densiteDuDocument, lignesDuDocument,
-  SUGGESTIONS_DOCUMENT, consigneDocument, feuilleDuDocument, markdownVersHtml, titreDuDocument, nettoyerMiseEnPage } from "./documentIa";
+  feuilleDuDocument, markdownVersHtml, titreDuDocument, nettoyerMiseEnPage } from "./documentIa";
 
 describe("le Markdown d'un document", () => {
   it("échappe tout avant de mettre en forme : le modèle n'écrit jamais de code", () => {
@@ -116,12 +116,6 @@ describe("le document lui-même", () => {
     expect(f.style).toMatch(/\.doc-ia th, \.doc-ia td \{[^}]*word-break: normal;[^}]*hyphens: auto;/);
     expect(f.corps).toContain('<span class="ligne"></span>');
     expect(f.style).toContain(".doc-ia .saut");
-  });
-
-  it("dit au modèle les conventions du document, et propose des départs", () => {
-    const c = consigneDocument();
-    for (const mot of ["Markdown", "# ", "______", "[ ]", "[page]", "Prénom", "IME"]) expect(c).toContain(mot);
-    expect(SUGGESTIONS_DOCUMENT.length).toBeGreaterThanOrEqual(3);
   });
 });
 
