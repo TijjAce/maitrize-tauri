@@ -1109,6 +1109,8 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .sv-apercu .sv-feuille + .sv-feuille { border-top: 1px dashed #c4c9d6; margin-top: 18px; padding-top: 18px; }
 .sv-apercu .sv-s-page { min-height: 0; padding: 18px 0; }
 .sv-apercu .sv-s-page + .sv-s-page { border-top: 1px dashed #c4c9d6; }
+/* Le tétraèdre se dessine à sa taille en mm ; à l'écran, il prend la largeur de l'aperçu. */
+.sv-apercu .te-page { display: block; width: 100%; height: auto; }
 .sv-case-picto { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px; border-radius: 10px;
   border: 1px solid var(--border); background: #fff; color: #1c2233; cursor: pointer; }
 .sv-case-picto:hover { border-color: var(--accent); }

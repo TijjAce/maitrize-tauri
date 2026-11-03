@@ -1,5 +1,5 @@
 import React from "react";
-import { AideEnLigne } from "../components/Aide";
+import { Aide, AideEnLigne } from "../components/Aide";
 import { createPortal } from "react-dom";
 import { api } from "../api";
 import { EVT_DONNEES_DISTANTES, Field, Input, Select, Textarea, useAsync, useOngletDemande } from "../components/ui";
@@ -21,15 +21,20 @@ import {
   pageDuScenario, pictoVide, prolonger, restantA, secteurRestant, tempsLisible,
   type EtatMinuteur, type FormeJeton, type ImpressionDabord, type Images, type PictoPose, type ReglagesMinuteur, type ReglagesScenario, type SensDabord,
 } from "../supportsVisuels";
+import { STYLE_FEUILLE } from "../cartesImprimables";
+import {
+  COULEURS_TETRAEDRE, LES_MODELES, MODELES_TETRAEDRE, STYLE_TETRAEDRE, etatsDuModele, hexDe, htmlTetraedre, motsTropLongs, normaliserTetraedre,
+  titreDuTetraedre, type EtatDuSommet, type ModeleTetraedre,
+} from "../tetraedre";
 
 // ── Supports visuels ───────────────────────────────────────────────────────
 //
 // Des outils de structuration à imprimer et plastifier — économie de jetons,
-// « d'abord / ensuite », scénario social, règles du jeu — et un minuteur
-// visuel à afficher.
+// « d'abord / ensuite », scénario social, règles du jeu, tétraèdre des
+// émotions — et un minuteur visuel à afficher.
 // Chaque support se règle à gauche et se voit à droite tel qu'il sortira.
 
-export const SUPPORTS = ["jetons", "dabord", "scenario", "regles", "minuteur"] as const;
+export const SUPPORTS = ["jetons", "dabord", "scenario", "regles", "tetraedre", "minuteur"] as const;
 type Support = typeof SUPPORTS[number];
 const lireSupport = (brut: unknown): Support => (SUPPORTS.includes(brut as Support) ? (brut as Support) : "jetons");
 
@@ -50,12 +55,14 @@ export function SupportsVisuelsTab({ banque }: { banque: boolean }) {
         <button className={support === "dabord" ? "active" : ""} onClick={() => setSupport("dabord")}>➡️ D'abord / ensuite</button>
         <button className={support === "scenario" ? "active" : ""} onClick={() => setSupport("scenario")}>📖 Scénario social</button>
         <button className={support === "regles" ? "active" : ""} onClick={() => setSupport("regles")}>🎲 Règles du jeu</button>
+        <button className={support === "tetraedre" ? "active" : ""} onClick={() => setSupport("tetraedre")}>🔺 Tétraèdre des émotions</button>
         <button className={support === "minuteur" ? "active" : ""} onClick={() => setSupport("minuteur")}>⏱ Minuteur visuel</button>
       </div>
       {support === "jetons" ? <Jetons banque={banque} />
         : support === "dabord" ? <Dabord banque={banque} />
         : support === "scenario" ? <Scenario banque={banque} />
         : support === "regles" ? <Regles banque={banque} />
+        : support === "tetraedre" ? <Tetraedre banque={banque} />
         : <Minuteur banque={banque} />}
     </>
   );
@@ -159,14 +166,14 @@ function Modeles<T>({ type, valeur, set, normaliser, exemple }: {
   );
 }
 
-/** Réglages à gauche, aperçu fidèle à droite, et le bouton pour imprimer. */
+/** Réglages à gauche, aperçu fidèle à droite, et le bouton pour imprimer. L'aide en tête est facultative : elle peut aller derrière un « ? ». */
 function Atelier({ reglages, pictos, titre, feuille, page, aide }: {
   reglages: React.ReactNode;
   pictos: (PictoPose | null | undefined)[];
   titre: string;
   feuille: (images: Images) => string;
   page: string;
-  aide: React.ReactNode;
+  aide?: React.ReactNode;
 }) {
   const ids = idsDes(pictos);
   const images = usePictoImages(ids);
@@ -177,7 +184,7 @@ function Atelier({ reglages, pictos, titre, feuille, page, aide }: {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 360px) minmax(0, 1fr)", gap: 14, alignItems: "start" }}>
       <div className="card">
-        <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-2)" }}>{aide}</p>
+        {aide && <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-2)" }}>{aide}</p>}
         {reglages}
       </div>
       <div className="card" style={{ position: "sticky", top: 12 }}>
@@ -548,6 +555,84 @@ function Regles({ banque }: { banque: boolean }) {
             ? `${imprimees.length} bande${imprimees.length > 1 ? "s" : ""} à imprimer, ${pages > 1 ? `${pages} pages` : "une page"}.`
             : "Rien à imprimer : donnez des images aux lignes."}
         </div>
+      </>} />
+  );
+}
+
+// ── Le tétraèdre des émotions ──────────────────────────────────────────────
+//
+// Le patron d'un tétraèdre que l'élève pose sur sa table : le sommet du haut
+// dit où il en est (voir tetraedre.ts). Deux modèles, les émotions ou « où
+// j'en suis » ; chaque sommet a sa couleur, son picto et son mot, et chaque
+// modèle garde ce qu'on lui a changé.
+
+function Tetraedre({ banque }: { banque: boolean }) {
+  const [r, maj, setR] = useSupport("tetraedre", normaliserTetraedre);
+  const etats = r.etats[r.modele];
+  const neufs = etatsDuModele(r.modele);
+  const changer = (i: number, m: Partial<EtatDuSommet>) =>
+    maj({ etats: { ...r.etats, [r.modele]: etats.map((e, j) => (j === i ? { ...e, ...m } : e)) } });
+  // Le picto choisi donne son mot à un sommet qui n'en a pas.
+  const poserLePicto = (i: number, picto: PictoPose) =>
+    changer(i, etats[i].mot.trim() || !picto.mot.trim() ? { picto } : { picto, mot: picto.mot.trim() });
+  const reprendre = () => {
+    const avant = r;
+    maj({ etats: { ...r.etats, [r.modele]: neufs } });
+    toastAnnulable(`Les sommets reprennent ceux du modèle « ${LES_MODELES[r.modele].nom} ».`, () => setR(avant), "🔺");
+  };
+  const images = usePictoImages(idsDes(etats.map((e) => e.picto)));
+  const tropLongs = motsTropLongs(r, images);
+  return (
+    <Atelier titre={titreDuTetraedre(r)} pictos={etats.map((e) => e.picto)} feuille={(imgs) => htmlTetraedre(r, imgs)}
+      page={STYLE_FEUILLE + STYLE_TETRAEDRE}
+      reglages={<>
+        <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          Le tétraèdre des émotions
+          <Aide titre="Le tétraèdre des émotions" vers="droite">
+            <p>Un tétraèdre de papier que l'élève pose sur sa table. Chaque sommet est un état, et celui qui est en haut dit où il en est{"\u00a0"}:
+            l'adulte le voit de loin, à sa couleur, et l'élève le dit sans parler.</p>
+            <p>Sur chaque face, la zone qui entoure un coin prend la couleur, le picto et le mot de ce sommet, tournés pour se lire quand
+            il est en haut. {"«\u00a0Les émotions\u00a0»"} disent comment je me sens{"\u00a0"}; {"«\u00a0Où j'en suis\u00a0»"}, où j'en suis de mon travail.</p>
+            <p>Un patron par page A4, à découper, plier et coller{"\u00a0"}: la légende et les consignes de montage sont dans les coins de la page.</p>
+            <p className="aide-source">Source : d'après le tétra'aide de Bruce Demaugé-Bost (bdemauge.free.fr). Le patron, les dessins et
+            les mots sont faits pour Maitrize.</p>
+          </Aide>
+        </h3>
+        <Modeles type="tetraedre" valeur={r} set={setR} normaliser={normaliserTetraedre} exemple="Nom, par exemple « Les émotions de la classe »" />
+        <Field label="Modèle">
+          <Select value={r.modele} onChange={(e) => maj({ modele: e.target.value as ModeleTetraedre })}>
+            {MODELES_TETRAEDRE.map((m) => <option key={m} value={m}>{LES_MODELES[m].nom}</option>)}
+          </Select>
+        </Field>
+        <Field label="Les quatre sommets">
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {etats.map((e, i) => (
+              <div key={`${r.modele}-${i}`} className="ct-categorie" style={{ borderLeftColor: hexDe(e.couleur) }}>
+                <div className="ct-categorie-tete">
+                  <CasePicto valeur={e.picto} banque={banque} titre={`Le picto du sommet ${i + 1}`} taille={36} onChange={(picto) => poserLePicto(i, picto)} />
+                  <Input value={e.mot} placeholder={neufs[i].mot} aria-label={`Le mot du sommet ${i + 1}`} onChange={(ev) => changer(i, { mot: ev.target.value })} />
+                </div>
+                <div role="group" aria-label={`La couleur du sommet ${i + 1}`} style={{ display: "flex", gap: 3, flexWrap: "wrap", margin: "5px 0 1px 58px" }}>
+                  {COULEURS_TETRAEDRE.map((c) => (
+                    <button key={c.nom} type="button" className="dos-pastille" title={c.nom} aria-label={c.nom} aria-pressed={e.couleur === c.nom}
+                      onClick={() => changer(i, { couleur: c.nom })}
+                      style={{ width: 16, height: 16, background: c.hex, cursor: "pointer", outline: e.couleur === c.nom ? "2px solid var(--text)" : "none", outlineOffset: 1 }} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          {tropLongs.map((i) => (
+            <div key={i} className="meta" style={{ fontSize: 12.5, marginTop: 6, color: "var(--orange)" }}>
+              Le mot du sommet {i + 1} est trop long pour sa zone{"\u00a0"}: raccourcissez-le.
+            </div>
+          ))}
+          {JSON.stringify(etats) !== JSON.stringify(neufs) && (
+            <button type="button" className="btn ghost sm" style={{ marginTop: 6 }} onClick={reprendre}>↺ Reprendre les sommets du modèle</button>
+          )}
+        </Field>
+        <Coche valeur={r.colorier} onChange={(colorier) => maj({ colorier })}>En noir et blanc, à colorier</Coche>
+        <Coche valeur={r.capitales} onChange={(capitales) => maj({ capitales })}>Mots en capitales</Coche>
       </>} />
   );
 }

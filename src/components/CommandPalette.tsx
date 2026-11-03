@@ -130,6 +130,7 @@ export const SOUS_ONGLETS: { ico: string; label: string; to: string; page: strin
   { ico: "➡️", label: "D'abord / ensuite", to: "/caa", page: "caa", onglet: "dabord", sous: "CAA · Supports visuels" },
   { ico: "📖", label: "Scénario social", to: "/caa", page: "caa", onglet: "scenario", sous: "CAA · Supports visuels" },
   { ico: "🎲", label: "Règles du jeu en pictos (une bande à poser à côté du jeu)", to: "/caa", page: "caa", onglet: "regles", sous: "CAA · Supports visuels" },
+  { ico: "🔺", label: "Le tétraèdre des émotions (patron à plier : le sommet du haut dit comment je me sens, ou où j'en suis)", to: "/caa", page: "caa", onglet: "tetraedre", sous: "CAA · Supports visuels" },
   { ico: "⏱", label: "Minuteur visuel", to: "/caa", page: "caa", onglet: "minuteur", sous: "CAA · Supports visuels" },
   { ico: "➕", label: "Problèmes partie-tout (schémas en barres)", to: "/jeux", page: "jeux", onglet: "partieTout", sous: "Fabriquer" },
   { ico: "✖️", label: "Problèmes multiplicatifs (schémas en barres)", to: "/jeux", page: "jeux", onglet: "multiplicatifs", sous: "Fabriquer" },
