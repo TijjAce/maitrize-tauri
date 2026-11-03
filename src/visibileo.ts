@@ -390,10 +390,12 @@ export const STYLE_VISIBILEO = `
 export const CONSIGNE_VISIBILEO = [
   "Tu prépares un Visibiléo : la trace d'un récit qu'une classe construit avec son enseignant pour comprendre l'histoire, ce qui est dit comme ce qui ne l'est pas.",
   "Ses signes : des cadres pour ce qui se passe — les situations et les actions importantes ; des nuages pour ce que pense, croit ou veut un personnage — ses mobiles, souvent implicites, ce que le texte ne dit pas mais qui explique ce qu'il fait ; des bulles pour ce qu'un personnage dit d'important, recopié du texte.",
-  "Réponds par un objet JSON, sans rien autour : {\"titre\": texte, \"personnages\": [{\"nom\": texte, \"image\": mot}], \"pieces\": [{\"genre\": \"cadre\" | \"nuage\" | \"bulle\", \"texte\": texte, \"qui\": nombre, \"image\": mot}]}.",
+  "Réponds par un objet JSON, sans rien autour : {\"titre\": texte, \"personnages\": [{\"nom\": texte, \"images\": [mots], \"sens\": texte}], \"pieces\": [{\"genre\": \"cadre\" | \"nuage\" | \"bulle\", \"texte\": texte, \"qui\": nombre, \"images\": [mots], \"sens\": texte}]}.",
   `Règles : de 1 à ${PERSONNAGES_MAX} personnages, les principaux ; de 3 à 8 cadres, dans l'ordre du récit, seulement ce qu'il faut pour comprendre ; pour chaque personnage principal, les nuages de ses mobiles qui expliquent ses actions, surtout ce que le texte ne dit pas ; de 0 à 3 bulles, les paroles qui comptent ; ${PIECES_MAX} pièces au plus.`,
   "Phrases courtes — douze mots au plus —, simples, au présent, pour de jeunes élèves ; les nuages à la première personne (« Je veux… », « Je crois que… »).",
-  "« qui » : le rang du personnage dans la liste, à partir de 0 ; -1 pour un cadre. « image » : un seul mot concret, un nom ou un verbe à l'infinitif, pour trouver un pictogramme.",
+  "« qui » : le rang du personnage dans la liste, à partir de 0 ; -1 pour un cadre.",
+  "« images » : de 1 à 3 mots pour trouver un pictogramme, au singulier, du plus précis au plus courant — le dernier, un mot très courant de tous les jours, nom ou verbe à l'infinitif (« vieillard », « vieil homme », « vieux » ; « bréviaire », « livre », « prier ») ; pour un personnage, ce qu'il est (« cheval », « mouche ») ; pour une pièce, ce qu'on voit dans la scène. Méfie-toi des mots à plusieurs sens : des chevaux qui « tirent » une voiture ne tirent pas au pistolet.",
+  "« sens » : en quelques mots, ce que l'image doit montrer dans cette histoire (« des chevaux qui tirent une voiture ») : c'est lui qui départagera les pictogrammes d'un même mot.",
 ].join("\n");
 
 /** Ce qu'on demande à Mistral pour lire une page photographiée : son texte, rien d'autre. */
@@ -402,11 +404,15 @@ export const CONSIGNE_LECTURE_PAGE = "Recopie exactement le texte du récit écr
 
 export interface PremierJet {
   titre: string;
-  personnages: { nom: string; image: string }[];
-  pieces: { genre: Genre; texte: string; qui: number; image: string }[];
+  /** `images` : les mots qui cherchent son picto, du plus précis au plus courant. */
+  personnages: { nom: string; images: string[]; sens: string }[];
+  pieces: { genre: Genre; texte: string; qui: number; images: string[]; sens: string }[];
 }
 
 const chaine = (v: unknown) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim() : "");
+/** Les mots qui cherchent le picto : trois au plus, en minuscules, sans doublon — une liste, ou un seul mot pour une réponse ancienne. */
+const motsDImage = (o: Record<string, unknown>) => [...new Set((Array.isArray(o.images) ? o.images : [o.image])
+  .map((m) => chaine(m).toLocaleLowerCase("fr")).filter(Boolean))].slice(0, 3);
 
 /** La réponse de Mistral, relue : ce qui ne tient pas s'écarte ; null si rien n'en sort. */
 export function lirePremierJet(brut: string): PremierJet | null {
@@ -414,17 +420,65 @@ export function lirePremierJet(brut: string): PremierJet | null {
   try { v = JSON.parse(brut.slice(brut.indexOf("{"), brut.lastIndexOf("}") + 1)); } catch { return null; }
   const o = objet(v);
   const personnages = (Array.isArray(o.personnages) ? o.personnages : []).slice(0, PERSONNAGES_MAX)
-    .map((p) => ({ nom: chaine(objet(p).nom), image: chaine(objet(p).image) })).filter((p) => p.nom);
+    .map((p) => ({ nom: chaine(objet(p).nom), images: motsDImage(objet(p)), sens: chaine(objet(p).sens) })).filter((p) => p.nom);
   const pieces = (Array.isArray(o.pieces) ? o.pieces : []).flatMap((p): PremierJet["pieces"] => {
     const x = objet(p);
     const genre = x.genre as Genre;
     const texte = chaine(x.texte).replace(/^[«"“]\s*|\s*[»"”]$/g, "");
     if (!GENRES.includes(genre) || !texte) return [];
     const qui = typeof x.qui === "number" && Number.isInteger(x.qui) && x.qui >= 0 && x.qui < personnages.length && genre !== "cadre" ? x.qui : -1;
-    return [{ genre, texte, qui, image: chaine(x.image).split(" ")[0] ?? "" }];
+    return [{ genre, texte, qui, images: motsDImage(x), sens: chaine(x.sens) }];
   }).slice(0, PIECES_MAX);
   if (!pieces.length && !personnages.length) return null;
   return { titre: chaine(o.titre), personnages, pieces };
+}
+
+// ── Le bon picto, dans le sens de l'histoire ──────────────────────────────
+//
+// « Faut faire gaffe aux homonymes : tirer, dans ce cas-là, c'est pas tirer au
+// pistolet » (l'enseignant, 3 novembre 2026, sur « La Mouche et le Coche »). Un
+// mot ramène de la banque plusieurs pictos — « tirer » : shooter, remorquer,
+// tirer les cheveux… — et le premier n'est pas toujours le bon. Mistral reçoit
+// donc, pour chaque image, le sens voulu dans l'histoire et les pictos du mot
+// avec leurs mots-clés, et choisit ; si aucun ne montre ce sens — « cocher »
+// n'est dans la banque que comme verbe, cocher une case —, la pièce reste sans
+// image : mieux vaut aucune image qu'une fausse.
+
+/** Une image à trouver : son rang (les personnages, puis les pièces), ses mots, son sens, et les pictos de ses mots. */
+export interface ImageACherche {
+  n: number;
+  mots: string[];
+  sens: string;
+  /** `nature` : « verbe », « nom »… ce que la banque en dit ; c'est elle qui sépare le cocher de l'action de cocher. */
+  candidats: { id: number; mots: string[]; nature?: string }[];
+}
+
+export const CONSIGNE_IMAGES = [
+  "Pour chaque image d'un récit, tu choisis le pictogramme qui montre le sens voulu dans l'histoire, d'après sa nature et ses mots-clés.",
+  "Méfie-toi des homonymes : « tirer » une voiture n'est pas « tirer » au pistolet ; le cocher d'une voiture est une personne — un nom —, pas l'action de cocher une case — un verbe.",
+  "Les mots-clés disent ce que montre le pictogramme : s'ils parlent d'autre chose que le sens voulu — « injecter » pour une mouche qui pique, « acouphène » pour une mouche qui bourdonne, « moineau » pour un moine, « côtelette » pour une côte à monter —, il ne convient pas.",
+  "Un pictogramme qui montre l'élément principal de la pièce convient — un cheval pour « six chevaux tirent le coche », une personne qui prie pour « le moine prie » — : il n'a pas à montrer toute la scène.",
+  "Réponds null seulement si aucun pictogramme ne montre ce qu'il faut : mieux vaut aucune image qu'une fausse.",
+  "Réponds par un objet JSON, sans rien autour : {\"choix\": [{\"n\": nombre, \"id\": nombre ou null}]}.",
+].join("\n");
+
+/** Les images à départager, en une demande : celles qui ont des pictos. */
+export const demandeDesImages = (images: ImageACherche[]) => JSON.stringify(images.filter((i) => i.candidats.length).map((i) => ({
+  n: i.n, mots: i.mots, sens: i.sens,
+  pictogrammes: i.candidats.map((c) => ({ id: c.id, ...(c.nature ? { nature: c.nature } : {}), motsCles: c.mots.slice(0, 6).join(", ") })),
+})));
+
+/** Le choix de Mistral, relu : seulement des pictos qu'on lui a proposés pour cette image ; ce qu'il ne dit pas reste sans image. */
+export function lireChoixDesImages(brut: string, images: ImageACherche[]): Map<number, number | null> {
+  const choix = new Map<number, number | null>(images.map((i) => [i.n, null]));
+  let v: unknown;
+  try { v = JSON.parse(brut.slice(brut.indexOf("{"), brut.lastIndexOf("}") + 1)); } catch { return choix; }
+  for (const c of Array.isArray(objet(v).choix) ? objet(v).choix as unknown[] : []) {
+    const o = objet(c);
+    const image = images.find((i) => i.n === o.n);
+    if (image && typeof o.id === "number" && image.candidats.some((x) => x.id === o.id)) choix.set(image.n, o.id);
+  }
+  return choix;
 }
 
 /** Le texte d'une page lue ajouté à ce qu'on a déjà, une ligne vide entre deux pages. */

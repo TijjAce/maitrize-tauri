@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  CONSIGNE_VISIBILEO, EXEMPLE_VISIBILEO, REGLAGES_VISIBILEO, ajouterPage, cequiManque, htmlMemo, htmlPieces, htmlPreparation, htmlVisibileo,
-  idsDesImages, lirePremierJet, motsDeLExemple, personnageVide, pieceVide, reglagesSurs, type ReglagesVisibileo,
+  CONSIGNE_IMAGES, CONSIGNE_VISIBILEO, EXEMPLE_VISIBILEO, REGLAGES_VISIBILEO, ajouterPage, cequiManque, demandeDesImages, htmlMemo, htmlPieces,
+  htmlPreparation, htmlVisibileo, idsDesImages, lireChoixDesImages, lirePremierJet, motsDeLExemple, personnageVide, pieceVide, reglagesSurs,
+  type ImageACherche, type ReglagesVisibileo,
 } from "./visibileo";
 import { SOURCES_DES_ATELIERS } from "./sourcesDesAteliers";
 
@@ -98,13 +99,13 @@ describe("le Visibiléo : les pièces pour construire avec la classe la trace d'
     })} — bonne lecture.`;
     expect(lirePremierJet(reponse)).toEqual({
       titre: "Le Corbeau et le Renard",
-      personnages: [{ nom: "Le corbeau", image: "corbeau" }, { nom: "Le renard", image: "renard" }],
+      personnages: [{ nom: "Le corbeau", images: ["corbeau"], sens: "" }, { nom: "Le renard", images: ["renard"], sens: "" }],
       pieces: [
-        // Un cadre n'est à personne ; les guillemets d'une bulle tombent, l'image garde un seul mot ; un personnage inconnu, personne.
-        { genre: "cadre", texte: "Le corbeau tient un fromage.", qui: -1, image: "fromage" },
-        { genre: "nuage", texte: "Je veux ce fromage.", qui: 1, image: "vouloir" },
-        { genre: "bulle", texte: "Que vous êtes joli !", qui: 1, image: "parler" },
-        { genre: "nuage", texte: "Je suis beau.", qui: -1, image: "fier" },
+        // Un cadre n'est à personne ; les guillemets d'une bulle tombent ; un personnage inconnu, personne. Un seul mot d'image : une liste d'un mot.
+        { genre: "cadre", texte: "Le corbeau tient un fromage.", qui: -1, images: ["fromage"], sens: "" },
+        { genre: "nuage", texte: "Je veux ce fromage.", qui: 1, images: ["vouloir"], sens: "" },
+        { genre: "bulle", texte: "Que vous êtes joli !", qui: 1, images: ["parler fort"], sens: "" },
+        { genre: "nuage", texte: "Je suis beau.", qui: -1, images: ["fier"], sens: "" },
       ],
     });
     expect(lirePremierJet("Je n'ai pas compris.")).toBeNull();
@@ -120,5 +121,29 @@ describe("le Visibiléo : les pièces pour construire avec la classe la trace d'
     expect(ajouterPage("Il était une fois.", "   ")).toBe("Il était une fois.");
     expect(reglagesSurs({ texte: "Maître Corbeau" }).texte).toBe("Maître Corbeau");
     expect(reglagesSurs({ texte: 3 as never }).texte).toBe("");
+  });
+
+  it("choisit chaque picto dans le sens de l'histoire, parmi ceux du mot — aucun plutôt qu'un faux (« faut faire gaffe aux homonymes »)", () => {
+    const images: ImageACherche[] = [
+      { n: 0, mots: ["cheval"], sens: "un cheval de l'attelage", candidats: [{ id: 2294, mots: ["cheval"], nature: "nom" }, { id: 4923, mots: ["cheval à bascule"] }] },
+      { n: 1, mots: ["tirer"], sens: "des chevaux qui tirent une voiture", candidats: [{ id: 5961, mots: ["donner un coup", "shooter", "tirer"] }, { id: 34123, mots: ["remorquer", "tirer"] }] },
+      { n: 2, mots: ["cocher", "conducteur"], sens: "l'homme qui conduit la voiture", candidats: [{ id: 39451, mots: ["cocher"], nature: "verbe" }] },
+      { n: 3, mots: ["colline"], sens: "un chemin qui monte", candidats: [] },
+    ];
+    // Ce qui part : le sens et les mots-clés des pictos, pas les images sans candidats.
+    const demande = JSON.parse(demandeDesImages(images));
+    expect(demande.map((d: { n: number }) => d.n)).toEqual([0, 1, 2]);
+    expect(demande[1].pictogrammes[1]).toEqual({ id: 34123, motsCles: "remorquer, tirer" });
+    // La nature part avec le picto : le verbe « cocher » n'est pas le cocher.
+    expect(demande[2]).toEqual({ n: 2, mots: ["cocher", "conducteur"], sens: "l'homme qui conduit la voiture", pictogrammes: [{ id: 39451, nature: "verbe", motsCles: "cocher" }] });
+    // Le choix relu : un id qu'on n'a pas proposé pour cette image, ou rien, laisse la pièce sans image.
+    const choix = lireChoixDesImages(`{"choix": [{"n": 0, "id": 2294}, {"n": 1, "id": 34123}, {"n": 2, "id": null}, {"n": 3, "id": 2294}]}`, images);
+    expect([...choix]).toEqual([[0, 2294], [1, 34123], [2, null], [3, null]]);
+    expect([...lireChoixDesImages("pas de JSON", images).values()]).toEqual([null, null, null, null]);
+    expect(CONSIGNE_IMAGES).toMatch(/homonymes/);
+    expect(CONSIGNE_IMAGES).toMatch(/acouphène/);
+    expect(lirePremierJet(`{"personnages": [{"nom": "Le cocher", "images": ["Cocher", "conducteur", "homme", "cocher", "voiture"]}], "pieces": []}`)!.personnages[0].images)
+      .toEqual(["cocher", "conducteur", "homme"]);
+    expect(CONSIGNE_VISIBILEO).toMatch(/pas au pistolet/);
   });
 });

@@ -17,10 +17,11 @@ import { PhotoTelephone } from "../components/PhotoTelephone";
 import { pngDeLaZone } from "../exercicesDesManuels";
 import { pseudonymiserTout, restaurer } from "../confidentialite";
 import { nomsAMasquer } from "../nomsAMasquer";
+import { singulier } from "../corpusAuto";
 import {
-  CONSIGNE_LECTURE_PAGE, CONSIGNE_VISIBILEO, COULEURS, EXEMPLE_VISIBILEO, FLECHES_MAX, GENRES, PERSONNAGES_MAX, PIECES_MAX, REGLAGES_VISIBILEO,
-  STYLE_VISIBILEO, VIERGES_MAX, ajouterPage, cequiManque, htmlVisibileo, idsDesImages, lirePremierJet, motsDeLExemple, personnageVide,
-  personnagesNommes, pieceVide, reglagesSurs,
+  CONSIGNE_IMAGES, CONSIGNE_LECTURE_PAGE, CONSIGNE_VISIBILEO, COULEURS, EXEMPLE_VISIBILEO, FLECHES_MAX, GENRES, PERSONNAGES_MAX, PIECES_MAX, REGLAGES_VISIBILEO,
+  STYLE_VISIBILEO, VIERGES_MAX, ajouterPage, cequiManque, demandeDesImages, htmlVisibileo, idsDesImages, lireChoixDesImages, lirePremierJet,
+  motsDeLExemple, personnageVide, personnagesNommes, pieceVide, reglagesSurs, type ImageACherche, type PremierJet,
   type Genre, type Piece, type ReglagesVisibileo, type Signe,
 } from "../visibileo";
 
@@ -41,6 +42,44 @@ async function pngDeLaPhoto(nom: string): Promise<string> {
   const ext = nom.split(".").pop()?.toLowerCase() ?? "";
   const dataUrl = `data:${MIME[ext] ?? "image/jpeg"};base64,${await api.fichierRead(nom)}`;
   return pngDeLaZone(dataUrl, { x: 0, y: 0, l: 1, h: 1 }, 2000);
+}
+
+/**
+ * Les pictos du premier jet, dans le sens de l'histoire (voir visibileo.ts) :
+ * pour chaque image, les pictos de son mot et leurs mots-clés, puis le choix
+ * de Mistral. Sans banque ou sans réponse, aucune image plutôt qu'une fausse.
+ */
+async function pictosDuPremierJet(jet: PremierJet, modele: string): Promise<{ personnages: PictoPose[]; pieces: PictoPose[] }> {
+  // Chaque mot, et son singulier : la banque cherche par morceau de mot, et « chevaux » n'y ramène que des courses et des peignes.
+  const voulues = [...jet.personnages, ...jet.pieces].map((x, n) => ({ n, mots: [...new Set(x.images.flatMap((m) => [m, singulier(m)]))], sens: x.sens }));
+  const parMot = new Map<string, ImageACherche["candidats"]>();
+  try {
+    for (const mot of [...new Set(voulues.flatMap((v) => v.mots))]) {
+      const trouves = await api.arasaacChercher(mot, 6);
+      const mots = trouves.length ? await api.arasaacMotsDesIds(trouves.map((p) => p.id)) : {};
+      parMot.set(mot, trouves.map((p) => ({ id: p.id, mots: mots[String(p.id)] ?? [p.mot], ...(p.nature ? { nature: p.nature } : {}) })));
+    }
+  } catch { /* sans banque : sans images */ }
+  // Les pictos de tous les mots d'une image, une fois chacun : ceux du mot le plus précis d'abord.
+  const images: ImageACherche[] = voulues.map((v) => ({
+    ...v, candidats: [...new Map(v.mots.flatMap((m) => parMot.get(m) ?? []).map((c) => [c.id, c])).values()].slice(0, 12),
+  }));
+  let choix = new Map<number, number | null>();
+  if (images.some((i) => i.candidats.length)) {
+    try {
+      const brut = await api.mistralChat([{ role: "system", content: CONSIGNE_IMAGES }, { role: "user", content: demandeDesImages(images) }], modele, true);
+      choix = lireChoixDesImages(brut, images);
+    } catch { /* sans réponse : sans images */ }
+  }
+  // Le mot de la case : celui qui a trouvé le picto choisi, sinon le plus précis.
+  const picto = (n: number): PictoPose => {
+    const id = choix.get(n) ?? null;
+    return { id, mot: voulues[n].mots.find((m) => id !== null && parMot.get(m)?.some((c) => c.id === id)) ?? voulues[n].mots[0] ?? "" };
+  };
+  return {
+    personnages: jet.personnages.map((_, i) => picto(i)),
+    pieces: jet.pieces.map((_, i) => picto(jet.personnages.length + i)),
+  };
 }
 
 const AJOUTER: Record<Genre, string> = { cadre: "＋ Un cadre", nuage: "＋ Un nuage", bulle: "＋ Une bulle" };
@@ -93,19 +132,20 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
       && !(await confirmer("Remplacer les personnages et les pièces par ceux que l'IA propose ?", { oui: "Remplacer" }))) return;
     setOccupe("L'IA lit l'histoire…");
     try {
+      const modele = await api.modeleActif();
       const masque = pseudonymiserTout([r.texte], await nomsAMasquer());
       const brut = await api.mistralChat([
         { role: "system", content: CONSIGNE_VISIBILEO },
         { role: "user", content: `Le texte de l'histoire :\n\n${masque.textes[0]}` },
-      ], await api.modeleActif(), true);
+      ], modele, true);
       const jet = lirePremierJet(restaurer(brut, masque.table).texte);
       if (!jet) { toast("L'IA n'a rien rendu d'utilisable : réessayez.", { icone: "⚠️" }); return; }
-      const mots = await motsAvecImages([...jet.personnages.map((p) => p.image), ...jet.pieces.map((p) => p.image)].filter(Boolean));
-      const image = (m: string): PictoPose => ({ id: m ? mots.find((x) => x.mot === m)?.id ?? null : null, mot: m });
+      setOccupe("L'IA choisit les images…");
+      const images = await pictosDuPremierJet(jet, modele);
       maj({
         titre: r.titre.trim() || jet.titre,
-        personnages: jet.personnages.map((p, i) => ({ ...personnageVide(i), nom: p.nom, image: image(p.image) })),
-        pieces: jet.pieces.map((p): Piece => ({ genre: p.genre, texte: p.texte, qui: p.qui, image: image(p.image) })),
+        personnages: jet.personnages.map((p, i) => ({ ...personnageVide(i), nom: p.nom, image: images.personnages[i] })),
+        pieces: jet.pieces.map((p, i): Piece => ({ genre: p.genre, texte: p.texte, qui: p.qui, image: images.pieces[i] })),
       });
       toast("✨ Le premier jet de l'IA est posé : relisez les pièces avant d'imprimer.", { icone: "✨", duree: 7000 });
     } catch (e) {
