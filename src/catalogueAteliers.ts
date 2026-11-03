@@ -5,7 +5,7 @@
 export const ONGLETS = [
   "jeux", "memory", "imagier", "categoriser", "suites", "vilainPetitCanard", "etiquettes", "ombres", "oeilDeLynx",
   "sons", "lotoSyllabes", "lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin", "lotoPhonemesAttaque", "lotoPhonemesFin", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
-  "comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "phrasesPuzzle", "trous", "motsMeles", "cursive",
+  "comprehension", "visibileo", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "phrasesPuzzle", "trous", "motsMeles", "cursive",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "problemesCM", "coloriage", "collections", "problemeDuJour", "motifs", "tangram", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "rectangles", "calculCM", "soustractionPosee", "sequencesPS", "sequencesMS", "sequencesGS", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "grandeursCM", "geometrie", "solides", "deplacements", "geometrieCM", "donnees", "tableauDouble", "des", "numeration",
   "carteMentale", "famillesAddition", "taches",
   "sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction",
@@ -140,6 +140,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
       // Lecture et écriture
       { id: "comprehension", nom: "Comprendre un texte", icone: "📖", cycles: "Cycle 2",
         quoi: "Des récits, documentaires, règles, poèmes et scènes de théâtre à la longueur de chaque classe, lignes numérotées : questions à justifier, résumé, moments du récit, reprises, inférences, émotions, mots inconnus, types de textes, écoute — et le corrigé." },
+      { id: "visibileo", nom: "Visibiléo", icone: "💭", pictos: true, cycles: "Cycles 1 à 3",
+        quoi: "Construire avec la classe la trace d'un récit : les pièces à plastifier — cadres, nuages des pensées, bulles des paroles, flèches des causes et de l'ordre —, le mémo des signes et la fiche de préparation." },
       { id: "lecteur", nom: "Carnet de lecteur", icone: "📚", cycles: "Cycle 2",
         quoi: "La page du carnet pour chaque livre lu, la carte d'identité d'un personnage, les personnages-types des contes, la mise en réseau, présenter un livre, choisir un livre, reconnaître les genres." },
       { id: "orthographe", nom: "Orthographe et dictées", icone: "✏️", cycles: "Cycle 2",
@@ -333,7 +335,7 @@ export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[]
 export const PARTIES_DU_FRANCAIS: { id: string; nom: string; outils: Onglet[] }[] = [
   { id: "langage", nom: "Langage", outils: ["jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres"] },
   { id: "sons", nom: "Sons et lecture", outils: ["sons", "lotoSyllabes", "lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin", "lotoPhonemesAttaque", "lotoPhonemesFin", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante"] },
-  { id: "ecrit", nom: "Lecture et écriture", outils: ["comprehension", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "phrasesPuzzle", "trous", "motsMeles", "cursive"] },
+  { id: "ecrit", nom: "Lecture et écriture", outils: ["comprehension", "visibileo", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "phrasesPuzzle", "trous", "motsMeles", "cursive"] },
 ];
 
 /** Les familles qui se découpent, et leurs parties. */

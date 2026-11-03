@@ -58,6 +58,7 @@ import { classeDuDossier } from "../sequencesToutesFaites";
 import { estUneSection } from "../sequencesDeMaternelle";
 import { MotifsTab } from "./AtelierMotifs";
 import { SuitesTab } from "./AteliersSuites";
+import { VisibileoTab } from "./AtelierVisibileo";
 import { VilainPetitCanardTab } from "./AtelierVilainPetitCanard";
 import { CarteMentaleTab } from "./AteliersCarteMentale";
 import { OeilDeLynxTab } from "./AteliersObservation";
@@ -448,6 +449,7 @@ export default function Jeux() {
         : onglet === "motifs" ? <MotifsTab banque={Boolean(etat?.installee)} />
         : onglet === "tangram" ? <TangramTab />
         : onglet === "suites" ? <SuitesTab banque={Boolean(etat?.installee)} />
+        : onglet === "visibileo" ? <VisibileoTab banque={Boolean(etat?.installee)} />
         : onglet === "vilainPetitCanard" ? <VilainPetitCanardTab />
         : onglet === "carteMentale" ? <CarteMentaleTab banque={Boolean(etat?.installee)} />
         : onglet === "famillesAddition" ? <FamillesAdditionTab />

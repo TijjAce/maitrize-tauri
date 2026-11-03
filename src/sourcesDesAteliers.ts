@@ -74,6 +74,7 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
 
   // ── Lecture et écriture ──
   comprehension: `${FRANCAIS_C2}, « Comprendre un texte » : la longueur des textes, les questions, le retour au texte. Les textes sont écrits pour Maitrize.`,
+  visibileo: "Le Visibiléo, outil de compréhension des récits conçu par Marie-France Bishop et Laure Dappe, avec une équipe d'enseignantes et de conseillères pédagogiques (université de Cergy ; IFÉ, Centre Alain-Savary, 2018). Les pièces, le mémo et la fiche sont dessinés et écrits pour Maitrize.",
   lecteur: `${FRANCAIS_C2}, « Devenir lecteur » : le carnet de lecteur, les personnages, la mise en réseau.`,
   orthographe: "Guides « Pour enseigner la lecture et l'écriture au CP » (Éduscol, 2018), p. 85-86, et « au CE1 » (2019), p. 97-106 : les dictées ; "
     + `${FRANCAIS_C2.charAt(0).toLowerCase()}${FRANCAIS_C2.slice(1)}.`,
