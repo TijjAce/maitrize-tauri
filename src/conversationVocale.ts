@@ -15,6 +15,10 @@
 // ouverts d'une question à l'autre ; et la voix lit chaque phrase de la
 // réponse dès qu'elle est écrite, la suivante préparée pendant la lecture
 // (`lecteurAuFil`).
+//
+// Enfin : « quand je prends la parole, la voix de synthèse se coupe et me
+// laisse parler » — on parle par-dessus la voix, elle se tait et l'écoute
+// reprend, les premiers mots compris (voir priseDeParole.ts).
 
 /** Ce qu'on ajoute à la consigne quand la conversation se fait à voix haute : une réponse qui s'écoute. */
 export const CONSIGNE_ORALE = "La conversation se fait à voix haute : l'enseignant t'entend, il ne te lit pas. Réponds comme à l'oral, "

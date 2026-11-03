@@ -82,10 +82,14 @@ export function niveauAffiche(r: number): number {
  * limitée. Dit aussi si l'on y parle — c'est elle qui décide des coupes (voir
  * ecoute.ts) — et le niveau à montrer. `etat` se met à jour en place.
  */
-export function traiterLaTrame(etat: PriseDeSon, trame: Float32Array, taux: number): { sortie: Float32Array; parole: boolean; niveau: number } {
+export function traiterLaTrame(etat: PriseDeSon, trame: Float32Array, taux: number): {
+  sortie: Float32Array; parole: boolean; niveau: number;
+  /** Le niveau de la trame avant le gain, et le bruit de fond : de quoi la comparer à la voix de l'Assistant (voir priseDeParole.ts). */
+  brut: number; fond: number;
+} {
   const n = trame.length;
   const sortie = new Float32Array(n);
-  if (!n) return { sortie, parole: false, niveau: 0 };
+  if (!n) return { sortie, parole: false, niveau: 0, brut: 0, fond: etat.fond };
   // Le filtre passe-haut, d'un échantillon à l'autre.
   const rc = 1 / (2 * Math.PI * COUPURE_HZ);
   const a = rc / (rc + 1 / (taux > 0 ? taux : 48_000));
@@ -115,7 +119,7 @@ export function traiterLaTrame(etat: PriseDeSon, trame: Float32Array, taux: numb
   const depart = etat.gain;
   for (let i = 0; i < n; i++) sortie[i] = limiter(sortie[i] * (depart + (vise - depart) * (i + 1) / n));
   etat.gain = vise;
-  return { sortie, parole, niveau: niveauAffiche(rms(sortie)) };
+  return { sortie, parole, niveau: niveauAffiche(rms(sortie)), brut: r, fond: etat.fond };
 }
 
 /** Les contraintes du micro : sans le traitement d'un appel vidéo, qui prend un chuchotement pour du bruit ; ce micro-là, s'il est choisi. */

@@ -31,16 +31,31 @@ export interface DicteeEnDirect {
   arreter: () => Promise<void>;
   /**
    * Le micro se tait sans se fermer : c'est du silence qui part, et le direct reste ouvert pour la phrase suivante —
-   * pendant que la voix de l'Assistant parle, il l'entendrait (voir conversationVocale.ts).
+   * pendant que la voix de l'Assistant parle, il l'entendrait (voir conversationVocale.ts). Rendu avec `rattraper`,
+   * il envoie d'abord les dernières secondes qu'il a entendues sans les envoyer : les premiers mots de qui coupe la
+   * parole à la voix (voir priseDeParole.ts).
    */
-  taire: (muet: boolean) => void;
+  taire: (muet: boolean, rattraper?: number) => void;
 }
 
-export function useDicteeEnDirect({ surMots, surPanne }: {
+/** Les dernières trames, jusqu'à `secondes` : ce qu'on vient d'entendre. */
+export function derniersInstants<T extends { trame: Float32Array; taux: number }>(trames: readonly T[], secondes: number): T[] {
+  const sortie: T[] = [];
+  let duree = 0;
+  for (let i = trames.length - 1; i >= 0 && duree < secondes - 1e-9; i--) {
+    sortie.unshift(trames[i]);
+    duree += trames[i].trame.length / trames[i].taux;
+  }
+  return sortie;
+}
+
+export function useDicteeEnDirect({ surMots, surPanne, surTrame }: {
   /** Des mots qui arrivent, avec leurs espaces, à mettre à la suite. */
   surMots: (morceau: string) => void;
   /** Le direct a lâché pour de bon : l'appelant reprend autrement. */
   surPanne: (raison: string) => void;
+  /** Chaque trame du micro, mesurée, avant de partir : la conversation y guette qu'on coupe la parole à la voix. */
+  surTrame?: (mesure: { micro: number; fond: number; duree: number }) => void;
 }): DicteeEnDirect {
   const [etat, setEtat] = React.useState<EtatDicteeEnDirect>("repos");
   const direct = React.useRef<Direct | null>(null);
@@ -49,9 +64,22 @@ export function useDicteeEnDirect({ surMots, surPanne }: {
   mots.current = surMots;
   const panne = React.useRef(surPanne);
   panne.current = surPanne;
-  // Le direct écrit tout : les passages coupés aux silences ne servent pas ici. Micro tu, c'est du silence qui part.
+  const trameMesuree = React.useRef(surTrame);
+  trameMesuree.current = surTrame;
+  // Le direct écrit tout : les passages coupés aux silences ne servent pas ici. Micro tu, c'est du silence qui part —
+  // et l'on garde la dernière seconde entendue, pour qui coupe la parole à la voix.
   const muet = React.useRef(false);
-  const ecoute = useEcoute({ onTranche: () => {}, onTrame: (trame, taux) => direct.current?.envoyer(muet.current ? new Float32Array(trame.length) : trame, taux) });
+  const tues = React.useRef<{ trame: Float32Array; taux: number }[]>([]);
+  const ecoute = useEcoute({
+    onTranche: () => {},
+    onTrame: (trame, taux, mesure) => {
+      // D'abord la mesure : elle peut rendre le micro (`taire(false, …)`), et cette trame partir telle quelle.
+      trameMesuree.current?.({ micro: mesure.brut, fond: mesure.fond, duree: trame.length / taux });
+      if (!muet.current) { direct.current?.envoyer(trame, taux); return; }
+      tues.current = [...derniersInstants(tues.current, 1), { trame, taux }];
+      direct.current?.envoyer(new Float32Array(trame.length), taux);
+    },
+  });
 
   const arreter = React.useCallback(async () => {
     ecoute.arreter();
@@ -92,10 +120,15 @@ export function useDicteeEnDirect({ surMots, surPanne }: {
   // L'écran qui se ferme en pleine dictée relâche le direct (le micro, l'écoute s'en charge).
   React.useEffect(() => () => { void direct.current?.fermer(); direct.current = null; }, []);
 
-  const taire = React.useCallback((oui: boolean) => {
+  const taire = React.useCallback((oui: boolean, rattraper = 0) => {
+    const etaitMuet = muet.current;
     muet.current = oui;
+    if (oui) return;
     // Le micro rendu : on repart de zéro pour savoir quand la phrase suivante finit.
-    if (!oui) ecoute.activite.current = { parole: 0, silence: 0 };
+    ecoute.activite.current = { parole: 0, silence: 0 };
+    // Les premiers mots de qui a coupé la parole à la voix : entendus pendant qu'il se taisait, ils partent d'abord.
+    if (etaitMuet && rattraper > 0) for (const { trame, taux } of derniersInstants(tues.current, rattraper)) direct.current?.envoyer(trame, taux);
+    tues.current = [];
   }, [ecoute.activite]);
 
   return { etat, secondes: ecoute.secondes, niveau: ecoute.niveau, activite: ecoute.activite, demarrer, arreter, taire };

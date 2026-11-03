@@ -73,7 +73,7 @@ describe("entendre une voix basse en réunion (demande de l'enseignant, 3 novemb
     const sortie = traiterLaTrame(etat, continu, TAUX).sortie;
     expect(Math.abs(sortie[TRAME - 1])).toBeLessThan(0.01);
     // Une trame vide, ou abîmée, ne rend rien d'aberrant.
-    expect(traiterLaTrame(etat, new Float32Array(0), TAUX)).toEqual({ sortie: new Float32Array(0), parole: false, niveau: 0 });
+    expect(traiterLaTrame(etat, new Float32Array(0), TAUX)).toEqual({ sortie: new Float32Array(0), parole: false, niveau: 0, brut: 0, fond: etat.fond });
     const abimee = new Float32Array([NaN, Infinity, 0.1, -0.1]);
     expect([...traiterLaTrame(etat, abimee, TAUX).sortie].every(Number.isFinite)).toBe(true);
   });

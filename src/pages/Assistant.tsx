@@ -14,6 +14,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useDictee, mmss } from "../dictee";
 import { aLaSuite, useDicteeEnDirect } from "../dicteeEnDirect";
 import { CONSIGNE_ORALE, lecteurAuFil, questionFinie, type LecteurAuFil } from "../conversationVocale";
+import { FENETRE_ECHO_S, detecteurDePriseDeParole, enveloppeDuMp3, niveauJoue, type DetecteurDePriseDeParole } from "../priseDeParole";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { STYLE_DOCUMENT_IA, feuilleDeLaReponse } from "../documentIa";
 import {
@@ -203,6 +204,17 @@ export default function Assistant() {
       toast(`Le direct de Mistral ne répond pas (${raison}) : la dictée continue par passages.`, { icone: "📡", duree: 7000 });
       void dictee.demarrer().then((e) => { if (e) toast(e, { icone: "🎙" }); });
     },
+    // Pendant que la voix parle, chaque trame du micro est comparée à ce qu'elle joue : l'enseignant qui parle
+    // par-dessus la fait taire (voir priseDeParole.ts).
+    surTrame: ({ micro, fond, duree }) => {
+      const d = detecteur.current;
+      if (!d || oralRef.current !== "lecture") return;
+      const v = voixJouee.current;
+      // Ce que joue la voix à cet instant ; entre deux phrases, la traîne de la précédente, puis rien.
+      const voix = v ? (v.env ? niveauJoue(v.env, v.audio.currentTime) : null)
+        : performance.now() - finDeLaVoix.current.quand < FENETRE_ECHO_S * 1000 ? finDeLaVoix.current.niveau : 0;
+      if (d.entendre({ micro, fond, voix, duree })) prendreLaParole(d);
+    },
   });
   const enDirectRef = React.useRef(enDirect);
   enDirectRef.current = enDirect;
@@ -227,24 +239,49 @@ export default function Assistant() {
   const attendue = React.useRef(0);
   const audio = React.useRef<HTMLAudioElement | null>(null);
   const lecture = React.useRef<LecteurAuFil | null>(null);
+  // « Quand je prends la parole, la voix de synthèse se coupe et me laisse parler » (3 novembre 2026). Ce que la voix
+  // joue, pour comparer le micro à son écho ; sa fin, pour sa traîne ; le détecteur de la réponse en cours ; et l'écho
+  // mesuré, gardé d'une réponse à l'autre (voir priseDeParole.ts).
+  const voixJouee = React.useRef<{ audio: HTMLAudioElement; env: Float32Array | null } | null>(null);
+  const finDeLaVoix = React.useRef<{ quand: number; niveau: number | null }>({ quand: 0, niveau: 0 });
+  const detecteur = React.useRef<DetecteurDePriseDeParole | null>(null);
+  const echoConnu = React.useRef<number | null>(null);
+  /** L'écho mesuré pendant cette réponse, gardé pour la suivante ; le détecteur s'en va. */
+  const retenirLEcho = () => {
+    if (detecteur.current) echoConnu.current = detecteur.current.aRetenir() ?? echoConnu.current;
+    detecteur.current = null;
+  };
+  const loadingRef = React.useRef(loading);
+  loadingRef.current = loading;
   const envoyerRef = React.useRef<(texte?: string, options?: { oral?: boolean }) => Promise<void>>(async () => {});
 
-  /** Joue une voix jusqu'au bout, ou jusqu'à ce qu'on l'arrête. */
+  /** Joue une voix jusqu'au bout, ou jusqu'à ce qu'on l'arrête ; son niveau se lit sur l'ordinateur pendant ce temps. */
   const jouer = (b64: string) => new Promise<void>((fin) => {
     const a = new Audio(`data:audio/mpeg;base64,${b64}`);
     audio.current = a;
-    a.onended = () => fin();
-    a.onerror = () => fin();
-    a.onpause = () => fin();
-    a.play().catch(() => fin());
+    const v: { audio: HTMLAudioElement; env: Float32Array | null } = { audio: a, env: null };
+    voixJouee.current = v;
+    enveloppeDuMp3(b64).then((env) => { v.env = env; }).catch(() => {});
+    const finir = () => {
+      if (voixJouee.current === v) {
+        finDeLaVoix.current = { quand: performance.now(), niveau: v.env ? niveauJoue(v.env, a.currentTime) : null };
+        voixJouee.current = null;
+      }
+      fin();
+    };
+    a.onended = finir;
+    a.onerror = finir;
+    a.onpause = finir;
+    a.play().catch(finir);
   });
 
-  const ecouterLaQuestion = async () => {
+  /** `rattraper` : les dernières secondes que le micro a entendues sans les envoyer — les premiers mots de qui a coupé la voix. */
+  const ecouterLaQuestion = async (rattraper = 0) => {
     premierMot.current = true;
     dite.current = inputRef.current;
     motsDuTour.current = 0;
     majOral("ecoute");
-    if (enDirectRef.current.etat !== "repos") { enDirectRef.current.taire(false); return; }
+    if (enDirectRef.current.etat !== "repos") { enDirectRef.current.taire(false, rattraper); return; }
     const erreur = await enDirectRef.current.demarrer();
     if (erreur) { toast(erreur, { icone: "🎙" }); majOral("non"); }
   };
@@ -259,7 +296,11 @@ export default function Assistant() {
     const l = lecteurAuFil({
       voix: (t) => api.voixLire(t),
       jouer,
-      surDebut: () => { if (etatOral() === "reponse") majOral("lecture"); },
+      surDebut: () => {
+        if (etatOral() !== "reponse") return;
+        detecteur.current = detecteurDePriseDeParole(echoConnu.current);
+        majOral("lecture");
+      },
       surErreur: (e) => toast("La voix ne répond pas : la réponse reste écrite. " + texteErreur(e), { icone: "🔇", duree: 6000 }),
     });
     lecture.current = l;
@@ -267,12 +308,30 @@ export default function Assistant() {
     void l.fin.then(() => {
       if (lecture.current !== l) return;
       lecture.current = null;
+      retenirLEcho();
       if (etatOral() === "reponse" || etatOral() === "lecture") void ecouterLaQuestion();
     });
     void envoyerRef.current(question, { oral: true });
   };
+  /**
+   * L'enseignant parle par-dessus la voix : elle se tait ; la réponse qui s'écrivait encore s'arrête — la question qui
+   * vient doit pouvoir partir — ; l'écoute reprend, avec les premiers mots dits pendant que le micro se taisait.
+   */
+  const prendreLaParole = (d: DetecteurDePriseDeParole) => {
+    if (oralRef.current !== "lecture" || detecteur.current !== d) return;
+    const rattraper = Math.min(0.6, d.depuis() + 0.1);
+    retenirLEcho();
+    const l = lecture.current;
+    lecture.current = null;
+    l?.arreter();
+    audio.current?.pause();
+    audio.current = null;
+    if (loadingRef.current) arret.current?.();
+    void ecouterLaQuestion(rattraper);
+  };
   async function finirLaConversation() {
     majOral("non");
+    retenirLEcho();
     lecture.current?.arreter();
     lecture.current = null;
     audio.current?.pause();
@@ -719,7 +778,7 @@ export default function Assistant() {
         <textarea className="textarea" rows={2} ref={saisie}
           placeholder={oral === "ecoute" ? "Parlez, même tout bas : la question part quand vous vous taisez…"
             : oral === "reponse" ? "L'Assistant réfléchit…"
-            : oral === "lecture" ? "L'Assistant vous répond à voix haute…"
+            : oral === "lecture" ? "L'Assistant vous répond à voix haute : parlez pour l'interrompre…"
             : enDirect.etat === "ecoute" ? "Parlez : les mots s'écrivent en direct…" : dictee.etat === "enregistrement" ? "Enregistrement en cours…" : documentChoisi ? `Une question sur « ${documentChoisi.nom} »…` : "Écrivez ou dictez votre demande…"} value={input}
           onChange={(e) => setInput(e.target.value)} onPaste={surCollage}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerOuParler(); } }} />

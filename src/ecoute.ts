@@ -76,8 +76,11 @@ export const MINIMUM_S = 1;
 
 export function useEcoute({ onTranche, onTrame, minimumParole = 2, plafond = 15 }: {
   onTranche: (t: TrancheAudio) => void;
-  /** Chaque trame du micro, au fil de la parole, et le taux de son contexte : le direct de Voxtral la prend (voir voxtralDirect.ts). */
-  onTrame?: (trame: Float32Array, taux: number) => void;
+  /**
+   * Chaque trame du micro, au fil de la parole, et le taux de son contexte : le direct de Voxtral la prend (voir
+   * voxtralDirect.ts). Avec son niveau avant le gain et le bruit de fond (voir priseDeParole.ts).
+   */
+  onTrame?: (trame: Float32Array, taux: number, mesure: { brut: number; fond: number }) => void;
   /** Secondes de parole en dessous desquelles on ne coupe pas. */
   minimumParole?: number;
   /** Secondes après lesquelles on coupe même en pleine phrase. */
@@ -145,10 +148,10 @@ export function useEcoute({ onTranche, onTrame, minimumParole = 2, plafond = 15 
     noeud.onaudioprocess = (e) => {
       if (enPause.current) { niveau.current = 0; return; }
       // La trame telle que le moteur doit l'entendre : filtrée, ramenée au niveau d'une voix, même chuchotée.
-      const { sortie: trame, parole: onParle, niveau: n } = traiterLaTrame(prise.current, e.inputBuffer.getChannelData(0), ctx.sampleRate);
+      const { sortie: trame, parole: onParle, niveau: n, brut, fond } = traiterLaTrame(prise.current, e.inputBuffer.getChannelData(0), ctx.sampleRate);
       niveau.current = n;
       const secondesTrame = trame.length / ctx.sampleRate;
-      rappelTrame.current?.(trame, ctx.sampleRate);
+      rappelTrame.current?.(trame, ctx.sampleRate, { brut, fond });
       morceaux.current.push(trame);
       duree.current += secondesTrame;
       if (!onParle) {
