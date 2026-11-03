@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
-  avecLaSerie, citationDansLaPage, consigneDuQuiz, cycleDeLaClasse, debutDeLaCitation, demandeDeCorrection, demandeDuQuiz, derniereSerie,
-  estUnGuideEnPdf, lireHistorique, lireLaCorrection, lireLesQuestions, nettoyerLaPage, pageInterrogeable, pageTronquee, pagesAEssayer,
-  pagesDejaVues, pointsDuVerdict, scoreEnClair, type PageLue, type QuestionOuverte,
+  apresLaReponse, avecLaSerie, citationDansLaPage, consigneDuQuiz, couvertureDuGuide, cycleDeLaClasse, debutDeLaCitation, demandeDeCorrection,
+  demandeDuQuiz, derniereSerie, estUnGuideEnPdf, fichesDues, lireARevoir, lireHistorique, lireLaCorrection, lireLesQuestions, melangee,
+  nettoyerLaPage, pageInterrogeable, pageTronquee, pagesAEssayer, pagesDejaVues, plusJours, pointsDuVerdict, scoreEnClair,
+  type FicheARevoir, type PageLue, type QuestionAChoix, type QuestionOuverte,
 } from "./quizDesGuides";
+import { hasard } from "./hasard";
 
 // Une page de guide écrite pour l'essai, dans le ton d'Éduscol.
 const PAGE_12 = "La lecture à voix haute par l'enseignant est un moment quotidien de la classe. Elle permet aux élèves "
@@ -62,6 +64,8 @@ describe("le quiz des guides Éduscol (demande de l'enseignant, 3 novembre 2026)
     expect(consigne).toContain("« Pour enseigner la lecture et l'écriture au CP »");
     expect(consigne).toMatch(/recopiée mot pour mot/);
     expect(consigne).toMatch(/4 questions à choix/);
+    expect(consigne).toMatch(/situation de classe/);
+    expect(consigne).toMatch(/« pourquoi » dit en une phrase/);
   });
 
   it("retrouve la citation dans la page, même recopiée de travers, et montre celle du guide", () => {
@@ -144,6 +148,76 @@ describe("le quiz des guides Éduscol (demande de l'enseignant, 3 novembre 2026)
     expect(lireHistorique('[{"url": "x", "points": 9, "sur": 5, "pages": [1, -2, "3"]}, {"url": "", "points": 1, "sur": 5}, 4]'))
       .toEqual([{ url: "x", titre: "", date: "", points: 5, sur: 5, pages: [1] }]);
     expect(lireHistorique("{abîmé")).toEqual([]);
+  });
+
+  it("lit pour chaque proposition pourquoi elle est juste ou fausse, et le garde avec elle quand elles se mélangent (« améliore encore »)", () => {
+    const propositions = [
+      { texte: "Ne pas multiplier les questions", juste: true, pourquoi: "Les élèves suivent ainsi le fil du récit." },
+      { texte: "Poser une question par phrase", juste: false, pourquoi: "Le guide dit l'inverse : peu de questions pendant la lecture." },
+      { texte: "Faire lire chaque élève à son tour", juste: false, pourquoi: "C'est l'enseignant qui lit." },
+      { texte: "Interdire la reformulation", juste: false, pourquoi: "La reformulation est le premier outil de la compréhension." },
+    ];
+    const avecPourquoi = choix({ bonne: undefined, propositions });
+    for (const graine of [1, 2, 3, 4, 5]) {
+      const q = lireLesQuestions(JSON.stringify({ questions: [avecPourquoi] }), pages, graine)[0] as QuestionAChoix;
+      expect(q.propositions[q.bonne]).toBe("Ne pas multiplier les questions");
+      expect(q.pourquoi[q.bonne]).toBe("Les élèves suivent ainsi le fil du récit.");
+      expect(q.pourquoi[q.propositions.indexOf("Faire lire chaque élève à son tour")]).toBe("C'est l'enseignant qui lit.");
+    }
+    // Deux propositions marquées justes, ou aucune sans « bonne » : la question ne se corrigerait pas.
+    const deuxJustes = choix({ bonne: undefined, propositions: propositions.map((p, i) => ({ ...p, juste: i < 2 })) });
+    const aucune = choix({ bonne: undefined, propositions: propositions.map((p) => ({ ...p, juste: false })) });
+    expect(lireLesQuestions(JSON.stringify({ questions: [deuxJustes, aucune] }), pages, 1)).toEqual([]);
+    // L'ancienne forme — des textes et la bonne recopiée — se lit toujours, sans « pourquoi ».
+    expect((lireLesQuestions(JSON.stringify({ questions: [choix()] }), pages, 1)[0] as QuestionAChoix).pourquoi).toEqual(["", "", "", ""]);
+    // Un nouveau mélange, pour revoir la question : la bonne et les « pourquoi » suivent.
+    const q = lireLesQuestions(JSON.stringify({ questions: [avecPourquoi] }), pages, 1)[0] as QuestionAChoix;
+    const encore = melangee(q, hasard(99));
+    expect(encore.propositions[encore.bonne]).toBe(q.propositions[q.bonne]);
+    expect(encore.propositions.map((p, i) => [p, encore.pourquoi[i]]).sort()).toEqual(q.propositions.map((p, i) => [p, q.pourquoi[i]]).sort());
+    expect(encore.pourquoi[encore.bonne]).toBe(q.pourquoi[q.bonne]);
+  });
+
+  it("fait revenir une question manquée le jour même, puis trois et sept jours après chaque bonne réponse, jusqu'à ce qu'elle soit sue", () => {
+    const guide = { titre: "Guide", url: "https://eduscol.education.gouv.fr/guide.pdf" };
+    const q = lireLesQuestions(JSON.stringify({ questions: [choix()] }), pages, 1)[0];
+    expect(plusJours("2026-11-03", 3)).toBe("2026-11-06");
+    expect(plusJours("2026-10-24", 7)).toBe("2026-10-31");
+    // Réussie du premier coup : rien à revoir.
+    expect(apresLaReponse([], guide, q, 1, "2026-11-03")).toEqual([]);
+    let fiches: FicheARevoir[] = apresLaReponse([], guide, q, 0, "2026-11-03");
+    expect(fiches).toEqual([{ guide, question: q, boite: 1, echeance: "2026-11-03" }]);
+    expect(fichesDues(fiches, "2026-11-03")).toHaveLength(1);
+    fiches = apresLaReponse(fiches, guide, q, 1, "2026-11-03");
+    expect(fiches.map((f) => [f.boite, f.echeance])).toEqual([[2, "2026-11-06"]]);
+    expect(fichesDues(fiches, "2026-11-05")).toEqual([]);
+    expect(fichesDues(fiches, "2026-11-06")).toHaveLength(1);
+    fiches = apresLaReponse(fiches, guide, q, 1, "2026-11-06");
+    expect(fiches.map((f) => [f.boite, f.echeance])).toEqual([[3, "2026-11-13"]]);
+    // À moitié juste : retour au début ; puis trois réussites d'affilée, et elle est sue.
+    fiches = apresLaReponse(fiches, guide, q, 0.5, "2026-11-13");
+    expect(fiches.map((f) => [f.boite, f.echeance])).toEqual([[1, "2026-11-13"]]);
+    for (const jour of ["2026-11-13", "2026-11-16", "2026-11-23"]) fiches = apresLaReponse(fiches, guide, q, 1, jour);
+    expect(fiches).toEqual([]);
+    // La même question, écrite autrement en casse, ne se double pas.
+    const deux = apresLaReponse(apresLaReponse([], guide, q, 0, "2026-11-03"), guide, { ...q, question: q.question.toUpperCase() }, 0, "2026-11-04");
+    expect(deux).toHaveLength(1);
+    // Relue telle qu'enregistrée ; ce qui est abîmé s'en va.
+    const relues = lireARevoir(JSON.stringify([...deux, { guide, question: { sorte: "choix", question: "?" }, boite: 1, echeance: "2026-11-03" }, { boite: 9 }]));
+    expect(relues).toEqual(deux);
+    expect(lireARevoir("{abîmé")).toEqual([]);
+  });
+
+  it("dit combien de pages d'un guide les séries ont déjà travaillées", () => {
+    const url = "https://eduscol.education.gouv.fr/guide.pdf";
+    expect(couvertureDuGuide([], url)).toBeNull();
+    const h = [
+      { url, titre: "Guide", date: "2026-11-03", points: 3, sur: 5, pages: [12, 14, 20], total: 48 },
+      { url, titre: "Guide", date: "2026-11-04", points: 4, sur: 5, pages: [14, 21, 30], total: 48 },
+    ];
+    expect(couvertureDuGuide(h, url)).toEqual({ vues: 5, total: 48 });
+    expect(lireHistorique(JSON.stringify(h))[0].total).toBe(48);
+    expect(couvertureDuGuide([{ ...h[0], total: undefined }], url)).toBeNull();
   });
 
   it("propose d'abord les guides du cycle de la classe, et seulement des PDF", () => {

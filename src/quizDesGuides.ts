@@ -16,9 +16,16 @@
 //
 // Le guide est un texte public : il part tel quel. La réponse de
 // l'enseignant passe par le masque des prénoms (voir confidentialite.ts).
+//
+// Puis, « améliore encore » : chaque proposition fausse dit pourquoi elle
+// l'est ; des questions partent d'une situation de classe ; « Je ne sais
+// pas » vaut mieux qu'une réponse au hasard ; et une question manquée
+// revient — tout de suite, puis trois jours, puis sept jours après chaque
+// bonne réponse —, jusqu'à ce qu'elle soit sue.
 
 import { aplatir } from "./rechercheDansPdf";
 import { hasard, melanger } from "./hasard";
+import { isoJour } from "./dates";
 
 /** Les questions d'une série : quatre à choix, puis une ouverte. */
 export const QUESTIONS_PAR_SERIE = 5;
@@ -33,7 +40,11 @@ const PAGE_MAX = 3500;
 export interface PageLue { numero: number; texte: string }
 
 interface Commune { question: string; citation: string; page: number }
-export interface QuestionAChoix extends Commune { sorte: "choix"; propositions: string[]; bonne: number; explication: string }
+export interface QuestionAChoix extends Commune {
+  sorte: "choix"; propositions: string[]; bonne: number; explication: string;
+  /** Pour chaque proposition, dans le même ordre : pourquoi elle est juste ou fausse, d'après la page. */
+  pourquoi: string[];
+}
 export interface QuestionOuverte extends Commune { sorte: "ouverte"; attendu: string }
 export type QuestionDuQuiz = QuestionAChoix | QuestionOuverte;
 
@@ -93,7 +104,8 @@ Vous recevez quelques pages de ce guide, chacune précédée de son numéro.
 Écrivez ${combien} questions qui vérifient qu'il en connaît l'essentiel : ce que le guide recommande, pourquoi, et comment le faire en classe.
 - Chaque question porte sur une seule page, et sa réponse se lit dans le texte de cette page : n'ajoutez rien que la page ne dise.
 - Pas de question sur la mise en page, les numéros, les dates, les auteurs, les sigles seuls, ni sur ce que la page ne fait que nommer.
-- ${combien - 1} questions à choix : quatre propositions courtes, une seule juste d'après la page, les autres plausibles mais fausses d'après elle. Jamais « toutes les réponses » ni « aucune ».
+- ${combien - 1} questions à choix : quatre propositions courtes, une seule juste d'après la page, les autres plausibles mais fausses d'après elle. Jamais « toutes les réponses » ni « aucune ». Pour chaque proposition, « pourquoi » dit en une phrase, d'après la page, pourquoi elle est juste ou fausse.
+- Au moins deux questions partent d'une situation de classe (« Un élève… », « Pendant une séance… ») et demandent ce que le guide préconise.
 - 1 question ouverte, à laquelle on répond en une ou deux phrases.
 - « citation » : la phrase de la page qui justifie la réponse, recopiée mot pour mot, de 8 à 40 mots.
 - « explication » : une ou deux phrases qui disent pourquoi c'est la bonne réponse.
@@ -101,7 +113,7 @@ Vous recevez quelques pages de ce guide, chacune précédée de son numéro.
 
 Répondez seulement en JSON :
 {"questions": [
-  {"sorte": "choix", "page": 12, "question": "…", "propositions": ["…", "…", "…", "…"], "bonne": "la proposition juste, recopiée telle quelle", "explication": "…", "citation": "…"},
+  {"sorte": "choix", "page": 12, "question": "…", "propositions": [{"texte": "…", "juste": true, "pourquoi": "…"}, {"texte": "…", "juste": false, "pourquoi": "…"}, {"texte": "…", "juste": false, "pourquoi": "…"}, {"texte": "…", "juste": false, "pourquoi": "…"}], "explication": "…", "citation": "…"},
   {"sorte": "ouverte", "page": 14, "question": "…", "attendu": "la réponse attendue, en une ou deux phrases", "citation": "…"}
 ]}`;
 }
@@ -205,20 +217,31 @@ export function lireLesQuestions(brut: string, pages: readonly PageLue[], graine
       ouvertes.push({ sorte: "ouverte", question, attendu, citation, page });
       continue;
     }
-    const propositions = Array.isArray(o.propositions) ? o.propositions.map(texte).filter(Boolean) : [];
-    const distinctes = propositions.every((a, i) => propositions.findIndex((b) => memeTexte(a, b)) === i);
+    // Chaque proposition avec son « pourquoi » ; la bonne est celle que le modèle marque juste — une seule —,
+    // ou, à défaut de marque, celle qu'il recopie dans « bonne ».
+    const lues = (Array.isArray(o.propositions) ? o.propositions : []).map((x) => {
+      const p = x && typeof x === "object" ? x as Record<string, unknown> : null;
+      return p ? { a: texte(p.texte), juste: p.juste === true, pourquoi: texte(p.pourquoi) } : { a: texte(x), juste: false, pourquoi: "" };
+    }).filter((p) => p.a);
+    const marquees = lues.filter((p) => p.juste);
     const bonne = texte(o.bonne);
-    const juste = bonne ? propositions.findIndex((a) => memeTexte(a, bonne)) : -1;
-    if (propositions.length < 3 || propositions.length > 5 || !distinctes || juste < 0) continue;
-    if (propositions.some((a) => /^(?:toutes|aucune) (?:les|des) (?:réponses|propositions)/iu.test(a))) continue;
-    const melangees = melanger(r, propositions.map((a, i) => ({ a, juste: i === juste })));
+    const juste = marquees.length === 1 ? lues.indexOf(marquees[0]) : !marquees.length && bonne ? lues.findIndex((p) => memeTexte(p.a, bonne)) : -1;
+    const distinctes = lues.every((p, i) => lues.findIndex((q) => memeTexte(p.a, q.a)) === i);
+    if (lues.length < 3 || lues.length > 5 || !distinctes || juste < 0) continue;
+    if (lues.some((p) => /^(?:toutes|aucune) (?:les|des) (?:réponses|propositions)/iu.test(p.a))) continue;
     vues.add(question);
-    choix.push({
-      sorte: "choix", question, propositions: melangees.map((m) => m.a), bonne: melangees.findIndex((m) => m.juste),
+    choix.push(melangee({
+      sorte: "choix", question, propositions: lues.map((p) => p.a), bonne: juste, pourquoi: lues.map((p) => p.pourquoi),
       explication: texte(o.explication), citation, page,
-    });
+    }, r));
   }
   return [...choix.slice(0, combien - Math.min(1, ouvertes.length)), ...ouvertes.slice(0, 1)].slice(0, combien);
+}
+
+/** Une question à choix, ses propositions dans un autre ordre — et leurs « pourquoi » avec elles. */
+export function melangee(q: QuestionAChoix, r: () => number): QuestionAChoix {
+  const ordre = melanger(r, q.propositions.map((_, i) => i));
+  return { ...q, propositions: ordre.map((i) => q.propositions[i]), pourquoi: ordre.map((i) => q.pourquoi[i] ?? ""), bonne: ordre.indexOf(q.bonne) };
 }
 
 /** De quoi retrouver la citation dans le guide ouvert : ses premiers mots, tels qu'écrits. */
@@ -263,7 +286,11 @@ export const pointsDuVerdict = (v: Verdict): number => (v === "juste" ? 1 : v ==
 export const CLE_QUIZ_DES_GUIDES = "quizGuides:historique";
 const HISTORIQUE_MAX = 300;
 
-export interface SerieFaite { url: string; titre: string; date: string; points: number; sur: number; pages: number[] }
+export interface SerieFaite {
+  url: string; titre: string; date: string; points: number; sur: number; pages: number[];
+  /** Les pages du guide : de quoi dire où l'on en est (« 9 pages travaillées sur 48 »). */
+  total?: number;
+}
 
 export function lireHistorique(brut: string | null | undefined): SerieFaite[] {
   try {
@@ -277,7 +304,11 @@ export function lireHistorique(brut: string | null | undefined): SerieFaite[] {
       const sur = Number(o.sur);
       if (!url || !Number.isFinite(points) || !Number.isFinite(sur) || sur <= 0) return [];
       const pages = Array.isArray(o.pages) ? o.pages.filter((n): n is number => Number.isInteger(n) && (n as number) > 0) : [];
-      return [{ url, titre: texte(o.titre), date: texte(o.date), points: Math.max(0, Math.min(points, sur)), sur, pages }];
+      const total = Number(o.total);
+      return [{
+        url, titre: texte(o.titre), date: texte(o.date), points: Math.max(0, Math.min(points, sur)), sur, pages,
+        ...(Number.isInteger(total) && total > 0 ? { total } : {}),
+      }];
     });
   } catch { return []; }
 }
@@ -296,6 +327,13 @@ export function derniereSerie(historique: readonly SerieFaite[], url: string): S
 export const pagesDejaVues = (historique: readonly SerieFaite[], url: string): number[] =>
   [...new Set(historique.filter((s) => s.url === url).flatMap((s) => s.pages))];
 
+/** Où l'on en est dans un guide : les pages déjà travaillées, sur combien ; rien tant qu'on ne sait pas combien il en a. */
+export function couvertureDuGuide(historique: readonly SerieFaite[], url: string): { vues: number; total: number } | null {
+  let total = 0;
+  for (const s of historique) if (s.url === url && s.total) total = s.total;
+  return total ? { vues: Math.min(total, pagesDejaVues(historique, url).length), total } : null;
+}
+
 /** Un score à la française : « 3,5 / 5 ». */
 export const scoreEnClair = (points: number, sur: number): string =>
   `${points.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} / ${sur}`;
@@ -311,3 +349,95 @@ export function cycleDeLaClasse(niveaux: readonly string[]): string {
 
 /** Un document d'Éduscol est un guide à tester s'il est un PDF : une page web ne se lit pas ici. */
 export const estUnGuideEnPdf = (url: string): boolean => /\.pdf($|\?)/i.test(url) || /\/download($|\?)/i.test(url);
+
+// ── Les questions à revoir ────────────────────────────────────────────────
+
+/**
+ * Une question manquée, gardée pour revenir : le guide d'où elle vient, la
+ * question entière, sa boîte et son échéance. Elle revient le jour même, puis
+ * — chaque fois qu'elle est réussie — trois jours, puis sept jours après ; une
+ * troisième réussite la tient pour sue. Une erreur la remet au début.
+ */
+export interface FicheARevoir { guide: { titre: string; url: string }; question: QuestionDuQuiz; boite: number; echeance: string }
+
+export const CLE_A_REVOIR = "quizGuides:aRevoir";
+/** Les jours avant de revoir une question réussie, selon la boîte où elle entre : la 1 après une erreur, puis la 2, la 3. */
+export const INTERVALLES = [0, 3, 7];
+const A_REVOIR_MAX = 300;
+
+/** Un jour plus tard : « 2026-11-03 » et 3 donnent « 2026-11-06 ». Midi, pour que l'heure d'été n'y change rien. */
+export function plusJours(iso: string, jours: number): string {
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  d.setDate(d.getDate() + jours);
+  return isoJour(d);
+}
+
+/** Ce qui fait reconnaître une question : son guide et ses mots, sans accents ni casse. */
+export const cleDeLaQuestion = (url: string, question: string): string => `${url}|${aplatir([question]).texte}`;
+
+/** Une question relue : rien de ce qui ne se poserait pas. */
+function questionRelue(v: unknown): QuestionDuQuiz | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  const question = texte(o.question);
+  const citation = texte(o.citation);
+  const page = Number(o.page);
+  if (!question || !citation || !Number.isInteger(page) || page <= 0) return null;
+  if (o.sorte === "ouverte") {
+    const attendu = texte(o.attendu);
+    return attendu ? { sorte: "ouverte", question, attendu, citation, page } : null;
+  }
+  const propositions = Array.isArray(o.propositions) ? o.propositions.map(texte) : [];
+  const bonne = Number(o.bonne);
+  if (o.sorte !== "choix" || propositions.length < 3 || propositions.some((p) => !p) || !Number.isInteger(bonne) || bonne < 0 || bonne >= propositions.length) return null;
+  const pourquoi = Array.isArray(o.pourquoi) ? o.pourquoi.map(texte) : [];
+  return {
+    sorte: "choix", question, propositions, bonne, explication: texte(o.explication), citation, page,
+    pourquoi: propositions.map((_, i) => pourquoi[i] ?? ""),
+  };
+}
+
+export function lireARevoir(brut: string | null | undefined): FicheARevoir[] {
+  try {
+    const v: unknown = JSON.parse(brut || "[]");
+    if (!Array.isArray(v)) return [];
+    return v.flatMap((x): FicheARevoir[] => {
+      if (!x || typeof x !== "object") return [];
+      const o = x as Record<string, unknown>;
+      const g = o.guide && typeof o.guide === "object" ? o.guide as Record<string, unknown> : {};
+      const url = texte(g.url);
+      const question = questionRelue(o.question);
+      const boite = Number(o.boite);
+      const echeance = texte(o.echeance);
+      if (!url || !question || !/^\d{4}-\d{2}-\d{2}$/.test(echeance)) return [];
+      return [{ guide: { titre: texte(g.titre), url }, question, boite: Number.isInteger(boite) ? Math.max(1, Math.min(INTERVALLES.length, boite)) : 1, echeance }];
+    });
+  } catch { return []; }
+}
+
+/**
+ * Les questions à revoir après une réponse. Manquée — ou à moitié, ou
+ * passée —, elle entre, ou revient, dans la première boîte, pour le jour
+ * même. Réussie, une question à revoir passe dans la boîte suivante, à
+ * l'échéance qui lui répond ; réussie dans la dernière, elle s'en va. Une
+ * question réussie du premier coup n'y entre pas.
+ */
+export function apresLaReponse(
+  fiches: readonly FicheARevoir[], guide: { titre: string; url: string }, question: QuestionDuQuiz, points: number, aujourdhui: string,
+): FicheARevoir[] {
+  const cle = cleDeLaQuestion(guide.url, question.question);
+  const i = fiches.findIndex((f) => cleDeLaQuestion(f.guide.url, f.question.question) === cle);
+  const autres = fiches.filter((_, j) => j !== i);
+  if (points < 1) return [...autres, { guide, question, boite: 1, echeance: aujourdhui }].slice(-A_REVOIR_MAX);
+  if (i < 0) return [...fiches];
+  const boite = fiches[i].boite + 1;
+  if (boite > INTERVALLES.length) return autres;
+  const suite = [...fiches];
+  suite[i] = { ...fiches[i], question, boite, echeance: plusJours(aujourdhui, INTERVALLES[boite - 1]) };
+  return suite;
+}
+
+/** Les questions dont c'est le jour, les plus en retard d'abord. */
+export const fichesDues = (fiches: readonly FicheARevoir[], aujourdhui: string): FicheARevoir[] =>
+  fiches.filter((f) => f.echeance <= aujourdhui).sort((a, b) => a.echeance.localeCompare(b.echeance));

@@ -1131,6 +1131,8 @@ a:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
 .quiz-retour.quiz-faux { border-left-color: var(--danger); }
 .quiz-citation { margin-top: 8px; display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; }
 .quiz-citation blockquote { flex: 1 1 320px; margin: 0; font-style: italic; color: var(--text-2); }
+.quiz-passer { margin-top: 8px; }
+.quiz-pourquoi { margin-top: 6px; }
 .quiz-ecrite { white-space: pre-wrap; padding: 8px 10px; border: var(--bw) solid var(--border); border-radius: var(--r-bouton); font-size: 14px; }
 .quiz-pied { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .quiz-erreur { color: var(--danger); }
