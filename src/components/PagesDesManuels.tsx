@@ -142,7 +142,10 @@ function PagesDuManuel({ attachees, masque, onMasquer, onRetirer, onChoisir }: {
       )}
       {enGrand && (
         <PageEnGrand manuel={manuel} pages={pages} pageId={enGrand} onPage={setEnGrand} onClose={() => setEnGrand(null)}
-          onRetirer={(p) => onRetirer([p])} onImprimer={(p) => imprimer([p])} impression={impression} />
+          actions={(p) => <>
+            <button className="btn sm" disabled={impression} onClick={() => imprimer([p])}>{impression ? "…" : "🖨 Imprimer la page"}</button>
+            <button className="btn ghost sm" onClick={() => onRetirer([p])} title="Retirer cette page du créneau">Retirer du créneau</button>
+          </>} />
       )}
     </div>
   );
@@ -154,10 +157,17 @@ function PagesDuManuel({ attachees, masque, onMasquer, onRetirer, onChoisir }: {
 const EN_GRAND = new Map<string, string>();
 const MAX_EN_GRAND = 24;
 
-function PageEnGrand({ manuel, pages, pageId, onPage, onClose, onRetirer, onImprimer, impression }: {
+/**
+ * Une page en grand, et ses voisines d'une flèche. Ses boutons viennent de
+ * qui l'ouvre : imprimer et retirer, sous le créneau ; la prendre ou la
+ * rendre, dans le choix des pages — et la barre d'espace fait de même.
+ */
+function PageEnGrand({ manuel, pages, pageId, onPage, onClose, actions, onBasculer }: {
   manuel: Manuel; pages: PageManuel[]; pageId: string;
   onPage: (id: string) => void; onClose: () => void;
-  onRetirer: (p: PageManuel) => void; onImprimer: (p: PageManuel) => void; impression: boolean;
+  actions: (p: PageManuel) => React.ReactNode;
+  /** La barre d'espace, ou Entrée : prendre la page, ou la rendre. */
+  onBasculer?: (p: PageManuel) => void;
 }) {
   const i = pages.findIndex((p) => p.id === pageId);
   const page = i >= 0 ? pages[i] : null;
@@ -192,6 +202,7 @@ function PageEnGrand({ manuel, pages, pageId, onPage, onClose, onRetirer, onImpr
   const touche = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") { e.stopPropagation(); onClose(); }
     else if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); aller(e.key === "ArrowLeft" ? -1 : 1); }
+    else if ((e.key === " " || e.key === "Enter") && onBasculer && page && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); onBasculer(page); }
   };
   if (!page) return null;
   // Posée sur le corps de la page : le journal zoomé ne la déforme pas.
@@ -203,8 +214,7 @@ function PageEnGrand({ manuel, pages, pageId, onPage, onClose, onRetirer, onImpr
           <h2>📖 {manuel.titre} · p. {page.numero}</h2>
           {pages.length > 1 && <span className="meta">{i + 1} / {pages.length}</span>}
           <div className="spacer" />
-          <button className="btn sm" disabled={impression} onClick={() => onImprimer(page)}>{impression ? "…" : "🖨 Imprimer la page"}</button>
-          <button className="btn ghost sm" onClick={() => onRetirer(page)} title="Retirer cette page du créneau">Retirer du créneau</button>
+          {actions(page)}
           <button className="btn ghost sm" onClick={onClose} aria-label="Fermer">✕</button>
         </div>
         <div className="page-en-grand-corps">
@@ -329,6 +339,8 @@ function GrilleDesPages({ manuel, selection, onCliquer }: {
 }) {
   const { miniatureDe, demander, oublier } = useMiniatures(manuel);
   const grille = React.useRef<HTMLDivElement>(null);
+  // « Voir la page en plus grand avant de la sélectionner » (l'enseignant, 3 novembre 2026) : la loupe d'une vignette.
+  const [enGrand, setEnGrand] = React.useState<string | null>(null);
   React.useEffect(() => {
     const racine = grille.current;
     if (!racine || typeof IntersectionObserver === "undefined") return;
@@ -372,16 +384,27 @@ function GrilleDesPages({ manuel, selection, onCliquer }: {
           const on = selection.includes(p.numero);
           const image = miniatureDe(p);
           return (
-            <button key={p.id} type="button" role="option" aria-selected={on} data-page={p.id}
-              className={`choix-page${on ? " on" : ""}`} onClick={(e) => onCliquer(p.numero, e.shiftKey)}
-              title={`Page ${p.numero}`}>
-              <span className="choix-page-image">{image && <img src={image} alt="" />}</span>
-              <span className="choix-page-num">{p.numero}</span>
-              {on && <span className="choix-page-coche" aria-hidden="true">✓</span>}
-            </button>
+            <div key={p.id} className="choix-page-case">
+              <button type="button" role="option" aria-selected={on} data-page={p.id}
+                className={`choix-page${on ? " on" : ""}`} onClick={(e) => onCliquer(p.numero, e.shiftKey)}
+                title={`Page ${p.numero}`}>
+                <span className="choix-page-image">{image && <img src={image} alt="" />}</span>
+                <span className="choix-page-num">{p.numero}</span>
+                {on && <span className="choix-page-coche" aria-hidden="true">✓</span>}
+              </button>
+              <button type="button" className="choix-page-loupe" onClick={() => setEnGrand(p.id)}
+                title={`Voir la page ${p.numero} en grand`} aria-label={`Voir la page ${p.numero} en grand`}>🔍</button>
+            </div>
           );
         })}
       </div>
+      {enGrand && (
+        <PageEnGrand manuel={manuel} pages={manuel.pages} pageId={enGrand} onPage={setEnGrand} onClose={() => setEnGrand(null)}
+          onBasculer={(p) => onCliquer(p.numero, false)}
+          actions={(p) => selection.includes(p.numero)
+            ? <button className="btn sm" onClick={() => onCliquer(p.numero, false)} title="Espace">✓ Prise — la rendre</button>
+            : <button className="btn primary sm" onClick={() => onCliquer(p.numero, false)} title="Espace">Prendre cette page</button>} />
+      )}
     </div>
   );
 }

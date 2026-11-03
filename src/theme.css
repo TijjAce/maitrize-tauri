@@ -1911,6 +1911,12 @@ details.sous-pli-catalogue > :not(summary) { margin-left: 12px; }
 .choix-page-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .choix-page-num { font-size: 13px; font-weight: 700; line-height: 1.1; }
 .choix-page.on .choix-page-num { color: var(--accent); }
+/* La loupe d'une vignette : la page en grand avant de la prendre. */
+.choix-page-case { position: relative; display: flex; flex-direction: column; }
+.choix-page-case > .choix-page { flex: 1; }
+.choix-page-loupe { position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  border: 1px solid var(--border); background: var(--panel); font-size: 13px; cursor: zoom-in; opacity: .85; padding: 0; }
+.choix-page-loupe:hover, .choix-page-loupe:focus-visible { opacity: 1; border-color: var(--accent); }
 .choix-page-coche { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
   background: var(--accent); color: #fff; font-size: 13px; font-weight: 800; }
 .choix-pages-vide { flex: 1; margin: 0; font-size: 13.5px; }
