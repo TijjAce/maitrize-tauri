@@ -156,6 +156,7 @@ export const SOUS_ONGLETS: { ico: string; label: string; to: string; page: strin
   { ico: "🔺", label: "De la figure à l'équation (modélisation mathématique, 3e-2de)", to: "/jeux", page: "jeux", onglet: "modelisation", sous: "Fabriquer · aides à la tâche" },
   { ico: "📈", label: "Modéliser par une fonction (figure à géométrie variable)", to: "/jeux", page: "jeux", onglet: "fonction", sous: "Fabriquer · aides à la tâche" },
   { ico: "📚", label: "Lectures à l'école : albums et livres des listes de référence (cycles 1, 2, 3)", to: "/ressources", page: "ressources", onglet: "lectures", sous: "Ressources · Éduscol" },
+  { ico: "🎓", label: "Quiz des guides Éduscol : l'IA me teste sur un guide, d'après ses pages", to: "/ressources", page: "ressources", onglet: "quiz", sous: "Ressources · Éduscol" },
   { ico: "🗒", label: "Programmation", to: "/organisation", page: "organisation", onglet: "prog", sous: "Organisation" },
   { ico: "📉", label: "Progression annuelle", to: "/organisation", page: "organisation", onglet: "annuelle", sous: "Organisation" },
   { ico: "🕘", label: "Emploi du temps", to: "/organisation", page: "organisation", onglet: "edt", sous: "Organisation" },

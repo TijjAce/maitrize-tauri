@@ -36,10 +36,14 @@ const octetsDe = (b64: string) => {
 /** Une trouvaille dans le document : sa page, et son rang dans cette page. */
 interface Trouvaille { page: number; rang: number }
 
-export function PdfViewer({ nomFichier, titre, onClose, materiel }: {
+export function PdfViewer({ nomFichier, titre, onClose, materiel, page, chercher }: {
   nomFichier: string; titre: string; onClose: () => void;
   /** Le matériel qui porte ce PDF : fabriqué par un atelier, il se modifie dans Fabriquer. */
   materiel?: MaterielItem;
+  /** La page où ouvrir le document : celle d'une citation (voir le quiz des guides). */
+  page?: number;
+  /** Ce qu'on y cherche d'emblée : le début de la citation, surligné à sa page. */
+  chercher?: string;
 }) {
   const navigate = useNavigate();
   const fabrication = lireFabrication(materiel?.fabricationJson);
@@ -47,8 +51,8 @@ export function PdfViewer({ nomFichier, titre, onClose, materiel }: {
   const [erreur, setErreur] = React.useState("");
   const [proportion, setProportion] = React.useState(1.414);
   const [largeur, setLargeur] = React.useState(0);
-  const [barre, setBarre] = React.useState(false);
-  const [recherche, setRecherche] = React.useState("");
+  const [barre, setBarre] = React.useState(!!chercher);
+  const [recherche, setRecherche] = React.useState(chercher ?? "");
   const [trouvailles, setTrouvailles] = React.useState<Trouvaille[]>([]);
   const [courante, setCourante] = React.useState(0);
   const [cherchant, setCherchant] = React.useState(false);
@@ -145,8 +149,20 @@ export function PdfViewer({ nomFichier, titre, onClose, materiel }: {
   };
 
   // La première trouvaille se montre d'elle-même : sans cela, on cherche un
-  // mot et rien ne bouge à l'écran.
-  React.useEffect(() => { if (trouvailles.length) allerA(0); }, [trouvailles, allerA]);
+  // mot et rien ne bouge à l'écran. Ouvert à une page, c'est la première de cette page.
+  React.useEffect(() => {
+    if (!trouvailles.length) return;
+    const i = Math.max(0, trouvailles.findIndex((t) => t.page >= (page ?? 1)));
+    setCourante(i);
+    allerA(i);
+  }, [trouvailles, allerA, page]);
+
+  // Ouvert à une page : on y va dès qu'elle est posée, avant même que la recherche ait trouvé.
+  React.useEffect(() => {
+    if (!doc || !largeur || !page) return;
+    const t = setTimeout(() => zone.current?.querySelector<HTMLElement>(`[data-page="${page}"]`)?.scrollIntoView({ block: "start" }), 60);
+    return () => clearTimeout(t);
+  }, [doc, largeur, page]);
 
   const fermerLaBarre = () => { setBarre(false); setRecherche(""); setTrouvailles([]); };
 
