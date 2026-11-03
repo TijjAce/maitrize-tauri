@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { AGENTS_COUPES, api, ChatMessage, Sequence, Seance, PiloteConversation, CYCLES, MATIERES, MODELES_MISTRAL, MODELE_DEFAUT, nouvelleSequence, nouvelleSeance, couleurPourMatiere, newId, nowIso } from "../api";
 import { Modal, Field, Input, Select, Demander, useAsync } from "../components/ui";
 import { construireContexteIA } from "../contexteIA";
-import { nomsAMasquer } from "../nomsAMasquer";
+import { lieuxAMasquer, nomsAMasquer } from "../nomsAMasquer";
 import { pseudonymiser, pseudonymiserTout, restaurer } from "../confidentialite";
+import { relireAvantEnvoi } from "../relectureEnvoi";
 import { DEBUT_OBJECTIF_SEANCE } from "../demarches";
 import { openCtx } from "../components/ctxmenu";
 import { Markdown } from "../components/Markdown";
@@ -322,7 +323,7 @@ export default function Assistant() {
       // La conversation part sans les noms connus — élèves, contacts de
       // l'établissement —, masquée d'un seul tenant ; la réponse les retrouve
       // à mesure qu'elle s'écrit.
-      const masque = pseudonymiserTout(suite.map((m) => m.content), await nomsAMasquer());
+      const masque = pseudonymiserTout(suite.map((m) => m.content), await nomsAMasquer(), { portee: "eleves", lieux: await lieuxAMasquer() });
       // La version retouchée d'une réponse reste ici : seul le texte part, avec les images les plus récentes.
       // Les images partent telles quelles : un prénom écrit dessus n'est pas masqué.
       const parMessage = imagesDeLaDemande(suite);
@@ -363,6 +364,7 @@ export default function Assistant() {
         setMessages([...suite, { role: "assistant", content: "⚠️ " + ev.payload.message }]); setLoading(false);
       });
       cleanup = () => { unChunk(); unDone(); unErr(); };
+      await relireAvantEnvoi({ messages: [...prefixe, ...envoyes], image: envoyes.some((m) => m.images?.length) });
       await invoke("mistral_chat_stream", { messages: [...prefixe, ...envoyes], model, requestId: reqId });
       if (arretee) return;
     } catch (e: any) {

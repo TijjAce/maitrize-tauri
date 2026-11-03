@@ -20,8 +20,8 @@
 // disque.
 
 import { api, type Reunion, MODELE_TACHES } from "./api";
-import { pseudonymiser, restaurer } from "./confidentialite";
-import { nomsAMasquer } from "./nomsAMasquer";
+import { pseudonymiser, restaurer, sansMarqueursRestants } from "./confidentialite";
+import { lieuxAMasquer, nomsAMasquer } from "./nomsAMasquer";
 
 /**
  * Durée d'une tranche, en secondes.
@@ -457,11 +457,11 @@ export async function rangerLeDocument(
   contexte: { genre: string; titre: string; participants?: string },
 ): Promise<string> {
   if (!document.trim()) return document;
-  const { parts, table } = masquerTout([contexte.titre, document], await nomsDesEleves(contexte.participants ?? ""));
+  const { parts, table } = await masquerTout([contexte.titre, document], await nomsDesEleves(contexte.participants ?? ""));
   const [titre, docMasque] = parts;
   const modele = await api.modeleActif(MODELE_TACHES);
   const rep = await api.mistralChat(
-    promptRangement({ genre: contexte.genre, titre, document: docMasque, masques: table.length > 0 }), modele);
+    promptRangement({ genre: contexte.genre, titre, document: docMasque, masques: table.length > 0 }), modele, false, false);
   const fusionne = fusionnerPlan(lirePlan(docMasque), lirePlan(nettoyer(rep)));
   if (planVide(fusionne)) throw new Error("L'agent n'a rien rendu d'exploitable.");
   return sansMarqueursOrphelins(restaurer(ecrirePlan(fusionne), table).texte);
@@ -480,7 +480,8 @@ export function sansMarqueursOrphelins(texte: string): string {
     // « - [P1] : préciser » → « - À préciser » : la puce reste lisible.
     .replace(/^(\s*[-*•]\s*)\[P\d+\]\s*:\s*/gm, "$1")
     .replace(/\[P\d+\]/g, "une personne")
-    .replace(/[ \t]{2,}/g, " ");
+    .replace(/[ \t]{2,}/g, " ")
+    .split("\n").map((l) => sansMarqueursRestants(l)).join("\n");
 }
 
 /** Ce que les modèles ajoutent parfois autour de la réponse. */
@@ -508,8 +509,8 @@ const nomsDesEleves = (...textes: string[]): Promise<string[]> => nomsAMasquer(t
  * texte, ce qu'un masquage séparé ne garantirait pas.
  */
 const SEPARE = "\u0000";
-function masquerTout(morceaux: string[], noms: string[]) {
-  const { texte, table } = pseudonymiser(morceaux.join(SEPARE), noms);
+async function masquerTout(morceaux: string[], noms: string[]) {
+  const { texte, table } = pseudonymiser(morceaux.join(SEPARE), noms, { portee: "eleves", lieux: await lieuxAMasquer() });
   const parts = texte.split(SEPARE);
   return { parts: morceaux.map((_, i) => parts[i] ?? ""), table };
 }
@@ -560,11 +561,11 @@ export async function relireLeDocument(
   contexte: { genre: string; titre: string; participants?: string },
 ): Promise<string> {
   if (planVide(lirePlan(document))) return document;
-  const { parts, table } = masquerTout([contexte.titre, document], await nomsDesEleves(contexte.participants ?? ""));
+  const { parts, table } = await masquerTout([contexte.titre, document], await nomsDesEleves(contexte.participants ?? ""));
   const [titre, docMasque] = parts;
   const modele = await api.modeleActif(MODELE_TACHES);
   const rep = await api.mistralChat(
-    promptRelecture({ genre: contexte.genre, titre, document: docMasque, masques: table.length > 0 }), modele);
+    promptRelecture({ genre: contexte.genre, titre, document: docMasque, masques: table.length > 0 }), modele, false, false);
   const fusionne = fusionnerPlan(lirePlan(docMasque), lirePlan(nettoyer(rep)));
   if (planVide(fusionne)) throw new Error("La relecture n'a rien rendu d'exploitable.");
   return sansMarqueursOrphelins(restaurer(ecrirePlan(fusionne), table).texte);
@@ -582,7 +583,7 @@ export async function mettreAuPropre(
   plan: string,
 ): Promise<string> {
   if (planVide(lirePlan(plan))) throw new Error("Le compte rendu est encore vide.");
-  const { parts, table } = masquerTout(
+  const { parts, table } = await masquerTout(
     [reunion.titre, reunion.participants, plan], await nomsDesEleves(reunion.participants));
   const [titre, participants, planMasque] = parts;
   const modele = await api.modeleActif();
@@ -655,7 +656,7 @@ export function promptReformuler(passage: string, masques: boolean) {
 export async function reformulerPassage(passage: string): Promise<string> {
   const brut = passage.trim();
   if (brut.length < 12) throw new Error("Surlignez un passage un peu plus long.");
-  const { parts, table } = masquerTout([brut], await nomsDesEleves());
+  const { parts, table } = await masquerTout([brut], await nomsDesEleves());
   const modele = await api.modeleActif(MODELE_TACHES);
   const rep = await api.mistralChat(promptReformuler(parts[0], table.length > 0), modele);
   const propre = nettoyer(rep);

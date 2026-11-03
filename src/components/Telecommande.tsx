@@ -12,6 +12,8 @@ import { zoomerDeLoin } from "../theme";
 import { DIRECT_COUPE } from "../voxtralDirect";
 import { EVT_CHERCHER_BUREAU } from "../bureauAteliers";
 import { annulerDeLoin } from "../annulation";
+import { pseudonymiserTout, restaurer } from "../confidentialite";
+import { nomsAMasquer } from "../nomsAMasquer";
 import { seanceACreer, sequenceACreer, sequenceToutefaiteACreer, type Demander } from "../creationsALaVoix";
 import {
   CLE_SECOURS, CLE_TEMPS_REEL, MODELE_DE_SECOURS, catalogue, ceQuIlComprend, comprendre, consigneDeMistral, destinationsDe,
@@ -100,14 +102,16 @@ async function parMistral(texte: string, ctx: ContexteTelecommande, nav: (to: st
   const elements = await ceQuOnPeutOuvrir(ctx.eleves);
   let actions: Compris[] | null;
   try {
+    // La phrase dite — « note pour Lucas : … » — part sans les noms connus, la consigne aussi ; la réponse les retrouve.
+    const masque = pseudonymiserTout([consigneDeMistral(ctx.destinations, elements, ceQuiEstEnCours()), texte], await nomsAMasquer());
     const reponse = await Promise.race([
       api.mistralChat([
-        { role: "system", content: consigneDeMistral(ctx.destinations, elements, ceQuiEstEnCours()) },
-        { role: "user", content: texte },
-      ], MODELE_DE_SECOURS, true),
+        { role: "system", content: masque.textes[0] },
+        { role: "user", content: masque.textes[1] },
+      ], MODELE_DE_SECOURS, true, false),
       new Promise<never>((_, refuser) => setTimeout(() => refuser(new Error("délai")), DELAI_DE_MISTRAL)),
     ]);
-    actions = lireLesActions(reponse, ctx, elements, texte);
+    actions = lireLesActions(restaurer(reponse, masque.table).texte, ctx, elements, texte);
   } catch {
     return null;
   }

@@ -16,6 +16,7 @@ import { CONTACTS, REPERES, cleEtab } from "../etablissement";
 import { USAGES, cleUsage, type Usage } from "../transcription";
 import { CarteTelecommande } from "../components/Telecommande";
 import { Aide } from "../components/Aide";
+import { CLE_RELIRE } from "../relectureEnvoi";
 import { VocauxRecus } from "../components/VocauxRecus";
 import { TelephoneNuage } from "../components/TelephoneNuage";
 import { AmisTab } from "./Amis";
@@ -409,6 +410,20 @@ export default function Reglages() {
           </ul>
         )}
         <JetonsDepenses maj={majJetons} />
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12 }}>
+          <label className="pb-coche" style={{ margin: 0 }}>
+            <input type="checkbox" checked={s[CLE_RELIRE] === "1"} onChange={(e) => set(CLE_RELIRE, e.target.checked ? "1" : "")} />
+            <span>Voir ce qui part avant chaque envoi</span>
+          </label>
+          <Aide titre="Ce qui part chez Mistral" vers="droite">
+            <p>Avant chaque demande, Maitrize montre le texte exact qui sort de l'ordinateur : vous envoyez, ou vous annulez.</p>
+            <p>Un texte sur les élèves — une observation, une réunion, un bilan, le PPI, une synthèse, la conversation de l'assistant —
+              part sans rien qui désigne quelqu'un, même ce que l'application ne connaît pas : un prénom et son nom, le frère d'un élève,
+              « Mme Durand », une ville, une adresse, une date précise, un téléphone, un numéro INE. Un diagnostic rare est remplacé par
+              sa catégorie. Tout revient à sa place dans la réponse, sur cet ordinateur.</p>
+            <p>Ce qui part tout seul — le compte rendu qui se range pendant une réunion, la télécommande — ne s'arrête pas pour demander.</p>
+          </Aide>
+        </div>
       </div>
 
       <Transcription />
@@ -1339,6 +1354,11 @@ function Transcription() {
           <option value="ligne">En ligne · Mistral</option>
         </Select>
       </div>
+      {commun === "ligne" && (
+        <div className="meta" style={{ color: "var(--danger, #c92a2a)", margin: "4px 0 8px" }}>
+          La voix ne s'anonymise pas : elle part telle quelle chez Mistral. Sur cet ordinateur, elle ne sort pas.
+        </div>
+      )}
 
       <div className="transcription-modeles">
         <span className="meta">Modèles</span>

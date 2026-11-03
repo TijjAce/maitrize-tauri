@@ -2,6 +2,7 @@
 import { invoke as invokeTauri } from "@tauri-apps/api/core";
 import { pendant } from "./calculEnCours";
 import { noterEchec, noterSucces, type EtatIncidents } from "./incidents";
+import { relireAvantEnvoi } from "./relectureEnvoi";
 
 // La fenêtre de l'application n'a pas de console visible : quand une action
 // « ne fait rien », il ne reste aucune trace. Toute commande qui échoue est
@@ -842,9 +843,15 @@ export const api = {
   vacancesScolaires: (zone: string) => invoke<VacancePeriode[]>("vacances_scolaires", { zone }),
 
   // IA Mistral
-  /** `json` : Mistral répond par un objet JSON, sans rien autour. */
-  mistralChat: (messages: ChatMessage[], model?: string, json = false) =>
-    invoke<string>("mistral_chat", { messages, model: normaliserModele(model), ...(json ? { json: true } : {}) }),
+  /**
+   * `json` : Mistral répond par un objet JSON, sans rien autour. `relire` : ce
+   * qui part tout seul — le compte rendu qui se range en réunion, la
+   * télécommande — ne s'arrête pas pour montrer ce qui part (voir relectureEnvoi).
+   */
+  mistralChat: async (messages: ChatMessage[], model?: string, json = false, relire = true) => {
+    if (relire) await relireAvantEnvoi({ messages, image: messages.some((m) => m.images?.length) });
+    return invoke<string>("mistral_chat", { messages, model: normaliserModele(model), ...(json ? { json: true } : {}) });
+  },
   mistralTest: (model?: string) =>
     invoke<boolean>("mistral_test", { model: normaliserModele(model) }),
   /** Essaie chaque modèle et dit lesquels l'abonnement accepte réellement. */
@@ -883,8 +890,10 @@ export const api = {
   /** Un picto dessiné par l'IA de Mistral à la manière d'ARASAAC, en base64 ; `precision` dit ce qu'on doit y voir. */
   mistralDessinerPicto: (mot: string, precision = "") =>
     invoke<string>("mistral_dessiner_picto", { mot, precision }),
-  mistralVision: (consigne: string, imageB64: string, model?: string) =>
-    invoke<string>("mistral_vision", { consigne, imageB64, model: normaliserModele(model) }),
+  mistralVision: async (consigne: string, imageB64: string, model?: string) => {
+    await relireAvantEnvoi({ messages: [{ role: "user", content: consigne }], image: true });
+    return invoke<string>("mistral_vision", { consigne, imageB64, model: normaliserModele(model) });
+  },
   arasaacChercher: (q: string, limite = 40) =>
     invoke<PictoArasaac[]>("arasaac_chercher", { q, limite }),
   arasaacNature: (id: number) => invoke<string>("arasaac_nature", { id }),

@@ -6,7 +6,7 @@
 // c'est l'enseignant qui choisit de la garder.
 import { api } from "./api";
 import { pseudonymiser, restaurer } from "./confidentialite";
-import { nomsAMasquer } from "./nomsAMasquer";
+import { lieuxAMasquer, nomsAMasquer } from "./nomsAMasquer";
 
 export type Style = "reformuler" | "simple" | "professionnel" | "familles" | "notes" | "corriger";
 
@@ -57,7 +57,8 @@ export interface Proposition { texte: string; nomsAbsents: string[]; nomsMasques
 
 /** Envoie le texte (noms masqués) et rend la proposition, noms remis. */
 export async function reformuler(texte: string, style: Style): Promise<Proposition> {
-  const { texte: masque, table } = pseudonymiser(texte, await nomsAMasquer());
+  // Des écrits professionnels — bilans, comptes rendus — : masqués comme tout texte sur les élèves.
+  const { texte: masque, table } = pseudonymiser(texte, await nomsAMasquer(), { portee: "eleves", lieux: await lieuxAMasquer() });
   const modele = await api.modeleActif();
   const rep = await api.mistralChat([
     { role: "system", content: consigne(style) },

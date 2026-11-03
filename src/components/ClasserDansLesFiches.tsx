@@ -3,7 +3,7 @@ import { api, Eleve, ChatMessage, MODELE_TACHES, TYPES_OBSERVATION, newId, nowIs
 import { Modal, Field, Input, Select, Textarea } from "./ui";
 import { toast } from "./Toaster";
 import { pseudonymiser, restaurer } from "../confidentialite";
-import { nomsAMasquer } from "../nomsAMasquer";
+import { lieuxAMasquer, nomsAMasquer } from "../nomsAMasquer";
 
 // ── Classer dans les fiches élèves ────────────────────────────────────────
 //
@@ -94,9 +94,11 @@ export function promptRepartition(marqueurs: string[], transcription: string): C
  * remplacé par son marqueur, et la liste des marqueurs. La table, elle,
  * reste sur la machine : elle remet les noms dans la réponse.
  */
-export function preparerRepartition(eleves: Eleve[], transcription: string, autresNoms: string[] = []) {
-  const { texte, table } = pseudonymiser(transcription, [...eleves.map((e) => e.nom), ...autresNoms]);
-  return { messages: promptRepartition(table.map((r) => r.marqueur), texte), table };
+export function preparerRepartition(eleves: Eleve[], transcription: string, autresNoms: string[] = [], lieux: string[] = []) {
+  const { texte, table } = pseudonymiser(transcription, [...eleves.map((e) => e.nom), ...autresNoms], { portee: "eleves", lieux });
+  // Les marqueurs des élèves seulement : un frère, une maman, un lieu ne reçoivent pas d'observation.
+  const estUnEleve = (original: string) => eleves.some((e) => pseudonymiser(original, [e.nom]).table.length > 0);
+  return { messages: promptRepartition(table.filter((r) => !r.genre && estUnEleve(r.original)).map((r) => r.marqueur), texte), table };
 }
 
 export function ClasserDansLesFiches({ eleves, texte, onClose, onEnregistre }: {
@@ -122,7 +124,7 @@ export function ClasserDansLesFiches({ eleves, texte, onClose, onEnregistre }: {
       // comme le fait l'assistant.
       const modele = await api.modeleActif(MODELE_TACHES);
       // Les adultes cités — l'AESH, une collègue — se masquent avec les élèves.
-      const { messages, table } = preparerRepartition(eleves, transcription, await nomsAMasquer());
+      const { messages, table } = preparerRepartition(eleves, transcription, await nomsAMasquer(), await lieuxAMasquer());
       const reponse = restaurer(await api.mistralChat(messages, modele), table).texte;
       const p = lirePropositions(reponse, eleves);
       if (p.length === 0) {

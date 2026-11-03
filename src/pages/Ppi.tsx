@@ -4,7 +4,7 @@ import { Field, Input, Empty, useAsync } from "../components/ui";
 import { lireJson, modifierLeDocument } from "../documentDeLEleve";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { pseudonymiser, restaurer } from "../confidentialite";
-import { nomsAMasquer } from "../nomsAMasquer";
+import { lieuxAMasquer, nomsAMasquer } from "../nomsAMasquer";
 import { infosReussite, resumeSuivi, REUSSITES, sansNouvelles, suivreObjectif } from "../objectifsPpi";
 import { isoJour } from "../dates";
 
@@ -148,7 +148,7 @@ export function PpiTab({ eleveId }: { eleveId: string }) {
     try {
       const modele = await api.modeleActif();
       const noms = [...(eleves ?? []).map((e) => e.nom), ...await nomsAMasquer()];
-      const { texte: masque, table } = pseudonymiser(`Élève : ${prenom}\n\nNotes à reformuler :\n${b.texte}`, noms);
+      const { texte: masque, table } = pseudonymiser(`Élève : ${prenom}\n\nNotes à reformuler :\n${b.texte}`, noms, { portee: "eleves", lieux: await lieuxAMasquer() });
       const rep = await api.mistralChat([
         { role: "system", content:
           "Tu es enseignant·e spécialisé·e (IME/ULIS). Tu reformules les notes d'un enseignant pour le bilan officiel du Projet Personnalisé Individualisé d'un élève, destiné à l'équipe de suivi, la famille et la MDPH. " +

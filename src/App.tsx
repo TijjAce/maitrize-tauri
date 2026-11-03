@@ -49,6 +49,7 @@ import { useAnnonceDuRetour } from "./components/RevenirEnArriere";
 import { useTelecommande } from "./components/Telecommande";
 import { proposerApresUnIncident } from "./rapportErreur";
 import { ConfirmerHost } from "./components/confirmer";
+import { RelectureEnvoiHost } from "./components/RelectureEnvoi";
 import { FinDAnneeHost } from "./components/FinDAnnee";
 import { LecteurMarkdownHost } from "./components/LecteurMarkdown";
 import { UpdateBanner } from "./components/UpdateBanner";
@@ -319,6 +320,7 @@ export default function App() {
       <Toaster />
       <IndicateurTranscription />
       <ConfirmerHost />
+      <RelectureEnvoiHost />
       <LecteurMarkdownHost />
       {surLeMac && <UpdateBanner />}
       <NotesPanel />

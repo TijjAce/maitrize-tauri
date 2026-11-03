@@ -18,9 +18,9 @@
 import { api, type ObservationEleve } from "./api";
 import { GRILLES } from "./data/evaluationsDiagnostiques";
 import { normaliser } from "./competencesTravaillees";
-import { pseudonymiser, restaurer } from "./confidentialite";
-import { citeLePrenom, clesDeLEleve, phrasesQuiCitent, prenomDe } from "./veilleEleve";
-import { nomsAMasquer } from "./nomsAMasquer";
+import { restaurer } from "./confidentialite";
+import { citeLePrenom, clesDeLEleve, masquerLEleveEtLesAdultes, phrasesQuiCitent, prenomDe } from "./veilleEleve";
+import { lieuxAMasquer, nomsAMasquer } from "./nomsAMasquer";
 
 /** Un observable de la grille, avec d'où il vient. */
 export interface Axe {
@@ -209,7 +209,7 @@ export function promptRepartition(o: ObservationEleve) {
         "les aménagements sont concrets et réalisables en classe ;",
         "laisse « Évaluation — réajustement » vide (« - ») : il se remplit plus tard, quand on aura vu ce que ça donne.",
         "N'invente aucun fait, aucune date, aucun diagnostic. Si une colonne n'a rien, écris « - ».",
-        "Le marqueur [P1] remplace le prénom de l'élève : recopie-le exactement.",
+        "Le marqueur [P1] remplace le prénom de l'élève ; les autres marqueurs entre crochets ([P2], [Lieu 1], [Date 1]…) remplacent d'autres personnes, des lieux, des dates : recopie-les exactement.",
       ].join(" "),
     },
     { role: "user" as const, content: `${entete}\n\nCe qui a été écrit :\n${o.note}` },
@@ -252,7 +252,8 @@ export function lireRepartition(reponse: string): Partial<Record<Colonne, string
  */
 export async function repartir(o: ObservationEleve, nomEleve: string): Promise<Partial<Record<Colonne, string>>> {
   if (!o.note.trim()) throw new Error("Rien à ranger : le bilan de ce temps d'observation est vide.");
-  const { texte: note, table } = pseudonymiser(o.note, [...(nomEleve ? [nomEleve] : []), ...await nomsAMasquer()]);
+  const adultes = (await nomsAMasquer()).filter((n) => n !== nomEleve);
+  const { texte: note, table } = masquerLEleveEtLesAdultes(o.note, nomEleve, adultes, await lieuxAMasquer());
   const modele = await api.modeleActif();
   const rep = await api.mistralChat(promptRepartition({ ...o, note }), modele);
   const lu = lireRepartition(rep);

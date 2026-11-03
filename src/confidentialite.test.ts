@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nomsDansUnTexte, pseudonymiser, restaurer } from "./confidentialite";
+import { nomsDansUnTexte, pseudonymiser, pseudonymiserTout, restaurer } from "./confidentialite";
 
 const eleves = ["Amandine Martin", "Léo Dubois-Durand", "Rose Petit"];
 
@@ -101,5 +101,51 @@ describe("plusieurs textes masqués ensemble", () => {
   it("un texte sans nom revient tel quel", async () => {
     const { pseudonymiserTout } = await import("./confidentialite");
     expect(pseudonymiserTout(["Les fractions au CM1"], eleves).textes).toEqual(["Les fractions au CM1"]);
+  });
+});
+
+// Des textes inventés, pleins des pièges d'un vrai compte rendu : aucun de ces noms n'est celui d'un élève.
+describe("un texte sur les élèves part sans rien qui désigne quelqu'un (« anonymiser mais que ça fonctionne quand même avec la ligne »)", () => {
+  const sur = (textes: string[], lieux: string[] = []) => pseudonymiserTout(textes, ["Octave Martin"], { portee: "eleves", lieux });
+
+  it("masque les personnes que l'application ne connaît pas : un prénom courant, le nom après « son frère » ou « Mme », et ce nom partout", () => {
+    const { textes: [t], table } = sur(["Octave a lu seul. Son frère Kylian est venu avec sa maman, Mme Benali ; Lucas et Emma Van Damme ont joué. Benali rappellera."]);
+    expect(t).toBe("[P1] a lu seul. Son frère [P2] est venu avec sa maman, [P3] ; [P4] et [P5] ont joué. [P3] rappellera.");
+    expect(table.find((r) => r.marqueur === "[P5]")?.original).toBe("Emma Van Damme");
+    // Le niveau qui suit un prénom reste : « Emma CE1 » ; un mot courant en minuscules aussi.
+    expect(sur(["Emma CE1 a peint en rose ; Rose aussi."]).textes[0]).toBe("[P1] CE1 a peint en rose ; [P2] aussi.");
+  });
+
+  it("masque les lieux, les dates précises, les coordonnées et les numéros", () => {
+    const { textes: [t] } = sur(["Né le 12/03/2017 à Sarcelles, il habite au 12 bis rue du Général de Gaulle, 95200 Sarcelles. "
+      + "Tél. : 06 12 34 56 78, parents@exemple.fr. INE 1234567890A. Suivi au CMP de Gonesse, scolarisé à l'IME Les Tilleuls, né en 2016."],
+    ["École Berardin Moulin"]);
+    expect(t).toBe("Né le [Date 1] à [Lieu 1], il habite au [Lieu 2], [Lieu 3]. Tél. : [Contact 1], [Contact 2]. INE [Numéro 1]. "
+      + "Suivi au CMP de [Lieu 4], scolarisé à l'IME [Lieu 5], né en [Date 2].");
+    // Le mois et l'année, le jour de la semaine : ils ne désignent personne.
+    expect(sur(["En janvier 2025, réunion ESS ; mardi, sortie au parc."]).textes[0]).toBe("En janvier 2025, réunion ESS ; mardi, sortie au parc.");
+    // L'établissement, partout et quelle que soit la portée.
+    expect(pseudonymiserTout(["Sortie de l'École Berardin Moulin."], [], { lieux: ["École Berardin Moulin"] }).textes[0]).toBe("Sortie de l'[Lieu 1].");
+  });
+
+  it("remplace un diagnostic rare par sa catégorie, garde ce qui est courant", () => {
+    const { textes: [t] } = sur(["Syndrome de Rett, épilepsie (syndrome de West), microdélétion 22q11 ; sa cousine : syndrome d'Asperger. TSA, trisomie 21."]);
+    expect(t).toBe("[Santé 1 : un syndrome génétique rare], épilepsie ([Santé 2 : une épilepsie rare]), [Santé 3 : une anomalie chromosomique rare] ; "
+      + "sa cousine : syndrome d'Asperger. TSA, trisomie 21.");
+  });
+
+  it("remet tout à sa place dans la réponse, même un marqueur recopié sans sa catégorie", () => {
+    const { table } = sur(["Le 3 mars, Kylian (syndrome de Rett) est allé au CMP de Gonesse."]);
+    expect(restaurer("[Date 1] : [P1] ([Santé 1]) va au CMP de [Lieu 1]. [Santé 1 : un syndrome génétique rare].", table).texte)
+      .toBe("3 mars : Kylian (syndrome de Rett) va au CMP de Gonesse. syndrome de Rett.");
+    // Une personne qui disparaît de la réponse se signale ; une date, non.
+    expect(restaurer("Rien.", table).absents).toEqual(["Kylian"]);
+  });
+
+  it("laisse un texte de classe tel qu'il est : les personnages d'une histoire, les dates d'une leçon", () => {
+    expect(pseudonymiserTout(["Pierre et le loup ; le 14 juillet 1789, la Bastille."], ["Octave Martin"]).textes[0])
+      .toBe("Pierre et le loup ; le 14 juillet 1789, la Bastille.");
+    // Les coordonnées, elles, ne partent jamais.
+    expect(pseudonymiserTout(["Appeler le 06 12 34 56 78."], []).textes[0]).toBe("Appeler le [Contact 1].");
   });
 });
