@@ -69,6 +69,18 @@ describe("un manuel", () => {
     expect(lireIndex("nope")).toEqual([]);
   });
 
+  it("garde sa matière et son domaine, jusque dans l'index que lisent les déroulements (2026-11-03)", () => {
+    const m = { ...nouveauManuel("Mon fichier de maths", "pdf", "2026-11-03", "f.pdf", 2), matiere: "Mathématiques", domaine: "Grandeurs et mesures" };
+    expect(lireManuel(ecrireManuel(m))).toEqual(m);
+    expect(resumeDe(m)).toMatchObject({ matiere: "Mathématiques", domaine: "Grandeurs et mesures" });
+    expect(lireIndex(JSON.stringify(indexAvec([], m)))[0]).toMatchObject({ titre: "Mon fichier de maths", matiere: "Mathématiques", domaine: "Grandeurs et mesures" });
+    // Sans matière, pas de domaine ; une valeur abîmée ne passe pas.
+    const sans = lireManuel(JSON.stringify({ ...m, matiere: " ", domaine: "Grandeurs et mesures" }))!;
+    expect([sans.matiere, sans.domaine]).toEqual([undefined, undefined]);
+    expect(resumeDe({ ...m, matiere: undefined })).not.toHaveProperty("domaine");
+    expect(lireIndex(JSON.stringify([{ id: "x", titre: "X", matiere: 3, domaine: ["?"] }]))).toEqual([{ id: "x", titre: "X" }]);
+  });
+
   it("se relit avec ses exercices encadrés, leurs compétences et leur modèle simplifié", () => {
     const fiche = { titre: "Accorder l'adjectif", consigne: "Colorie.", exemple: "", items: ["une chemise bleue"], aide: "" };
     const e: ExerciceManuel = {

@@ -494,7 +494,7 @@ export default function Planning() {
     const seancesActuelles = await api.seancesList().catch(() => seances ?? []);
     // Un créneau de groupe dont le prévu a la part de ses élèves (« Lina : … ») a une bande par élève.
     const prenoms = (eleves ?? []).map((e) => ({ id: e.id, prenom: e.nom.trim().split(/\s+/)[0] ?? "" }));
-    const duJour = await bandesDuJour(jourCreneaux, seancesActuelles, sequences ?? [], materiels, jeux, photosDeLaLudotheque, prenoms)
+    const duJour = await bandesDuJour(jourCreneaux, seancesActuelles, sequences ?? [], materiels, jeux, photosDeLaLudotheque, prenoms, manuels)
       .catch(() => ({ bandes: [], refs: [] }));
     const pageDesBandes = duJour.bandes.length
       ? corpsDesBandes(titre, duJour.bandes, mentionDesPictos(duJour.refs, "", "bandes-attribution")) : "";

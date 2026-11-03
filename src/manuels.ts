@@ -71,6 +71,13 @@ export interface Manuel {
   /** Le PDF dans Fichiers/, pour un manuel importé. */
   fichierPdf: string;
   niveau: string;
+  /**
+   * La matière du manuel, et son domaine, choisis par l'enseignant : ses pages
+   * citées au prévu d'un créneau sont une carte du déroulement, sur les
+   * tablettes et dans la journée en bandes, avec leur picto (voir journalTelephone).
+   */
+  matiere?: string;
+  domaine?: string;
   pages: PageManuel[];
   creeLe: string;
   /** Le PDF du manuel posé sur le bureau : on le remplace au lieu d'en poser un second. */
@@ -85,6 +92,9 @@ export interface ResumeManuel {
   creeLe: string;
   pages: number;
   exercices: number;
+  /** La matière et le domaine du manuel : les déroulements les lisent ici, sans relire chaque manuel. */
+  matiere?: string;
+  domaine?: string;
 }
 
 const nouvelId = () => (globalThis.crypto?.randomUUID?.() ?? `m${Date.now()}${Math.random().toString(36).slice(2)}`);
@@ -129,13 +139,24 @@ export function exerciceEncadre(zone: Zone, id: string = nouvelId()): ExerciceMa
 export const resumeDe = (m: Manuel): ResumeManuel => ({
   id: m.id, titre: m.titre, source: m.source, creeLe: m.creeLe, pages: m.pages.length,
   exercices: m.pages.reduce((n, p) => n + p.exercices.length, 0),
+  ...matiereEtDomaine(m),
 });
+
+/** La matière d'un manuel et son domaine, relus : rien sans matière, et pas de domaine sans elle. */
+export function matiereEtDomaine(v: { matiere?: unknown; domaine?: unknown }): { matiere?: string; domaine?: string } {
+  const matiere = typeof v.matiere === "string" ? v.matiere.trim() : "";
+  const domaine = matiere && typeof v.domaine === "string" ? v.domaine.trim() : "";
+  return matiere ? { matiere, ...(domaine ? { domaine } : {}) } : {};
+}
 
 export function lireIndex(brut: string | null | undefined): ResumeManuel[] {
   if (!brut) return [];
   try {
     const v = JSON.parse(brut);
-    return Array.isArray(v) ? v.filter((x) => x && typeof x.id === "string" && typeof x.titre === "string") : [];
+    return Array.isArray(v)
+      ? v.filter((x) => x && typeof x.id === "string" && typeof x.titre === "string")
+        .map(({ matiere, domaine, ...x }) => ({ ...x, ...matiereEtDomaine({ matiere, domaine }) }))
+      : [];
   } catch { return []; }
 }
 
@@ -196,7 +217,7 @@ export function lireManuel(brut: string | null | undefined): Manuel | null {
       ? { materielId: v.surLeBureau.materielId, fichier: v.surLeBureau.fichier } : undefined;
     return {
       id: v.id, titre: String(v.titre ?? "Manuel"), source: v.source === "pdf" ? "pdf" : "telephone",
-      fichierPdf: String(v.fichierPdf ?? ""), niveau: String(v.niveau ?? ""), creeLe: String(v.creeLe ?? ""), pages,
+      fichierPdf: String(v.fichierPdf ?? ""), niveau: String(v.niveau ?? ""), ...matiereEtDomaine(v), creeLe: String(v.creeLe ?? ""), pages,
       ...(bureau ? { surLeBureau: bureau } : {}),
     };
   } catch { return null; }

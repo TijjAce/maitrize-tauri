@@ -22,7 +22,7 @@
 import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import {
   aFaireDuCreneau, cadresDuDeroulement, carteSeule, domaineDeLaSeance, elevesDuCreneau, estUneFicheDEleve, pasDeLEleve, pasDuDeroulement,
-  pictosDuDeroulement, STYLE_DU_DEROULEMENT, type PasDuDeroulement,
+  pictosDuDeroulement, STYLE_DU_DEROULEMENT, type ManuelDuDeroulement, type PasDuDeroulement,
 } from "./journalTelephone";
 import type { RefPicto } from "./pictosAppoint";
 import { escapeHtml } from "./print";
@@ -49,18 +49,18 @@ export const heuresDeLaBande = (c: Pick<Creneau, "heureDebut" | "heureFin">): st
 
 /**
  * Le déroulement d'un créneau sur sa bande : celui des tablettes — le rituel
- * d'abord, puis ses séances, posée ou citées au prévu, et ses jeux, une carte
- * chacun —, puis les fiches et les séances de chacun de ses élèves, son
+ * d'abord, puis ses séances, posée ou citées au prévu, ses jeux et les pages
+ * de mes manuels, une carte chacun —, puis les fiches et les séances de chacun de ses élèves, son
  * prénom avec la matière (une tablette ne montre que les siennes ; la page,
  * toutes). Sans séance, ni jeu, ni fiche, une seule carte : ses rituels s'il
  * en cite, sinon sa matière.
  */
 export function pasDeLaBande(
   c: Pick<Creneau, "prevu" | "matiere">, seance: Seance | undefined, fiches: MaterielItem[], domaineDeSeance = "",
-  sequences: Sequence[] = [], seances: Seance[] = [], jeux: Jeu[] = [], photos: PhotoDeJeu[] = [],
+  sequences: Sequence[] = [], seances: Seance[] = [], jeux: Jeu[] = [], photos: PhotoDeJeu[] = [], manuels: readonly ManuelDuDeroulement[] = [],
 ): PasDuDeroulement[] {
   const eleves = elevesDuCreneau(aFaireDuCreneau(c, fiches, sequences, seances));
-  const deroulementDe = (eleve?: string) => pasDuDeroulement(c, seance, fiches, domaineDeSeance, eleve, sequences, seances, jeux, photos);
+  const deroulementDe = (eleve?: string) => pasDuDeroulement(c, seance, fiches, domaineDeSeance, eleve, sequences, seances, jeux, photos, manuels);
   // Le début, commun à tous : celui de la classe ; sans séance, le rituel par lequel commence celui de chaque élève.
   const debut = (eleves.length ? deroulementDe(eleves[0]) : deroulementDe()).filter((p) => !p.fiche);
   const leurs = eleves.flatMap((eleve) => deroulementDe(eleve).filter((p) => p.fiche).map((p) => ({ ...p, eleve })));
@@ -186,7 +186,7 @@ export function corpsDesBandes(titre: string, bandes: Bande[], fin = ""): string
  */
 export async function bandesDuJour(
   creneaux: Creneau[], seances: Seance[], sequences: Sequence[], materiel: MaterielItem[], jeux: Jeu[] = [], photos: PhotoDeJeu[] = [],
-  eleves: { id: string; prenom: string }[] = [],
+  eleves: { id: string; prenom: string }[] = [], manuels: readonly ManuelDuDeroulement[] = [],
 ): Promise<{ bandes: Bande[]; refs: RefPicto[] }> {
   const pictos = await pictosDuDeroulement();
   const fiches = materiel.filter(estUneFicheDEleve);
@@ -198,13 +198,13 @@ export async function bandesDuJour(
     const parEleve = elevesDesParties(c, eleves);
     if (parEleve.length) {
       for (const prenom of parEleve) {
-        const { html, refs } = await cadresDuDeroulement(pasDeLEleve(c, prenom, parEleve, seance, fiches, domaine, sequences, seances, jeux, photos), pictos);
+        const { html, refs } = await cadresDuDeroulement(pasDeLEleve(c, prenom, parEleve, seance, fiches, domaine, sequences, seances, jeux, photos, manuels), pictos);
         bandes.push({ heures: heuresDeLaBande(c), matiere: prenom, cadres: html });
         montres.push(...refs);
       }
       continue;
     }
-    const { html, refs } = await cadresDuDeroulement(pasDeLaBande(c, seance, fiches, domaine, sequences, seances, jeux, photos), pictos);
+    const { html, refs } = await cadresDuDeroulement(pasDeLaBande(c, seance, fiches, domaine, sequences, seances, jeux, photos, manuels), pictos);
     bandes.push({ heures: heuresDeLaBande(c), matiere: c.matiere ?? "", cadres: html });
     montres.push(...refs);
   }

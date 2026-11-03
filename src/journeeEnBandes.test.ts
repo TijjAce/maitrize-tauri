@@ -113,6 +113,19 @@ describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octob
     expect((await bandesDuJour(jour, lesSeances, [sequence], [], [oie])).bandes.map((b) => b.matiere)).toEqual(["Accueil", "Lina-Tom"]);
   });
 
+  it("montre les pages de mes manuels que le prévu cite, avec la matière du manuel (2026-11-03)", async () => {
+    // « Il faut pouvoir indiquer sur le manuel de quelle matière » : la bande ne montrait que la matière du créneau.
+    const fichier = { titre: "Mon fichier de maths", matiere: "Mathématiques", domaine: "Grandeurs et mesures" };
+    const c = creneau("c1", "09:00", "10:00", "Ateliers", { prevu: "🔁 La date\n📖 Mon fichier de maths · p. 12–13" });
+    expect(pasDeLaBande(c, undefined, [], "", [], [], [], [], [fichier]).map((p) => [p.matiere, p.texte, p.domaine ?? ""])).toEqual([
+      ["Rituel", "La date", ""], ["Mathématiques", "Mon fichier de maths · p. 12–13", "Grandeurs et mesures"],
+    ]);
+    // Le manuel qu'on ne connaît pas laisse la carte du créneau, comme avant.
+    expect(pasDeLaBande(c, undefined, [], "", [], [], [], [], [])).toEqual([{ texte: "La date", matiere: "Rituel", rituel: true }]);
+    const { bandes } = await bandesDuJour([c], [], [], [], [], [], [], [fichier]);
+    expect(bandes[0].cadres).toContain('<span class="dr-matiere">Mathématiques</span><span class="at-texte">Mon fichier de maths · p. 12–13</span>');
+  });
+
   it("met les bandes côte à côte, regroupées, d'une largeur fixe, sur une page à la suite du cahier journal", () => {
     // Les bandes ne touchent pas à la page, qui est celle du cahier journal : leur feuille en commence une.
     expect(STYLE_BANDES).not.toMatch(/@page|\bbody\b/);

@@ -4,7 +4,7 @@ import {
   aFaireDuCreneau, cleDeLaSeance, deLaClasse, minuteurDeLaSeance,
   aidesDuCreneau, cleDuDeroulement, cleDuDeroulementDe, dureeDuMinuteur, estUneAide, estUneFicheDEleve, fichesDuCreneau, journalDes, joursPublies, minuteurDuCreneau, MINUTEURS_DES_TABLETTES,
   domaineDeLaSeance, pasDeLEleve, pasDuDeroulement,
-  pageDeLaConsigne, signatureDuJournal, titreDeLAide, titrePourLesTablettes,
+  pageDeLaConsigne, signatureDuJournal, titreDeLAide, titrePourLesTablettes, type ManuelDuDeroulement,
 } from "./journalTelephone";
 
 const creneau = (id: string, date: string, p: Partial<Creneau> = {}): Creneau => ({
@@ -350,6 +350,65 @@ describe("ce que le prévu cite pour la classe, sur les tablettes (demande de l'
     expect(deLaClasse(c, undefined, [nombres], [dire], [{ ...oie, id: "j2", titre: "Décomposer" }]).map((x) => x.seance?.id ?? x.jeu?.id)).toEqual(["s5"]);
     expect(deLaClasse(c, dire, [nombres], [dire], []).map((x) => x.seance?.id)).toEqual(["s5"]);
     expect(aidesDuCreneau({ seanceId: "s5" }, [materiel("m5", "x", "s5", "sequentiel")], ["s5"]).map((m) => m.id)).toEqual(["m5"]);
+  });
+});
+
+describe("les pages de mes manuels, sur les tablettes (demande de l'enseignant, 3 novembre 2026)", () => {
+  // « Il faut pouvoir indiquer sur le manuel de quelle matière, pour que ça mette bien à jour les tablettes et les créneaux en bandes. »
+  const nombres = { id: "q3", titre: "Les nombres jusqu'à 59 (CP)", matiere: "Mathématiques", competences: "" } as unknown as Sequence;
+  const dire: Seance = {
+    ...seance("s5", "Dire, lire et écrire les nombres jusqu'à 59"), sequenceId: "q3",
+    competences: JSON.stringify([{ domaineTitre: "Mathématiques", sousDomaineTitre: "Nombres et calcul" }]),
+  };
+  const fichier = { titre: "Mon fichier de maths", matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" };
+  // Les pages telles que le choix des pages les pose, la séance du bouton 📚, puis une page de plus, écrite à la main.
+  const prevu = "📖 Mon fichier de maths · p. 12–14\n📚 Les nombres jusqu'à 59 (CP) · séance 1/6 : Dire, lire et écrire les nombres jusqu'à 59\n📖 mon fichier de maths p 16";
+  const c = creneau("c1", "2026-11-03", { prevu });
+
+  it("fait des pages citées une tâche de la classe, à la place de leur première ligne, avec la matière et le domaine du manuel", () => {
+    expect(deLaClasse(c, undefined, [nombres], [dire], [], [fichier]).map((x) => x.pages?.titre ?? x.seance?.id)).toEqual(["Mon fichier de maths", "s5"]);
+    expect(pasDuDeroulement(c, undefined, [], "", undefined, [nombres], [dire], [], [], [fichier])).toEqual([
+      { texte: "Rituel", matiere: "", rituel: true },
+      { texte: "Mon fichier de maths · p. 12–14, 16", matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes", manuel: true },
+      { texte: "Dire, lire et écrire les nombres jusqu'à 59", matiere: "Mathématiques", domaine: "Nombres et calcul", seance: "s5" },
+    ]);
+  });
+
+  it("sans matière au manuel, prend celle de la première séance du créneau, sinon celle du créneau ; un domaine seul ne compte pas", () => {
+    expect(pasDuDeroulement(c, undefined, [], "", undefined, [nombres], [dire], [], [], [{ titre: "Mon fichier de maths" }])[1])
+      .toEqual({ texte: "Mon fichier de maths · p. 12–14, 16", matiere: "Mathématiques", domaine: "Nombres et calcul", manuel: true });
+    const seul = creneau("c2", "2026-11-03", { matiere: "Français", prevu: "📖 Lecture CE1 · p. 4" });
+    expect(pasDuDeroulement(seul, undefined, [], "", undefined, [], [], [], [], [{ titre: "Lecture CE1", domaine: "Lecture" }])).toEqual([
+      { texte: "Rituel", matiere: "", rituel: true },
+      { texte: "Lecture CE1 · p. 4", matiere: "Français", manuel: true },
+    ]);
+    expect(pasDuDeroulement(seul, undefined, [], "", undefined, [], [], [], [], [{ titre: "Lecture CE1", matiere: "Questionner le monde" }])[1])
+      .toEqual({ texte: "Lecture CE1 · p. 4", matiere: "Questionner le monde", manuel: true });
+  });
+
+  it("ne prend ni un manuel qu'il ne connaît pas, ni un passage cité du coffre-fort, ni ce qui suit « En autonomie » ; le titre d'un manuel ne cite pas de jeu", () => {
+    const lignes = (prevu2: string, jeux: Jeu[] = [], manuels: ManuelDuDeroulement[] = [fichier]) =>
+      deLaClasse(creneau("c3", "2026-11-03", { prevu: prevu2 }), undefined, [], [], jeux, manuels).map((x) => x.pages?.titre ?? x.jeu?.id);
+    expect(lignes("📖 Cap Maths CE1 · p. 42")).toEqual([]);
+    expect(lignes("📖 Mon fichier de maths · p. 12 — « Calcule. »")).toEqual([]);
+    expect(lignes("📖 Mon fichier de maths")).toEqual([]);
+    expect(lignes("⏰ En autonomie :\n📖 Mon fichier de maths · p. 12")).toEqual([]);
+    const oie = { id: "j1", titre: "jeu de l’oie", competencesBo: "[]" } as Jeu;
+    expect(lignes("📖 Le jeu de l’oie des nombres · p. 3", [oie], [{ titre: "Le jeu de l’oie des nombres" }])).toEqual(["Le jeu de l’oie des nombres"]);
+  });
+
+  it("déroule un créneau qui n'a que des pages, et les donne à l'élève dont la partie les cite", () => {
+    const seul = creneau("c2", "2026-11-03", { matiere: "Français", prevu: "📖 Lecture CE1 · p. 4" });
+    expect(journalDes(["2026-11-03"], [seul], [], [], [], [], [], [{ titre: "Lecture CE1" }]).jours[0].creneaux[0].deroule).toBe(cleDuDeroulement("c2"));
+    expect(journalDes(["2026-11-03"], [seul], [], [], [], []).jours[0].creneaux[0].deroule).toBe("");
+    // Prénoms inventés : la page de l'une, le jeu de l'autre.
+    const groupe = creneau("c4", "2026-11-03", { elevesJson: '["e1","e2"]', prevu: "Prénom-Un : 📖 Mon fichier de maths · p. 12\nPrénom-Deux : jeu de l’oie" });
+    const oie = { id: "j1", titre: "jeu de l’oie", competencesBo: "[]" } as Jeu;
+    const parties = ["Prénom-Un", "Prénom-Deux"];
+    expect(pasDeLEleve(groupe, "Prénom-Un", parties, undefined, [], "", [], [], [oie], [], [fichier]).map((p) => p.texte))
+      .toEqual(["Rituel", "Mon fichier de maths · p. 12"]);
+    expect(pasDeLEleve(groupe, "Prénom-Deux", parties, undefined, [], "", [], [], [oie], [], [fichier]).map((p) => p.texte))
+      .toEqual(["Rituel", "Jeu de l’oie"]);
   });
 });
 

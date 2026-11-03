@@ -21,6 +21,8 @@ import {
   type ExerciceManuel, type FicheAdaptee, type Manuel, type OptionsReadaptation, type PageManuel, type ResumeManuel, type Zone,
 } from "../manuels";
 import { isoJour } from "../dates";
+import { MATIERES_DES_FEUILLES } from "../matiereDesFeuilles";
+import { domainesParMatiere } from "../pictosMatieres";
 
 // ── Adapter une fiche › Manuels ───────────────────────────────────────────
 //
@@ -59,6 +61,36 @@ async function pagesDuFichierRecu(nom: string): Promise<string[]> {
 
 /** Un titre qui peut nommer un fichier : sans les signes que Finder ou Windows refusent. */
 const nomDeFichier = (titre: string) => titre.replace(/[\\/:*?"<>|]+/g, "-").trim() || "Manuel";
+
+/**
+ * La matière du manuel, et son domaine parmi ceux des référentiels : ses pages
+ * citées au prévu d'un créneau en prennent le picto, sur les tablettes et dans
+ * la journée en bandes (voir journalTelephone). Un choix que la liste n'a
+ * plus reste affiché, pour ne pas le perdre en silence.
+ */
+function MatiereDuManuel({ manuel, onChoisir }: { manuel: Manuel; onChoisir: (matiere: string, domaine: string) => void }) {
+  const { data: referentiels } = useAsync(() => api.referentielsList().catch(() => []), []);
+  const domaines = React.useMemo(() => domainesParMatiere(referentiels ?? []), [referentiels]);
+  const matiere = manuel.matiere ?? "";
+  const domaine = manuel.domaine ?? "";
+  const matieres = matiere && !MATIERES_DES_FEUILLES.includes(matiere) ? [matiere, ...MATIERES_DES_FEUILLES] : MATIERES_DES_FEUILLES;
+  const siens = matiere ? domaines[matiere] ?? [] : [];
+  const lesDomaines = domaine && !siens.includes(domaine) ? [domaine, ...siens] : siens;
+  return (
+    <>
+      <Select value={matiere} onChange={(e) => onChoisir(e.target.value, "")} style={{ width: "auto", maxWidth: 220 }} aria-label="La matière du manuel">
+        <option value="">Matière…</option>
+        {matieres.map((m) => <option key={m} value={m}>{m}</option>)}
+      </Select>
+      {matiere && lesDomaines.length > 0 && (
+        <Select value={domaine} onChange={(e) => onChoisir(matiere, e.target.value)} style={{ width: "auto", maxWidth: 260 }} aria-label="Le domaine du manuel">
+          <option value="">Sans domaine</option>
+          {lesDomaines.map((d) => <option key={d} value={d}>{d}</option>)}
+        </Select>
+      )}
+    </>
+  );
+}
 
 export function ManuelsPanel() {
   const { data: indexBrut, reload: relireIndex } = useAsync(() => api.settingGet(CLE_INDEX), []);
@@ -451,6 +483,8 @@ export function ManuelsPanel() {
           <button type="button" className="btn ghost sm" onClick={fermer} title="Revenir aux manuels">← Manuels</button>
           <Input value={manuel.titre} onChange={(e) => setManuel({ ...manuel, titre: e.target.value })} onBlur={() => enregistrer(manuel)} style={{ maxWidth: 260, fontWeight: 700 }} aria-label="Titre du manuel" />
           <Input value={manuel.niveau} onChange={(e) => setManuel({ ...manuel, niveau: e.target.value })} onBlur={() => enregistrer(manuel)} placeholder="Niveau (CP, CE2…)" style={{ maxWidth: 140 }} aria-label="Niveau" />
+          <MatiereDuManuel manuel={manuel}
+            onChoisir={(matiere, domaine) => { void enregistrer({ ...manuel, matiere: matiere || undefined, domaine: (matiere && domaine) || undefined }); }} />
           <div style={{ flex: 1 }} />
           {manuel.source !== "pdf" && manuel.pages.length > 0 && (
             <label style={{ display: "flex", alignItems: "center", gap: 6 }}

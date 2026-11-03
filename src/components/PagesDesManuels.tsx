@@ -111,7 +111,7 @@ function PagesDuManuel({ attachees, masque, onMasquer, onRetirer, onChoisir }: {
         <button className="regle-app-titre" onClick={basculer} aria-expanded={!replie} title={replie ? "Afficher les pages" : "Replier les pages"}>
           <span aria-hidden="true" className="regle-app-fleche">{replie ? "▸" : "▾"}</span> 📖 {titreDesPages(attachees)}
         </button>
-        <span className="regle-app-infos">{[manuel.niveau.trim(), `${n} page${n > 1 ? "s" : ""}`].filter(Boolean).join(" · ")}</span>
+        <span className="regle-app-infos">{[manuel.matiere, manuel.niveau.trim(), `${n} page${n > 1 ? "s" : ""}`].filter(Boolean).join(" · ")}</span>
         {onMasquer && (
           <CaseImpression masque={masque} onChange={onMasquer}
             titre="Coché : ces pages restent sous les yeux à l'écran, mais ne s'impriment pas à la suite du cahier journal" />
