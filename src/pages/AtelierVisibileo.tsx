@@ -7,6 +7,7 @@ import { chargerImages, usePictoImages } from "../components/ChoixPicto";
 import { CasePicto } from "../components/CasePicto";
 import { ApercuExemple, motsAvecImages } from "../components/Exemple";
 import { ApercuFeuille } from "../components/ApercuFeuille";
+import { EditeurAffichage } from "../components/EditeurAffichage";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { STYLE_FEUILLE } from "../cartesImprimables";
@@ -19,9 +20,9 @@ import { pseudonymiserTout, restaurer } from "../confidentialite";
 import { nomsAMasquer } from "../nomsAMasquer";
 import { singulier } from "../corpusAuto";
 import {
-  CONSIGNE_IMAGES, CONSIGNE_LECTURE_PAGE, CONSIGNE_VISIBILEO, COULEURS, EXEMPLE_VISIBILEO, FLECHES_MAX, GENRES, PERSONNAGES_MAX, PIECES_MAX, REGLAGES_VISIBILEO,
+  CONSIGNE_IMAGES, CONSIGNE_LECTURE_PAGE, CONSIGNE_VISIBILEO, COULEURS, STYLE_AFFICHAGE, htmlAffichage, idLibre, EXEMPLE_VISIBILEO, FLECHES_MAX, GENRES, PERSONNAGES_MAX, PIECES_MAX, REGLAGES_VISIBILEO,
   STYLE_VISIBILEO, VIERGES_MAX, ajouterPage, cequiManque, demandeDesImages, htmlVisibileo, idsDesImages, lireChoixDesImages, lirePremierJet,
-  motsDeLExemple, personnageVide, personnagesNommes, pieceVide, reglagesSurs, type ImageACherche, type PremierJet,
+  motsDeLExemple, personnageVide, personnagesNommes, pieceVide, reglagesSurs, type Fleche, type ImageACherche, type PremierJet,
   type Genre, type Piece, type ReglagesVisibileo, type Signe,
 } from "../visibileo";
 
@@ -103,6 +104,7 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
   // Rien d'écrit : l'exemple, ce que donneront les vôtres.
   const vide = !r.titre.trim() && !r.texte.trim() && !r.pieces.length && !personnagesNommes(r).length;
   const [occupe, setOccupe] = React.useState("");
+  const [vue, setVue] = React.useState<"feuilles" | "affiche">("feuilles");
 
   // Les pages photographiées arrivent une à une : chacune se lit à son tour, et son texte s'ajoute au précédent.
   const texteRef = React.useRef(r.texte);
@@ -142,10 +144,20 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
       if (!jet) { toast("L'IA n'a rien rendu d'utilisable : réessayez.", { icone: "⚠️" }); return; }
       setOccupe("L'IA choisit les images…");
       const images = await pictosDuPremierJet(jet, modele);
+      // L'affiche repart rangée : les flèches rouges des causes, et les bleues de l'ordre des cadres.
+      const idDe = (k: number) => `q${k + 1}`;
+      const cadres = jet.pieces.map((p, k) => ({ p, k })).filter(({ p }) => p.genre === "cadre");
       maj({
         titre: r.titre.trim() || jet.titre,
         personnages: jet.personnages.map((p, i) => ({ ...personnageVide(i), nom: p.nom, image: images.personnages[i] })),
-        pieces: jet.pieces.map((p, i): Piece => ({ genre: p.genre, texte: p.texte, qui: p.qui, image: images.pieces[i] })),
+        pieces: jet.pieces.map((p, i): Piece => ({ id: idDe(i), genre: p.genre, texte: p.texte, qui: p.qui, image: images.pieces[i] })),
+        affichage: {
+          places: {},
+          fleches: [
+            ...cadres.slice(1).map(({ k }, j): Fleche => ({ de: idDe(cadres[j].k), vers: idDe(k), couleur: "bleue", courbe: 0 })),
+            ...jet.causes.map((c): Fleche => ({ de: idDe(c.de), vers: idDe(c.vers), couleur: "rouge", courbe: 0.25 })),
+          ],
+        },
       });
       toast("✨ Le premier jet de l'IA est posé : relisez les pièces avant d'imprimer.", { icone: "✨", duree: 7000 });
     } catch (e) {
@@ -164,10 +176,12 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
         return { id: t?.id ?? null, mot: m };
       };
       if (vivant) {
+        const idDe = (k: number) => `q${k + 1}`;
         setExemple({
           ...r, titre: EXEMPLE_VISIBILEO.titre,
           personnages: EXEMPLE_VISIBILEO.personnages.map((p, i) => ({ ...personnageVide(i), nom: p.nom, image: image(p.image) })),
-          pieces: EXEMPLE_VISIBILEO.pieces.map((p): Piece => ({ genre: p.genre, texte: p.texte, image: p.image ? image(p.image) : { id: null, mot: "" }, qui: p.qui })),
+          pieces: EXEMPLE_VISIBILEO.pieces.map((p, k): Piece => ({ id: idDe(k), genre: p.genre, texte: p.texte, image: p.image ? image(p.image) : { id: null, mot: "" }, qui: p.qui })),
+          affichage: { places: {}, fleches: EXEMPLE_VISIBILEO.fleches.map((f): Fleche => ({ ...f, de: idDe(f.de), vers: idDe(f.vers) })) },
         });
       }
     }).catch(() => {});
@@ -182,6 +196,11 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
   const feuilleImprimee = async () => htmlVisibileo(r, await chargerImages(idsDesImages(r)));
   const imprimer = async () => {
     try { await imprimerAtelier(ATELIER, titre, await feuilleImprimee(), STYLE_FEUILLE + STYLE_VISIBILEO); }
+    catch (e) { toast(String(e), { icone: "⚠️" }); }
+  };
+  // L'affiche, en A3 à l'italienne : son style vient en dernier, sa page l'emporte sur celle des feuilles.
+  const imprimerLAffiche = async () => {
+    try { await imprimerAtelier(ATELIER, `${titre} — l'affiche`, htmlAffichage(r, await chargerImages(idsDesImages(r))), STYLE_FEUILLE + STYLE_VISIBILEO + STYLE_AFFICHAGE); }
     catch (e) { toast(String(e), { icone: "⚠️" }); }
   };
 
@@ -244,7 +263,7 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
             ))}
             {r.personnages.length < PERSONNAGES_MAX && (
               <button type="button" className="btn sm" style={{ alignSelf: "flex-start" }}
-                onClick={() => maj({ personnages: [...r.personnages, personnageVide(r.personnages.length)] })}>＋ Un personnage</button>
+                onClick={() => maj({ personnages: [...r.personnages, personnageVide(r.personnages.length, idLibre(r, "p"))] })}>＋ Un personnage</button>
             )}
           </div>
         </Field>
@@ -269,7 +288,7 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
                 ))}
                 {r.pieces.length < PIECES_MAX && (
                   <button type="button" className="btn sm" style={{ alignSelf: "flex-start" }}
-                    onClick={() => maj({ pieces: [...r.pieces, pieceVide(genre, genre === "cadre" ? -1 : nommes[0]?.i ?? -1)] })}>{AJOUTER[genre]}</button>
+                    onClick={() => maj({ pieces: [...r.pieces, pieceVide(genre, genre === "cadre" ? -1 : nommes[0]?.i ?? -1, idLibre(r, "q"))] })}>{AJOUTER[genre]}</button>
                 )}
               </div>
             </Field>
@@ -312,11 +331,19 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
         </div>
       </div>
       <div style={{ minWidth: 0 }}>
+        <div className="seg" role="group" aria-label="Ce qu'on regarde" style={{ marginBottom: 10 }}>
+          <button type="button" className={vue === "feuilles" ? "active" : ""} onClick={() => setVue("feuilles")}>📄 Les feuilles</button>
+          <button type="button" className={vue === "affiche" ? "active" : ""} onClick={() => setVue("affiche")}>🖼 L'affiche</button>
+        </div>
         {vide && exemple
-          ? <ApercuExemple onPrendre={() => maj({ titre: exemple.titre, personnages: exemple.personnages, pieces: exemple.pieces })}>
-              <ApercuFeuille html={html} style={STYLE_VISIBILEO} />
+          ? <ApercuExemple onPrendre={() => maj({ titre: exemple.titre, personnages: exemple.personnages, pieces: exemple.pieces, affichage: exemple.affichage })}>
+              {vue === "feuilles"
+                ? <ApercuFeuille html={html} style={STYLE_VISIBILEO} />
+                : <ApercuFeuille html={htmlAffichage(montree, images)} style={STYLE_VISIBILEO + STYLE_AFFICHAGE} />}
             </ApercuExemple>
-          : <ApercuFeuille html={html} style={STYLE_VISIBILEO} />}
+          : vue === "feuilles"
+            ? <ApercuFeuille html={html} style={STYLE_VISIBILEO} />
+            : <EditeurAffichage r={r} images={images} onChange={(affichage) => maj({ affichage })} onImprimer={() => { void imprimerLAffiche(); }} />}
       </div>
     </div>
   );

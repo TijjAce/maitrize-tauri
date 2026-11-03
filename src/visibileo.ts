@@ -37,9 +37,11 @@ import { cleImage, estVide, normaliserPicto, type Images, type PictoPose } from 
 export type Genre = "cadre" | "nuage" | "bulle";
 export const GENRES: Genre[] = ["cadre", "nuage", "bulle"];
 
-export interface Personnage { nom: string; image: PictoPose; couleur: string }
+/** `id` : ce à quoi s'accrochent sa place sur l'affiche et ses flèches. */
+export interface Personnage { id: string; nom: string; image: PictoPose; couleur: string }
 
 export interface Piece {
+  id: string;
   genre: Genre;
   texte: string;
   image: PictoPose;
@@ -70,7 +72,36 @@ export interface ReglagesVisibileo {
   capitales: boolean;
   /** Deux pièces par ligne, ou une seule, plus grande, pour le tableau de la classe. */
   grandes: boolean;
+  /** L'affiche : les places qu'on a données aux pièces, et les flèches qui les relient. */
+  affichage: Affichage;
 }
+
+// ── L'affichage ───────────────────────────────────────────────────────────
+//
+// « Il faut également pouvoir avoir une visualisation de l'affichage, avec des
+// flèches qui peuvent être courbes » (l'enseignant, 3 novembre 2026). Les
+// pièces se posent sur l'affiche — une page A3 à l'italienne, en millimètres —,
+// se déplacent et s'agrandissent ; une flèche relie deux pièces, rouge pour une
+// cause (« parce que » : de ce qui arrive vers ce qui l'explique), bleue pour
+// l'ordre (« et puis »), droite ou courbée à la main. Ce qu'on n'a pas encore
+// placé prend une place rangée : les personnages à gauche, les nuages puis les
+// bulles en haut, les cadres en dessous, dans l'ordre du récit.
+
+export const AFFICHE = { largeur: 400, hauteur: 277 } as const;
+export const PLACE_MIN = { largeur: 30, hauteur: 20 } as const;
+export const FLECHES_AFFICHE_MAX = 60;
+
+/** Une place sur l'affiche, en millimètres depuis son coin haut gauche. */
+export interface Place { x: number; y: number; largeur: number; hauteur: number }
+export type CouleurFleche = "rouge" | "bleue";
+export interface Fleche {
+  de: string;
+  vers: string;
+  couleur: CouleurFleche;
+  /** 0 : droite ; sinon, son milieu tiré sur le côté, en part de sa longueur — positif à gauche du trait, négatif à droite. */
+  courbe: number;
+}
+export interface Affichage { places: Record<string, Place>; fleches: Fleche[] }
 
 export const PERSONNAGES_MAX = 6;
 export const PIECES_MAX = 30;
@@ -97,8 +128,16 @@ export const LIBELLES: Record<Signe, string> = {
   bleue: "et puis",
 };
 
-export const personnageVide = (i: number): Personnage => ({ nom: "", image: { id: null, mot: "" }, couleur: couleurDuPersonnage(i) });
-export const pieceVide = (genre: Genre, qui = -1): Piece => ({ genre, texte: "", image: { id: null, mot: "" }, qui });
+export const personnageVide = (i: number, id = `p${i + 1}`): Personnage => ({ id, nom: "", image: { id: null, mot: "" }, couleur: couleurDuPersonnage(i) });
+export const pieceVide = (genre: Genre, qui = -1, id = ""): Piece => ({ id, genre, texte: "", image: { id: null, mot: "" }, qui });
+
+/** Un identifiant que personne ne porte encore : « p3 » pour un personnage, « q12 » pour une pièce. */
+export function idLibre(r: Pick<ReglagesVisibileo, "personnages" | "pieces">, prefixe: "p" | "q"): string {
+  const pris = new Set([...r.personnages.map((p) => p.id), ...r.pieces.map((p) => p.id)]);
+  let n = 1;
+  while (pris.has(`${prefixe}${n}`)) n++;
+  return `${prefixe}${n}`;
+}
 
 export const REGLAGES_VISIBILEO: ReglagesVisibileo = {
   titre: "",
@@ -113,6 +152,7 @@ export const REGLAGES_VISIBILEO: ReglagesVisibileo = {
   mots: true,
   capitales: false,
   grandes: false,
+  affichage: { places: {}, fleches: [] },
 };
 
 // ── Les réglages ──────────────────────────────────────────────────────────
@@ -121,27 +161,61 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const nombre = (v: unknown, max: number, defaut: number) =>
   (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(max, Math.round(v))) : defaut);
 const objet = (v: unknown): Record<string, unknown> => (v && typeof v === "object" ? v as Record<string, unknown> : {});
+const dixieme = (v: number) => Math.round(v * 10) / 10;
+
+/** Une place telle qu'on peut s'y fier : sur l'affiche, pas plus petite que permis ; rien si elle est illisible. */
+export function placeSure(v: unknown): Place | undefined {
+  const o = objet(v);
+  const [x, y, l, h] = [o.x, o.y, o.largeur, o.hauteur].map((n) => (typeof n === "number" && Number.isFinite(n) ? n : NaN));
+  if ([x, y, l, h].some(Number.isNaN)) return undefined;
+  const largeur = Math.min(AFFICHE.largeur, Math.max(PLACE_MIN.largeur, l)), hauteur = Math.min(AFFICHE.hauteur, Math.max(PLACE_MIN.hauteur, h));
+  return {
+    x: dixieme(Math.min(AFFICHE.largeur - largeur, Math.max(0, x))), y: dixieme(Math.min(AFFICHE.hauteur - hauteur, Math.max(0, y))),
+    largeur: dixieme(largeur), hauteur: dixieme(hauteur),
+  };
+}
+
+/** Des identifiants uniques : celui qu'on a gardé s'il est libre, sinon le premier libre du préfixe. */
+function avecDesIds<T extends { id: string }>(liste: Omit<T, "id">[], ids: unknown[], prefixe: string, pris: Set<string>): T[] {
+  return liste.map((x, i) => {
+    let id = typeof ids[i] === "string" && /^[a-z]\d{1,4}$/.test(ids[i] as string) ? ids[i] as string : "";
+    if (!id || pris.has(id)) { let n = 1; while (pris.has(`${prefixe}${n}`)) n++; id = `${prefixe}${n}`; }
+    pris.add(id);
+    return { ...x, id } as T;
+  });
+}
 
 /** Les réglages enregistrés, réparés : ce qu'une version plus ancienne ou un fichier abîmé y a laissé. */
 export function reglagesSurs(brut: Partial<ReglagesVisibileo>): ReglagesVisibileo {
-  const personnages = Array.isArray(brut.personnages)
-    ? brut.personnages.slice(0, PERSONNAGES_MAX).map((p, i): Personnage => {
+  const pris = new Set<string>();
+  const bruts = Array.isArray(brut.personnages) ? brut.personnages.slice(0, PERSONNAGES_MAX) : null;
+  const personnages = bruts
+    ? avecDesIds<Personnage>(bruts.map((p, i) => {
       const o = objet(p);
       return {
         nom: typeof o.nom === "string" ? o.nom : "",
         image: normaliserPicto(o.image),
         couleur: typeof o.couleur === "string" && HEX.test(o.couleur) ? o.couleur : couleurDuPersonnage(i),
       };
-    })
-    : REGLAGES_VISIBILEO.personnages;
-  const pieces = Array.isArray(brut.pieces)
-    ? brut.pieces.slice(0, PIECES_MAX).flatMap((p): Piece[] => {
-      const o = objet(p);
-      if (!GENRES.includes(o.genre as Genre)) return [];
-      const qui = typeof o.qui === "number" && Number.isInteger(o.qui) && o.qui >= 0 && o.qui < personnages.length ? o.qui : -1;
-      return [{ genre: o.genre as Genre, texte: typeof o.texte === "string" ? o.texte : "", image: normaliserPicto(o.image), qui }];
-    })
-    : [];
+    }), bruts.map((p) => objet(p).id), "p", pris)
+    : REGLAGES_VISIBILEO.personnages.map((p) => { pris.add(p.id); return p; });
+  const piecesBrutes = (Array.isArray(brut.pieces) ? brut.pieces.slice(0, PIECES_MAX) : []).map(objet).filter((o) => GENRES.includes(o.genre as Genre));
+  const pieces = avecDesIds<Piece>(piecesBrutes.map((o) => {
+    const qui = typeof o.qui === "number" && Number.isInteger(o.qui) && o.qui >= 0 && o.qui < personnages.length ? o.qui : -1;
+    return { genre: o.genre as Genre, texte: typeof o.texte === "string" ? o.texte : "", image: normaliserPicto(o.image), qui };
+  }), piecesBrutes.map((o) => o.id), "q", pris);
+  // L'affiche : les places et les flèches de ce qui existe encore.
+  const a = objet(brut.affichage);
+  const places = Object.fromEntries(Object.entries(objet(a.places)).flatMap(([id, x]): [string, Place][] => {
+    const place = pris.has(id) ? placeSure(x) : undefined;
+    return place ? [[id, place]] : [];
+  }));
+  const flechesDeLAffiche = (Array.isArray(a.fleches) ? a.fleches : []).flatMap((x): Fleche[] => {
+    const o = objet(x);
+    if (typeof o.de !== "string" || typeof o.vers !== "string" || o.de === o.vers || !pris.has(o.de) || !pris.has(o.vers)) return [];
+    const courbe = typeof o.courbe === "number" && Number.isFinite(o.courbe) ? Math.round(Math.max(-1.5, Math.min(1.5, o.courbe)) * 100) / 100 : 0;
+    return [{ de: o.de, vers: o.vers, couleur: o.couleur === "bleue" ? "bleue" : "rouge", courbe }];
+  }).slice(0, FLECHES_AFFICHE_MAX);
   const v = objet(brut.vierges), f = objet(brut.fleches), l = objet(brut.libelles), fe = objet(brut.feuilles);
   return {
     titre: typeof brut.titre === "string" ? brut.titre : "",
@@ -161,6 +235,7 @@ export function reglagesSurs(brut: Partial<ReglagesVisibileo>): ReglagesVisibile
     mots: brut.mots !== false,
     capitales: brut.capitales === true,
     grandes: brut.grandes === true,
+    affichage: { places, fleches: flechesDeLAffiche },
   };
 }
 
@@ -226,6 +301,12 @@ function piece(r: ReglagesVisibileo, p: Piece, images: Images): string {
   return `<div class="vb-piece vb-${p.genre}">${forme(p.genre, c)}<div class="vb-dedans">${dedans}</div></div>`;
 }
 
+/** La carte d'un personnage : son image et son nom, dans un cadre de sa couleur. */
+function carteDuPersonnage(r: ReglagesVisibileo, p: Personnage, images: Images): string {
+  const src = r.images ? imageDe(p.image, images) : undefined;
+  return `<div class="vb-piece vb-personnage" style="--c:${p.couleur}">${src ? `<img src="${src}" alt="">` : ""}<span class="vb-texte">${escapeHtml(p.nom.trim())}</span></div>`;
+}
+
 const section = (titre: string, corps: string) => (corps ? `<section class="vb-section"><h3>${escapeHtml(titre)}</h3><div class="vb-grille">${corps}</div></section>` : "");
 
 // ── Les feuilles ──────────────────────────────────────────────────────────
@@ -234,10 +315,7 @@ const section = (titre: string, corps: string) => (corps ? `<section class="vb-s
 export function htmlPieces(r: ReglagesVisibileo, images: Images): string {
   const nommes = r.personnages.map((p, i) => ({ p, i })).filter(({ p }) => estNomme(p));
   const pleines = r.pieces.filter(estPleine);
-  const persos = nommes.map(({ p }) => {
-    const src = r.images ? imageDe(p.image, images) : undefined;
-    return `<div class="vb-piece vb-personnage" style="--c:${p.couleur}">${src ? `<img src="${src}" alt="">` : ""}<span class="vb-texte">${escapeHtml(p.nom.trim())}</span></div>`;
-  }).join("");
+  const persos = nommes.map(({ p }) => carteDuPersonnage(r, p, images)).join("");
   const deGenre = (g: Genre) => pleines.filter((p) => p.genre === g).map((p) => piece(r, p, images)).join("");
   // Les vierges : des cadres en tout ; des nuages et des bulles pour chaque personnage, à sa couleur — sinon sans couleur.
   const pour = nommes.length ? nommes.map(({ i }) => i) : [-1];
@@ -378,6 +456,119 @@ export const STYLE_VISIBILEO = `
   .feuille.vb .vb-preparation ol li { margin: 0 0 1.5mm; }
 `;
 
+// ── L'affiche ─────────────────────────────────────────────────────────────
+
+const MARGE = 8;
+/** Où commencent les pièces, à droite de la colonne des personnages. */
+const GAUCHE = 72;
+const TAILLES: Record<Genre | "personnage", { largeur: number; hauteur: number }> = {
+  personnage: { largeur: 56, hauteur: 36 }, nuage: { largeur: 74, hauteur: 44 }, bulle: { largeur: 74, hauteur: 40 }, cadre: { largeur: 74, hauteur: 42 },
+};
+
+/** Ce que montre l'affiche : les personnages nommés et les pièces écrites, chacun avec son identifiant. */
+export function elementsDeLAffiche(r: ReglagesVisibileo): ({ id: string; personnage: Personnage } | { id: string; piece: Piece })[] {
+  return [
+    ...r.personnages.filter(estNomme).map((personnage) => ({ id: personnage.id, personnage })),
+    ...r.pieces.filter(estPleine).map((piece) => ({ id: piece.id, piece })),
+  ];
+}
+
+/** La place de chaque élément : celle qu'on lui a donnée, sinon sa place rangée. */
+export function placesDeLAffiche(r: ReglagesVisibileo): Record<string, Place> {
+  const places: Record<string, Place> = {};
+  r.personnages.filter(estNomme).forEach((p, i) => {
+    places[p.id] = { x: MARGE, y: Math.min(AFFICHE.hauteur - TAILLES.personnage.hauteur, MARGE + i * (TAILLES.personnage.hauteur + 6)), ...TAILLES.personnage };
+  });
+  let y = MARGE;
+  for (const genre of ["nuage", "bulle", "cadre"] as Genre[]) {
+    const siennes = r.pieces.filter((p) => p.genre === genre && estPleine(p));
+    const t = TAILLES[genre], parLigne = 4;
+    const ecart = (AFFICHE.largeur - GAUCHE - MARGE - parLigne * t.largeur) / (parLigne - 1);
+    siennes.forEach((p, k) => {
+      places[p.id] = { x: GAUCHE + (k % parLigne) * (t.largeur + ecart), y: Math.min(AFFICHE.hauteur - t.hauteur, y + Math.floor(k / parLigne) * (t.hauteur + 6)), ...t };
+    });
+    if (siennes.length) y += Math.ceil(siennes.length / parLigne) * (t.hauteur + 6);
+  }
+  for (const [id, place] of Object.entries(r.affichage.places)) if (places[id]) places[id] = place;
+  return places;
+}
+
+export interface Point { x: number; y: number }
+const centre = (p: Place): Point => ({ x: p.x + p.largeur / 2, y: p.y + p.hauteur / 2 });
+
+/** Le point du bord de `p` sur le trait qui va de son centre vers `vers`. */
+export function bord(p: Place, vers: Point): Point {
+  const c = centre(p), dx = vers.x - c.x, dy = vers.y - c.y;
+  if (!dx && !dy) return c;
+  const t = Math.min(dx ? Math.abs(p.largeur / 2 / dx) : Infinity, dy ? Math.abs(p.hauteur / 2 / dy) : Infinity);
+  return { x: c.x + dx * Math.min(1, t), y: c.y + dy * Math.min(1, t) };
+}
+
+const mm = (v: number) => v.toFixed(1);
+
+/**
+ * La flèche de `a` vers `b` : une courbe du bord de l'une au bord de l'autre,
+ * que son point de contrôle tire sur le côté — d'autant plus que `courbe` est
+ * grande. `milieu` : le point de la courbe qu'on saisit pour la plier.
+ */
+export function traitDeFleche(a: Place, b: Place, courbe: number): { d: string; milieu: Point } {
+  const ca = centre(a), cb = centre(b);
+  const dx = cb.x - ca.x, dy = cb.y - ca.y, l = Math.hypot(dx, dy) || 1;
+  const controle = { x: (ca.x + cb.x) / 2 - (dy / l) * courbe * l * 0.5, y: (ca.y + cb.y) / 2 + (dx / l) * courbe * l * 0.5 };
+  const depart = bord(a, controle), arrivee = bord(b, controle);
+  const milieu = { x: 0.25 * depart.x + 0.5 * controle.x + 0.25 * arrivee.x, y: 0.25 * depart.y + 0.5 * controle.y + 0.25 * arrivee.y };
+  return { d: `M${mm(depart.x)} ${mm(depart.y)} Q${mm(controle.x)} ${mm(controle.y)} ${mm(arrivee.x)} ${mm(arrivee.y)}`, milieu };
+}
+
+/** La courbe qui fait passer le milieu de la flèche par `point` : son écart au trait droit, en part de sa longueur. */
+export function courbeVers(a: Place, b: Place, point: Point): number {
+  const ca = centre(a), cb = centre(b);
+  const dx = cb.x - ca.x, dy = cb.y - ca.y, l = Math.hypot(dx, dy) || 1;
+  const ecart = ((point.x - (ca.x + cb.x) / 2) * -dy + (point.y - (ca.y + cb.y) / 2) * dx) / l;
+  const courbe = ecart / (0.25 * l);
+  return Math.abs(courbe) < 0.04 ? 0 : Math.round(Math.max(-1.5, Math.min(1.5, courbe)) * 100) / 100;
+}
+
+/** Les pointes des flèches, une par couleur. */
+export const POINTES = `<defs>${(["rouge", "bleue"] as CouleurFleche[]).map((c) => `<marker id="vb-pointe-${c}" viewBox="0 0 10 10" refX="8.5" refY="5" `
+  + `markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="${c === "rouge" ? ROUGE : BLEU}"/></marker>`).join("")}</defs>`;
+
+/** Une flèche de l'affiche, en SVG. */
+export const cheminDeFleche = (f: Fleche, a: Place, b: Place, attributs = "") =>
+  `<path d="${traitDeFleche(a, b, f.courbe).d}" stroke="${f.couleur === "rouge" ? ROUGE : BLEU}" stroke-width="1.4" fill="none" stroke-linecap="round" `
+  + `marker-end="url(#vb-pointe-${f.couleur})"${attributs}/>`;
+
+/** Un élément de l'affiche, tel qu'il s'imprime : la carte du personnage, ou la pièce. */
+export const htmlDeLElement = (r: ReglagesVisibileo, e: ReturnType<typeof elementsDeLAffiche>[number], images: Images) =>
+  ("personnage" in e ? carteDuPersonnage(r, e.personnage, images) : piece(r, e.piece, images));
+
+const style = (p: Place) => `left:${mm(p.x)}mm;top:${mm(p.y)}mm;width:${mm(p.largeur)}mm;height:${mm(p.hauteur)}mm`;
+
+/** L'affiche entière, prête à imprimer en A3 à l'italienne : les pièces à leur place, et les flèches par-dessus. */
+export function htmlAffichage(r: ReglagesVisibileo, images: Images): string {
+  const places = placesDeLAffiche(r);
+  const elements = elementsDeLAffiche(r);
+  const fleches = r.affichage.fleches.filter((f) => places[f.de] && places[f.vers]).map((f) => cheminDeFleche(f, places[f.de], places[f.vers])).join("");
+  const ids = [...r.personnages.map((p) => p.image), ...r.pieces.map((p) => p.image)]
+    .filter((p) => r.images && !p.photo && p.id != null && images[p.id]).map((p) => p.id);
+  return feuille(`<div class="vb-affiche" style="width:${AFFICHE.largeur}mm;height:${AFFICHE.hauteur}mm">`
+    + elements.map((e) => `<div class="vb-pose" style="${style(places[e.id])}">${htmlDeLElement(r, e, images)}</div>`).join("")
+    + `<svg class="vb-traits" viewBox="0 0 ${AFFICHE.largeur} ${AFFICHE.hauteur}" width="${AFFICHE.largeur}mm" height="${AFFICHE.hauteur}mm">${POINTES}${fleches}</svg>`
+    + `</div>${attributionPour(ids)}`, `vb vb-affichage${r.capitales ? " vb-capitales" : ""}`);
+}
+
+// Sur l'affiche, une pièce prend toute sa place, et son image et son texte en suivent la taille.
+export const STYLE_AFFICHAGE = `
+  @page { size: A3 landscape; margin: 10mm; }
+  .feuille.vb .vb-affiche { position: relative; margin: 0 auto; }
+  .feuille.vb .vb-pose { position: absolute; box-sizing: border-box; }
+  .feuille.vb .vb-pose > .vb-piece { width: 100%; height: 100%; outline: none; }
+  .feuille.vb .vb-affiche .vb-dedans img, .feuille.vb .vb-affiche .vb-personnage img { width: auto; height: 52%; max-width: 42%; }
+  .feuille.vb .vb-affiche .vb-texte { font-size: 14px; }
+  .feuille.vb .vb-affiche .vb-cadre .vb-dedans { inset: 2mm; }
+  .feuille.vb .vb-traits { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+`;
+
 // ── Le premier jet de l'IA ────────────────────────────────────────────────
 //
 // Mistral lit le texte et propose ce qu'il y a à comprendre : les personnages,
@@ -390,7 +581,8 @@ export const STYLE_VISIBILEO = `
 export const CONSIGNE_VISIBILEO = [
   "Tu prépares un Visibiléo : la trace d'un récit qu'une classe construit avec son enseignant pour comprendre l'histoire, ce qui est dit comme ce qui ne l'est pas.",
   "Ses signes : des cadres pour ce qui se passe — les situations et les actions importantes ; des nuages pour ce que pense, croit ou veut un personnage — ses mobiles, souvent implicites, ce que le texte ne dit pas mais qui explique ce qu'il fait ; des bulles pour ce qu'un personnage dit d'important, recopié du texte.",
-  "Réponds par un objet JSON, sans rien autour : {\"titre\": texte, \"personnages\": [{\"nom\": texte, \"images\": [mots], \"sens\": texte}], \"pieces\": [{\"genre\": \"cadre\" | \"nuage\" | \"bulle\", \"texte\": texte, \"qui\": nombre, \"images\": [mots], \"sens\": texte}]}.",
+  "Réponds par un objet JSON, sans rien autour : {\"titre\": texte, \"personnages\": [{\"nom\": texte, \"images\": [mots], \"sens\": texte}], \"pieces\": [{\"genre\": \"cadre\" | \"nuage\" | \"bulle\", \"texte\": texte, \"qui\": nombre, \"images\": [mots], \"sens\": texte}], \"causes\": [{\"de\": nombre, \"vers\": nombre}]}.",
+  "« causes » : les flèches rouges, « parce que » — de ce qui arrive vers ce qui l'explique, souvent un nuage (« le fromage tombe » parce que « le corbeau ouvre son bec », parce qu'« il veut montrer sa belle voix ») ; « de » et « vers » sont les rangs des pièces dans la liste, à partir de 0 ; de 2 à 10 flèches, celles qui font comprendre l'histoire.",
   `Règles : de 1 à ${PERSONNAGES_MAX} personnages, les principaux ; de 3 à 8 cadres, dans l'ordre du récit, seulement ce qu'il faut pour comprendre ; pour chaque personnage principal, les nuages de ses mobiles qui expliquent ses actions, surtout ce que le texte ne dit pas ; de 0 à 3 bulles, les paroles qui comptent ; ${PIECES_MAX} pièces au plus.`,
   "Phrases courtes — douze mots au plus —, simples, au présent, pour de jeunes élèves ; les nuages à la première personne (« Je veux… », « Je crois que… »).",
   "« qui » : le rang du personnage dans la liste, à partir de 0 ; -1 pour un cadre.",
@@ -404,6 +596,8 @@ export const CONSIGNE_LECTURE_PAGE = "Recopie exactement le texte du récit écr
 
 export interface PremierJet {
   titre: string;
+  /** Les flèches rouges : la pièce `de` arrive parce que la pièce `vers` — par leurs rangs dans `pieces`. */
+  causes: { de: number; vers: number }[];
   /** `images` : les mots qui cherchent son picto, du plus précis au plus courant. */
   personnages: { nom: string; images: string[]; sens: string }[];
   pieces: { genre: Genre; texte: string; qui: number; images: string[]; sens: string }[];
@@ -430,7 +624,12 @@ export function lirePremierJet(brut: string): PremierJet | null {
     return [{ genre, texte, qui, images: motsDImage(x), sens: chaine(x.sens) }];
   }).slice(0, PIECES_MAX);
   if (!pieces.length && !personnages.length) return null;
-  return { titre: chaine(o.titre), personnages, pieces };
+  const causes = (Array.isArray(o.causes) ? o.causes : []).flatMap((c) => {
+    const x = objet(c);
+    const ok = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0 && n < pieces.length;
+    return ok(x.de) && ok(x.vers) && x.de !== x.vers ? [{ de: x.de, vers: x.vers }] : [];
+  }).slice(0, FLECHES_AFFICHE_MAX);
+  return { titre: chaine(o.titre), causes, personnages, pieces };
 }
 
 // ── Le bon picto, dans le sens de l'histoire ──────────────────────────────
@@ -503,6 +702,12 @@ export const EXEMPLE_VISIBILEO = {
     { genre: "nuage", texte: "Je veux montrer ma belle voix.", image: "fier", qui: 0 },
     { genre: "bulle", texte: "Que vous êtes joli !", image: "", qui: 1 },
   ] as { genre: Genre; texte: string; image: string; qui: number }[],
+  /** Les flèches de l'affiche, par les rangs des pièces : l'ordre du récit en bleu, ce qui explique quoi en rouge. */
+  fleches: [
+    { de: 0, vers: 1, couleur: "bleue", courbe: 0 }, { de: 1, vers: 2, couleur: "bleue", courbe: 0 }, { de: 2, vers: 3, couleur: "bleue", courbe: 0 },
+    { de: 3, vers: 2, couleur: "rouge", courbe: 0.5 }, { de: 2, vers: 6, couleur: "rouge", courbe: -0.3 },
+    { de: 6, vers: 7, couleur: "rouge", courbe: 0.3 }, { de: 7, vers: 4, couleur: "rouge", courbe: 0.4 },
+  ] as { de: number; vers: number; couleur: CouleurFleche; courbe: number }[],
 };
 
 /** Les mots dont l'exemple cherche les pictos. */

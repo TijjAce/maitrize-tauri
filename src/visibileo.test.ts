@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  CONSIGNE_IMAGES, CONSIGNE_VISIBILEO, EXEMPLE_VISIBILEO, REGLAGES_VISIBILEO, ajouterPage, cequiManque, demandeDesImages, htmlMemo, htmlPieces,
-  htmlPreparation, htmlVisibileo, idsDesImages, lireChoixDesImages, lirePremierJet, motsDeLExemple, personnageVide, pieceVide, reglagesSurs,
-  type ImageACherche, type ReglagesVisibileo,
+  AFFICHE, CONSIGNE_IMAGES, CONSIGNE_VISIBILEO, EXEMPLE_VISIBILEO, REGLAGES_VISIBILEO, ajouterPage, bord, cequiManque, courbeVers, demandeDesImages,
+  htmlAffichage, htmlMemo, htmlPieces, htmlPreparation, htmlVisibileo, idLibre, idsDesImages, lireChoixDesImages, lirePremierJet, motsDeLExemple,
+  personnageVide, pieceVide, placesDeLAffiche, reglagesSurs, traitDeFleche, type ImageACherche, type ReglagesVisibileo,
 } from "./visibileo";
 import { SOURCES_DES_ATELIERS } from "./sourcesDesAteliers";
 
@@ -11,9 +11,9 @@ const histoire = (): ReglagesVisibileo => reglagesSurs({
   titre: "Le Corbeau et le Renard",
   personnages: [{ ...personnageVide(0), nom: "Le corbeau" }, { ...personnageVide(1), nom: "Le renard", image: { id: 7, mot: "renard" } }],
   pieces: [
-    { genre: "cadre", texte: "Le corbeau tient un fromage.", image: { id: 5, mot: "fromage" }, qui: -1 },
-    { genre: "nuage", texte: "Je veux ce fromage.", image: { id: null, mot: "" }, qui: 1 },
-    { genre: "bulle", texte: "Que vous êtes joli !", image: { id: null, mot: "" }, qui: 1 },
+    { id: "q1", genre: "cadre", texte: "Le corbeau tient un fromage.", image: { id: 5, mot: "fromage" }, qui: -1 },
+    { id: "q2", genre: "nuage", texte: "Je veux ce fromage.", image: { id: null, mot: "" }, qui: 1 },
+    { id: "q3", genre: "bulle", texte: "Que vous êtes joli !", image: { id: null, mot: "" }, qui: 1 },
   ],
 });
 const compter = (html: string, classe: string) => html.split(`class="vb-piece ${classe}`).length - 1;
@@ -60,13 +60,14 @@ describe("le Visibiléo : les pièces pour construire avec la classe la trace d'
 
   it("répare des réglages abîmés : couleurs, nombres bornés, pièces d'un genre inconnu ou d'un personnage disparu", () => {
     const r = reglagesSurs({
-      personnages: [{ nom: "A", image: { id: null, mot: "" }, couleur: "rouge" }],
-      pieces: [{ genre: "carte" as never, texte: "x", image: { id: null, mot: "" }, qui: 0 }, { ...pieceVide("nuage"), texte: "y", qui: 4 }],
+      personnages: [{ id: "p1", nom: "A", image: { id: null, mot: "" }, couleur: "rouge" }],
+      pieces: [{ id: "q1", genre: "carte" as never, texte: "x", image: { id: null, mot: "" }, qui: 0 }, { ...pieceVide("nuage"), texte: "y", qui: 4 }],
       vierges: { cadre: 99, nuage: -3, bulle: 1.6 },
       libelles: { cadre: "  ", nuage: "pense", bulle: "dit", rouge: "", bleue: "puis" },
     });
     expect(r.personnages[0].couleur).toMatch(/^#[0-9a-f]{6}$/i);
-    expect(r.pieces).toEqual([{ ...pieceVide("nuage"), texte: "y", qui: -1 }]);
+    // Une pièce sans identifiant en reçoit un libre.
+    expect(r.pieces).toEqual([{ ...pieceVide("nuage", -1, "q1"), texte: "y", qui: -1 }]);
     expect(r.vierges).toEqual({ cadre: 12, nuage: 0, bulle: 2 });
     expect(r.libelles.cadre).toBe(REGLAGES_VISIBILEO.libelles.cadre);
     expect(r.libelles.rouge).toBe("parce que");
@@ -99,6 +100,7 @@ describe("le Visibiléo : les pièces pour construire avec la classe la trace d'
     })} — bonne lecture.`;
     expect(lirePremierJet(reponse)).toEqual({
       titre: "Le Corbeau et le Renard",
+      causes: [],
       personnages: [{ nom: "Le corbeau", images: ["corbeau"], sens: "" }, { nom: "Le renard", images: ["renard"], sens: "" }],
       pieces: [
         // Un cadre n'est à personne ; les guillemets d'une bulle tombent ; un personnage inconnu, personne. Un seul mot d'image : une liste d'un mot.
@@ -145,5 +147,63 @@ describe("le Visibiléo : les pièces pour construire avec la classe la trace d'
     expect(lirePremierJet(`{"personnages": [{"nom": "Le cocher", "images": ["Cocher", "conducteur", "homme", "cocher", "voiture"]}], "pieces": []}`)!.personnages[0].images)
       .toEqual(["cocher", "conducteur", "homme"]);
     expect(CONSIGNE_VISIBILEO).toMatch(/pas au pistolet/);
+  });
+
+  it("pose sur l'affiche ce qui n'a pas de place : personnages à gauche, nuages et bulles en haut, cadres dessous, tout dans l'affiche", () => {
+    const r = histoire();
+    const places = placesDeLAffiche(r);
+    expect(Object.keys(places).sort()).toEqual(["p1", "p2", "q1", "q2", "q3"]);
+    expect(places.p1.x).toBeLessThan(places.q1.x);
+    expect(places.q2.y).toBeLessThan(places.q3.y);
+    expect(places.q3.y).toBeLessThan(places.q1.y);
+    for (const p of Object.values(places)) {
+      expect(p.x + p.largeur).toBeLessThanOrEqual(AFFICHE.largeur);
+      expect(p.y + p.hauteur).toBeLessThanOrEqual(AFFICHE.hauteur);
+    }
+    // Une place donnée l'emporte ; elle reste dans l'affiche.
+    const posee = reglagesSurs({ ...r, affichage: { places: { q1: { x: 390, y: -4, largeur: 80, hauteur: 40 } }, fleches: [] } });
+    expect(placesDeLAffiche(posee).q1).toEqual({ x: 320, y: 0, largeur: 80, hauteur: 40 });
+  });
+
+  it("courbe une flèche par sa poignée et la redresse : la poignée suit le pointeur, au bord des pièces (« des flèches qui peuvent être courbes »)", () => {
+    const a = { x: 0, y: 0, largeur: 40, hauteur: 20 }, b = { x: 100, y: 0, largeur: 40, hauteur: 20 };
+    // Droite : du bord droit de l'une au bord gauche de l'autre.
+    expect(bord(a, { x: 120, y: 10 })).toEqual({ x: 40, y: 10 });
+    expect(traitDeFleche(a, b, 0).d).toBe("M40.0 10.0 Q70.0 10.0 100.0 10.0");
+    // Le milieu tiré de 15 mm vers le haut : la courbe le suit, et sa poignée y revient.
+    const courbe = courbeVers(a, b, { x: 70, y: -5 });
+    expect(courbe).toBeLessThan(0);
+    expect(traitDeFleche(a, b, courbe).milieu.y).toBeLessThan(10);
+    expect(courbeVers(a, b, { x: 70, y: 10.2 })).toBe(0);
+  });
+
+  it("garde les flèches et les places de ce qui existe encore, et donne des identifiants libres", () => {
+    const r = histoire();
+    const brut = { ...r, affichage: { places: { q2: { x: 10, y: 10, largeur: 50, hauteur: 30 }, q9: { x: 0, y: 0, largeur: 50, hauteur: 30 } },
+      fleches: [{ de: "q1", vers: "q2", couleur: "rouge" as const, courbe: 4 }, { de: "q1", vers: "q9", couleur: "bleue" as const, courbe: 0 }, { de: "q3", vers: "q3", couleur: "rouge" as const, courbe: 0 }] } };
+    const s = reglagesSurs(brut);
+    expect(Object.keys(s.affichage.places)).toEqual(["q2"]);
+    expect(s.affichage.fleches).toEqual([{ de: "q1", vers: "q2", couleur: "rouge", courbe: 1.5 }]);
+    expect(idLibre(s, "q")).toBe("q4");
+    expect(idLibre(s, "p")).toBe("p3");
+    // Deux pièces au même identifiant : la seconde en reçoit un autre.
+    const doublon = reglagesSurs({ pieces: [{ ...pieceVide("cadre", -1, "q1"), texte: "a" }, { ...pieceVide("cadre", -1, "q1"), texte: "b" }] });
+    expect(doublon.pieces.map((p) => p.id)).toEqual(["q1", "q2"]);
+    // L'affiche imprimée : les pièces à leur place, les flèches avec leur pointe.
+    const html = htmlAffichage(s, {});
+    expect(html).toContain('class="vb-pose"');
+    expect(html).toContain('marker-end="url(#vb-pointe-rouge)"');
+    expect(html.split("marker-end=").length - 1).toBe(1);
+  });
+
+  it("lit les causes du premier jet : les flèches rouges, de ce qui arrive vers ce qui l'explique", () => {
+    const jet = lirePremierJet(JSON.stringify({
+      personnages: [{ nom: "Le corbeau", images: ["corbeau"] }],
+      pieces: [{ genre: "cadre", texte: "Le fromage tombe." }, { genre: "cadre", texte: "Il ouvre son bec." }, { genre: "nuage", texte: "Je veux chanter.", qui: 0 }],
+      causes: [{ de: 0, vers: 1 }, { de: 1, vers: 2 }, { de: 2, vers: 2 }, { de: 5, vers: 1 }, { de: "1", vers: 0 }],
+    }))!;
+    expect(jet.causes).toEqual([{ de: 0, vers: 1 }, { de: 1, vers: 2 }]);
+    expect(CONSIGNE_VISIBILEO).toMatch(/"causes"/);
+    expect(EXEMPLE_VISIBILEO.fleches.every((f) => f.de < EXEMPLE_VISIBILEO.pieces.length && f.vers < EXEMPLE_VISIBILEO.pieces.length)).toBe(true);
   });
 });
