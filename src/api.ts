@@ -888,8 +888,9 @@ export const api = {
   mistralRechercheWeb: (question: string) =>
     invoke<ReponseWeb>("mistral_recherche_web", { question }),
   /**
-   * La recherche sur le web de l'Assistant IA, quand le document du coffre-fort choisi ne répond pas : Mistral Large,
-   * hors de l'Union européenne (agents de Mistral, Brave), sous l'avertissement de l'Assistant. Elle seule.
+   * La recherche sur le web de l'Assistant IA, quand le document du coffre-fort choisi ne répond pas et que
+   * l'enseignant la demande d'un clic : Mistral Large, hors de l'Union européenne (agents de Mistral, Brave), sous
+   * l'avertissement de l'Assistant. Elle seule.
    */
   mistralRechercheWebAssistant: (question: string) =>
     invoke<ReponseWeb>("mistral_recherche_web_assistant", { question }),

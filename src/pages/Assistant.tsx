@@ -73,14 +73,17 @@ export default function Assistant() {
   // Le document du coffre-fort auquel l'Assistant répond (« 🗄️ Coffre-fort ») ; rien : il répond comme d'habitude.
   const [documentChoisi, setDocumentChoisi] = React.useState<DocumentCoffre | null>(null);
   const [choixDuDocument, setChoixDuDocument] = React.useState(false);
+  // La réponse où le document n'a rien dit : l'Assistant y propose de chercher sur internet, et attend un clic.
+  const [rechercheProposee, setRechercheProposee] = React.useState<{ indice: number; question: string; titre: string } | null>(null);
   const saisie = React.useRef<HTMLTextAreaElement>(null);
   const [model, setModel] = React.useState(MODELE_DEFAUT);
   const [convId, setConvId] = React.useState("");
   const { data: convs, reload: reloadConvs } = useAsync(() => api.conversationsList(), []);
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
-  const nouvelleConversation = () => { setMessages([]); setConvId(""); };
+  const nouvelleConversation = () => { setMessages([]); setConvId(""); setRechercheProposee(null); };
   const chargerConv = (c: PiloteConversation) => {
+    setRechercheProposee(null);
     try { setMessages(JSON.parse(c.messagesJson)); } catch { setMessages([]); }
     setConvId(c.id);
   };
@@ -384,7 +387,7 @@ export default function Assistant() {
     const jointes = images;
     if ((!contenu && !jointes.length) || loading) return;
     const suite: ChatMessage[] = [...messages, { role: "user", content: contenu, ...(jointes.length ? { images: jointes } : {}) }];
-    setMessages(suite); setInput(""); setImages([]); setLoading(true);
+    setMessages(suite); setInput(""); setImages([]); setLoading(true); setRechercheProposee(null);
     colleEnBas.current = true; setDetache(false);
     let cleanup = () => {};
 
@@ -472,39 +475,16 @@ export default function Assistant() {
       const envoyes: ChatMessage[] = aEnvoyer.map((m, i) => ({ role: m.role, content: masque.textes[i] ?? m.content, images: parMessage[i] }));
       const rendre = (t: string) => restaurer(t, masque.table).texte;
       /**
-       * La réponse sur le document, finie : chaque citation retrouvée dans le document, ou signalée ; et, si le
-       * document ne dit rien de la question, ce qu'en dit internet — Mistral Large, sources citées, hors de l'Union
-       * européenne, sous l'avertissement de l'Assistant. `null` : la recherche a été arrêtée.
+       * La réponse sur le document, finie : chaque citation retrouvée dans le document, ou signalée, et le bilan.
+       * Si le document ne dit rien de la question, l'Assistant propose de chercher sur internet (`chercherSurInternet`).
        */
-      const apresLeDocument = async (texte: string): Promise<string | null> => {
+      const apresLeDocument = (texte: string): string => {
         if (!doc) return texte;
         const v = verifierLesCitations(texte, pagesDuDocument);
         const bilan = `\n\n_${bilanDesCitations(v, doc.nom)}_`;
         if (!neLeDitPas(texte)) return v.texte + bilan;
-        // « Le document ne le dit pas » : ce qu'il dit tout de même garde son bilan, et internet prend le relais.
-        if (v.verifiees || v.introuvables) v.texte += bilan;
-        let arreteeLa = false;
-        arret.current = () => {
-          arreteeLa = true;
-          arret.current = null;
-          terminer([...suite, { role: "assistant", content: `${v.texte}\n\n_⏹ Recherche sur internet arrêtée._` }]);
-        };
-        setMessages([...suite, { role: "assistant", content: `${v.texte}\n\n_🔎 Recherche sur internet…_` }]);
-        try {
-          // La question part sans les noms connus, avec le titre du document : « ce document » ne dirait rien au moteur.
-          const q = pseudonymiserTout([`À propos du document « ${doc.nom} » : ${contenu}`], await nomsAMasquer(), { portee: "eleves", lieux: await lieuxAMasquer() });
-          const r = await api.mistralRechercheWebAssistant(q.textes[0]);
-          if (arreteeLa) return null;
-          const web = restaurer(r.texte || "", q.table).texte.trim();
-          const sources = r.sources.length ? "\n\n**Sources**\n" + r.sources.map((x) => `- [${x.titre}](${x.url})`).join("\n") : "";
-          const sansWeb = r.aCherche ? "" : "\n\n_⚠️ Internet n'a pas été consulté : cette réponse vient de la mémoire du modèle._";
-          return `${v.texte}\n\n🌐 **Sur internet**\n\n${web || "Rien de sûr n'a été trouvé."}${sources}${sansWeb}`;
-        } catch (e) {
-          if (arreteeLa) return null;
-          return `${v.texte}\n\n_🌐 La recherche sur internet n'a pas abouti : ${texteErreur(e)}_`;
-        } finally {
-          if (!arreteeLa) arret.current = null;
-        }
+        // « Le document ne le dit pas » : ce qu'il dit tout de même garde son bilan.
+        return v.verifiees || v.introuvables ? v.texte + bilan : v.texte;
       };
       // Streaming : la réponse s'affiche au fil des tokens via événements Tauri.
       const reqId = newId();
@@ -529,9 +509,10 @@ export default function Assistant() {
         if (ev.payload.id !== reqId) return;
         cleanup();
         arret.current = null;
-        void apresLeDocument(rendre(acc)).then((texte) => {
-          if (texte !== null) terminer([...suite, { role: "assistant", content: texte }]);
-        });
+        const ecrit = rendre(acc);
+        const final: ChatMessage[] = [...suite, { role: "assistant", content: apresLeDocument(ecrit) }];
+        terminer(final);
+        if (doc && neLeDitPas(ecrit)) setRechercheProposee({ indice: final.length - 1, question: contenu, titre: doc.nom });
       });
       const unErr = await listen<{ id: string; message: string }>("mistral://error", (ev) => {
         if (ev.payload.id !== reqId) return;
@@ -555,6 +536,44 @@ export default function Assistant() {
   envoyerRef.current = envoyer;
   /** Envoyer : en pleine conversation, la question dite part comme après un silence. */
   const envoyerOuParler = () => { if (oralRef.current === "ecoute") void envoyerLaQuestion(); else void envoyer(); };
+
+  /**
+   * La question à laquelle le document n'a pas répondu, cherchée sur internet — sur un clic seulement : « demande
+   * avant chaque recherche sur internet » (l'enseignant, 3 novembre 2026). Mistral Large cite ses sources, hors de
+   * l'Union européenne (les agents de Mistral, Brave). La question part sans les noms connus, avec le titre du
+   * document — « ce document » ne dirait rien au moteur. Ce qui est trouvé s'ajoute à la réponse.
+   */
+  const chercherSurInternet = async () => {
+    const p = rechercheProposee;
+    const avant = p ? messages[p.indice] : undefined;
+    if (!p || avant?.role !== "assistant" || loading) return;
+    setRechercheProposee(null);
+    const avec = (ajout: string): ChatMessage[] =>
+      messages.map((m, i) => (i === p.indice ? { ...m, content: `${avant.content}\n\n${ajout}` } : m));
+    let arretee = false;
+    arret.current = () => {
+      arretee = true;
+      arret.current = null;
+      const final = avec("_⏹ Recherche sur internet arrêtée._");
+      setMessages(final); setLoading(false); sauvegarderConv(final);
+    };
+    setLoading(true);
+    setMessages(avec("_🔎 Recherche sur internet…_"));
+    try {
+      const q = pseudonymiserTout([`À propos du document « ${p.titre} » : ${p.question}`], await nomsAMasquer(), { portee: "eleves", lieux: await lieuxAMasquer() });
+      const r = await api.mistralRechercheWebAssistant(q.textes[0]);
+      if (arretee) return;
+      const web = restaurer(r.texte || "", q.table).texte.trim();
+      const sources = r.sources.length ? "\n\n**Sources**\n" + r.sources.map((x) => `- [${x.titre}](${x.url})`).join("\n") : "";
+      const sansWeb = r.aCherche ? "" : "\n\n_⚠️ Internet n'a pas été consulté : cette réponse vient de la mémoire du modèle._";
+      const final = avec(`🌐 **Sur internet**\n\n${web || "Rien de sûr n'a été trouvé."}${sources}${sansWeb}`);
+      setMessages(final); sauvegarderConv(final);
+    } catch (e) {
+      if (!arretee) setMessages(avec(`_🌐 La recherche sur internet n'a pas abouti : ${texteErreur(e)}_`));
+    } finally {
+      if (!arretee) { setLoading(false); arret.current = null; }
+    }
+  };
 
   if (hasKey === false) {
     return (
@@ -611,10 +630,10 @@ export default function Assistant() {
           🔎 Web&nbsp;: {surLeWeb ? "activé" : "désactivé"}</button>}
         {documentChoisi
           ? <button className="btn sm" aria-pressed onClick={() => setDocumentChoisi(null)}
-              title={`Mistral Large répond d'après « ${documentChoisi.nom} », en citant ses pages ; s'il n'y trouve rien, il cherche sur internet. Cliquer pour revenir à l'assistant habituel.`}>
+              title={`Mistral Large répond d'après « ${documentChoisi.nom} », en citant ses pages ; s'il n'y trouve rien, il propose de chercher sur internet. Cliquer pour revenir à l'assistant habituel.`}>
               📕 {documentChoisi.nom.length > 28 ? documentChoisi.nom.slice(0, 27) + "…" : documentChoisi.nom} ✕</button>
           : <button className="btn sm" onClick={() => setChoixDuDocument(true)}
-              title="Choisir un document du coffre-fort : Mistral Large y répond en citant ses pages, sans rien inventer ; s'il n'y trouve rien, il cherche sur internet">
+              title="Choisir un document du coffre-fort : Mistral Large y répond en citant ses pages, sans rien inventer ; s'il n'y trouve rien, il propose de chercher sur internet">
               🗄️ Coffre-fort</button>}
         <button className="btn sm" onClick={() => setShowPictos(true)}
           title="Chercher un pictogramme dans ARASAAC, dans Sclera et vos pictos gardés ; s'il n'existe pas, le faire dessiner par l'IA">
@@ -650,6 +669,13 @@ export default function Assistant() {
           <div key={i} className={"msg " + m.role}>
             {m.images?.length ? <div className="msg-images">{m.images.map((src, k) => <img key={k} src={src} alt={`Image ${k + 1}`} />)}</div> : null}
             {m.role === "assistant" ? <Markdown texte={m.content || "…"} /> : m.content}
+            {rechercheProposee?.indice === i && !loading && (
+              <div className="msg-actions" role="group" aria-label="Chercher sur internet" style={{ flexWrap: "wrap", alignItems: "center" }}>
+                <span>🌐 Chercher sur internet ? Votre question partira hors de l'Union européenne.</span>
+                <button type="button" className="btn primary sm" onClick={() => { void chercherSurInternet(); }}>Chercher</button>
+                <button type="button" className="btn ghost sm" onClick={() => setRechercheProposee(null)}>Non merci</button>
+              </div>
+            )}
             {/* Une réponse finie devient une feuille : imprimée, ou en PDF sur le bureau. */}
             {m.role === "assistant" && m.content.trim() && !(loading && i === messages.length - 1) && !m.content.startsWith("⚠️") && (
               <div className="msg-actions">
@@ -685,8 +711,8 @@ export default function Assistant() {
       {/* « Mets un panneau d'avertissement : là, les données ne sont pas traitées [en Europe], il ne faut pas en
           envoyer ici » (l'enseignant, 3 novembre 2026). Toujours en vue : c'est un avertissement, pas une aide. */}
       <p className="assistant-avertissement" role="note">
-        ⚠️ <b>Ici, la dictée et la recherche sur internet ne sont pas traitées en Europe.</b> Votre voix, et vos questions
-        quand un document du coffre-fort n'y répond pas, partent chez Mistral, hors de l'Union européenne : n'y mettez rien
+        ⚠️ <b>Ici, la dictée et la recherche sur internet ne sont pas traitées en Europe.</b> Votre voix, et les questions
+        que vous choisissez de chercher sur internet, partent chez Mistral, hors de l'Union européenne : n'y mettez rien
         sur vos élèves — ni prénom, ni santé, ni famille.
       </p>
       <div className="chat-input">

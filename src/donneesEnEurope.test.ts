@@ -31,4 +31,22 @@ describe("les données restent en Europe, sauf la dictée et la recherche sur in
   it("ne laisse que l'Assistant chercher sur internet, quand un document du coffre-fort ne répond pas", () => {
     expect(contenant(/mistralRechercheWebAssistant|mistral_recherche_web_assistant/)).toEqual(["./api.ts", "./pages/Assistant.tsx"]);
   });
+
+  it("ne cherche sur internet que sur un clic de l'enseignant (« demande avant chaque recherche sur internet »)", () => {
+    const assistant = SOURCES["./pages/Assistant.tsx"];
+    // Un seul appel, dans `chercherSurInternet`…
+    const appels = [...assistant.matchAll(/mistralRechercheWebAssistant\(/g)].map((m) => m.index!);
+    expect(appels).toHaveLength(1);
+    const debut = assistant.indexOf("const chercherSurInternet = async");
+    const fin = debut + 1 + assistant.slice(debut + 1).search(/\n  (?:const|let|function|if|return|React\.useEffect)\b/);
+    expect(debut).toBeGreaterThan(-1);
+    expect(appels[0] > debut && appels[0] < fin).toBe(true);
+    // … que seul un bouton appelle (les commentaires mis à part).
+    const ligneDe = (i: number) => assistant.slice(assistant.lastIndexOf("\n", i) + 1, i).trimStart();
+    const usages = [...assistant.matchAll(/chercherSurInternet\b/g)]
+      .filter((m) => !/^(?:\*|\/\/|\/\*)/.test(ligneDe(m.index!)))
+      .map((m) => assistant.slice(m.index! - 30, m.index!));
+    expect(usages).toHaveLength(2);
+    expect(usages.filter((avant) => /onClick=\{\(\) => \{ void $/.test(avant))).toHaveLength(1);
+  });
 });

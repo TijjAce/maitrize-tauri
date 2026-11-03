@@ -10,7 +10,8 @@
 // affirmation s'appuie sur une citation mot pour mot, suivie de sa page. Puis
 // Maitrize retrouve chaque citation dans le document — comme pour le quiz des
 // guides — et signale celle qu'il ne retrouve pas. Si les passages ne disent
-// rien de la question, la réponse le dit, et l'Assistant cherche sur le web.
+// rien de la question, la réponse le dit, et l'Assistant propose de chercher
+// sur internet : « demande avant chaque recherche sur internet » (même jour).
 
 import { citationDansLaPage, racinesDe, type PageLue } from "./quizDesGuides";
 import { aplatir } from "./rechercheDansPdf";
@@ -62,7 +63,7 @@ export function passagesPourLaQuestion(passages: readonly Passage[], question: s
 /** Le modèle qui répond sur un document : Mistral Large, à la demande de l'enseignant. */
 export const MODELE_GRAND = "mistral-large-latest";
 
-/** Ce que dit la réponse quand le document ne répond pas : l'Assistant cherche alors sur le web. */
+/** Ce que dit la réponse quand le document ne répond pas : l'Assistant propose alors de chercher sur internet. */
 export const NE_LE_DIT_PAS = "Le document ne le dit pas.";
 
 /** La consigne : les seuls passages, des citations mot pour mot avec leur page, rien d'inventé. */

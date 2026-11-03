@@ -29,7 +29,7 @@ const REESSAIS_429: u32 = 3;
 pub const MISTRAL: &str = "https://api.eu.mistral.ai";
 /// La recherche sur le web et le dessin d'un picto sortiraient de l'Union européenne : coupés. Une exception, voulue
 /// par l'enseignant (3 novembre 2026) : la recherche de l'Assistant IA quand un document du coffre-fort ne répond pas
-/// (`mistral_recherche_web_assistant`), sous l'avertissement de l'Assistant.
+/// et qu'il la demande d'un clic (`mistral_recherche_web_assistant`), sous l'avertissement de l'Assistant.
 const AGENTS_COUPES: bool = true;
 const HORS_EUROPE: &str = "Coupé pour que vos données restent en Europe : chez Mistral, cette fonction passe par des services hors de l'Union européenne.";
 /// Le direct de Voxtral (`client/sessions`, jeton « rt_ ») n'existe pas à l'adresse européenne : Mistral y
@@ -582,8 +582,9 @@ pub async fn mistral_recherche_web(
 }
 
 /// La recherche sur le web de l'Assistant IA, et d'elle seule : quand le document du coffre-fort choisi ne répond pas,
-/// Mistral Large cherche sur le web — hors de l'Union européenne (les agents de Mistral, et Brave), à la demande de
-/// l'enseignant (3 novembre 2026), sous l'avertissement de l'Assistant. Tout le reste reste coupé (`AGENTS_COUPES`).
+/// Mistral Large cherche sur le web — hors de l'Union européenne (les agents de Mistral, et Brave), voulu par
+/// l'enseignant (3 novembre 2026), sous l'avertissement de l'Assistant, et chaque fois sur son clic (« demande avant
+/// chaque recherche sur internet »). Tout le reste reste coupé (`AGENTS_COUPES`).
 #[tauri::command]
 pub async fn mistral_recherche_web_assistant(db: State<'_, Db>, question: String) -> Result<ReponseWeb, String> {
     let cle = cle_mistral(&db)?;
