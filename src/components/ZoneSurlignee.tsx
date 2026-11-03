@@ -2,13 +2,18 @@ import React from "react";
 import type { Segment } from "../surlignage";
 
 /**
- * Une zone de texte qui met des passages en couleur.
+ * Une zone de texte qui met des passages en couleur, ou dans un cadre.
  *
  * Un textarea ne colore pas une partie de son texte. On pose donc dessous un
  * calque au pixel près — mêmes police, marges, bordure et retours à la ligne —
  * qui reprend le texte, invisible, avec les passages surlignés ; la zone,
  * transparente, écrit par-dessus. Le calque suit son défilement, et la place
  * d'une barre de défilement quand il y en a une.
+ *
+ * Les segments d'un même cadre (voir prevuParEleve.ts) forment un bloc dont
+ * le contour est dessiné par `outline`, qui ne décale rien : le bloc commence
+ * à une ligne et garde le retour à la ligne qui le clôt, si bien que le calque
+ * a autant de lignes que la zone.
  */
 export const ZoneSurlignee = React.forwardRef<HTMLTextAreaElement,
   { segments: Segment[] } & React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
@@ -40,14 +45,27 @@ export const ZoneSurlignee = React.forwardRef<HTMLTextAreaElement,
       return () => o.disconnect();
     }, [caler]);
 
+    const rendre = (s: Segment, i: number) => (s.genre
+      ? <mark key={i} className={`surligne-${s.genre}${s.couleur !== undefined ? ` eleve-c${s.couleur % 8}` : ""}`}>{s.texte}</mark>
+      : <React.Fragment key={i}>{s.texte}</React.Fragment>);
+    const groupes: { cadre?: Segment["cadre"]; segments: Segment[] }[] = [];
+    for (const s of segments) {
+      const g = groupes[groupes.length - 1];
+      if (g && g.cadre === s.cadre) g.segments.push(s); else groupes.push({ cadre: s.cadre, segments: [s] });
+    }
+    // Un texte qui finit par un retour à la ligne : le calque doit avoir cette ligne aussi. Sans lui, l'espace
+    // reste sur la dernière ligne — dans son cadre, sinon elle en aurait une de plus.
+    const dernier = groupes[groupes.length - 1];
+    const finale = dernier?.cadre && !segments[segments.length - 1].texte.endsWith("\n") ? dernier : null;
     return (
       <div className="surligneur">
         <div ref={fond} className={`${className} surligneur-fond`} style={{ ...style, resize: "none" }} aria-hidden="true">
-          {segments.map((s, i) => (s.genre
-            ? <mark key={i} className={`surligne-${s.genre}${s.couleur !== undefined ? ` eleve-c${s.couleur % 8}` : ""}`}>{s.texte}</mark>
-            : <React.Fragment key={i}>{s.texte}</React.Fragment>))}
-          {/* Un texte qui finit par un retour à la ligne : le calque doit avoir cette ligne aussi. */}
-          {"​"}
+          {groupes.map((g, k) => (g.cadre
+            ? <div key={k} className={`cadre-eleve${g.cadre.couleur !== undefined ? ` eleve-c${g.cadre.couleur % 8}` : ""}`}>
+                {g.segments.map(rendre)}{g === finale ? "​" : null}
+              </div>
+            : <React.Fragment key={k}>{g.segments.map(rendre)}</React.Fragment>))}
+          {finale ? null : "​"}
         </div>
         <textarea ref={poser} className={`${className} surligneur-zone`} style={style}
           onScroll={(e) => { caler(); onScroll?.(e); }} {...props} />

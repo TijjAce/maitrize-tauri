@@ -6,7 +6,7 @@ import { PoserObservation } from "./PoserObservation";
 import { appliquer, porterAuDossier } from "../notesDuBilan";
 import { segmentsDuBilan } from "../surlignage";
 import { prenomDe } from "../veilleEleve";
-import { elevesDuPassage, segmentsDuPrevu, surlignerPour } from "../prevuParEleve";
+import { elevesDuPassage, encadrerPour, segmentsDuPrevu } from "../prevuParEleve";
 import { ZoneSurlignee } from "./ZoneSurlignee";
 import { enAttente } from "../journalEnAttente";
 import { useDictee, mmss } from "../dictee";
@@ -277,16 +277,16 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
     setJeuEdite(connu ? { jeu: connu, nouveau: false } : { jeu: { ...nouveauJeu(), titre: nom }, nouveau: true });
   };
 
-  // ── Le prévu d'un groupe : le passage sélectionné devient la partie d'un élève (voir prevuParEleve.ts) ──
+  // ── Le prévu d'un créneau d'élèves : le passage sélectionné devient un temps d'un élève, encadré (voir prevuParEleve.ts) ──
   const passageSelectionne = (c: Creneau) => {
     const zone = zonesPrevu.current[c.id];
     return zone && ouvertes.current.has(c.id) ? { debut: zone.selectionStart, fin: zone.selectionEnd } : null;
   };
-  const surligner = (c: Creneau, prenom: string | null, groupe: string[], ajouter = false) => {
+  const encadrer = (c: Creneau, prenom: string | null, groupe: string[], ajouter = false) => {
     const prevu = aEcrire.current[c.id]?.prevu ?? c.prevu ?? "";
     const p = passageSelectionne(c);
-    const r = p ? surlignerPour(prevu, p.debut, p.fin, prenom, groupe, ajouter) : null;
-    if (!r) { toast("Sélectionnez d'abord, dans le prévu, ce que l'élève doit faire.", { icone: "🖍" }); return; }
+    const r = p ? encadrerPour(prevu, p.debut, p.fin, prenom, groupe, ajouter) : null;
+    if (!r) { toast("Sélectionnez d'abord, dans le prévu, ce que l'élève doit faire.", { icone: "🔲" }); return; }
     modifier(c.id, "prevu", r.texte, true);
     // Le passage reste sélectionné : on peut le donner encore, à un autre élève ou à deux.
     requestAnimationFrame(() => zonesPrevu.current[c.id]?.setSelectionRange(r.debut, r.fin));
@@ -607,8 +607,8 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                               </>
                             )}
                           </MenuDeroulant>
-                          {prenoms.length > 1 && (
-                            <MenuDeroulant petit cote="gauche" titre="Surligner ce que doit faire un élève" libelle="🖍 Surligner">
+                          {prenoms.length > 0 && (
+                            <MenuDeroulant petit cote="gauche" titre="Encadrer ce que doit faire un élève" libelle="🔲 Encadrer">
                               {(fermer) => {
                                 const p = passageSelectionne(c);
                                 const siens = p ? elevesDuPassage(aEcrire.current[c.id]?.prevu ?? c.prevu ?? "", p.debut, p.fin, prenoms) : [];
@@ -616,16 +616,16 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                                   <>
                                     {prenoms.map((prenom, i) => (
                                       <button key={prenom} className={`ctx-item${siens.includes(prenom) ? " coche" : ""}`}
-                                        onClick={(e) => { fermer(); surligner(c, prenom, prenoms, e.shiftKey); }}
-                                        title={`Ce passage est à ${prenom} : il prend sa couleur et vient à son rang dans son planning. ⇧-clic : à ${prenom} aussi.`}>
+                                        onClick={(e) => { fermer(); encadrer(c, prenom, prenoms, e.shiftKey); }}
+                                        title={`Ce passage est à ${prenom} : il s'encadre de sa couleur et vient à son rang dans son planning.${prenoms.length > 1 ? ` ⇧-clic : à ${prenom} aussi.` : ""}`}>
                                         <span className="ctx-ico" aria-hidden="true">{siens.includes(prenom) ? "✓" : ""}</span>
                                         <span className={`pastille-eleve eleve-c${i % 8}`} aria-hidden="true" />{prenom}
                                       </button>
                                     ))}
                                     <div className="ctx-sep" />
-                                    <button className="ctx-item" onClick={() => { fermer(); surligner(c, null, prenoms); }}
-                                      title="Ce passage redevient à tout le groupe : ses prénoms s'effacent">
-                                      <span className="ctx-ico" aria-hidden="true">👥</span>Tout le groupe</button>
+                                    <button className="ctx-item" onClick={() => { fermer(); encadrer(c, null, prenoms); }}
+                                      title="Ce passage sort de son cadre et redevient à tout le groupe : ses prénoms s'effacent">
+                                      <span className="ctx-ico" aria-hidden="true">{prenoms.length > 1 ? "👥" : "✕"}</span>{prenoms.length > 1 ? "Tout le groupe" : "Sans cadre"}</button>
                                   </>
                                 );
                               }}
@@ -643,8 +643,8 @@ export function CahierJournal({ dateIso, creneaux, seances, sequences = [], elev
                         "aria-label": `${LIBELLES[champ].titre} — ${c.heureDebut} ${c.matiere}`,
                         style: { width: "100%", resize: "vertical", fontSize: 13.5, lineHeight: 1.45 } as React.CSSProperties,
                       };
-                      // Le bilan montre en couleur ce qui part dans les notes des élèves. Le prévu d'un groupe surligne
-                      // la partie de chaque élève de sa couleur (« Lina : … », voir prevuParEleve.ts).
+                      // Le bilan montre en couleur ce qui part dans les notes des élèves. Le prévu d'un créneau d'élèves
+                      // encadre la partie de chaque élève de sa couleur (« Lina : … », voir prevuParEleve.ts).
                       if (champ === "bilan") {
                         return <ZoneSurlignee {...proprietes} segments={segmentsDuBilan(b.bilan, prenomsDeLaClasse)}
                           ref={(el) => { zones.current[c.id] = el; }} />;

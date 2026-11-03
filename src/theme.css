@@ -1368,6 +1368,9 @@ mark.surligne-nom { background: color-mix(in srgb, var(--accent) 50%, transparen
 mark.surligne-eleve { background: color-mix(in srgb, var(--eleve, var(--accent)) 22%, transparent); }
 mark.surligne-eleves { background: color-mix(in srgb, var(--text-2) 16%, transparent); }
 mark.surligne-eleve-nom { background: color-mix(in srgb, var(--eleve, var(--accent)) 48%, transparent); }
+/* Le prévu d'un groupe : chaque partie dans un cadre de la couleur de son élève ; celle de plusieurs en gris. */
+.surligneur-fond .cadre-eleve { margin: 0 -5px; padding: 0 5px; border-radius: 6px;
+  box-shadow: inset 0 0 0 1.5px var(--eleve, color-mix(in srgb, var(--text-2) 55%, transparent)); }
 .eleve-c0 { --eleve: #4a86e8; } .eleve-c1 { --eleve: #d9822b; } .eleve-c2 { --eleve: #2f9e6e; } .eleve-c3 { --eleve: #9b59b6; }
 .eleve-c4 { --eleve: #d64545; } .eleve-c5 { --eleve: #1f9bb0; } .eleve-c6 { --eleve: #b8860b; } .eleve-c7 { --eleve: #c2185b; }
 .pastille-eleve { display: inline-block; flex: none; width: .75em; height: .75em; border-radius: 50%; background: var(--eleve, var(--accent)); }

@@ -5,9 +5,11 @@
 // planning de créneaux », puis : « un bouton qui permet de surligner l'élève
 // et ce qu'il doit faire, et après ça suit dans l'ordre chronologique : deux
 // élèves peuvent faire la même chose, mais pas au même moment », et : « je
-// veux une sélection multiligne pour la même chose » — son prénom une fois.
+// veux une sélection multiligne pour la même chose » — son prénom une fois ;
+// enfin (2026-11-03) : « au lieu de surligner, il faudrait pouvoir encadrer.
+// Même pour un élève unique. »
 //
-// Dans un créneau à plusieurs élèves, une ligne qui commence par des prénoms
+// Dans un créneau qui nomme ses élèves, un ou plusieurs, une ligne qui commence par des prénoms
 // d'élèves du créneau — « Lina : la frise », « Pour Lina et Tom : », ou le
 // prénom seul — ouvre leur partie : elle court, lignes vides comprises,
 // jusqu'à la prochaine ligne qui nomme d'autres élèves, ou « Tout le groupe : »
@@ -15,9 +17,10 @@
 // Chacun suit ce qui est à tous et ses parties dans l'ordre où c'est écrit :
 // le loto peut venir en premier pour l'un, en dernier pour l'autre. Seuls
 // comptent les prénoms des élèves du créneau : « Pour la séance : » n'ouvre
-// rien. Le bouton « 🖍 Surligner » du prévu écrit ces têtes (`surlignerPour`) ;
-// le cahier journal surligne chaque partie de la couleur de son élève
-// (`segmentsDuPrevu`).
+// rien. Le bouton « 🔲 Encadrer » du prévu écrit ces têtes (`encadrerPour`) ;
+// le cahier journal met chaque partie dans un cadre de la couleur de son élève
+// (`segmentsDuPrevu`) : un cadre par tête, si bien que deux passages encadrés
+// l'un après l'autre pour le même élève — deux temps — restent deux cadres.
 
 import type { Creneau } from "./api";
 import type { Segment } from "./surlignage";
@@ -69,7 +72,6 @@ function lignesDuPrevu(prevu: string, prenoms: string[]): { ligne: string; tete:
 
 /** « Lina », « Lina et Tom », « Lina, Tom et Zoé ». */
 const nommer = (qui: string[]) => (qui.length < 2 ? qui.join("") : `${qui.slice(0, -1).join(", ")} et ${qui[qui.length - 1]}`);
-const memes = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
 /** La tête d'une partie : ses prénoms, ou « Tout le groupe ». */
 const teteDe = (qui: string[]) => `${qui.length ? nommer(qui) : TETE_A_TOUS} : `;
 /** Ce qu'une ligne dit, sans sa tête. */
@@ -132,32 +134,43 @@ export function prevuDeLEleve(prevu: string, prenom: string, prenoms: string[]):
 }
 
 /**
- * Le prévu découpé pour le cahier journal : la partie d'un élève surlignée de
- * sa couleur — son rang dans le groupe —, son prénom un ton plus fort ; celle
- * de plusieurs en gris, chaque prénom de sa couleur ; « Tout le groupe » en
- * gris, la suite telle quelle. Mis bout à bout, les segments redonnent le
- * texte au caractère près.
+ * Le prévu découpé pour le cahier journal : chaque partie dans un cadre — de
+ * sa tête à sa dernière ligne pleine —, de la couleur de son élève, son rang
+ * dans le groupe ; celle de plusieurs en gris. Les prénoms des têtes gardent
+ * leur couleur, « Tout le groupe » le gris, et la suite reste telle quelle.
+ * Le retour à la ligne qui clôt un cadre est dans le cadre : c'est ce qui
+ * garde les lignes du calque à la hauteur de celles du texte. Mis bout à
+ * bout, les segments redonnent le texte au caractère près.
  */
 export function segmentsDuPrevu(prevu: string, prenoms: string[]): Segment[] {
+  const lignes = lignesDuPrevu(prevu, prenoms);
+  // Chaque tête d'élèves ouvre un cadre, que la tête suivante ferme ; les lignes vides de son bout restent dehors.
+  const cadres: (Segment["cadre"] | undefined)[] = lignes.map(() => undefined);
+  let ouvert: Segment["cadre"] | undefined;
+  lignes.forEach((l, i) => {
+    if (l.tete) ouvert = l.qui.length ? { id: i, ...(l.qui.length === 1 ? { couleur: prenoms.indexOf(l.qui[0]) } : {}) } : undefined;
+    cadres[i] = l.qui.length ? ouvert : undefined;
+  });
+  for (let i = lignes.length - 1; i >= 0; i--) {
+    if (cadres[i] && !lignes[i].ligne.trim() && cadres[i + 1] !== cadres[i]) cadres[i] = undefined;
+  }
   const sortie: Segment[] = [];
-  const pousser = (texte: string, genre: Segment["genre"], couleur?: number) => {
+  const pousser = (texte: string, genre: Segment["genre"], cadre: Segment["cadre"] | undefined, couleur?: number) => {
     if (!texte) return;
     const dernier = sortie[sortie.length - 1];
-    if (dernier && dernier.genre === genre && dernier.couleur === couleur) dernier.texte += texte;
-    else sortie.push(couleur === undefined ? { texte, genre } : { texte, genre, couleur });
+    if (dernier && dernier.genre === genre && dernier.couleur === couleur && dernier.cadre === cadre) { dernier.texte += texte; return; }
+    sortie.push({ texte, genre, ...(couleur === undefined ? {} : { couleur }), ...(cadre ? { cadre } : {}) });
   };
-  lignesDuPrevu(prevu, prenoms).forEach(({ ligne, tete, qui }, i) => {
-    if (i) pousser("\n", "");
-    const seul = qui.length === 1;
-    const fond = (texte: string) => (qui.length ? pousser(texte, seul ? "eleve" : "eleves", seul ? prenoms.indexOf(qui[0]) : undefined) : pousser(texte, ""));
+  lignes.forEach(({ ligne, tete }, i) => {
+    if (i) pousser("\n", "", cadres[i - 1]);
     let fait = 0;
     for (const n of tete?.noms ?? []) {
-      fond(ligne.slice(fait, n.debut));
-      if (n.prenom === null) pousser(ligne.slice(n.debut, n.fin), "eleves");
-      else pousser(ligne.slice(n.debut, n.fin), "eleve-nom", prenoms.indexOf(n.prenom));
+      pousser(ligne.slice(fait, n.debut), "", cadres[i]);
+      if (n.prenom === null) pousser(ligne.slice(n.debut, n.fin), "eleves", cadres[i]);
+      else pousser(ligne.slice(n.debut, n.fin), "eleve-nom", cadres[i], prenoms.indexOf(n.prenom));
       fait = n.fin;
     }
-    fond(ligne.slice(fait));
+    pousser(ligne.slice(fait), "", cadres[i]);
   });
   return sortie;
 }
@@ -210,14 +223,15 @@ export function elevesDuPassage(prevu: string, debut: number, fin: number, preno
 }
 
 /**
- * Le bouton « 🖍 Surligner » : le passage sélectionné, sur une ou plusieurs
- * lignes, devient la partie d'un élève — son prénom une fois, en tête ;
- * `ajouter` : d'un élève de plus que ceux qu'il a déjà ; `prenom` nul : il
- * redevient à tous. Les têtes qu'il avait s'effacent ; ce qui le suit garde sa
- * partie, par sa tête redite au besoin. Rend le texte et le passage tel qu'il
- * est devenu ; null, sans rien à surligner.
+ * Le bouton « 🔲 Encadrer » : le passage sélectionné, sur une ou plusieurs
+ * lignes, devient un temps d'un élève, dans son propre cadre — son prénom une
+ * fois, en tête, même s'il suit un autre temps du même élève ; `ajouter` :
+ * d'un élève de plus que ceux qu'il a déjà ; `prenom` nul : il redevient à
+ * tous. Les têtes qu'il avait s'effacent ; ce qui le suit garde sa partie, par
+ * sa tête redite au besoin, si bien que le cadre finit avec le passage. Rend
+ * le texte et le passage tel qu'il est devenu ; null, sans rien à encadrer.
  */
-export function surlignerPour(
+export function encadrerPour(
   prevu: string, debut: number, fin: number, prenom: string | null, prenoms: string[], ajouter = false,
 ): { texte: string; debut: number; fin: number } | null {
   const p = passageDe(prevu, debut, fin, prenoms);
@@ -225,23 +239,24 @@ export function surlignerPour(
   const { lignes, premiere, derniere } = p;
   const deja = ajouter ? deToutes(lignes.slice(premiere, derniere + 1), prenoms) : [];
   const leurs = prenom === null ? [] : prenoms.filter((x) => x === prenom || deja.includes(x));
-  // Le passage, sans ses têtes ; une seule en haut, s'il ne continue pas la partie d'avant.
+  // Le passage, sans ses têtes ; une seule en haut — à tous, seulement après la partie d'un élève.
   const passage = lignes.slice(premiere, derniere + 1)
     .flatMap((l) => (l.tete && !sansTete(l).trim() ? [] : [sansTete(l)]));
   const avant = premiere > 0 ? lignes[premiere - 1].qui : [];
-  if (!memes(leurs, avant)) {
+  if (leurs.length || avant.length) {
     const k = passage.findIndex((l) => l.trim());
     if (k < 0) passage.push(teteDe(leurs).trimEnd());
     else passage.splice(k, 1, ...avecSaTete(leurs, passage[k]));
   }
-  // Ce qui suit : une tête qui redit les mêmes élèves s'efface ; une ligne qui était d'une autre partie redit la sienne.
+  // Ce qui suit : « Tout le groupe » après un passage rendu à tous s'efface ; une ligne qui était d'une partie
+  // — même celle de ces élèves : le cadre finit avec le passage —, ou à tous après lui, redit la sienne.
   const suite = lignes.slice(derniere + 1).map((l) => l.ligne);
   const k = lignes.findIndex((l, i) => i > derniere && l.ligne.trim()) - derniere - 1;
   if (k >= 0) {
     const l = lignes[derniere + 1 + k];
-    if (l.tete && memes(l.tete.qui, leurs)) {
+    if (l.tete && !l.tete.qui.length && !leurs.length) {
       if (sansTete(l).trim()) suite[k] = sansTete(l); else suite.splice(k, 1);
-    } else if (!l.tete && !memes(l.qui, leurs)) suite.splice(k, 1, ...avecSaTete(l.qui, l.ligne));
+    } else if (!l.tete && (l.qui.length || leurs.length)) suite.splice(k, 1, ...avecSaTete(l.qui, l.ligne));
   }
   const debutDuPassage = premiere ? lignes.slice(0, premiere).map((l) => l.ligne).join("\n").length + 1 : 0;
   return {

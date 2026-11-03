@@ -15,6 +15,11 @@ export interface Segment {
   genre: "" | "phrase" | "nom" | "eleve" | "eleves" | "eleve-nom";
   /** Au prévu d'un groupe, la couleur de l'élève : son rang dans le groupe. */
   couleur?: number;
+  /**
+   * Au prévu d'un groupe, le cadre de la partie où est le segment : `id`, la ligne de sa tête ; `couleur`, celle de
+   * son élève — aucune pour plusieurs. Les segments d'un même cadre se suivent.
+   */
+  cadre?: { id: number; couleur?: number };
 }
 
 /** Les phrases d'un texte, coupées comme `phrasesQuiCitent` les coupe : à chaque ligne, et après . ! ? … */
