@@ -99,3 +99,35 @@ export function morceauxCouverts(o: Occurrence, origine: number[]): number[] {
   return [...vus].sort((a, b) => a - b);
 }
 
+
+// ── Le texte d'une page, tel qu'on le lit ─────────────────────────────────
+
+/** Un morceau de texte posé sur la page, tel que pdf.js le donne : son texte, sa position, sa largeur, sa taille. */
+export interface MorceauPose { str: string; transform: number[]; width: number; height: number; hasEOL?: boolean }
+
+/**
+ * Le texte suivi d'une page : ses morceaux recollés comme on les lit. pdf.js
+ * coupe parfois un mot en plusieurs morceaux, selon l'espacement des lettres
+ * (« peu | ven | t ») : les séparer chacun d'un espace donnait « peu ven t
+ * dater ». Un espace ne sépare ici que deux morceaux assez éloignés sur la
+ * même ligne — plus d'un cinquième de la taille des lettres —, un retour à
+ * la ligne deux morceaux de lignes différentes.
+ */
+export function texteSuivi(morceaux: readonly MorceauPose[]): string {
+  let texte = "";
+  let avant: { fin: number; y: number; taille: number } | null = null;
+  for (const m of morceaux) {
+    const x = Number(m.transform?.[4]) || 0;
+    const y = Number(m.transform?.[5]) || 0;
+    const taille = Math.abs(Number(m.transform?.[3])) || m.height || 10;
+    if (avant && m.str) {
+      const blanc = /\s$/.test(texte) || /^\s/.test(m.str);
+      if (Math.abs(y - avant.y) > Math.max(taille, avant.taille) * 0.5) { if (!blanc) texte += "\n"; }
+      else if (x - avant.fin > Math.min(taille, avant.taille) * 0.2 && !blanc) texte += " ";
+    }
+    texte += m.str;
+    if (m.hasEOL) texte += "\n";
+    if (m.str) avant = { fin: x + (Number(m.width) || 0), y, taille };
+  }
+  return texte;
+}

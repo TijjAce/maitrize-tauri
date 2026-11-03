@@ -381,6 +381,18 @@ export async function imageDeLaPage(
   return { base64: url.slice(url.indexOf(",") + 1), largeur: l, hauteur: h };
 }
 
+/**
+ * Le texte d'une page de deux façons : tel qu'on le lit — les mots que pdf.js
+ * coupe en morceaux recollés (voir texteSuivi) —, et tel que la recherche du
+ * lecteur le voit (voir textePage), pour y retrouver une phrase.
+ */
+export async function textesDeLaPage(doc: DocumentPdf, numero: number): Promise<{ suivi: string; brut: string }> {
+  const { texteSuivi } = await import("./rechercheDansPdf");
+  const contenu = await (await doc.getPage(numero)).getTextContent();
+  const morceaux = contenu.items.flatMap((it) => ("str" in it ? [it] : []));
+  return { suivi: texteSuivi(morceaux), brut: morceaux.map((it) => it.str + (it.hasEOL ? "\n" : " ")).join("") };
+}
+
 /** Texte brut d'une page, pour la recherche. */
 export async function textePage(doc: DocumentPdf, numero: number): Promise<string> {
   const contenu = await (await doc.getPage(numero)).getTextContent();

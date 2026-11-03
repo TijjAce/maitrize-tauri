@@ -4,7 +4,7 @@ import { Empty, Input, PageVisibleContext, Select, Textarea } from "./ui";
 import { Aide } from "./Aide";
 import { PdfViewer } from "./PdfViewer";
 import { toast } from "./Toaster";
-import { ouvrirPdf, textePage } from "../pdfRendu";
+import { ouvrirPdf, textesDeLaPage, type DocumentPdf } from "../pdfRendu";
 import { graineAuHasard, hasard } from "../hasard";
 import { lireNiveaux } from "../classe";
 import { isoJour } from "../dates";
@@ -12,8 +12,8 @@ import { nomsAMasquer } from "../nomsAMasquer";
 import { pseudonymiser, restaurer } from "../confidentialite";
 import {
   CLE_A_REVOIR, CLE_QUIZ_DES_GUIDES, PAGES_ESSAYEES_MAX, PAGES_PAR_SERIE, QUESTIONS_PAR_SERIE, apresLaReponse, avecLaSerie,
-  consigneDeCorrection, consigneDuQuiz, couvertureDuGuide, cycleDeLaClasse, debutDeLaCitation, demandeDeCorrection, demandeDuQuiz,
-  derniereSerie, estUnGuideEnPdf, fichesDues, lireARevoir, lireHistorique, lireLaCorrection, lireLesQuestions, melangee, nettoyerLaPage,
+  consigneDeCorrection, consigneDeVerification, consigneDuQuiz, couvertureDuGuide, demandeDeVerification, questionsFideles, cycleDeLaClasse, debutDeLaCitation, demandeDeCorrection, demandeDuQuiz,
+  avecLeursNumeros, decalageImprime, derniereSerie, estUnGuideEnPdf, fichesDues, lireARevoir, lireHistorique, lireLaCorrection, lireLesQuestions, melangee, nettoyerLaPage,
   pageInterrogeable, pagesAEssayer, pagesDejaVues, pagesDuTheme, pointsDuVerdict, progresDuQuiz, sansLaQuestion, scoreEnClair,
   type Correction, type FicheARevoir, type PageLue, type QuestionAChoix, type QuestionDuQuiz, type QuestionOuverte, type SerieFaite, type Verdict,
 } from "../quizDesGuides";
@@ -56,18 +56,36 @@ async function guideAuCoffre(g: GuideDuQuiz, dire: (m: string) => void): Promise
 /** Le texte de toutes les pages d'un guide, lu une fois par visite : un thème s'y cherche partout. */
 const textesLus = new Map<string, PageLue[]>();
 
+/** Le numéro imprimé de chaque page, quand le PDF le donne et qu'il diffère de son rang. */
+async function etiquettesDuGuide(pdf: DocumentPdf): Promise<(string | undefined)[]> {
+  const etiquettes = await pdf.getPageLabels().catch(() => null);
+  return Array.from({ length: pdf.numPages }, (_, i) => {
+    const e = etiquettes?.[i]?.trim();
+    return e && e !== String(i + 1) ? e : undefined;
+  });
+}
+
+/** Une page lue : son texte tel qu'on le lit, celui que voit la recherche du lecteur, son numéro imprimé. */
+async function lirePage(pdf: DocumentPdf, numero: number, etiquette?: string): Promise<PageLue> {
+  const { suivi, brut } = await textesDeLaPage(pdf, numero).catch(() => ({ suivi: "", brut: "" }));
+  return { numero, texte: nettoyerLaPage(suivi), brut, ...(etiquette ? { etiquette } : {}) };
+}
+
 async function toutesLesPages(coffre: DocumentCoffre, dire: (m: string) => void, quoi: string): Promise<PageLue[]> {
   const deja = textesLus.get(coffre.nomFichier);
   if (deja) return deja;
   const pdf = await ouvrirPdf(octetsDe(await api.fichierRead(coffre.nomFichier)));
   try {
+    const etiquettes = await etiquettesDuGuide(pdf);
     const toutes: PageLue[] = [];
     for (let numero = 1; numero <= pdf.numPages; numero++) {
       if (numero % 10 === 1) dire(`Recherche de « ${quoi} » dans le guide… page ${numero} sur ${pdf.numPages}`);
-      toutes.push({ numero, texte: nettoyerLaPage(await textePage(pdf, numero).catch(() => "")) });
+      toutes.push(await lirePage(pdf, numero, etiquettes[numero - 1]));
     }
-    textesLus.set(coffre.nomFichier, toutes);
-    return toutes;
+    // Le numéro imprimé de chaque page, quand le PDF ne le donne pas : lu en tête ou en pied de toutes ses pages.
+    const numerotees = avecLeursNumeros(toutes, decalageImprime(toutes));
+    textesLus.set(coffre.nomFichier, numerotees);
+    return numerotees;
   } finally {
     void pdf.destroy();
   }
@@ -88,13 +106,18 @@ async function pagesDuGuide(coffre: DocumentCoffre, dejaVues: number[], graine: 
   }
   const pdf = await ouvrirPdf(octetsDe(await api.fichierRead(coffre.nomFichier)));
   try {
+    const etiquettes = await etiquettesDuGuide(pdf);
     const lues: PageLue[] = [];
+    const essayees: PageLue[] = [];
     for (const numero of pagesAEssayer(pdf.numPages, dejaVues, graine).slice(0, PAGES_ESSAYEES_MAX)) {
-      const texte = nettoyerLaPage(await textePage(pdf, numero).catch(() => ""));
-      if (pageInterrogeable(texte)) lues.push({ numero, texte });
+      const page = await lirePage(pdf, numero, etiquettes[numero - 1]);
+      essayees.push(page);
+      if (pageInterrogeable(page.texte)) lues.push(page);
       if (lues.length >= PAGES_PAR_SERIE) break;
     }
-    return { pages: lues.sort((a, b) => a.numero - b.numero), total: pdf.numPages };
+    // Le numéro imprimé, lu sur toutes les pages ouvertes : il en faut deux qui s'accordent.
+    const decalage = decalageImprime(essayees);
+    return { pages: avecLeursNumeros(lues, decalage).sort((a, b) => a.numero - b.numero), total: pdf.numPages };
   } finally {
     void pdf.destroy();
   }
@@ -152,6 +175,15 @@ export function QuizDesGuides({ guides }: { guides: GuideDuQuiz[] }) {
           { role: "user", content: demandeDuQuiz(lu.pages) },
         ], await api.modeleActif(), true);
         questions = lireLesQuestions(brut, lu.pages, graine);
+        // Puis Mistral relit le test, page en main : il écarte toute question qui invente un détail.
+        if (questions.length >= 3) {
+          dire("Relecture des questions, page en main…");
+          const relu = await api.mistralChat([
+            { role: "system", content: consigneDeVerification(guide.titre) },
+            { role: "user", content: demandeDeVerification(lu.pages, questions) },
+          ], await api.modeleActif(), true);
+          questions = questionsFideles(relu, questions);
+        }
       }
       if (questions.length < 3) throw new Error("les questions de Mistral ne se vérifiaient pas dans le guide. Réessayez : d'autres pages seront prises.");
       const cite = { titre: guide.titre, url: guide.url };
@@ -248,9 +280,11 @@ export function QuizDesGuides({ guides }: { guides: GuideDuQuiz[] }) {
             Mistral en tire cinq questions — quatre à choix, une ouverte — sur ce que le guide recommande et comment le faire en classe.</p>
           <p>Avec un thème (« la fluence », « le vocabulaire »…), Maitrize cherche dans tout le guide les pages qui en parlent, et les
             questions portent sur lui.</p>
-          <p>Chaque correction cite la phrase du guide qui la justifie, avec sa page : Maitrize vérifie qu'elle y est bien, et écarte
-            une question dont la citation n'y est pas. La série suivante prend d'autres pages. Une question qui vous semble mal posée
-            s'écarte d'un clic : elle ne compte pas, et ne revient pas.</p>
+          <p>Chaque question est vérifiée deux fois avant d'être posée. Maitrize retrouve dans la page la phrase citée, chaque chiffre,
+            et les mots de la question et de la bonne réponse ; puis Mistral relit le test, page en main, et écarte toute question qui
+            invente un détail. La correction montre la phrase du guide qui porte la réponse, et ouvre le guide à cet endroit.</p>
+          <p>La série suivante prend d'autres pages. Une question qui vous semble encore mal posée s'écarte d'un clic : elle ne
+            compte pas, et ne revient pas.</p>
           <p>Une question manquée, ou passée par « Je ne sais pas », revient dans « À revoir » : le jour même, puis trois jours et
             sept jours après chaque bonne réponse, jusqu'à ce qu'elle soit sue.</p>
           <p>Au clavier : A, B, C, D (ou 1 à 4) pour répondre, Entrée pour continuer, ⌘ Entrée pour faire corriger une réponse écrite.</p>
@@ -334,7 +368,7 @@ function SerieEnCours({ serie, dues, onFinir, onEncore, onRevoir, onRetour }: {
   const voirDansLeGuide = async (x: QuestionDeLaSerie) => {
     const doc = (await api.coffreList().catch((): DocumentCoffre[] => [])).find((d) => d.nom === x.guide.titre);
     if (!doc) { toast("Ce guide n'est plus dans votre coffre-fort.", { icone: "⚠️" }); return; }
-    setVoir({ nomFichier: doc.nomFichier, titre: x.guide.titre, page: x.q.page, chercher: debutDeLaCitation(x.q.citation) });
+    setVoir({ nomFichier: doc.nomFichier, titre: x.guide.titre, page: x.q.page, chercher: x.q.cherche ?? debutDeLaCitation(x.q.citation) });
   };
 
   // Au clavier : A à D, ou 1 à 4, répondent ; Entrée passe à la suite. Pas pendant qu'on écrit, ni le guide ouvert, ni la page cachée.
@@ -444,12 +478,19 @@ function SerieEnCours({ serie, dues, onFinir, onEncore, onRevoir, onRetour }: {
   );
 }
 
-/** La phrase du guide, sa page, et de quoi l'ouvrir à cet endroit. */
+/**
+ * La phrase du guide, sa page, et de quoi l'ouvrir à cet endroit. La page
+ * est celle qu'imprime le guide quand le PDF la donne ; sinon son rang dans
+ * le fichier, dit comme tel : le numéro imprimé en bas de page peut différer.
+ */
 function Citation({ q, onVoir }: { q: QuestionDuQuiz; onVoir: () => void }) {
   return (
     <div className="quiz-citation">
       <blockquote>« {q.citation} »</blockquote>
-      <button className="btn ghost sm" onClick={onVoir} title="Ouvrir le guide à ce passage">📄 Page {q.page} du guide</button>
+      <button className="btn ghost sm" onClick={onVoir}
+        title={q.etiquette ? `Ouvrir le guide à ce passage (page ${q.page} du fichier PDF)` : "Ouvrir le guide à ce passage — le numéro imprimé sur la page peut différer"}>
+        📄 {q.etiquette ? `Page ${q.etiquette} du guide` : `Page ${q.page} du PDF`}
+      </button>
     </div>
   );
 }

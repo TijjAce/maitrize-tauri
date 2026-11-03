@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  avecLeursNumeros, decalageImprime, numeroEnTete,
+  chiffresAbsents, consigneDeVerification, demandeDeVerification, extraitUtile, fidele, partRetrouvee, phraseCherchable, questionsFideles,
   apresLaReponse, avecLaSerie, citationDansLaPage, consigneDuQuiz, couvertureDuGuide, cycleDeLaClasse, debutDeLaCitation, demandeDeCorrection,
   demandeDuQuiz, derniereSerie, estUnGuideEnPdf, fichesDues, lireARevoir, lireHistorique, lireLaCorrection, lireLesQuestions, melangee,
   nettoyerLaPage, pageInterrogeable, pageTronquee, pagesAEssayer, pagesDejaVues, pagesDuTheme, plusJours, pointsDuVerdict, progresDuQuiz,
@@ -7,6 +9,7 @@ import {
   type FicheARevoir, type PageLue, type QuestionAChoix, type QuestionOuverte,
 } from "./quizDesGuides";
 import { hasard } from "./hasard";
+import { aplatir, occurrences, texteSuivi } from "./rechercheDansPdf";
 
 // Une page de guide écrite pour l'essai, dans le ton d'Éduscol.
 const PAGE_12 = "La lecture à voix haute par l'enseignant est un moment quotidien de la classe. Elle permet aux élèves "
@@ -65,7 +68,7 @@ describe("le quiz des guides Éduscol (demande de l'enseignant, 3 novembre 2026)
     expect(consigne).toContain("« Pour enseigner la lecture et l'écriture au CP »");
     expect(consigne).toMatch(/recopiée mot pour mot/);
     expect(consigne).toMatch(/4 questions à choix/);
-    expect(consigne).toMatch(/situation de classe/);
+    expect(consigne).toMatch(/N'inventez rien : ni situation de classe, ni âge, ni chiffre/);
     expect(consigne).toMatch(/« pourquoi » dit en une phrase/);
   });
 
@@ -124,9 +127,12 @@ describe("le quiz des guides Éduscol (demande de l'enseignant, 3 novembre 2026)
   });
 
   it("garde au plus une question ouverte, et pas plus de questions qu'une série n'en compte", () => {
-    const beaucoup = Array.from({ length: 7 }, (_, i) => choix({ question: `Question ${i} ?` }));
-    const ouverte = (q: string) => ({ sorte: "ouverte", page: 12, question: q, attendu: "Reformuler.", citation: "Les élèves reformulent l'histoire avec leurs mots" });
-    const qs = lireLesQuestions(JSON.stringify({ questions: [...beaucoup, ouverte("O1 ?"), ouverte("O2 ?")] }), pages, 1);
+    // Des questions distinctes, dans les mots de la page — un chiffre que la page n'a pas les ferait écarter.
+    const debuts = ["Que", "Pourquoi", "Comment", "Quand", "Où", "Qui", "Avec quoi"];
+    const beaucoup = debuts.map((d) => choix({ question: `${d} la lecture à voix haute aide-t-elle la compréhension ?` }));
+    const ouverte = (d: string) => ({ sorte: "ouverte", page: 12, question: `${d} la reformulation sert-elle la compréhension, selon le guide ?`,
+      attendu: "Reformuler l'histoire avec ses mots.", citation: "Les élèves reformulent l'histoire avec leurs mots" });
+    const qs = lireLesQuestions(JSON.stringify({ questions: [...beaucoup, ouverte("Pourquoi"), ouverte("Comment")] }), pages, 1);
     expect(qs.map((q) => q.sorte)).toEqual(["choix", "choix", "choix", "choix", "ouverte"]);
     expect(lireLesQuestions(JSON.stringify({ questions: beaucoup }), pages, 1)).toHaveLength(5);
   });
@@ -260,6 +266,90 @@ describe("le quiz des guides Éduscol (demande de l'enseignant, 3 novembre 2026)
       { url: "v", titre: "Autre", date: "2026-11-03", points: 4, sur: 4, pages: [] },
     ];
     expect(progresDuQuiz(h, fiches)).toEqual({ series: 2, pourcentage: 83, enRevision: 1 });
+  });
+
+  it("n'invente rien : une situation que la page ne décrit pas est écartée (« il faut pas qu'il hallucine », 2026-11-03)", () => {
+    // Une page écrite pour l'essai, à la manière d'un programme : une énumération à tirets.
+    const page28 = "Les élèves dessinent sur des supports variés (forme, texture, taille, plan vertical ou incliné) selon leur âge et leur habileté ; "
+      + "– les élèves, par la dictée à l'adulte, peuvent dater, voire légender leurs dessins pour les comparer dans la durée et percevoir leurs progrès ; "
+      + "– les élèves disposent de temps au cours desquels ils peuvent dessiner librement. "
+      + "L'enseignant organise un espace où les productions restent visibles, et les élèves y reviennent pour les commenter ensemble. "
+      + "Il varie les outils, les gestes et les formats, et il fait observer des œuvres pour enrichir les représentations des élèves.";
+    const pages28: PageLue[] = [{ numero: 28, texte: page28 }];
+    const citation = "– les élèves, par la dictée à l'adulte, peuvent dater, voire légender leurs dessins pour les comparer dans la durée et percevoir leurs progrès ;";
+    const inventee = {
+      sorte: "choix", page: 28,
+      question: "Un élève de 3 ans dessine librement et montre son dessin à la classe. Que préconise le guide pour valoriser son travail et l'aider à progresser ?",
+      propositions: [
+        { texte: "Lui proposer de dater et légender son dessin avec l'aide de l'enseignant pour comparer ses progrès dans la durée", juste: true, pourquoi: "" },
+        { texte: "Lui montrer des œuvres pour qu'il s'en inspire", juste: false, pourquoi: "" },
+        { texte: "Lui faire recopier un modèle", juste: false, pourquoi: "" },
+        { texte: "Lui demander de dessiner le même sujet plusieurs fois", juste: false, pourquoi: "" },
+      ],
+      explication: "La dictée à l'adulte permet de dater et légender.", citation,
+    };
+    const fideleQ = { ...inventee, question: "Que permet la dictée à l'adulte pour les dessins des élèves ?",
+      propositions: [{ ...inventee.propositions[0], texte: "Dater et légender leurs dessins pour les comparer dans la durée" }, ...inventee.propositions.slice(1)] };
+    // Le chiffre, l'âge : absents de la page.
+    expect(chiffresAbsents(inventee.question, page28)).toBe(true);
+    expect(chiffresAbsents("Que font les élèves de trois ans ?", "Les élèves de trois ans dessinent.")).toBe(false);
+    expect(chiffresAbsents("Au CE1, trois fois par période", "En CE1, on mesure trois fois par période.")).toBe(false);
+    expect(chiffresAbsents("Au CE2 ?", "En CE1, on mesure.")).toBe(true);
+    // Les mots de la question ne viennent pas de la page : « montre », « valoriser »…
+    expect(partRetrouvee("montre son dessin à la classe pour valoriser son travail", page28)).toBeLessThan(0.6);
+    expect(fidele(inventee.question.replace("de 3 ans ", ""), inventee.propositions[0].texte, citation, page28)).toBe(false);
+    expect(fidele(fideleQ.question, fideleQ.propositions[0].texte, citation, page28)).toBe(true);
+    const qs = lireLesQuestions(JSON.stringify({ questions: [inventee, fideleQ] }), pages28, 1);
+    expect(qs.map((q) => q.question)).toEqual([fideleQ.question]);
+    // La correction ne montre que le tiret qui porte la réponse.
+    expect(qs[0].citation).toBe("les élèves, par la dictée à l'adulte, peuvent dater, voire légender leurs dessins pour les comparer dans la durée et percevoir leurs progrès");
+    expect(extraitUtile("Une phrase. Une autre phrase sans rapport.", "rien à voir")).toBe("Une phrase. Une autre phrase sans rapport.");
+  });
+
+  it("lit le texte d'un PDF comme on le lit : les mots coupés en morceaux se recollent, la phrase se retrouve dans le lecteur", () => {
+    const m = (str: string, x: number, y: number, width: number, hasEOL = false) => ({ str, transform: [10, 0, 0, 10, x, y], width, height: 10, hasEOL });
+    expect(texteSuivi([m("les élèves peu", 0, 700, 70), m("ven", 70.5, 700, 18), m("t", 88.6, 700, 4), m("dater", 95, 700, 25, true), m("leurs dessins", 0, 688, 60)]))
+      .toBe("les élèves peuvent dater\nleurs dessins");
+    // Sur la même ligne, un écart d'un espace sépare deux mots ; un changement de ligne, sans fin de ligne marquée, aussi.
+    expect(texteSuivi([m("au", 0, 700, 10), m("cours", 13, 700, 25), m("des", 0, 650, 15)])).toBe("au cours\ndes");
+    // Le lecteur cherche dans le texte brut, où le mot reste coupé : on lui donne des mots qu'il y trouve.
+    const brut = "les élèves , par la dictée à l'adulte, peu ven t dater, voire légender leurs dessins ";
+    const phrase = "les élèves, par la dictée à l'adulte, peuvent dater, voire légender leurs dessins";
+    const cherche = phraseCherchable(phrase, brut);
+    expect(cherche).not.toBe("");
+    expect(occurrences(aplatir([brut]).texte, cherche).length).toBeGreaterThan(0);
+    expect(phraseCherchable("rien de tout cela ici", brut)).toBe("");
+  });
+
+  it("dit le numéro que la page imprime, quand il diffère de son rang dans le PDF", () => {
+    // Le programme de maternelle : sa 28e page imprime « 27 » en tête.
+    const lues: PageLue[] = [{ numero: 28, texte: "27 Conditions favorables aux apprentissages" }, { numero: 12, texte: "11 Produire des discours variés" },
+      { numero: 40, texte: "39 Ou encore, si un certain nombre" }];
+    expect(decalageImprime(lues)).toBe(1);
+    expect(avecLeursNumeros(lues, 1).map((p) => p.etiquette)).toEqual(["27", "11", "39"]);
+    // Une seule page, ou des chiffres qui ne s'accordent pas : rien de sûr.
+    expect(decalageImprime([lues[0]])).toBeNull();
+    expect(decalageImprime([{ numero: 28, texte: "27 a" }, { numero: 12, texte: "3 b" }, { numero: 30, texte: "12 c" }])).toBeNull();
+    // Un nombre trop loin du rang n'est pas un numéro de page ; le même numéro que le rang ne change rien.
+    expect(numeroEnTete("1998 Une date en tête", 5)).toBeUndefined();
+    expect(decalageImprime([{ numero: 5, texte: "5 a" }, { numero: 6, texte: "b 6" }])).toBe(0);
+    expect(avecLeursNumeros(lues, 0)).toEqual(lues);
+    // Une étiquette donnée par le PDF lui-même reste.
+    expect(avecLeursNumeros([{ numero: 3, texte: "", etiquette: "ii" }], 1)[0].etiquette).toBe("ii");
+  });
+
+  it("fait relire le test par Mistral, page en main, et ne garde que ce qu'il tient pour fidèle", () => {
+    const qs = lireLesQuestions(JSON.stringify({ questions: [choix(), choix({ question: "Comment lisent les élèves en fluence ?", page: 14,
+      propositions: ["À deux", "Seuls", "En silence", "Par écrit"], bonne: "À deux", citation: "puis les élèves lisent à deux, l'un écoutant l'autre" })] }), pages, 1);
+    expect(qs).toHaveLength(2);
+    expect(consigneDeVerification("Guide")).toMatch(/au moindre doute, la question n'est pas fidèle/);
+    const demande = demandeDeVerification(pages, qs);
+    expect(demande).toContain("[Page 12]");
+    expect(demande).toContain("Question 2 (page 14) : Comment lisent les élèves en fluence ?\nBonne réponse : À deux");
+    expect(questionsFideles('{"questions": [{"numero": 1, "fidele": false, "raison": "invente"}, {"numero": 2, "fidele": true}]}', qs)).toEqual([qs[1]]);
+    // Une question qu'elle ne nomme pas, ou une réponse illisible : rien n'est tenu pour sûr.
+    expect(questionsFideles('{"questions": [{"numero": 2, "fidele": true}]}', qs)).toEqual([qs[1]]);
+    expect(questionsFideles("illisible", qs)).toEqual([]);
   });
 
   it("propose d'abord les guides du cycle de la classe, et seulement des PDF", () => {
