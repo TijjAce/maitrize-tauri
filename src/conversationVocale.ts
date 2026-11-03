@@ -8,19 +8,36 @@
 // parole envoie la question ; la réponse s'écrit, puis la voix de Mistral la
 // lit (adresse européenne, voir `voix_lire`), et l'écoute reprend. Pendant
 // qu'elle lit, le micro se tait : il s'entendrait lui-même.
+//
+// Puis : « on peut pas déclencher la voix réponse plus rapidement ? […] comme
+// GPT live. » La question part dès que la phrase est finie — 0,8 s de silence
+// quand Voxtral l'a ponctuée, 1,3 s sinon ; le micro et le direct restent
+// ouverts d'une question à l'autre ; et la voix lit chaque phrase de la
+// réponse dès qu'elle est écrite, la suivante préparée pendant la lecture
+// (`lecteurAuFil`).
 
 /** Ce qu'on ajoute à la consigne quand la conversation se fait à voix haute : une réponse qui s'écoute. */
 export const CONSIGNE_ORALE = "La conversation se fait à voix haute : l'enseignant t'entend, il ne te lit pas. Réponds comme à l'oral, "
   + "en deux à quatre phrases courtes, sans titre, sans liste, sans tableau, sans emoji. S'il demande un document long — une séquence, "
   + "une fiche —, propose-lui de le préparer par écrit.";
 
-/** Le silence qui clôt une question : une seconde et demie, après au moins quatre dixièmes de seconde de parole. */
-export const SILENCE_DE_FIN_S = 1.5;
+/** Le silence qui clôt une question que Voxtral a ponctuée — « ? », « . » —, et celui d'une phrase en suspens. */
+export const SILENCE_APRES_LA_PHRASE_S = 0.8;
+export const SILENCE_EN_SUSPENS_S = 1.3;
 const PAROLE_MIN_S = 0.4;
 
-/** La question est-elle finie ? On a parlé, puis on s'est tu assez longtemps. */
-export const questionFinie = (a: { parole: number; silence: number }): boolean =>
-  a.parole >= PAROLE_MIN_S && a.silence >= SILENCE_DE_FIN_S;
+/**
+ * La question est-elle finie ? On a parlé, puis on s'est tu : peu de temps si
+ * la phrase est ponctuée, un peu plus si elle reste en suspens. À défaut —
+ * la prise de son n'a rien vu —, plus aucun mot depuis 1,2 s ou 1,8 s.
+ */
+export function questionFinie(a: { parole: number; silence: number }, texte: string, msDepuisLeDernierMot: number): boolean {
+  const t = (texte ?? "").trim();
+  if (!t) return false;
+  const ponctuee = /[.?!…]$/.test(t);
+  if (a.parole >= PAROLE_MIN_S && a.silence >= (ponctuee ? SILENCE_APRES_LA_PHRASE_S : SILENCE_EN_SUSPENS_S)) return true;
+  return msDepuisLeDernierMot >= (ponctuee ? 1200 : 1800);
+}
 
 /**
  * Une réponse écrite, telle qu'on la lit à voix haute : sans la mise en
@@ -78,4 +95,87 @@ export function morceauxALire(texte: string, max = 900): string[] {
   }
   if (courant) morceaux.push(courant);
   return morceaux;
+}
+
+// ── Lire la réponse au fil de son écriture ────────────────────────────────
+
+export interface LecteurAuFil {
+  /** Le texte de la réponse tel qu'il est maintenant ; `fini` quand elle est complète. */
+  suivre: (contenu: string, fini: boolean) => void;
+  /** Tout se tait : la lecture en cours s'arrête, la suite ne vient pas. */
+  arreter: () => void;
+  /** Se résout quand toute la réponse a été lue, ou la lecture arrêtée. */
+  fin: Promise<void>;
+}
+
+/** Ce qui est prêt à lire d'un texte qui s'écrit : jusqu'à la dernière fin de phrase suivie d'un blanc — tout, s'il est fini. */
+export function pretALire(contenu: string, fini: boolean): number {
+  if (fini) return contenu.length;
+  let fin = 0;
+  for (const m of contenu.matchAll(/[.!?…:](?=\s)|\n\n/g)) fin = (m.index ?? 0) + m[0].length;
+  return fin;
+}
+
+/**
+ * Une réponse lue pendant qu'elle s'écrit : chaque phrase finie part à la voix
+ * aussitôt — sa voix se prépare pendant que la précédente se lit —, et se
+ * joue à son tour. La première phrase s'entend avant que la réponse soit
+ * finie.
+ */
+export function lecteurAuFil(o: {
+  /** La voix d'un morceau de texte : son audio, en base64. */
+  voix: (texte: string) => Promise<string>;
+  /** Joue un audio jusqu'au bout ; se résout à la fin, ou quand on l'arrête. */
+  jouer: (audio: string) => Promise<void>;
+  /** La première voix commence. */
+  surDebut?: () => void;
+  surErreur?: (e: unknown) => void;
+}): LecteurAuFil {
+  let lu = 0;
+  let fini = false;
+  let arrete = false;
+  let enCours = false;
+  let commence = false;
+  const file: Promise<string>[] = [];
+  let resoudre: () => void = () => {};
+  const fin = new Promise<void>((r) => { resoudre = r; });
+  const conclure = () => { if ((fini && !file.length && !enCours) || arrete) resoudre(); };
+
+  const boucle = async () => {
+    if (enCours) return;
+    enCours = true;
+    while (file.length && !arrete) {
+      const audio = await file.shift()!.catch((e) => { o.surErreur?.(e); return null; });
+      if (arrete) break;
+      if (!audio) continue;
+      if (!commence) { commence = true; o.surDebut?.(); }
+      await o.jouer(audio);
+    }
+    enCours = false;
+    conclure();
+  };
+
+  return {
+    suivre(contenu, estFini) {
+      if (arrete || fini) return;
+      const jusque = pretALire(contenu, estFini);
+      if (jusque > lu) {
+        // La toute première phrase part seule : c'est elle qu'on attend pour entendre la voix.
+        const texte = texteALire(contenu.slice(lu, jusque));
+        const premiere = lu === 0 ? /^.*?[.!?…:](?=\s|$)/.exec(texte)?.[0] ?? "" : "";
+        const morceaux = premiere ? [premiere, ...morceauxALire(texte.slice(premiere.length), 300)] : morceauxALire(texte, 300);
+        for (const morceau of morceaux) {
+          const p = o.voix(morceau);
+          p.catch(() => {});
+          file.push(p);
+        }
+        lu = jusque;
+      }
+      if (estFini) fini = true;
+      void boucle();
+      conclure();
+    },
+    arreter() { arrete = true; file.length = 0; resoudre(); },
+    fin,
+  };
 }

@@ -29,6 +29,11 @@ export interface DicteeEnDirect {
   demarrer: () => Promise<string | null>;
   /** Le micro se ferme, les derniers mots arrivent, puis le direct se ferme. */
   arreter: () => Promise<void>;
+  /**
+   * Le micro se tait sans se fermer : c'est du silence qui part, et le direct reste ouvert pour la phrase suivante —
+   * pendant que la voix de l'Assistant parle, il l'entendrait (voir conversationVocale.ts).
+   */
+  taire: (muet: boolean) => void;
 }
 
 export function useDicteeEnDirect({ surMots, surPanne }: {
@@ -44,8 +49,9 @@ export function useDicteeEnDirect({ surMots, surPanne }: {
   mots.current = surMots;
   const panne = React.useRef(surPanne);
   panne.current = surPanne;
-  // Le direct écrit tout : les passages coupés aux silences ne servent pas ici.
-  const ecoute = useEcoute({ onTranche: () => {}, onTrame: (trame, taux) => direct.current?.envoyer(trame, taux) });
+  // Le direct écrit tout : les passages coupés aux silences ne servent pas ici. Micro tu, c'est du silence qui part.
+  const muet = React.useRef(false);
+  const ecoute = useEcoute({ onTranche: () => {}, onTrame: (trame, taux) => direct.current?.envoyer(muet.current ? new Float32Array(trame.length) : trame, taux) });
 
   const arreter = React.useCallback(async () => {
     ecoute.arreter();
@@ -59,6 +65,7 @@ export function useDicteeEnDirect({ surMots, surPanne }: {
 
   const demarrer = React.useCallback(async () => {
     if (direct.current) return null;
+    muet.current = false;
     const d = ouvrirLeDirect({
       jeton: () => api.mistralJetonDicteeAssistant(),
       adresse: ADRESSE_DU_DIRECT_MONDIAL,
@@ -85,7 +92,13 @@ export function useDicteeEnDirect({ surMots, surPanne }: {
   // L'écran qui se ferme en pleine dictée relâche le direct (le micro, l'écoute s'en charge).
   React.useEffect(() => () => { void direct.current?.fermer(); direct.current = null; }, []);
 
-  return { etat, secondes: ecoute.secondes, niveau: ecoute.niveau, activite: ecoute.activite, demarrer, arreter };
+  const taire = React.useCallback((oui: boolean) => {
+    muet.current = oui;
+    // Le micro rendu : on repart de zéro pour savoir quand la phrase suivante finit.
+    if (!oui) ecoute.activite.current = { parole: 0, silence: 0 };
+  }, [ecoute.activite]);
+
+  return { etat, secondes: ecoute.secondes, niveau: ecoute.niveau, activite: ecoute.activite, demarrer, arreter, taire };
 }
 
 /** Des mots qui arrivent à la suite de ce qui est écrit : un espace s'il en faut un entre les deux. */
