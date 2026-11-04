@@ -8,13 +8,14 @@ import { confirmer } from "../components/confirmer";
 import { PhotoTelephone } from "../components/PhotoTelephone";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
+import { ChoixPoliceCursive } from "../components/ChoixPoliceCursive";
 import { useMemoire } from "../components/useMemoire";
 import { chargerPicto, usePictoImage } from "../components/ChoixPicto";
 import { chercherPictos } from "../mesPictos";
 import { motDuFichier, estPerso } from "../imagesPerso";
 import type { PictoArasaac } from "../api";
 import {
-  COULEURS, FAMILLES_MOTIFS, GRAPHIES, MOTIFS, OPERATIONS, PLAFONDS, POLICES_CURSIVES_CONNUES, REGLAGES_PAR_DEFAUT, SONS_COLORIAGE, TAILLES_MOTIF,
+  COULEURS, FAMILLES_MOTIFS, GRAPHIES, MOTIFS, OPERATIONS, PLAFONDS, REGLAGES_PAR_DEFAUT, SONS_COLORIAGE, TAILLES_MOTIF,
   basculerCase, casesAColorier, consigne, couleurDe, couleursDuMotif, dimensionsDe, ecrireMotifsPerso, fabriquerColoriage, feuilleDuColoriage, lettreSousGraphie,
   lireMotifsPerso, motifDepuisImage, styleDeLaCase, type CaseColoriage, type Coloriage, type Graphie, type Matiere, type Motif, type Operation,
 } from "../coloriageMagique";
@@ -36,10 +37,10 @@ import { CREDIT_ARASAAC } from "../cartesImprimables";
 const CLE_MOTIFS_PERSO = "coloriage:motifs";
 
 /** Ce qu'une case porte, avec sa graphie et sa police quand il y en a. */
-const styleDeCase = (x: CaseColoriage, policeCursive: string): React.CSSProperties => styleDeLaCase(x, policeCursive);
+const styleDeCase = (x: CaseColoriage): React.CSSProperties => styleDeLaCase(x);
 
 /** La grille, à l'écran comme au papier. Le corrigé remplit les couleurs. */
-function Grille({ c, corrige, policeCursive }: { c: Coloriage; corrige: boolean; policeCursive: string }) {
+function Grille({ c, corrige }: { c: Coloriage; corrige: boolean }) {
   const n = Math.max(1, c.lignes.length, c.lignes[0]?.length ?? 0);
   const cote = Math.max(30, Math.min(58, Math.floor(560 / n)));
   return (
@@ -50,7 +51,7 @@ function Grille({ c, corrige, policeCursive }: { c: Coloriage; corrige: boolean;
             {ligne.map((caseC, x) => {
               const couleur = corrige && caseC.couleur ? couleurDe(caseC.couleur)?.hex : undefined;
               return (
-                <td key={x} style={{ ...styleDeCase(caseC, policeCursive), ...(couleur ? { background: couleur, color: "#fff" } : {}) }}>
+                <td key={x} style={{ ...styleDeCase(caseC), ...(couleur ? { background: couleur, color: "#fff" } : {}) }}>
                   {caseC.calcul}
                 </td>
               );
@@ -63,7 +64,7 @@ function Grille({ c, corrige, policeCursive }: { c: Coloriage; corrige: boolean;
 }
 
 /** Ce que dit la légende : un résultat, un graphème, ou une lettre sous toutes ses formes. */
-function Legende({ c, graphies, policeCursive }: { c: Coloriage; graphies: Graphie[]; policeCursive: string }) {
+function Legende({ c, graphies }: { c: Coloriage; graphies: Graphie[] }) {
   return (
     <div className="cm-legende">
       {c.legende.map(({ couleur, resultat, grapheme, lettre }) => (
@@ -72,7 +73,7 @@ function Legende({ c, graphies, policeCursive }: { c: Coloriage; graphies: Graph
           {lettre !== undefined ? (
             <b className="cm-formes">
               {(graphies.length ? graphies : ["script" as Graphie]).map((g) => (
-                <span key={g} style={styleDeCase({ calcul: "", couleur: "", graphie: g }, policeCursive)}>{lettreSousGraphie(lettre, g)}</span>
+                <span key={g} style={styleDeCase({ calcul: "", couleur: "", graphie: g })}>{lettreSousGraphie(lettre, g)}</span>
               ))}
             </b>
           ) : <b>{grapheme !== undefined ? grapheme : resultat}</b>}
@@ -350,10 +351,6 @@ export function ColoriageMagiqueTab() {
   const multiplication = r.operation === "multiplication";
   const matiere: Matiere = r.matiere;
   const combien = c.legende.length;
-  // Les polices cursives installées, parmi celles qu'on connaît.
-  const cursivesInstallees = React.useMemo(() => {
-    try { return POLICES_CURSIVES_CONNUES.filter((p) => document.fonts.check(`16px "${p}"`)); } catch { return []; }
-  }, []);
 
   const garderPerso = async (m: Motif) => {
     const suite = [...motifsPerso, m];
@@ -493,20 +490,7 @@ export function ColoriageMagiqueTab() {
               </div>
             </Field>
             {(r.graphies.includes("cursive") || r.graphies.includes("cursiveMajuscule")) && (
-              <Field label="La police cursive">
-                <Select value={cursivesInstallees.includes(r.policeCursive) || r.policeCursive === "" ? r.policeCursive : "__autre"} onChange={(e) => { if (e.target.value !== "__autre") maj({ policeCursive: e.target.value }); }}>
-                  {cursivesInstallees.map((p) => <option key={p} value={p}>{p}{p === "Snell Roundhand" ? " (cursive du Mac)" : " (police d'école installée)"}</option>)}
-                  <option value="__autre">Autre police installée…</option>
-                </Select>
-                {!cursivesInstallees.includes(r.policeCursive) && (
-                  <Input value={r.policeCursive} onChange={(e) => maj({ policeCursive: e.target.value })} placeholder="Nom exact de la police installée" style={{ marginTop: 6 }} />
-                )}
-                <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 6, lineHeight: 1.5 }}>
-                  {cursivesInstallees.some((p) => p !== "Snell Roundhand")
-                    ? "Une police d'école est installée : ses lettres ont les formes du cahier."
-                    : "Aucune police d'école n'est installée : la cursive du Mac sert en attendant. Installez « Écriture A » (gratuite, ministère) ou « Belle Allure » pour les formes du cahier, puis choisissez-la ici."}
-                </div>
-              </Field>
+              <ChoixPoliceCursive />
             )}
           </>
         )}
@@ -553,9 +537,9 @@ export function ColoriageMagiqueTab() {
           <button className="btn ghost sm" onClick={() => imprimer(true)} title="La même feuille, coloriée : pour corriger d'un coup d'œil">🖨 Le corrigé</button>
         </div>
         <p className="meta" style={{ fontSize: 12.5, marginTop: 0 }}>{consigne(r)}</p>
-        <Legende c={c} graphies={r.graphies} policeCursive={r.policeCursive} />
+        <Legende c={c} graphies={r.graphies} />
         <div style={{ overflowX: "auto" }}>
-          <Grille c={c} corrige={corrige} policeCursive={r.policeCursive} />
+          <Grille c={c} corrige={corrige} />
         </div>
         <div className="meta" style={{ fontSize: 12, marginTop: 8 }}>{c.motif.nom} · {casesAColorier(c.motif)} cases · {couleursDuMotif(c.motif).length} couleurs</div>
       </div>

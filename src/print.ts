@@ -16,6 +16,7 @@ export function dataUrlImage(nom: string, base64: string): string {
 // qui va à un élève ou à une famille.
 
 import logoUrl from "./assets/logo.png";
+import { policeDuDocument } from "./policesEcriture";
 import { sansReferences } from "./references";
 
 /** Le logo réduit, en data URL : l'impression part sans dépendre de l'application. */
@@ -147,9 +148,12 @@ const STYLE_WEBKIT = `@media print { @supports (font: -apple-system-body) { html
  * l'application, derrière un « ? » (voir `references`).
  */
 export function documentImprimable(title: string, bodyHtml: string, styleExtra = ""): string {
+  // Une feuille qui écrit en cursive emporte la police choisie, et son fichier quand l'application l'embarque (voir policesEcriture.ts).
+  const police = policeDuDocument(bodyHtml + styleExtra);
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${STYLE}
     @media screen { body { max-width: 820px; margin: 0 auto; } }
     ${STYLE_WEBKIT}
+    ${police}
     ${styleExtra}</style></head><body>${sansReferences(bodyHtml)}</body></html>`;
 }
 

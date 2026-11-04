@@ -18,8 +18,9 @@
 // façons de l'imprimer : la frise du mur, quelques lettres par page en
 // paysage, à mettre bout à bout ; une lettre par page, en grand ; la bande
 // de la table de l'élève, deux par page. Les voyelles peuvent se colorer.
-// La cursive s'écrit avec la police d'écriture scolaire installée sur
-// l'ordinateur, comme dans l'atelier « Écriture cursive ».
+// La cursive s'écrit dans la police des feuilles — Marelle, la police du
+// ministère, ou celle qu'a choisie l'enseignant (voir policesEcriture.ts) —,
+// réglée sur ses petites lettres, la place de ses boucles comprise.
 
 import { ATTRIBUTION_ARASAAC, feuille } from "./cartesImprimables";
 import { POLICE_CURSIVE } from "./ecritureCursive";
@@ -203,6 +204,17 @@ export const STYLE_FRISE = `
   .feuille.ab .ab-bande .ab-l { font-size: 6.5mm; }
   .feuille.ab .ab-bande.ab-1 .ab-l { font-size: 13mm; }
   .feuille.ab .ab-bande.ab-2 .ab-l { font-size: 9mm; }
-  .feuille.ab .ab-bande .ab-dessin { width: 10mm; height: 10mm; }
+  .feuille.ab .ab-bande .ab-dessin { width: 8mm; height: 8mm; margin: 0; }
   .feuille.ab .ab-bande .ab-mot { font-size: 2.6mm; padding: 0.5mm; gap: 0.3mm; }
+  /* La cursive se règle sur ses petites lettres (--ab-xc) : trois hauteurs pour les boucles, deux pour les jambages, une ligne de six.
+     En dernier : elle l'emporte sur les tailles de lettres de chaque format. */
+  .feuille.ab .ab-case .ab-l.ab-cursive { font-size: calc(var(--ab-xc, 8mm) / var(--police-cursive-x, 0.4)); line-height: calc(var(--ab-xc, 8mm) * 6); }
+  .feuille.ab .ab-page-frise { --ab-xc: 10mm; }
+  .feuille.ab .ab-page-frise.ab-1 { --ab-xc: 19mm; }
+  .feuille.ab .ab-page-frise.ab-2 { --ab-xc: 12mm; }
+  .feuille.ab .ab-page-lettre { --ab-xc: 18mm; }
+  .feuille.ab .ab-page-lettre.ab-1 { --ab-xc: 26mm; }
+  .feuille.ab .ab-bande { --ab-xc: 2mm; }
+  .feuille.ab .ab-bande.ab-1 { --ab-xc: 3.6mm; }
+  .feuille.ab .ab-bande.ab-2 { --ab-xc: 2.4mm; }
 `;

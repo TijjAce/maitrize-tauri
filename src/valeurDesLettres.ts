@@ -240,7 +240,9 @@ function pageDeLaLettre(lettre: LettreAValeurs, r: ReglagesValeurLettres, images
   const lignes = sons.reduce((n, s) => n + s.regles.length, 0);
   const avecImages = r.images && Object.keys(images).length > 0;
   // La place d'une ligne : la page moins l'en-tête, partagée entre les règles.
-  const parLigne = (avecImages ? 196 : 200) / Math.max(1, lignes);
+  // La lettre cursive à jambage (g) agrandit l'en-tête : la place de son jambage se prend sur les lignes.
+  const jambage = r.cursive && /[fgjpqyz]/.test(lettre);
+  const parLigne = ((avecImages ? 196 : 200) - (jambage ? 8 : 0)) / Math.max(1, lignes);
   const ecrit = avecImages ? Math.max(5, Math.min(7.5, parLigne * 0.21)) : Math.max(6, Math.min(10, parLigne * 0.24));
   const dessin = Math.max(9, Math.min(19, parLigne - 1.3 * ecrit - 10));
   const regle = (g: RegleDeLettre) => {
@@ -258,7 +260,7 @@ function pageDeLaLettre(lettre: LettreAValeurs, r: ReglagesValeurLettres, images
       + `</div></div>`;
   };
   return `<div class="vl-page" style="--vl-dessin:${Math.round(dessin * 10) / 10}mm; --vl-ecrit:${Math.round(ecrit * 10) / 10}mm">`
-    + `<div class="vl-tete"><div class="vl-lettres"><span class="vl-script">${lettre}</span>${r.cursive ? `<span class="vl-cursive">${lettre}</span>` : ""}</div>`
+    + `<div class="vl-tete"><div class="vl-lettres"><span class="vl-script">${lettre}</span>${r.cursive ? `<span class="vl-cursive${jambage ? " vl-jambage" : ""}">${lettre}</span>` : ""}</div>`
     + `<div><div class="vl-titre">La lettre ${lettre}</div><div class="vl-sous-titre">Elle se prononce ${escapeHtml(prononciations(lettre))}.</div></div></div>`
     + `<div class="vl-sons">`
     + sons.map((s) => `<section class="vl-son vl-${s.teinte}" style="--vl-lignes:${s.regles.length}"><div class="vl-pastille">${escapeHtml(s.son)}</div>`
@@ -294,7 +296,9 @@ export const STYLE_VALEUR_LETTRES = `
   .feuille.vl .vl-tete { display: flex; align-items: center; gap: 6mm; margin: 0 0 4mm; }
   .feuille.vl .vl-lettres { display: flex; align-items: baseline; gap: 3mm; border: 1mm solid ${NOIR}; border-radius: 4mm; padding: 0 5mm; line-height: 1.15; }
   .feuille.vl .vl-script { font-size: 20mm; font-weight: 700; }
-  .feuille.vl .vl-cursive { font-family: ${POLICE_CURSIVE}; font-size: 20mm; }
+  /* La cursive réglée sur ses petites lettres (6 mm) ; un jambage — deux hauteurs de petite lettre — a sa place réservée sous la ligne. */
+  .feuille.vl .vl-cursive { font-family: ${POLICE_CURSIVE}; font-size: calc(6mm / var(--police-cursive-x, 0.4)); line-height: 1; }
+  .feuille.vl .vl-cursive.vl-jambage { padding-bottom: 12mm; }
   .feuille.vl .vl-titre { font-size: 10mm; font-weight: 800; line-height: 1.1; }
   .feuille.vl .vl-sous-titre { font-size: 6mm; color: #4a5068; margin-top: 1.5mm; }
   .feuille.vl .vl-sons { flex: 1; display: flex; flex-direction: column; gap: 3mm; min-height: 0; }

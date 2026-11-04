@@ -2,6 +2,7 @@ import React from "react";
 import { api } from "../api";
 import { Aide } from "../components/Aide";
 import { ApercuFeuille } from "../components/ApercuFeuille";
+import { ChoixPoliceCursive } from "../components/ChoixPoliceCursive";
 import { usePictoImages } from "../components/ChoixPicto";
 import { Field, Select } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
@@ -62,8 +63,8 @@ export function FriseAlphabetiqueTab({ banque }: { banque: boolean }) {
           <Aide titre="La frise alphabétique" vers="droite"><p>Le programme de 2024 compte la frise alphabétique parmi les outils de la classe dont
             l'élève de CP se sert. Celui de l'école maternelle fait connaître chaque lettre « dans les trois graphies » — la capitale, la script, la
             cursive — et distinguer les lettres qui se ressemblent, b et d, p et q, grâce à la cursive.</p>
-            <p>Chaque lettre a son mot, qu'on change à sa guise : une ligne par lettre, la lettre puis le mot. La cursive s'écrit avec la police
-            d'écriture scolaire installée sur l'ordinateur — Écriture A, Belle Allure… —, une cursive du système à défaut.</p></Aide>
+            <p>Chaque lettre a son mot, qu'on change à sa guise : une ligne par lettre, la lettre puis le mot. La cursive s'écrit en Marelle, la
+            police cursive du ministère, ou dans la police choisie.</p></Aide>
         </h3>
         <Field label="Les écritures">
           <Chips liste={ECRITURES.map((e) => e.id)} choisis={r.ecritures} libelle={(e: EcritureDeLettre) => ECRITURES.find((x) => x.id === e)!.nom}
@@ -85,6 +86,7 @@ export function FriseAlphabetiqueTab({ banque }: { banque: boolean }) {
             </Select>
           </Field>
         )}
+        {r.ecritures.includes("cursive") && <ChoixPoliceCursive />}
         <Coche on={r.voyelles} libelle="Les voyelles en rouge, les consonnes en bleu" onChange={(voyelles) => maj({ voyelles })} />
         {banque && <Coche on={r.images} libelle="Le dessin de chaque mot" onChange={(images) => maj({ images })} />}
         <Field label="Les mots, une ligne par lettre">

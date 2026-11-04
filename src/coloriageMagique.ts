@@ -13,6 +13,7 @@
 
 import { hasard } from "./problemesBarres";
 import { escapeHtml } from "./print";
+import { POLICE_CURSIVE, tailleCursive } from "./policesEcriture";
 import { contientLeSon, SONS, sonDe, type Son } from "./lectureSons";
 
 // ── Les dessins ───────────────────────────────────────────────────────────
@@ -453,13 +454,6 @@ export const GRAPHIES: { id: Graphie; libelle: string }[] = [
 /** Des polices que tout Mac a : on y reconnaît la lettre malgré le dessin. */
 export const POLICES_VARIEES = ["Arial", "Georgia", "Verdana", "Times New Roman", "Courier New", "Trebuchet MS", "Chalkboard SE", "Comic Sans MS", "Marker Felt"];
 
-/**
- * Des polices cursives d'école, si l'enseignant en a installé une — et à
- * défaut la cursive du système, qui n'a pas les formes de l'école mais
- * reste une cursive.
- */
-export const POLICES_CURSIVES_CONNUES = ["Écriture A", "Ecriture A", "Écriture B", "Ecriture B", "Belle Allure GS", "Belle Allure CE", "Belle Allure CM", "Cursive standard", "Ecolier", "ScolaCursive", "Snell Roundhand"];
-
 /** Ce qu'on écrit dans la case : la lettre sous la graphie voulue. */
 export const lettreSousGraphie = (lettre: string, g: Graphie) =>
   (g === "majuscule" || g === "cursiveMajuscule" ? lettre.toUpperCase() : lettre.toLowerCase());
@@ -485,8 +479,6 @@ export interface ReglagesColoriage {
   graphies: Graphie[];
   /** Mêler les polices d'imprimerie, pour reconnaître la lettre malgré le dessin. */
   polices: boolean;
-  /** La police de la cursive, telle qu'elle est installée. */
-  policeCursive: string;
   motif: string;
   operation: Operation;
   /** Pour les additions et soustractions : au-delà de quoi on ne va pas. */
@@ -498,7 +490,7 @@ export interface ReglagesColoriage {
 
 export const REGLAGES_PAR_DEFAUT: ReglagesColoriage = {
   matiere: "calcul", sons: ["ch", "ou", "oi", "an", "on", "in"],
-  lettres: ["a", "e", "i", "o", "u", "m"], graphies: ["majuscule", "script", "cursive"], polices: false, policeCursive: "Snell Roundhand",
+  lettres: ["a", "e", "i", "o", "u", "m"], graphies: ["majuscule", "script", "cursive"], polices: false,
   motif: "poisson", operation: "addition", plafond: 10, table: 2,
   titre: "Coloriage magique",
  
@@ -877,13 +869,15 @@ export function consigne(reglages: ReglagesColoriage): string {
 // réglages.
 
 /** Ce qu'une case porte, avec sa graphie et sa police quand il y en a. */
-export function styleDeLaCase(x: CaseColoriage, policeCursive: string): { fontFamily?: string; fontSize?: number; fontWeight?: number } {
+export function styleDeLaCase(x: CaseColoriage): { fontFamily?: string; fontSize?: number | string; fontWeight?: number; lineHeight?: number } {
   if (!x.graphie) return {};
   const cursive = x.graphie === "cursive" || x.graphie === "cursiveMajuscule";
+  // La cursive des feuilles (voir policesEcriture.ts), réglée sur ses petites lettres ; sa ligne reste basse : une boucle ne grandit pas la case.
   return {
-    fontFamily: cursive ? `"${policeCursive}", "Snell Roundhand", cursive` : x.police ? `"${x.police}", Arial, sans-serif` : undefined,
-    fontSize: cursive ? 26 : 22,
+    fontFamily: cursive ? POLICE_CURSIVE : x.police ? `"${x.police}", Arial, sans-serif` : undefined,
+    fontSize: cursive ? tailleCursive(9.5) : 22,
     fontWeight: x.graphie === "majuscule" ? 700 : 500,
+    ...(cursive ? { lineHeight: 1 } : {}),
   };
 }
 
@@ -895,7 +889,9 @@ export function styleDeLaCase(x: CaseColoriage, policeCursive: string): { fontFa
 function styleEnLigne(st: ReturnType<typeof styleDeLaCase>, fond = ""): string {
   return [
     fond ? `background:${fond};color:#fff` : "",
-    st.fontFamily ? `font-family:${st.fontFamily.replace(/"/g, "'")}` : "", st.fontSize ? `font-size:${st.fontSize}px` : "", st.fontWeight ? `font-weight:${st.fontWeight}` : "",
+    st.fontFamily ? `font-family:${st.fontFamily.replace(/"/g, "'")}` : "",
+    st.fontSize ? `font-size:${typeof st.fontSize === "number" ? `${st.fontSize}px` : st.fontSize}` : "",
+    st.fontWeight ? `font-weight:${st.fontWeight}` : "", st.lineHeight ? `line-height:${st.lineHeight}` : "",
   ].filter(Boolean).join(";");
 }
 
@@ -912,14 +908,14 @@ export function feuilleDuColoriage(c: Coloriage, r: ReglagesColoriage, avecCorri
   const police = cote >= 56 ? 15 : cote >= 48 ? 14 : cote >= 42 ? 12 : 11;
   const cases = c.lignes.map((ligne) => `<tr>${ligne.map((x) => {
     const fond = avecCorrige && x.couleur ? couleurDe(x.couleur)?.hex : "";
-    const style = styleEnLigne(styleDeLaCase(x, r.policeCursive), fond);
+    const style = styleEnLigne(styleDeLaCase(x), fond);
     return `<td${style ? ` style="${style}"` : ""}>${escapeHtml(x.calcul)}</td>`;
   }).join("")}</tr>`).join("");
   const formes = r.graphies.length ? r.graphies : ["script" as Graphie];
   const legende = c.legende.map(({ couleur, resultat, grapheme, lettre }) => {
     const texte = lettre !== undefined
       ? formes.map((g) => {
-        const st = styleDeLaCase({ calcul: "", couleur: "", graphie: g }, r.policeCursive);
+        const st = styleDeLaCase({ calcul: "", couleur: "", graphie: g });
         return `<span style="${styleEnLigne({ ...st, fontFamily: st.fontFamily ?? "Arial" })};margin-right:8px">${escapeHtml(lettreSousGraphie(lettre, g))}</span>`;
       }).join("")
       : `<b>${escapeHtml(grapheme !== undefined ? grapheme : String(resultat))}</b>`;
@@ -933,7 +929,7 @@ export function feuilleDuColoriage(c: Coloriage, r: ReglagesColoriage, avecCorri
      <table class="grille"><tbody>${cases}</tbody></table>${c.motif.credit
        ? `<p class="attribution">${escapeHtml(c.motif.credit)}</p>` : ""}`, style:
     `.consigne { font-size: 14px; margin-bottom: 10px; }
-     .legende { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; font-size: 14px; align-items: center; }
+     .legende { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 22px; font-size: 14px; align-items: center; }
      .lg i { display: inline-block; width: 14px; height: 14px; border: 1px solid #333; vertical-align: -2px; }
      .grille { border-collapse: collapse; margin: 0 auto; }
      .grille td { border: 1.2px solid #222; width: ${cote}px; height: ${cote}px; text-align: center;

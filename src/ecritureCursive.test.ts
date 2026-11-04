@@ -21,10 +21,12 @@ describe("ciel, herbe, terre", () => {
   it("pose le modèle au sol, ses petites lettres de la hauteur de l'herbe", () => {
     const svg = ligneCielHerbeTerre(8, "lilas");
     const [, , sol] = ordonnees(svg);
-    const texte = svg.match(/<text x="[\d.]+" y="([\d.]+)"[^>]*font-size="([\d.]+)"[^>]*>lilas<\/text>/);
+    const texte = svg.match(/<text x="[\d.]+" y="([\d.]+)"[^>]*font-size: calc\(([\d.]+)px \/ var\(--police-cursive-x, 0\.4\)\)[^>]*>lilas<\/text>/);
     expect(texte).not.toBeNull();
     expect(Number(texte![1])).toBeCloseTo(sol);
-    expect(Number(texte![2])).toBeCloseTo(8 / 0.4);
+    // La taille vient des proportions de la police choisie : 8 mm de petites lettres, Marelle à 8 / 0,48.
+    expect(Number(texte![2])).toBe(8);
+    expect(svg).toContain("font-family: var(--police-cursive,");
   });
 
   it("dessine l'image au bord, et teinte toute la ligne seulement si on le demande", () => {

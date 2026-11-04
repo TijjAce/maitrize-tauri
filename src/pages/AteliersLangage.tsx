@@ -40,6 +40,7 @@ import { objectifsDesAteliers } from "../ateliersCompetences";
 import { useImagesEtOmbres } from "../components/MesImages";
 import { OMBRES_MINIMUM, REGLAGES_OMBRES, STYLE_OMBRES, feuillesDOmbres, htmlOmbres, type FormeOmbres, type ImageOmbre, type ReglagesOmbres } from "../ombres";
 import { HAUTEURS_HERBE, REGLAGES_CURSIVE, REGLURES, STYLE_CURSIVE, htmlEcritureCursive, modelesDeLEtape, modelesSaisis, type ReglagesCursive } from "../ecritureCursive";
+import { ChoixPoliceCursive } from "../components/ChoixPoliceCursive";
 import { REGLAGES_FLUENCE, nomDeLEtape } from "../fluence";
 import { etapeDe } from "../progressionCgp";
 
@@ -199,7 +200,8 @@ export function CursiveTab() {
           Écriture cursive
           <Aide titre="Écriture cursive" vers="droite"><p>Des modèles en cursive et des lignes à réglure — 3, 2,5 ou 2 mm — pour tracer la lettre du jour, l'enchaîner dans des syllabes et des mots, ou copier une phrase écrite en script.
           Pour les premières lettres, les lignes « ciel, herbe, terre » : les petites lettres dans l'herbe, les grandes dans le ciel, les jambages dans la terre.
-          Le modèle prend la police d'écriture scolaire installée sur l'ordinateur (Écriture A, Belle Allure…).</p></Aide>
+          Le modèle s'écrit en Marelle, la police cursive libre du ministère (Éduscol, 2026), ses petites lettres sur un interligne ; on peut
+          choisir une de ses variantes, ou une police installée sur l'ordinateur — le choix vaut pour toutes les feuilles en cursive.</p></Aide>
         </h3>
         <Field label="Les modèles, un par ligne">
           <Textarea rows={6} value={r.modeles} onChange={(e) => maj({ modeles: e.target.value })} placeholder={"l\nli\nla\nlilas"} />
@@ -236,6 +238,7 @@ export function CursiveTab() {
           <Coche on={r.bandes} libelle="Les bandes en couleur sur toute la ligne" onChange={(v) => maj({ bandes: v })} />
         )}
         <Coche on={r.transcrire} libelle="Copier : le modèle en script, à écrire en cursive" onChange={(v) => maj({ transcrire: v })} />
+        <ChoixPoliceCursive />
         <Boutons atelier="cursive" titre={r.transcrire ? "Copier en cursive" : "Écriture cursive"} html={html} style={STYLE_CURSIVE} peut={modeles.length > 0} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_CURSIVE} />}

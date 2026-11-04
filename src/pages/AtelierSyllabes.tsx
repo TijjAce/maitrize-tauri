@@ -287,7 +287,7 @@ export function SyllabeManquanteTab({ banque }: { banque: boolean }) {
         id: "lettres", puce: "Les lettres", titre: "En quelles lettres, l'en-tête ?",
         choix: LETTRES_EN_TETE.map((l) => ({
           id: l.id, libelle: l.libelle,
-          ...(l.id === "cursive" ? { description: "la cursive prend la police d'école de l'ordinateur — Belle Allure, Écriture A… —, sinon celle du système" } : {}),
+          ...(l.id === "cursive" ? { description: "la cursive s'écrit en Marelle, la police du ministère, ou dans la police choisie" } : {}),
         })),
       },
       repondre: (c: string) => { const l = LETTRES_EN_TETE.find((x) => x.id === c) ?? LETTRES_EN_TETE[0]; maj({ lettres: l.id }); return l.libelle; },

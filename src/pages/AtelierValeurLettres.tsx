@@ -2,6 +2,7 @@ import React from "react";
 import { api } from "../api";
 import { Aide } from "../components/Aide";
 import { ApercuFeuille } from "../components/ApercuFeuille";
+import { ChoixPoliceCursive } from "../components/ChoixPoliceCursive";
 import { usePictoImages } from "../components/ChoixPicto";
 import { Field, Input, Select } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
@@ -68,6 +69,7 @@ export function ValeurLettresTab({ banque }: { banque: boolean }) {
         <Coche on={r.digrammes} libelle="Les digrammes ch et gn" onChange={(digrammes) => maj({ digrammes })} />
         {banque && <Coche on={r.images} libelle="Le dessin de chaque mot" onChange={(images) => maj({ images })} />}
         <Coche on={r.cursive} libelle="La lettre aussi en cursive" onChange={(cursive) => maj({ cursive })} />
+        {r.cursive && <ChoixPoliceCursive />}
         <Field label="Ce qu'on imprime">
           <Select value={r.format} onChange={(e) => maj({ format: e.target.value as ReglagesValeurLettres["format"] })}>
             <option value="mur">Une page par lettre, pour le mur</option>

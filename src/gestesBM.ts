@@ -13,6 +13,7 @@
 import { HAUTEUR_UTILE_MM, attributionPour, feuille, imgPicto } from "./cartesImprimables";
 import { hasard, melanger } from "./hasard";
 import { escapeHtml } from "./print";
+import { POLICE_CURSIVE } from "./policesEcriture";
 
 export type SorteGeste = "voyelle" | "son complexe" | "consonne";
 
@@ -646,8 +647,7 @@ export const STYLE_GESTES = `
   .feuille.gb .gb-bandeau .gb-geste { flex: none; width: 17.6mm; height: 22mm; border: none; }
   .feuille.gb .gb-graphies { flex: 1 1 auto; display: flex; justify-content: space-around; align-items: center; font-size: 46px; line-height: 1; }
   .feuille.gb .gb-graphies b { font-weight: 500; }
-  .feuille.gb .gb-graphies .gb-cursive { font-family: "Écriture A", "Ecriture A", "Écriture B", "Ecriture B", "Belle Allure GS", "Belle Allure CE", "Belle Allure CM",
-    "Cursive standard", "Ecolier", "ScolaCursive", "Snell Roundhand", cursive; font-size: 1.15em; }
+  .feuille.gb .gb-graphies .gb-cursive { font-family: ${POLICE_CURSIVE}; font-size: calc(0.36em / var(--police-cursive-x, 0.4)); }
   .feuille.gb .gb-prenom { font-size: 12px; color: #4a5065; margin: 0 0 6px; }
   .feuille.gb .gb-lignes { display: flex; flex-direction: column; gap: 5mm; }
   .feuille.gb .gb-ligne { display: flex; align-items: center; gap: 3mm; break-inside: avoid; page-break-inside: avoid; }

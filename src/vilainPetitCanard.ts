@@ -585,7 +585,8 @@ export const STYLE_VPC = `
   .feuille.vp .vp-etiquettes-syno { flex-direction: column; align-items: center; gap: 4mm; margin: 10mm 0 6mm; }
   .feuille.vp .vp-etiquettes-syno span { width: 120mm; height: 17mm; box-sizing: border-box; display: flex; align-items: center; justify-content: center;
     font-size: 22px; padding: 0 4mm; }
-  .feuille.vp .vp-cursive { font-family: ${POLICE_CURSIVE}; font-weight: 400 !important; font-size: 30px !important; }
+  /* La cursive des feuilles, réglée sur ses petites lettres (10 px) : ses boucles tiennent dans les étiquettes. */
+  .feuille.vp .vp-cursive { font-family: ${POLICE_CURSIVE}; font-weight: 400 !important; font-size: calc(10px / var(--police-cursive-x, 0.4)) !important; }
   .feuille.vp .vp-script { font-family: Arial, Helvetica, sans-serif; text-transform: none; }
   .feuille.vp .vp-capitales, .feuille.vp .vp-majuscules span { text-transform: uppercase; letter-spacing: .04em; }
   .feuille.vp .vp-note { font-size: 12px; color: #4a5168; border-top: 1px solid #cfd4e2; padding-top: 3mm; margin-top: 6mm; line-height: 1.5; }

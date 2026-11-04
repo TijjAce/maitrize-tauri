@@ -5,14 +5,17 @@
 // tracée puis enchaînée dans des syllabes, des mots, des phrases, « sur un
 // petit cahier (réglures de 3, puis 2,5, puis 2 mm) » ; plusieurs fois par
 // semaine, transcrire du script vers la cursive ; dès la période 2, copier
-// une phrase, puis deux ou trois. Le modèle s'écrit avec la police d'écriture
-// scolaire installée sur l'ordinateur — Écriture A, Belle Allure… —, comme
-// dans l'atelier des gestes Borel-Maisonny.
+// une phrase, puis deux ou trois. Le modèle s'écrit en Marelle, la police
+// cursive du ministère, ou dans celle que l'enseignant a choisie (voir
+// policesEcriture.ts), ses petites lettres sur un interligne.
 
 import { escapeHtml } from "./print";
 import { feuille } from "./cartesImprimables";
 import { etapeDe, motsDe, syllabesDe } from "./progressionCgp";
 import { hasard, melanger } from "./hasard";
+import { POLICE_CURSIVE, tailleCursive } from "./policesEcriture";
+
+export { POLICE_CURSIVE };
 
 export interface ReglagesCursive {
   /** Les modèles, un par ligne : une lettre, une syllabe, un mot, une phrase. */
@@ -44,9 +47,6 @@ export const HAUTEURS_HERBE: { mm: ReglagesCursive["herbe"]; label: string }[] =
   { mm: 5, label: "Petite — 5 mm" },
 ];
 
-/** Les polices d'écriture scolaire, la première installée l'emporte ; une cursive du système à défaut. */
-export const POLICE_CURSIVE = `"Écriture A", "Ecriture A", "Écriture B", "Ecriture B", "Belle Allure GS", "Belle Allure CE", "Belle Allure CM", "Cursive standard", "Ecolier", "ScolaCursive", "Snell Roundhand", cursive`;
-
 export const modelesSaisis = (texte: string) => (texte ?? "").split("\n").map((m) => m.trim()).filter(Boolean);
 
 const LARGEUR = 180;
@@ -67,9 +67,9 @@ export function ligneDEcriture(reglure: number, modele = ""): string {
     return `<line x1="0" y1="${y}" x2="${LARGEUR}" y2="${y}" stroke="${couleur}" stroke-width="${epaisseur}"/>`;
   }).join("");
   const marge = `<line x1="16" y1="0" x2="16" y2="${hauteur.toFixed(2)}" stroke="#d33a32" stroke-width="0.25"/>`;
-  // Les petites lettres d'une cursive scolaire font environ 0,4 de la taille de la police.
+  // Les petites lettres sur un interligne : la taille vient de la police choisie (0,48 pour Marelle).
   const texte = modele
-    ? `<text x="18" y="${base.toFixed(2)}" font-family='${POLICE_CURSIVE}' font-size="${(reglure / 0.4).toFixed(2)}" fill="#1c2233">${escapeHtml(modele)}</text>` : "";
+    ? `<text x="18" y="${base.toFixed(2)}" style='font-family: ${POLICE_CURSIVE}; font-size: ${tailleCursive(reglure)}' fill="#1c2233">${escapeHtml(modele)}</text>` : "";
   return `<svg class="cu-ligne" viewBox="0 0 ${LARGEUR} ${hauteur.toFixed(2)}" width="${LARGEUR}mm" height="${hauteur.toFixed(2)}mm">${lignes}${marge}${texte}</svg>`;
 }
 
@@ -80,7 +80,8 @@ export function ligneDEcriture(reglure: number, modele = ""): string {
 // restent dans l'herbe ; les grandes boucles montent dans le ciel ; les
 // jambages descendent dans la terre. Les bandes gardent les proportions de la
 // réglure Seyès — deux hauteurs d'herbe pour le ciel, deux pour la terre —,
-// si bien qu'une police d'écriture scolaire y pose ses lettres sans retouche.
+// si bien qu'une police d'écriture scolaire y pose ses lettres sans retouche :
+// Marelle, la police du ministère, exactement.
 // Au bord de chaque ligne, l'image des trois bandes ; les lignes sont celles
 // des cartes de classe : bleue en haut du ciel, verte sur l'herbe, marron au
 // sol, rouge au fond de la terre.
@@ -142,7 +143,7 @@ export function ligneCielHerbeTerre(herbe: number, modele = "", bandes = false):
     `<line x1="0" y1="${y.toFixed(2)}" x2="${LARGEUR}" y2="${y.toFixed(2)}" stroke="${couleur}" stroke-width="${epaisseur}"/>`;
   const texte = modele
     // Un peu d'air après l'image : la queue d'un f, d'un j revient vers la gauche.
-    ? `<text x="${(l + Math.max(2, u * 0.4)).toFixed(2)}" y="${ySol.toFixed(2)}" font-family='${POLICE_CURSIVE}' font-size="${(u / 0.4).toFixed(2)}" fill="#1c2233">${escapeHtml(modele)}</text>` : "";
+    ? `<text x="${(l + Math.max(2, u * 0.4)).toFixed(2)}" y="${ySol.toFixed(2)}" style='font-family: ${POLICE_CURSIVE}; font-size: ${tailleCursive(u)}' fill="#1c2233">${escapeHtml(modele)}</text>` : "";
   return `<svg class="cu-ligne cu-ciel" viewBox="0 0 ${LARGEUR} ${hauteur.toFixed(2)}" width="${LARGEUR}mm" height="${hauteur.toFixed(2)}mm">${teintes}`
     + `${imageCielHerbeTerre(l, haut, u)}`
     + `${ligne(haut, LIGNES_CIEL.ciel, 0.35)}${ligne(yHerbe, LIGNES_CIEL.herbe, 0.35)}${ligne(ySol, LIGNES_CIEL.sol, 0.5)}${ligne(bas, LIGNES_CIEL.terre, 0.35)}`
