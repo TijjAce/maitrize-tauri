@@ -103,6 +103,18 @@ const RANGEES: Record<string, Rangee> = {
   "ateliers-sens-ps": { domaine: "decouvrir-vivant", sections: ["PS"], ateliers: [{ id: "imagier" }, { id: "afficheCouleurs" }] },
   "ateliers-tailles-ps": { domaine: "grandeurs-maternelle", sections: ["PS"], ateliers: [{ id: "afficheCouleurs" }, { id: "motifs" }] },
   "ateliers-tracer-ps": { domaine: "apprendre-a-ecrire", sections: ["PS"], ateliers: [{ id: "repertoireGraphique" }, { id: "etiquettesPrenoms" }] },
+  // Les mêmes en moyenne et en grande section (voir demarchesAteliersMSGS.ts) ; les longueurs y ajoutent les modèles du
+  // tangram, la grande section l'affiche des règles de sécurité, les lettres la frise et les jeux de lettres.
+  "ateliers-verser-ms": { domaine: "decouvrir-objets", sections: ["MS"], ateliers: [{ id: "sequentiel" }, { id: "afficheCoins" }] },
+  "ateliers-ouvrir-ms": { domaine: "decouvrir-objets", sections: ["MS"], ateliers: [{ id: "sequentiel" }, { id: "afficheCoins" }] },
+  "ateliers-sens-ms": { domaine: "decouvrir-vivant", sections: ["MS"], ateliers: [{ id: "imagier" }, { id: "afficheCouleurs" }] },
+  "ateliers-tailles-ms": { domaine: "grandeurs-maternelle", sections: ["MS"], ateliers: [{ id: "tangram" }, { id: "sequentiel" }] },
+  "ateliers-tracer-ms": { domaine: "apprendre-a-ecrire", sections: ["MS"], ateliers: [{ id: "etiquettesPrenoms" }, { id: "lettres" }, { id: "repertoireGraphique" }] },
+  "ateliers-verser-gs": { domaine: "decouvrir-objets", sections: ["GS"], ateliers: [{ id: "sequentiel" }, { id: "afficheRegles" }] },
+  "ateliers-ouvrir-gs": { domaine: "decouvrir-objets", sections: ["GS"], ateliers: [{ id: "sequentiel" }, { id: "imagier" }] },
+  "ateliers-lettres-gs": { domaine: "apprendre-a-lire", sections: ["GS"], ateliers: [{ id: "friseAlphabetique" }, { id: "lettres" }] },
+  "ateliers-tailles-gs": { domaine: "grandeurs-maternelle", sections: ["GS"], ateliers: [{ id: "tangram" }, { id: "sequentiel" }] },
+  "ateliers-tracer-gs": { domaine: "apprendre-a-ecrire", sections: ["GS"], ateliers: [{ id: "etiquettesPrenoms" }, { id: "repertoireGraphique" }] },
 };
 
 /** Les sections d'une démarche de maternelle ; aucune pour une autre. */

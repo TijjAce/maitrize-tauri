@@ -268,6 +268,29 @@ const TRACER = "le programme veut qu'on puisse « participer aux activités de m
   + "graphismes » avant 4 ans : les traces du doigt viennent après les pinces et les transvasements, en période 2 ; les lettres du prénom "
   + "s'y ajoutent en fin de séquence.";
 
+// Les mêmes ateliers en moyenne et en grande section (voir demarchesAteliersMSGS.ts).
+const VIE_PRATIQUE_MS = "à partir de 4 ans, le programme fait « désigner et utiliser des outils ou des objets adaptés à une situation et à une "
+  + "action technique » : les plateaux reprennent dès la rentrée avec le choix de l'outil — verser, transvaser et pincer en période 1 —, "
+  + "puis les objets qui vont ensemble — ouvrir, visser, boutonner, nouer — en période 2.";
+const LES_SENS_MS = "à partir de 4 ans, le programme fait « identifier et nommer des organes sensoriels et les modalités de perception "
+  + "associées » : en période 3, comme en petite section, une fois les plateaux repris — avec, cette fois, l'organe à nommer.";
+const LES_TAILLES_MS = "le programme fait d'abord « percevoir visuellement le classement (en trois groupes) de plusieurs objets selon leur "
+  + "longueur lorsque celles-ci sont très différentes », puis mettre à la même origine des longueurs proches : les rangements viennent "
+  + "après les gestes des plateaux, en période 4.";
+const TRACER_MS = "le programme veut « conduire un entrainement à la graphie des lettres capitales » et introduit la cursive « en moyenne "
+  + "section ou lorsque l'enfant est prêt » : les capitales du prénom en période 2 ; les premières boucles de la cursive en fin de séquence.";
+const SECURITE_GS = "à partir de 5 ans, le programme fait « identifier et prévenir les risques liés à certains objets » : les règles de "
+  + "sécurité des plateaux se posent dès la rentrée, en période 1, et servent toute l'année.";
+const FONCTIONS_GS = "à partir de 5 ans, le programme fait « associer une solution technique à une fonction technique » : une fois les "
+  + "gestes repris et leurs règles posées, en période 2.";
+const LETTRES_GS = "le programme veut qu'en grande section l'on sache « reconnaitre et nommer toutes les lettres d'un mot écrit dans les "
+  + "trois graphies » : les lettres se posent et s'associent tôt, en période 2, pour servir aux essais d'écriture de l'année.";
+const LONGUEURS_GS = "la grande section passe à la comparaison indirecte — « utiliser une bande témoin pour y reporter différentes "
+  + "longueurs afin de les comparer » —, qui suppose la comparaison directe acquise : en période 3.";
+const CURSIVE_GS = "le programme veut, à partir de 5 ans, « mémoriser et automatiser le tracé des lettres en cursive et leur enchainement "
+  + "pour écrire son prénom sans modèle » : en période 3, une fois les lettres connues dans leurs trois graphies ; la séquence se reprend "
+  + "ensuite sur d'autres mots.";
+
 export const PERIODES_PROPOSEES_EN_MATERNELLE: Record<Section, Record<string, PeriodeProposee>> = {
   PS: {
     ...ligne(VIE_PRATIQUE, { "ateliers-verser-ps": 1, "ateliers-ouvrir-ps": 2 }),
@@ -284,6 +307,10 @@ export const PERIODES_PROPOSEES_EN_MATERNELLE: Record<Section, Record<string, Pe
     ...ligne(COLLECTIONS, { "collections-maternelle": 1 }),
     ...ligne(PROBLEME_DU_JOUR, { "probleme-du-jour-maternelle": 2 }),
     ...ligne(CHRONOLOGIE, { "chronologie-maternelle": 2 }),
+    ...ligne(VIE_PRATIQUE_MS, { "ateliers-verser-ms": 1, "ateliers-ouvrir-ms": 2 }),
+    ...ligne(LES_SENS_MS, { "ateliers-sens-ms": 3 }),
+    ...ligne(LES_TAILLES_MS, { "ateliers-tailles-ms": 4 }),
+    ...ligne(TRACER_MS, { "ateliers-tracer-ms": 2 }),
   },
   GS: {
     ...ligne(ALBUM, { "vilain-petit-canard-gs": 4 }),
@@ -291,6 +318,11 @@ export const PERIODES_PROPOSEES_EN_MATERNELLE: Record<Section, Record<string, Pe
     ...ligne(COLLECTIONS, { "collections-maternelle": 1 }),
     ...ligne(PROBLEME_DU_JOUR, { "probleme-du-jour-maternelle": 2 }),
     ...ligne(CHRONOLOGIE, { "chronologie-maternelle": 1 }),
+    ...ligne(SECURITE_GS, { "ateliers-verser-gs": 1 }),
+    ...ligne(FONCTIONS_GS, { "ateliers-ouvrir-gs": 2 }),
+    ...ligne(LETTRES_GS, { "ateliers-lettres-gs": 2 }),
+    ...ligne(LONGUEURS_GS, { "ateliers-tailles-gs": 3 }),
+    ...ligne(CURSIVE_GS, { "ateliers-tracer-gs": 3 }),
   },
 };
 

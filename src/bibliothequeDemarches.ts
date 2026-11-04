@@ -49,6 +49,8 @@ const ICONE_DE_LA_DEMARCHE: Record<string, string> = {
   "maternelle-modalites": "🧸", phonologie: "👂", "categoriser-maternelle": "🗂️", "vilain-petit-canard-ms": "🦆",
   "vilain-petit-canard-gs": "🦆", "collections-maternelle": "🧺", "probleme-du-jour-maternelle": "🧩", "chronologie-maternelle": "🎞️",
   "ateliers-verser-ps": "🫗", "ateliers-ouvrir-ps": "🔑", "ateliers-sens-ps": "🖐️", "ateliers-tailles-ps": "🪆", "ateliers-tracer-ps": "✏️",
+  "ateliers-verser-ms": "🫗", "ateliers-ouvrir-ms": "🔑", "ateliers-sens-ms": "👃", "ateliers-tailles-ms": "🪆", "ateliers-tracer-ms": "✏️",
+  "ateliers-verser-gs": "✂️", "ateliers-ouvrir-gs": "🔩", "ateliers-lettres-gs": "🔤", "ateliers-tailles-gs": "📏", "ateliers-tracer-gs": "✍️",
 };
 
 /**

@@ -403,6 +403,9 @@ describe("les séquences toutes faites de la maternelle, un dossier par section 
       "chronologie-maternelle:PS", "chronologie-maternelle:MS", "chronologie-maternelle:GS",
       // Les ateliers de manipulation de petite section (demande de l'enseignant, 4 novembre 2026).
       "ateliers-verser-ps:PS", "ateliers-ouvrir-ps:PS", "ateliers-sens-ps:PS", "ateliers-tailles-ps:PS", "ateliers-tracer-ps:PS",
+      // Les mêmes, déclinés en moyenne et en grande section (même jour) : les lettres y remplacent les sens en grande section.
+      "ateliers-verser-ms:MS", "ateliers-ouvrir-ms:MS", "ateliers-sens-ms:MS", "ateliers-tailles-ms:MS", "ateliers-tracer-ms:MS",
+      "ateliers-verser-gs:GS", "ateliers-ouvrir-gs:GS", "ateliers-lettres-gs:GS", "ateliers-tailles-gs:GS", "ateliers-tracer-gs:GS",
     ].sort());
     for (const id of ["maternelle-modalites", "categoriser-maternelle"]) expect(maternelle.some((s) => s.demarche.id === id), id).toBe(false);
     for (const section of SECTIONS) {
@@ -428,10 +431,14 @@ describe("les séquences toutes faites de la maternelle, un dossier par section 
   it("font un tableau par section : les domaines du programme en lignes, plus rien sans période", () => {
     const sans = COLONNES_DU_TABLEAU.findIndex((c) => c.periode === null);
     const gs = tableauDesSequences(maternelle.filter((s) => s.classe === "GS"), periode);
-    expect(gs.map((b) => b.discipline)).toEqual(["Le langage oral et écrit", "Les premiers outils mathématiques", "Se repérer dans le temps et l'espace"]);
+    expect(gs.map((b) => b.discipline)).toEqual([
+      "Le langage oral et écrit", "Les premiers outils mathématiques", "Se repérer dans le temps et l'espace",
+      "Découvrir le monde du vivant, de la matière et des objets",
+    ]);
     expect(gs.flatMap((b) => b.lignes.map((l) => l.domaine.nom))).toEqual([
-      "Acquérir le langage oral", "Se préparer à apprendre à lire", "Découvrir les nombres", "Utiliser les nombres pour résoudre des problèmes",
-      "Se repérer dans le temps",
+      "Acquérir le langage oral", "Se préparer à apprendre à lire", "Se préparer à apprendre à écrire", "Découvrir les nombres",
+      "Utiliser les nombres pour résoudre des problèmes", "Explorer des grandeurs : la longueur, la masse", "Se repérer dans le temps",
+      "Découvrir le monde de la matière et des objets",
     ]);
     for (const section of SECTIONS) {
       const tableau = tableauDesSequences(maternelle.filter((s) => s.classe === section), periode);

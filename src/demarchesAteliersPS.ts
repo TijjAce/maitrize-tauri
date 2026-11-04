@@ -26,21 +26,21 @@
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 
-const ph = (phase: string, duree: string, description: string, posture = ""): PhaseCadre => ({ phase, duree, description, posture });
-const sauront = (quoi: string) => `À la fin de cette séance, les élèves sauront ${quoi}`;
-const seance = (titre: string, objectif: string, duree: number, phases: PhaseCadre[], consignes?: string[]): SeanceCadre =>
+export const ph = (phase: string, duree: string, description: string, posture = ""): PhaseCadre => ({ phase, duree, description, posture });
+export const sauront = (quoi: string) => `À la fin de cette séance, les élèves sauront ${quoi}`;
+export const seance = (titre: string, objectif: string, duree: number, phases: PhaseCadre[], consignes?: string[]): SeanceCadre =>
   ({ titre, objectifs: sauront(objectif), duree, phases, ...(consignes ? { consignes } : {}) });
 
-const SAVOIE = "Amandine Frison, PEMF, école de Villette, « Exemples d'ateliers de manipulation de type Montessori — maternelle » (DSDEN de la Savoie)";
-const PROGRAMME = "programme de l'école maternelle (2025)";
+export const SAVOIE = "Amandine Frison, PEMF, école de Villette, « Exemples d'ateliers de manipulation de type Montessori — maternelle » (DSDEN de la Savoie)";
+export const PROGRAMME = "programme de l'école maternelle (2025)";
 
 /** Ce que l'adulte fait quand il montre un atelier : le même geste, lentement, et peu de mots. */
-const MONTRER = "Montre lentement, en entier — prendre le plateau, faire, ranger —, en nommant les objets et ce qu'on fait ; laisse faire ensuite sans corriger le geste.";
+export const MONTRER = "Montre lentement, en entier — prendre le plateau, faire, ranger —, en nommant les objets et ce qu'on fait ; laisse faire ensuite sans corriger le geste.";
 /** Ranger fait partie de l'atelier. */
-const RANGER = ph("Ranger", "3 min", "Chacun remet son plateau en ordre, éponge ce qui a coulé, le rapporte à sa place : il est prêt pour le suivant.",
+export const RANGER = ph("Ranger", "3 min", "Chacun remet son plateau en ordre, éponge ce qui a coulé, le rapporte à sa place : il est prêt pour le suivant.",
   "Fait dire ce qu'on a fait : « J'ai versé », « J'ai vissé ».");
 /** La dernière séance de chaque séquence : les plateaux connus, en autonomie, et l'observation de chacun. */
-const observer = (quoi: string, grille: string): SeanceCadre => seance("Les plateaux en autonomie — observer chacun",
+export const observer = (quoi: string, grille: string): SeanceCadre => seance("Les plateaux en autonomie — observer chacun",
   `choisir un plateau connu, le mener jusqu'au bout et le ranger : ${quoi}`, 25, [
     ph("Choisir", "3 min", "Les plateaux des séances précédentes sont sur l'étagère : chacun en choisit un, puis un autre quand il a rangé le premier."),
     ph("Faire, seul", "17 min", `L'adulte observe un élève à la fois, sans aider : ${grille}`,
