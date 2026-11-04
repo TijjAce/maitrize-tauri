@@ -18,6 +18,15 @@
 // Un script de la page réduit toutes les cartes d'autant, juste ce qu'il faut
 // pour que la bande la plus longue tienne dans la hauteur — à l'ouverture,
 // une fois les images chargées, et avant d'imprimer.
+//
+// « Oulah ça fait tout écrasé là » (l'enseignant, 4 novembre 2026, sur une
+// journée de dix créneaux) : dix bandes côte à côte n'avaient plus que 16 mm
+// chacune, et les mots se coupaient lettre à lettre. Les bandes ne descendent
+// plus sous 30 mm : au-delà de cinq, elles passent sur deux rangs — ou plus —,
+// toujours de la même largeur et regroupées au milieu, et les cartes se
+// réduisent ensemble pour tenir. Et « réunion formation c'est pas un élève,
+// donc pas besoin de leur faire une bande » : un créneau de réunion ou de
+// formation n'en a plus.
 
 import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import {
@@ -35,10 +44,12 @@ export const estUnePause = (matiere: string): boolean => /r[ée]cr[ée]|pause|ac
 /**
  * Les créneaux qui ont leur bande, dans l'ordre des heures : tous ceux qu'on
  * imprime, sauf une pause où rien n'est écrit — ni séance, ni prévu, ni
- * bilan. Ceux qu'on a cochés « ne pas imprimer » sont déjà partis.
+ * bilan — et sauf les réunions et les formations, qui ne sont pas des temps
+ * d'élèves. Ceux qu'on a cochés « ne pas imprimer » sont déjà partis.
  */
 export function creneauxEnBandes(creneaux: Creneau[]): Creneau[] {
   return [...creneaux]
+    .filter((c) => c.nature !== "reunion")
     .filter((c) => !(estUnePause(c.matiere) && !c.seanceId && !c.prevu?.trim() && !c.bilan?.trim()))
     .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
 }
@@ -75,8 +86,23 @@ export const FEUILLE_BANDES_MM = { largeur: 186, hauteur: 262 };
 /** La largeur d'une bande, toujours la même — celle de la colonne des tablettes — tant que les bandes tiennent toutes ; sinon elles se partagent la page. */
 export const LARGEUR_BANDE_MM = 44;
 export const ECART_BANDES_MM = 3;
+/** En dessous, une carte écrase son titre : les bandes passent sur plusieurs rangs. */
+export const LARGEUR_MIN_BANDE_MM = 30;
+/** Les bandes d'un rang, au plus : cinq, à 34,8 mm. */
+export const BANDES_PAR_RANG_MAX = Math.floor((FEUILLE_BANDES_MM.largeur + ECART_BANDES_MM) / (LARGEUR_MIN_BANDE_MM + ECART_BANDES_MM));
+
+/** Combien de bandes dans chaque rang : un seul rang tant qu'elles tiennent, sinon des rangs égaux, à une près — dix font deux rangs de cinq. */
+export function rangsDesBandes(combien: number): number[] {
+  if (combien <= 0) return [];
+  const rangs = Math.ceil(combien / BANDES_PAR_RANG_MAX);
+  const base = Math.floor(combien / rangs), enPlus = combien % rangs;
+  return Array.from({ length: rangs }, (_, i) => base + (i < enPlus ? 1 : 0));
+}
+
+/** La largeur de toutes les bandes : celle de la colonne des tablettes, ou ce que laisse le rang le plus garni. */
 export function largeurDesBandes(combien: number): number {
-  const partagee = (FEUILLE_BANDES_MM.largeur - ECART_BANDES_MM * Math.max(0, combien - 1)) / Math.max(1, combien);
+  const parRang = Math.max(1, ...rangsDesBandes(combien));
+  const partagee = (FEUILLE_BANDES_MM.largeur - ECART_BANDES_MM * Math.max(0, parRang - 1)) / parRang;
   return Math.round(Math.min(LARGEUR_BANDE_MM, partagee) * 10) / 10;
 }
 
@@ -90,8 +116,9 @@ export const STYLE_BANDES = `
   .bandes-tete { flex: none; display: flex; align-items: baseline; gap: 12px; padding: 0 1mm 2mm; }
   .bandes-tete h1 { font-size: 18px; margin: 0; color: #23527c; }
   .bandes-tete span { color: #687087; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; }
-  /* Les bandes ensemble, au milieu de la page, chacune de la même largeur. */
-  .bandes { flex: 1; min-height: 0; display: flex; justify-content: center; gap: ${ECART_BANDES_MM}mm; }
+  /* Les bandes ensemble, au milieu de la page, chacune de la même largeur ; sur plusieurs rangs quand elles ne tiennent pas sur un. */
+  .bandes { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: ${ECART_BANDES_MM}mm; }
+  .bandes-rang { flex: 1; min-height: 0; display: flex; justify-content: center; gap: ${ECART_BANDES_MM}mm; }
   .bande { flex: none; min-width: 0; display: flex; flex-direction: column; background: #f2f2f7; border-radius: 3mm; overflow: hidden; }
   .bande-tete { flex: none; padding: 2mm 2.2mm 1.6mm; text-align: center; }
   .bande-heure { display: block; font-weight: 800; font-size: 12px; color: #23527c; font-variant-numeric: tabular-nums; }
@@ -162,10 +189,16 @@ export interface Bande { heures: string; matiere: string; cadres: string }
  */
 export function corpsDesBandes(titre: string, bandes: Bande[], fin = ""): string {
   const largeur = largeurDesBandes(bandes.length);
+  const colonne = (b: Bande) => `<div class="bande" style="width:${largeur}mm"><div class="bande-tete"><span class="bande-heure">${escapeHtml(b.heures)}</span>`
+    + (b.matiere.trim() ? `<span class="bande-matiere">${escapeHtml(b.matiere.trim())}</span>` : "")
+    + `</div><div class="bande-corps"><div class="bande-contenu"><div class="dr">${b.cadres}</div></div></div></div>`;
+  let debut = 0;
   const colonnes = bandes.length
-    ? bandes.map((b) => `<div class="bande" style="width:${largeur}mm"><div class="bande-tete"><span class="bande-heure">${escapeHtml(b.heures)}</span>`
-      + (b.matiere.trim() ? `<span class="bande-matiere">${escapeHtml(b.matiere.trim())}</span>` : "")
-      + `</div><div class="bande-corps"><div class="bande-contenu"><div class="dr">${b.cadres}</div></div></div></div>`).join("")
+    ? rangsDesBandes(bandes.length).map((n) => {
+      const rang = bandes.slice(debut, debut + n);
+      debut += n;
+      return `<div class="bandes-rang">${rang.map(colonne).join("")}</div>`;
+    }).join("")
     : `<div class="bandes-vide">Aucun créneau à imprimer ce jour-là.</div>`;
   return `<div class="bandes-alerte" hidden>La journée est trop longue pour la page, même réduite : le bas d'une bande est coupé. `
     + `Cochez « ne pas imprimer » sur un créneau, ou raccourcissez une séance.</div>`

@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import {
-  FEUILLE_BANDES_MM, LARGEUR_BANDE_MM, SCRIPTS_DES_BANDES, STYLE_BANDES, STYLE_BANDES_DU_JOURNAL,
-  bandesDuJour, corpsDesBandes, creneauxEnBandes, estUnePause, heuresDeLaBande, largeurDesBandes, pasDeLaBande,
+  BANDES_PAR_RANG_MAX, FEUILLE_BANDES_MM, LARGEUR_BANDE_MM, LARGEUR_MIN_BANDE_MM, SCRIPTS_DES_BANDES, STYLE_BANDES, STYLE_BANDES_DU_JOURNAL,
+  bandesDuJour, corpsDesBandes, creneauxEnBandes, estUnePause, heuresDeLaBande, largeurDesBandes, pasDeLaBande, rangsDesBandes,
 } from "./journeeEnBandes";
 import { pasDeLEleve } from "./journalTelephone";
 import { elevesDesParties } from "./prevuParEleve";
@@ -33,6 +33,9 @@ describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octob
     ];
     // Un créneau d'enseignement sans rien d'écrit garde sa bande : sa matière y est dite.
     expect(creneauxEnBandes(jour).map((c) => c.id)).toEqual(["c1", "c2", "c4", "c5"]);
+    // Une réunion, une formation : pas un temps d'élèves, pas de bande (demande de l'enseignant, 4 novembre 2026).
+    const reunion = creneau("r1", "15:45", "16:15", "Réunion des jeunes", { nature: "reunion", prevu: "Ordre du jour" });
+    expect(creneauxEnBandes([...jour, reunion]).map((c) => c.id)).toEqual(["c1", "c2", "c4", "c5"]);
     expect(estUnePause("Récréation")).toBe(true);
     expect(estUnePause("Français")).toBe(false);
     expect(heuresDeLaBande(jour[1])).toBe("8h30 – 9h00");
@@ -138,6 +141,22 @@ describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octob
     expect(largeurDesBandes(3)).toBe(LARGEUR_BANDE_MM);
     expect(largeurDesBandes(4)).toBe(LARGEUR_BANDE_MM);
     expect(largeurDesBandes(5)).toBeCloseTo((186 - 4 * 3) / 5, 1);
+    // « Ça fait tout écrasé » : jamais sous 30 mm — au-delà de cinq bandes, plusieurs rangs, égaux à une près (4 novembre 2026).
+    expect(BANDES_PAR_RANG_MAX).toBe(5);
+    expect(rangsDesBandes(5)).toEqual([5]);
+    expect(rangsDesBandes(6)).toEqual([3, 3]);
+    expect(rangsDesBandes(7)).toEqual([4, 3]);
+    expect(rangsDesBandes(10)).toEqual([5, 5]);
+    expect(rangsDesBandes(11)).toEqual([4, 4, 3]);
+    expect(largeurDesBandes(6)).toBe(LARGEUR_BANDE_MM);
+    expect(largeurDesBandes(10)).toBeCloseTo((186 - 4 * 3) / 5, 1);
+    for (let n = 1; n <= 20; n++) {
+      expect(largeurDesBandes(n), `${n} bandes`).toBeGreaterThanOrEqual(LARGEUR_MIN_BANDE_MM);
+      expect(rangsDesBandes(n).reduce((a, b) => a + b, 0), `${n} bandes`).toBe(n);
+    }
+    const dix = corpsDesBandes("Jeudi", Array.from({ length: 10 }, (_, i) => ({ heures: `${i + 8}h00 – ${i + 9}h00`, matiere: "", cadres: "" })));
+    expect(dix.match(/class="bandes-rang"/g)).toHaveLength(2);
+    expect(dix.match(/class="bande" style="width:34.8mm"/g)).toHaveLength(10);
     // Les cartes de la colonne des tablettes : le picto au-dessus, toutes de la même taille.
     expect(STYLE_BANDES).toMatch(/\.bande \.dr-etape \{ flex-direction: column;[^}]*height: 32mm;/);
     const corps = corpsDesBandes("Lundi 2 novembre 2026", [
