@@ -401,6 +401,8 @@ describe("les séquences toutes faites de la maternelle, un dossier par section 
       "collections-maternelle:PS", "collections-maternelle:MS", "collections-maternelle:GS",
       "probleme-du-jour-maternelle:PS", "probleme-du-jour-maternelle:MS", "probleme-du-jour-maternelle:GS",
       "chronologie-maternelle:PS", "chronologie-maternelle:MS", "chronologie-maternelle:GS",
+      // Les ateliers de manipulation de petite section (demande de l'enseignant, 4 novembre 2026).
+      "ateliers-verser-ps:PS", "ateliers-ouvrir-ps:PS", "ateliers-sens-ps:PS", "ateliers-tailles-ps:PS", "ateliers-tracer-ps:PS",
     ].sort());
     for (const id of ["maternelle-modalites", "categoriser-maternelle"]) expect(maternelle.some((s) => s.demarche.id === id), id).toBe(false);
     for (const section of SECTIONS) {

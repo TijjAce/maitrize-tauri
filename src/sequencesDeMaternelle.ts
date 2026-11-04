@@ -43,23 +43,30 @@ export const estUneSection = (c: string): c is Section => (SECTIONS as string[])
 
 // ── Les domaines du programme, comme les disciplines de l'école ────────────
 
-export type DisciplineDeMaternelle = "Le langage oral et écrit" | "Les premiers outils mathématiques" | "Se repérer dans le temps et l'espace";
+export type DisciplineDeMaternelle =
+  | "Le langage oral et écrit" | "Les premiers outils mathématiques" | "Se repérer dans le temps et l'espace"
+  | "Découvrir le monde du vivant, de la matière et des objets";
 
 /** Les domaines du programme qui ont des séquences ; la matière de l'emploi du temps que prend la séquence créée, comme dans ses ateliers. */
 export const DISCIPLINES_DE_MATERNELLE: { nom: DisciplineDeMaternelle; icone: string; court: string; matiere: string }[] = [
   { nom: "Le langage oral et écrit", icone: "🗣️", court: "Langage", matiere: "Mobiliser le langage dans toutes ses dimensions" },
   { nom: "Les premiers outils mathématiques", icone: "🔢", court: "Maths", matiere: "Acquérir les premiers outils mathématiques" },
   { nom: "Se repérer dans le temps et l'espace", icone: "⏳", court: "Temps et espace", matiere: "Se repérer dans le temps et l'espace" },
+  { nom: "Découvrir le monde du vivant, de la matière et des objets", icone: "🔬", court: "Le monde", matiere: "Découvrir le monde du vivant, de la matière et des objets" },
 ];
 
 /** Leurs parties, dans l'ordre du programme : les lignes du tableau. */
 export const DOMAINES_DE_MATERNELLE: Domaine[] = [
   { id: "langage-oral", discipline: "Le langage oral et écrit", nom: "Acquérir le langage oral" },
   { id: "apprendre-a-lire", discipline: "Le langage oral et écrit", nom: "Se préparer à apprendre à lire" },
+  { id: "apprendre-a-ecrire", discipline: "Le langage oral et écrit", nom: "Se préparer à apprendre à écrire" },
   { id: "decouvrir-nombres", discipline: "Les premiers outils mathématiques", nom: "Découvrir les nombres" },
   { id: "problemes-maternelle", discipline: "Les premiers outils mathématiques", nom: "Utiliser les nombres pour résoudre des problèmes" },
   { id: "solides-formes", discipline: "Les premiers outils mathématiques", nom: "Explorer les solides et les formes planes" },
+  { id: "grandeurs-maternelle", discipline: "Les premiers outils mathématiques", nom: "Explorer des grandeurs : la longueur, la masse" },
   { id: "reperer-temps", discipline: "Se repérer dans le temps et l'espace", nom: "Se repérer dans le temps" },
+  { id: "decouvrir-vivant", discipline: "Découvrir le monde du vivant, de la matière et des objets", nom: "Découvrir le monde du vivant" },
+  { id: "decouvrir-objets", discipline: "Découvrir le monde du vivant, de la matière et des objets", nom: "Découvrir le monde de la matière et des objets" },
 ];
 
 // ── Les séquences, leur ligne et leurs sections ────────────────────────────
@@ -89,6 +96,13 @@ const RANGEES: Record<string, Rangee> = {
   },
   // Ses feuilles se font avec les images de la suite que l'enseignant choisit : dans l'atelier seulement.
   [DEMARCHE_SUITES]: { domaine: "reperer-temps", sections: SECTIONS, ateliers: [{ id: "suites", reglages: aLaSection }] },
+  // Les ateliers de manipulation de petite section (voir demarchesAteliersPS.ts) : le séquentiel de chaque plateau et ses
+  // étiquettes ; les images des sens et l'affichage des couleurs ; le répertoire graphique et l'étiquette du prénom.
+  "ateliers-verser-ps": { domaine: "decouvrir-objets", sections: ["PS"], ateliers: [{ id: "sequentiel" }, { id: "afficheCoins" }] },
+  "ateliers-ouvrir-ps": { domaine: "decouvrir-objets", sections: ["PS"], ateliers: [{ id: "sequentiel" }, { id: "afficheCoins" }] },
+  "ateliers-sens-ps": { domaine: "decouvrir-vivant", sections: ["PS"], ateliers: [{ id: "imagier" }, { id: "afficheCouleurs" }] },
+  "ateliers-tailles-ps": { domaine: "grandeurs-maternelle", sections: ["PS"], ateliers: [{ id: "afficheCouleurs" }, { id: "motifs" }] },
+  "ateliers-tracer-ps": { domaine: "apprendre-a-ecrire", sections: ["PS"], ateliers: [{ id: "repertoireGraphique" }, { id: "etiquettesPrenoms" }] },
 };
 
 /** Les sections d'une démarche de maternelle ; aucune pour une autre. */

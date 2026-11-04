@@ -491,6 +491,7 @@ interface RefDom { id: string; titre: string; sousDomaines?: RefSous[] }
 const DOMAINE_DU_PROGRAMME: Record<Discipline | DisciplineDeMaternelle, RegExp> = {
   "Mathématiques": /math/i, "Français": /fran/i, "Histoire-géographie": /histoire|g[ée]ographie|questionner/i,
   "Le langage oral et écrit": /langage/i, "Les premiers outils mathématiques": /math/i, "Se repérer dans le temps et l'espace": /temps|monde/i,
+  "Découvrir le monde du vivant, de la matière et des objets": /vivant|mati[èe]re|objets/i,
 };
 
 /**

@@ -48,6 +48,7 @@ const ICONE_DE_LA_DEMARCHE: Record<string, string> = {
   "arts-plastiques": "🎨", musique: "🎵", "histoire-des-arts": "🖼️", "eps-module": "🏃", "langues-vivantes": "🌐",
   "maternelle-modalites": "🧸", phonologie: "👂", "categoriser-maternelle": "🗂️", "vilain-petit-canard-ms": "🦆",
   "vilain-petit-canard-gs": "🦆", "collections-maternelle": "🧺", "probleme-du-jour-maternelle": "🧩", "chronologie-maternelle": "🎞️",
+  "ateliers-verser-ps": "🫗", "ateliers-ouvrir-ps": "🔑", "ateliers-sens-ps": "🖐️", "ateliers-tailles-ps": "🪆", "ateliers-tracer-ps": "✏️",
 };
 
 /**

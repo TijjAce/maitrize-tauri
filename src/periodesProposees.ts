@@ -256,8 +256,24 @@ const PHONOLOGIE = "des séances « courtes, structurées et répétées réguli
 const ALBUM = "le programme fait « commencer par les mots relatifs aux actes du quotidien, aux activités de la classe et aux relations avec "
   + "les autres » : les mots d'un album viennent ensuite. L'histoire suit les saisons et s'achève au printemps : la période 4.";
 
+// Les ateliers de manipulation de petite section (voir demarchesAteliersPS.ts).
+const VIE_PRATIQUE = "le programme fait passer les élèves « d'une exploration libre à une utilisation maitrisée » des objets, avec un premier "
+  + "contact « à mains nues » avant les outils : les plateaux de vie pratique s'installent dès la rentrée — verser et transvaser d'abord, "
+  + "en période 1 ; ouvrir, fermer, visser et enfiler ensuite, en période 2, quand les premiers gestes sont acquis.";
+const LES_SENS = "le programme fait « découvrir les sens utilisés lors d'expériences sensorielles variées » avant 4 ans, et ne les fait nommer "
+  + "qu'ensuite : en petite section, une fois les plateaux et leurs règles connus, en période 3.";
+const LES_TAILLES = "le programme fait d'abord « percevoir visuellement qu'un objet est plus long qu'un autre lorsque leurs longueurs sont très "
+  + "différentes », puis aligner pour comparer : les rangements par taille viennent après les gestes des plateaux, en période 4.";
+const TRACER = "le programme veut qu'on puisse « participer aux activités de motricité générale, de motricité fine et aux exercices de "
+  + "graphismes » avant 4 ans : les traces du doigt viennent après les pinces et les transvasements, en période 2 ; les lettres du prénom "
+  + "s'y ajoutent en fin de séquence.";
+
 export const PERIODES_PROPOSEES_EN_MATERNELLE: Record<Section, Record<string, PeriodeProposee>> = {
   PS: {
+    ...ligne(VIE_PRATIQUE, { "ateliers-verser-ps": 1, "ateliers-ouvrir-ps": 2 }),
+    ...ligne(LES_SENS, { "ateliers-sens-ps": 3 }),
+    ...ligne(LES_TAILLES, { "ateliers-tailles-ps": 4 }),
+    ...ligne(TRACER, { "ateliers-tracer-ps": 2 }),
     ...ligne(COLLECTIONS, { "collections-maternelle": 2 }),
     ...ligne(PROBLEME_DU_JOUR, { "probleme-du-jour-maternelle": 3 }),
     ...ligne(CHRONOLOGIE, { "chronologie-maternelle": 3 }),

@@ -15,7 +15,7 @@
 // L'enseignant y coche ce que sa classe possède, et dit où c'est rangé : les
 // séances le rappellent — « à sortir », ou « à se procurer ».
 
-export type FamilleMateriel = "nombres" | "grandeurs" | "geometrie" | "temps" | "sciences" | "monde" | "arts";
+export type FamilleMateriel = "nombres" | "grandeurs" | "geometrie" | "temps" | "sciences" | "monde" | "arts" | "viePratique" | "sens" | "ecrit";
 
 export const FAMILLES_MATERIEL: { id: FamilleMateriel; libelle: string }[] = [
   { id: "nombres", libelle: "Nombres et calcul" },
@@ -25,6 +25,9 @@ export const FAMILLES_MATERIEL: { id: FamilleMateriel; libelle: string }[] = [
   { id: "sciences", libelle: "Sciences et technologie" },
   { id: "monde", libelle: "Se repérer dans le monde" },
   { id: "arts", libelle: "Arts, corps et matière" },
+  { id: "viePratique", libelle: "Vie pratique et motricité fine" },
+  { id: "sens", libelle: "Les sens" },
+  { id: "ecrit", libelle: "Tracer et écrire" },
 ];
 
 export interface MaterielReel {
@@ -53,6 +56,13 @@ const SCIENCES_C2 = "Programme de sciences et technologie du cycle 2 (BO n° 24 
 const HG_C2 = "Programme d'histoire-géographie du cycle 2 (BO n° 22 du 28 mai 2026)";
 const MATERNELLE = "Programme de l'école maternelle (2025)";
 const GUIDE_CP = "Éduscol, « Pour enseigner les nombres, le calcul et la résolution de problèmes au CP » (2021)";
+/**
+ * Les ateliers de manipulation de cycle 1 que l'enseignant a donnés (4 novembre 2026, « rajoute le matériel présent dans
+ * ce pdf ») : une cinquantaine d'ateliers, chacun avec son matériel, sa consigne, ses objectifs. Le matériel est regroupé
+ * ici par geste ; les ateliers deviennent les séances de petite section (voir demarchesAteliersPS.ts).
+ */
+const SAVOIE = "Amandine Frison, PEMF, école de Villette, « Exemples d'ateliers de manipulation de type Montessori — maternelle » (DSDEN de la Savoie)";
+const OBJETS = /objets|matiere|monde/;
 
 // Les domaines où les mots d'un appel valent : « solides » parle de géométrie
 // en mathématiques, et de l'eau en sciences.
@@ -127,14 +137,14 @@ export const MATERIEL_REEL: MaterielReel[] = [
   },
   {
     id: "longueurs", famille: "grandeurs",
-    nom: "Des objets à comparer en longueur : baguettes, bandes, ficelles, crayons",
+    nom: "Des objets à comparer en longueur : baguettes, bandes, ficelles, crayons ; des barres rouges de 10 cm à 1 m, des bûchettes et des pailles coupées",
     usage: "Comparer directement, ranger, produire un objet de même longueur, puis comparer à l'aide d'un intermédiaire.",
     irremplacable: "",
     imprime: { atelier: "mesures", quoi: "des bandes et des segments à comparer" },
     ateliers: ["mesures"],
     appel: /comparer (directement |indirectement )?des (longueurs|segments)|selon (leur|sa) longueur|objets? rectilignes?|de meme longueur qu/,
     domaine: MATHS,
-    source: `${MATERNELLE} : « Comparer directement des longueurs d'objets rectilignes » (MS) ; ${MATHS_C2} : « Comparer des objets selon leur longueur » (CP).`,
+    source: `${MATERNELLE} : « Comparer directement des longueurs d'objets rectilignes » (MS) ; ${MATHS_C2} : « Comparer des objets selon leur longueur » (CP) ; ${SAVOIE} : les barres, les bûchettes et les pailles à ranger de la plus petite à la plus grande.`,
   },
   {
     id: "regles", famille: "grandeurs",
@@ -297,13 +307,13 @@ export const MATERIEL_REEL: MaterielReel[] = [
   },
   {
     id: "aimants", famille: "sciences",
-    nom: "Des aimants, et des objets en métal et en d'autres matières",
+    nom: "Des aimants, et des objets en métal et en d'autres matières ; des bâtonnets aimantés et leurs billes de métal",
     usage: "Chercher ce que l'aimant attire, s'en servir pour fabriquer un objet qui répond à un besoin.",
     irremplacable: "Un aimant attire, une image non.",
     ateliers: [],
     appel: /magnetisme|aimants?/,
     domaine: SCIENCES,
-    source: `${MATERNELLE} : « Fabriquer un objet en réponse à un besoin en exploitant des propriétés de matériaux ou des phénomènes physiques (équilibre, magnétisme…) » (GS).`,
+    source: `${MATERNELLE} : « Fabriquer un objet en réponse à un besoin en exploitant des propriétés de matériaux ou des phénomènes physiques (équilibre, magnétisme…) » (GS) ; ${SAVOIE} : créer des figures avec des bâtonnets aimantés.`,
   },
   {
     id: "objetsTechniques", famille: "sciences",
@@ -366,6 +376,186 @@ export const MATERIEL_REEL: MaterielReel[] = [
     appel: /lancer|equilibres?|objets volumineux|se deplacer|deplacements? varies/,
     domaine: /physique|sportive/,
     source: `${MATERNELLE} : « Manipuler et lancer des objets avec des intentions motrices différentes » (PS) ; « Développer de nouveaux équilibres » (PS).`,
+  },
+  // ── Vie pratique et motricité fine : les ateliers de manipulation de cycle 1 ──
+  {
+    id: "transvasement", famille: "viePratique",
+    nom: "Des carafes et des verres marqués d'un trait, des seringues, un entonnoir, des pipettes, de l'eau colorée et une éponge",
+    usage: "Verser sans renverser et s'arrêter au trait, transvaser l'eau avec l'outil qui convient, déposer quelques gouttes ; éponger, puis ranger le plateau.",
+    irremplacable: "L'eau se verse, déborde et s'éponge : une image ne coule pas.",
+    ateliers: ["sequentiel"],
+    appel: /quelques caracteristiques des solides et des liquides|transvas|verser de l.eau/,
+    domaine: OBJETS,
+    source: `${SAVOIE} : ateliers de vie pratique ; ${MATERNELLE} : « Transporter de l'eau, des grains, des objets, effectuer des transvasements, permet de ressentir le caractère pesant de la matière » (p. 60).`,
+  },
+  {
+    id: "pinces", famille: "viePratique",
+    nom: "Des pinces de toutes sortes — à escargots, à glace, à épiler, à linge —, des noix, des graines à trier, des boîtes à alvéoles et des bols de couleur",
+    usage: "Saisir avec l'outil et poser un objet par case, trier des graines, accrocher les pinces à linge au bol de leur couleur. En petite section, de gros objets — des noix — plutôt que des graines, sous le regard de l'adulte.",
+    irremplacable: "La main apprend à pincer en pinçant.",
+    ateliers: ["sequentiel"],
+    appel: /motricite fine|utiliser des objets, connaitre leur nom/,
+    domaine: /ecrire|objets|matiere|monde/,
+    source: `${SAVOIE} : ateliers de vie pratique et d'éducation sensorielle ; ${MATERNELLE} : « Participer aux activités de motricité générale, de motricité fine et aux exercices de graphismes » (avant 4 ans, p. 17), et le risque des « petits objets qui présentent des risques d'étouffement en cas d'ingestion » (p. 60).`,
+  },
+  {
+    id: "fermetures", famille: "viePratique",
+    nom: "Des bocaux et des flacons avec leur couvercle, des cadenas et leurs clés, des cadres d'habillage — fermeture éclair, boutons-pression, boutons —, des lacets à nouer, des vis, des boulons et leurs écrous",
+    usage: "Ouvrir et fermer, visser et dévisser, trouver le couvercle ou la clé qui va, boutonner, nouer : les gestes des objets de tous les jours. Les vis et les écrous, plus petits, après la petite section.",
+    irremplacable: "Un couvercle se visse, une clé tourne dans un cadenas : le geste ne s'apprend que sur l'objet.",
+    ateliers: ["sequentiel"],
+    appel: /utiliser des objets, connaitre leur nom/,
+    domaine: OBJETS,
+    source: `${SAVOIE} : ateliers de vie pratique ; ${MATERNELLE} : « Utiliser des objets, connaitre leur nom et leur fonction » ; « remonter la fermeture éclair de son manteau » (avant 4 ans, p. 61).`,
+  },
+  {
+    id: "enfilage", famille: "viePratique",
+    nom: "Un tube en mousse et des élastiques, une grille et des chenilles, des trombones, des paires de chaussettes, des pinces à linge et un panier",
+    usage: "Enfiler et faire glisser, passer dessus puis dessous les barreaux, accrocher des trombones, retrouver deux chaussettes pareilles et les accrocher ensemble.",
+    irremplacable: "Enfiler, tisser, accrocher : ce sont des gestes de la main, sur de vrais objets.",
+    ateliers: ["sequentiel"],
+    appel: /motricite fine/,
+    domaine: /ecrire|langage/,
+    source: `${SAVOIE} : ateliers de vie pratique ; ${MATERNELLE} : « Participer aux activités de motricité générale, de motricité fine et aux exercices de graphismes » (avant 4 ans, p. 17).`,
+  },
+  {
+    id: "decoupage", famille: "viePratique",
+    nom: "Des ciseaux adaptés, des bandes de papier à découper — d'un coup, sur un trait, en rond —, de la colle, un taille-crayon et des crayons usagés",
+    usage: "Découper une bande d'un coup de ciseaux, puis en suivant un trait ; coller ses formes comme on veut ; tailler un crayon au-dessus d'une barquette.",
+    irremplacable: "Le papier se coupe et le crayon se taille : on apprend l'outil sur la matière.",
+    ateliers: ["sequentiel"],
+    appel: /transformations? de materiaux|actions mecaniques/,
+    domaine: OBJETS,
+    source: `${SAVOIE} : ateliers de vie pratique ; ${MATERNELLE} : « Repérer des transformations de matériaux sous l'effet d'actions mécaniques avec les mains ou avec des outils » ; « découper avec des ciseaux adaptés » (avant 4 ans, p. 61).`,
+  },
+  // ── Les sens ──
+  {
+    id: "toucher", famille: "sens",
+    nom: "Des sacs à toucher et des objets en double, des tissus de textures variées, des ballons remplis de matières — graines, farine, gel — et leurs images",
+    usage: "Retrouver par le toucher un objet caché, deux tissus pareils, ce que contient un ballon ; dire doux, rugueux, mou, dur.",
+    irremplacable: "Doux, rugueux, mou : cela se sent au bout des doigts, pas sur une image.",
+    imprime: { atelier: "imagier", quoi: "les images des objets et des matières, pour poser chaque ballon ou chaque sac sous la sienne" },
+    ateliers: ["imagier"],
+    appel: /sens utilises lors d.experiences sensorielles|perceptions sensorielles|par le toucher/,
+    domaine: /vivant|matiere|objets|monde/,
+    source: `${SAVOIE} : ateliers d'éducation sensorielle ; ${MATERNELLE} : « Découvrir les sens utilisés lors d'expériences sensorielles variées » ; « Identifier parmi d'autres un objet connu et caché dans un sac ou dans une boite par le toucher » (avant 4 ans, p. 60).`,
+  },
+  {
+    id: "sonsOdeurs", famille: "sens",
+    nom: "Des boîtes sonores et des boîtes à odeurs, par paires",
+    usage: "Secouer et écouter, ou sentir, puis rassembler les deux boîtes qui font le même bruit ou qui ont la même odeur.",
+    irremplacable: "Un son, une odeur ne s'impriment pas.",
+    ateliers: [],
+    appel: /sens utilises lors d.experiences sensorielles|possibilites sonores de son corps, d.objets/,
+    domaine: /vivant|sonore|artisti|monde/,
+    source: `${SAVOIE} : ateliers d'éducation sensorielle ; ${MATERNELLE} : « Manipuler et faire sonner des objets de différentes matières (pots, couvercles, bouteilles etc.) » (avant 4 ans, p. 31).`,
+  },
+  {
+    id: "couleurs", famille: "sens",
+    nom: "Un loto des couleurs, des planches de nuances et leurs pinces à linge, des bonshommes et leurs haltères de quatre couleurs, une boîte à compartiments et des images à trier",
+    usage: "Associer et nommer les couleurs, puis leurs nuances ; trier des objets et des images dans la case de leur couleur.",
+    irremplacable: "",
+    imprime: { atelier: "afficheCouleurs", quoi: "l'affichage référent de chaque couleur, avec les choses de cette couleur" },
+    ateliers: ["afficheCouleurs"],
+    appel: /reconnaitre, trier et classer des objets/,
+    domaine: MATHS,
+    source: `${SAVOIE} : ateliers d'éducation sensorielle ; ${MATERNELLE} : « Reconnaitre, trier et classer des objets selon leur forme » (p. 46) — le tri par la couleur vient d'abord.`,
+  },
+  // ── Tailles, formes et nombres ──
+  {
+    id: "taillesGigognes", famille: "grandeurs",
+    nom: "Des cubes à empiler et à emboîter, des poupées gigognes, des pommes de trois tailles et leurs trois pommiers",
+    usage: "Empiler du plus grand au plus petit, emboîter, ranger par taille, répartir en trois groupes : les grosses, les moyennes, les petites.",
+    irremplacable: "Un gros cube ne tient pas sur un petit : la tour tombe, et l'on comprend. Un dessin ne tombe pas.",
+    ateliers: ["mesures"],
+    appel: /comparer des objets selon leur (longueur|taille)|selon leur taille|par ordre de taille/,
+    domaine: MATHS,
+    source: `${SAVOIE} : ateliers d'éducation sensorielle et intellectuelle ; ${MATERNELLE} : « superposer trois briques par ordre décroissant de longueur afin de construire un escalier et de répartir des briques en trois groupes selon leur longueur » (avant 4 ans, p. 48).`,
+  },
+  {
+    id: "formesModeles", famille: "geometrie",
+    nom: "Des formes de couleur, des bâtonnets et des pions à poser d'après un modèle, un tangram et ses fiches",
+    usage: "Faire pareil que le modèle : poser dessus, puis à côté ; reproduire un assemblage, l'organisation d'un petit ensemble d'objets dans l'espace.",
+    irremplacable: "Les pièces se tournent, se retournent et se posent : la fiche ne donne que le modèle.",
+    imprime: { atelier: "tangram", quoi: "les pièces et les modèles à reproduire" },
+    ateliers: ["tangram", "motifs"],
+    appel: /reproduire des assemblages|reproduire un motif|organisation dans l.espace/,
+    domaine: MATHS,
+    source: `${SAVOIE} : ateliers d'éducation intellectuelle ; ${MATERNELLE} : « Reproduire des assemblages de solides ou de formes planes » (avant 4 ans, p. 47).`,
+  },
+  {
+    id: "blocsLogiques", famille: "geometrie",
+    nom: "Des blocs logiques : des formes de tailles, de couleurs et d'épaisseurs différentes",
+    usage: "Trier et classer selon la forme, la couleur, la taille ; en faire le contour au crayon et inventer un graphisme dedans.",
+    irremplacable: "Une forme se reconnaît aussi au toucher, les yeux fermés.",
+    ateliers: [],
+    appel: /trier et classer des (objets|formes)|visuellement et tactilement/,
+    domaine: MATHS,
+    source: `${SAVOIE} : ateliers d'éducation intellectuelle ; ${MATERNELLE} : « Reconnaitre visuellement et tactilement des objets de même forme » (p. 46).`,
+  },
+  {
+    id: "collectionsPinces", famille: "nombres",
+    nom: "Un disque de collections — des coccinelles de 1 à 6 — et des pinces à linge portant les chiffres",
+    usage: "Compter les coccinelles d'une case et y accrocher la pince du bon chiffre : jusqu'à trois en petite section, jusqu'à six ensuite.",
+    irremplacable: "La pince s'accroche et se décroche : on essaie, on vérifie, on recommence.",
+    ateliers: ["collections", "nombres"],
+    appel: /associer une quantite, le nom d.un nombre et une ecriture chiffree/,
+    domaine: MATHS,
+    source: `${SAVOIE} : ateliers d'éducation intellectuelle ; ${MATERNELLE} : « Associer une quantité, le nom d'un nombre et une écriture chiffrée » (p. 38).`,
+  },
+  // ── Tracer et écrire ──
+  {
+    id: "tracerDoigt", famille: "ecrit",
+    nom: "Un plateau de semoule, des pochettes de gel à tracer, de la pâte à modeler et un rouleau, des pistes graphiques plastifiées, un feutre effaçable et un chiffon, des tracettes",
+    usage: "Laisser des traces du doigt et les effacer pour recommencer, tracer dans la pâte, suivre une piste sans en sortir, contourner une tracette.",
+    irremplacable: "La trace s'efface d'un geste : on recommence sans gâcher de feuille, et le doigt sent le chemin.",
+    imprime: { atelier: "repertoireGraphique", quoi: "les signes à reproduire, tracés en bande" },
+    ateliers: ["repertoireGraphique"],
+    appel: /motricite fine et aux exercices de graphismes|guider son geste par le regard|gestes et commencer a les associer/,
+    domaine: /ecrire|langage|artisti|visuels/,
+    source: `${SAVOIE} : ateliers d'éducation intellectuelle ; ${MATERNELLE} : « Découvrir les traces produites par un geste particulier sur une feuille enduite de peinture ou dans du sable (caresser, tapoter, frotter, griffer, etc.) » (avant 4 ans, p. 28).`,
+  },
+  {
+    id: "lettresMobiles", famille: "ecrit",
+    nom: "Des lettres mobiles — en mousse, aimantées sur un support de métal, à encastrer —, des lettres douces à suivre du doigt, des roues des lettres et leurs pinces",
+    usage: "Retrouver les lettres de son prénom et les poser sur son étiquette, suivre du doigt le sens du tracé, associer capitales, script et cursive.",
+    irremplacable: "Une lettre qu'on tient se tourne et se compare ; une lettre douce se suit du doigt.",
+    imprime: { atelier: "etiquettesPrenoms", quoi: "l'étiquette du prénom, en capitales, en script et en cursive" },
+    ateliers: ["etiquettesPrenoms", "friseAlphabetique", "lettres"],
+    appel: /lettres de son prenom|nom des lettres|correspondance entre les lettres|trois graphies/,
+    domaine: /lire|ecrire|langage/,
+    source: `${SAVOIE} : ateliers d'éducation intellectuelle ; ${MATERNELLE} : « Reconnaitre et nommer certaines lettres de son prénom écrit en capitales » (p. 13).`,
+  },
+  {
+    id: "marionnettesDoigts", famille: "ecrit",
+    nom: "Des marionnettes à doigts",
+    usage: "Faire vivre les personnages d'une comptine ou d'une histoire, chaque doigt bougeant seul.",
+    irremplacable: "Les doigts animent les personnages : la motricité fine et le récit vont ensemble.",
+    ateliers: [],
+    appel: /comptines?\b|oralisation d.un court texte/,
+    domaine: /langage|sonore|artisti/,
+    source: `${SAVOIE} : ateliers d'éducation intellectuelle ; ${MATERNELLE} : « Dire ou chanter une comptine, en même temps que les professeurs et en reproduisant la gestuelle (Toc, toc, toc Monsieur Pouce ; Petit escargot) » (avant 4 ans, p. 31).`,
+  },
+  {
+    id: "imagesSons", famille: "ecrit",
+    nom: "Des cartes images, avec ou sans le son à entendre, et leur planche de correction",
+    usage: "Ranger chaque image du côté où l'on entend le son, ou de l'autre ; vérifier seul avec la planche.",
+    irremplacable: "",
+    imprime: { atelier: "lotoPhonemesAttaque", quoi: "des images à trier selon le son qu'on entend" },
+    ateliers: ["lotoPhonemesAttaque", "intrus"],
+    appel: /identifier les sons de la langue|discriminer des (sons|phonemes)/,
+    domaine: /lire|langage/,
+    source: `${SAVOIE} : ateliers d'éducation intellectuelle ; ${MATERNELLE} : « Identifier les sons de la langue, lors de situations d'écoute proposées par le professeur » (p. 12).`,
+  },
+  {
+    id: "dessinsGuides", famille: "ecrit",
+    nom: "Une ardoise blanche, son feutre, et des modèles de dessin pas à pas",
+    usage: "Dessiner un animal en suivant, étape par étape, les traits du modèle.",
+    irremplacable: "",
+    ateliers: [],
+    appel: /s.exercer au dessin/,
+    domaine: /artisti|visuels/,
+    source: `${SAVOIE} : ateliers d'éducation intellectuelle ; ${MATERNELLE} : « S'exercer au dessin pour développer son habileté motrice » (p. 27).`,
   },
 ];
 
