@@ -13,7 +13,7 @@ describe("le catalogue de Fabriquer", () => {
     // Les domaines ne nomment que des ateliers du catalogue des supports.
     for (const d of DOMAINES_DES_MATHS) for (const id of d.outils) expect(maths.outils.some((o) => o.id === id), id).toBe(true);
     // Les billes, l'abaque, la suite des nombres, la demi-droite et les ordinaux vont avec les nombres, après les cubes.
-    expect(parties[0].outils.map((o) => o.id)).toEqual(["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "afficheComparer", "oie", "fractions", "numeration"]);
+    expect(parties[0].outils.map((o) => o.id)).toEqual(["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "afficheComparer", "tableauNombres", "friseNumerique", "oie", "fractions", "numeration"]);
   });
 
   it("rassemble le langage, les sons et la lecture, la lecture et l'écriture sous « Français » : chaque atelier dans une partie", () => {
@@ -47,6 +47,8 @@ describe("Fabriquer s'ouvre sur un choix : un support de séance, un outil pour 
     expect(ids("affichage")).toEqual(expect.arrayContaining(["afficheConsignes", "afficheSons", "afficheListes", "afficheMaisons", "afficheResponsabilites",
       "afficheCoins", "afficheRegles", "afficheLangue", "afficheInvariables", "afficheContraires", "afficheFamilles", "afficheCouleurs", "afficheEmotions",
       "afficheComprehension", "afficheDemarche", "afficheAnimal", "afficheCalcul", "afficheComparer"]));
+    expect(ids("affichage")).toEqual(expect.arrayContaining(["tableauNombres", "friseNumerique", "unitesMesure", "murSyllabes", "fleurLexicale", "grilleSemique",
+      "repertoireGraphique", "etiquettesPrenoms"]));
     expect(ids("outil")).toContain("friseAlphabetique");
     // « Les tables d'addition, c'est plus un affichage de classe. »
     expect(ids("outil")).not.toContain("famillesAddition");

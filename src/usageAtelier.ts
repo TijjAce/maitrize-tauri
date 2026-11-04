@@ -77,6 +77,9 @@ export const USAGE_PAR_DEFAUT: Record<string, Usage> = {
   afficheEmotions: "reinvestissement", afficheComprehension: "reinvestissement", afficheDemarche: "reinvestissement", afficheAnimal: "reinvestissement",
   afficheCalcul: "reinvestissement", afficheComparer: "reinvestissement",
   afficheResponsabilites: "rituel", afficheCoins: "rituel", afficheRegles: "rituel", afficheLangue: "rituel",
+  // Le tableau et la frise des nombres, le mur de syllabes : on s'y reporte chaque jour ; le répertoire graphique se manipule ; les prénoms marquent la présence.
+  tableauNombres: "rituel", friseNumerique: "rituel", murSyllabes: "rituel", unitesMesure: "reinvestissement", fleurLexicale: "reinvestissement",
+  grilleSemique: "manipulation", repertoireGraphique: "manipulation", etiquettesPrenoms: "rituel",
   // Évaluer : en fin de séquence, savoir où en est chacun.
   taches: "reinvestissement",
   // Aides à la tâche : on les manipule pendant qu'on fait ; la prise de parole se prépare pour le bilan.

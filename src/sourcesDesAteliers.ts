@@ -143,6 +143,14 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
   afficheAnimal: "Programme de l'école maternelle (2025), à partir de 5 ans, p. 59 : une affiche pour réinvestir le lexique — étapes de la vie, morphologie, locomotion, alimentation, milieu de vie.",
   afficheCalcul: `Le ${GUIDE_CP_NOMBRES}, p. 61 : les sept familles de calculs ; p. 65 et 68 : les connaissances structurées par des affichages.`,
   afficheComparer: `Le ${GUIDE_CP_NOMBRES}, p. 45 : le savoir à retenir pour comparer deux nombres, en affichage collectif.`,
+  tableauNombres: `Le ${GUIDE_CP_NOMBRES}, p. 110 : le tableau des nombres, qui « met en lumière les régularités » de la numération écrite, complet ou à compléter ; p. 114 : un matériel incontournable, pour chaque élève.`,
+  friseNumerique: `Le ${GUIDE_CP_NOMBRES}, p. 37 : les sept sections de la frise, affichées en une seule file ; p. 109-110 : un élément incontournable de la classe de CP, et la frise en dizaines et unités.`,
+  unitesMesure: `${MATHS_C2} : au CE1 et au CE2, les relations entre les unités, sans tableau de conversion ; programme de mathématiques du cycle 3 (2025) : au cours moyen, un tableau pour présenter les unités, pas pour convertir.`,
+  murSyllabes: "Guide « Pour enseigner la lecture et l'écriture au CP » (Éduscol, 2018), p. 100 : le tableau de syllabes parmi les outils de la classe ; guide « Pour enseigner la lecture et l'écriture au CE1 » (Éduscol, 2019), p. 98 : les gammes de lecture sur les murs de syllabes.",
+  fleurLexicale: "Guide « Pour enseigner la lecture et l'écriture au CP » (Éduscol, 2018), p. 104 : la fleur lexicale et son exemple, la peur ; guide « Pour enseigner le vocabulaire à l'école maternelle » (Éduscol, 2020), p. 38 et 84 : des fleurs d'images.",
+  grilleSemique: "Guide « Pour enseigner la lecture et l'écriture au CP » (Éduscol, 2018), p. 104 : la grille sémique, chaise, fauteuil, canapé et leurs traits.",
+  repertoireGraphique: "Programme de l'école maternelle (2025), p. 28 : un répertoire graphique commun, constitué de signes simples.",
+  etiquettesPrenoms: "« L'écriture à l'école maternelle » (Éduscol, 2015), p. 8, 13 et 21 : les étiquettes des prénoms, en capitales, en script puis en cursive ; programme de l'école maternelle (2025), p. 13 : l'étiquette de son prénom pour marquer sa présence.",
   collections: "Guide « La construction du nombre à l'école maternelle » (Éduscol, 2023) et livrets d'accompagnement « Avant 4 ans » et « À partir de "
     + "4 ans » (Éduscol, 2025) ; programme de l'école maternelle (2025).",
   problemeDuJour: "Programme de l'école maternelle (2025), « Utiliser les nombres pour résoudre des problèmes » ; livrets d'accompagnement « Avant 4 "

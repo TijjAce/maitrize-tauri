@@ -34,6 +34,9 @@ import { FamillesAdditionTab } from "./AtelierFamillesAddition";
 import { TablesMultiplicationTab } from "./AtelierTablesMultiplication";
 import { AfficheProblemeTab } from "./AtelierAfficheProbleme";
 import { AfficheCartesTab } from "./AtelierAffichesACartes";
+import {
+  EtiquettesPrenomsTab, FleurLexicaleTab, FriseNumeriqueTab, GrilleSemiqueTab, MurSyllabesTab, RepertoireGraphiqueTab, TableauNombresTab, UnitesMesureTab,
+} from "./AtelierAffichesSurMesure";
 import { sorteDeLAtelier } from "../affichesACartes";
 import { AfficheConjugaisonTab } from "./AtelierAfficheConjugaison";
 import { PronomsTab } from "./AtelierPronoms";
@@ -561,6 +564,14 @@ export default function Jeux() {
         : onglet === "vilainPetitCanard" ? <VilainPetitCanardTab />
         : onglet === "carteMentale" ? <CarteMentaleTab banque={Boolean(etat?.installee)} />
         : sorteDeLAtelier(onglet) ? <AfficheCartesTab key={onglet} sorte={sorteDeLAtelier(onglet)!} banque={Boolean(etat?.installee)} />
+        : onglet === "tableauNombres" ? <TableauNombresTab />
+        : onglet === "friseNumerique" ? <FriseNumeriqueTab />
+        : onglet === "unitesMesure" ? <UnitesMesureTab banque={Boolean(etat?.installee)} />
+        : onglet === "murSyllabes" ? <MurSyllabesTab />
+        : onglet === "fleurLexicale" ? <FleurLexicaleTab banque={Boolean(etat?.installee)} />
+        : onglet === "grilleSemique" ? <GrilleSemiqueTab banque={Boolean(etat?.installee)} />
+        : onglet === "repertoireGraphique" ? <RepertoireGraphiqueTab />
+        : onglet === "etiquettesPrenoms" ? <EtiquettesPrenomsTab />
         : onglet === "famillesAddition" ? <FamillesAdditionTab />
         : onglet === "tablesMultiplication" ? <TablesMultiplicationTab />
         : onglet === "nombres" ? <CartesNombresTab />

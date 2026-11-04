@@ -82,7 +82,7 @@ export const NOMS_DES_CARTES: Record<SorteCartes, string> = {
  * sinon celui qu'elle donne à la classe pour ce verbe ou l'un de ses
  * synonymes. La mention suit les banques des pictos posés.
  */
-function useDessinsDesCartes(mots: string[], actif: boolean): { images: Record<string, string>; mention: string } {
+export function useDessinsDesCartes(mots: string[], actif: boolean): { images: Record<string, string>; mention: string } {
   const [refs, setRefs] = React.useState<Record<string, RefPicto>>({});
   const cle = mots.join("|");
   React.useEffect(() => {

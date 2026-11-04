@@ -9,6 +9,7 @@ export const ONGLETS = [
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "problemesCM", "coloriage", "collections", "problemeDuJour", "motifs", "tangram", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "rectangles", "calculCM", "soustractionPosee", "sequencesPS", "sequencesMS", "sequencesGS", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "grandeursCM", "geometrie", "solides", "deplacements", "geometrieCM", "donnees", "tableauDouble", "des", "numeration",
   "carteMentale", "famillesAddition", "tablesMultiplication", "afficheConjugaison", "affichePronoms", "codeCorrection", "friseAlphabetique", "valeurLettres", "afficheProbleme", "taches",
   "afficheConsignes", "afficheSons", "afficheListes", "afficheMaisons", "afficheResponsabilites", "afficheCoins", "afficheRegles", "afficheLangue", "afficheInvariables", "afficheContraires", "afficheFamilles", "afficheCouleurs", "afficheEmotions", "afficheComprehension", "afficheDemarche", "afficheAnimal", "afficheCalcul", "afficheComparer",
+  "tableauNombres", "friseNumerique", "unitesMesure", "murSyllabes", "fleurLexicale", "grilleSemique", "repertoireGraphique", "etiquettesPrenoms",
   "sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction",
   "planClasse", "frise", "paysage",
   "perso",
@@ -112,6 +113,10 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Une affiche par couleur : son nom, sa pastille et les choses de cette couleur, avec leurs dessins." },
       { id: "afficheEmotions", sortes: ["affichage"], nom: "Les émotions", icone: "😊", cycles: "Cycles 1 et 2", pictos: true,
         quoi: "La joie, la tristesse, la colère, la peur : leurs mots du plus faible au plus fort, avec leurs dessins et des points pour la force." },
+      { id: "fleurLexicale", sortes: ["affichage", "outil"], nom: "La fleur lexicale", icone: "🌼", cycles: "Cycles 1 à 3", pictos: true,
+        quoi: "Un mot au cœur, et dans les pétales ses noms, ses verbes, ses adjectifs, ses expressions — l'exemple de la peur, du guide du CP —, en mots ou en images." },
+      { id: "grilleSemique", sortes: ["affichage", "support"], nom: "La grille sémique", icone: "🗃", cycles: "Cycle 2", pictos: true,
+        quoi: "Les mots d'un même champ — chaise, fauteuil, canapé — croisés avec leurs traits — a des pieds, a un dossier — : avec les croix, ou à remplir avec la classe." },
       // Sons et lecture
       { id: "sons", nom: "Fiches de sons", icone: "🔤", cycles: "Cycle 2",
         quoi: "Syllabes, mots à lire, à entourer, à compléter — une fiche par graphème." },
@@ -154,6 +159,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Les mots qui ont le même graphème — chien, bien, rien, combien —, le graphème en couleur dans chacun : pour le mur ou le cahier." },
       { id: "afficheMaisons", sortes: ["affichage"], nom: "Les maisons des sons", icone: "🏠", cycles: "Cycles 1 à 3", pictos: true,
         quoi: "Une maison par son, le son sur le toit, les mots de la classe dedans avec leurs dessins ; et les maisons des sons de l'anglais, chacune avec son mot repère." },
+      { id: "murSyllabes", sortes: ["affichage", "outil"], nom: "Le mur de syllabes", icone: "🪟", cycles: "Cycle 2 (CP, CE1)",
+        quoi: "Une ligne par consonne, une colonne par voyelle, et la syllabe au croisement — en script, en cursive ou les deux — : les gammes de lecture du guide du CE1." },
       { id: "gestes", sortes: ["affichage", "outil", "support"], nom: "Gestes Borel-Maisonny", icone: "🤲", cycles: "Cycles 1 et 2",
         quoi: "Vos images des gestes en cartes à découper : petites pour les mains, grandes pour le tableau — et, d'un clic, en loto ou en mémory." },
       { id: "motsGestes", nom: "Mots codés en gestes", icone: "🫱", cycles: "Cycle 2",
@@ -199,6 +206,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Les mots de la semaine cachés dans une grille de lettres, la liste dessous, le corrigé à la suite." },
       { id: "cursive", nom: "Écriture cursive", icone: "🖋", cycles: "Cycle 2",
         quoi: "Des modèles en cursive et des lignes à réglure de 3, 2,5 ou 2 mm : la lettre du jour, des syllabes et des mots, ou une phrase en script à copier." },
+      { id: "repertoireGraphique", sortes: ["affichage", "support"], nom: "Le répertoire graphique", icone: "🌀", cycles: "Cycle 1",
+        quoi: "Les signes simples de la classe — lignes, ponts, coupes, vagues, boucles, spirales… —, chacun tracé en bande avec son nom, et une case pour la photo de l'endroit où on l'a trouvé." },
     ],
   },
   {
@@ -221,6 +230,12 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Les suivants, + 10, les doubles, les compléments à 10, les presque-doubles, le passage par 10… chacun avec ses exemples ; et pour calculer vite : + 9, − 9, + 11, × 5." },
       { id: "afficheComparer", sortes: ["affichage", "outil"], nom: "Comparer deux nombres", icone: "⚖️", cycles: "Cycle 2 (CP)",
         quoi: "Ce qu'on retient pour comparer deux nombres — les dizaines d'abord, puis les unités, les signes < et > —, avec ses exemples." },
+      { id: "tableauNombres", sortes: ["affichage", "outil", "support"], nom: "Le tableau des nombres", icone: "🏰", cycles: "Cycle 2",
+        quoi: "Une ligne par dizaine, de 0 à 99 ou de 1 à 100, jusqu'à 1 000 au CE1 : pour le mur, en petit pour chaque élève, ou avec des nombres à retrouver." },
+      { id: "friseNumerique", sortes: ["affichage", "outil"], nom: "La frise numérique", icone: "🪜", cycles: "Cycles 1 et 2",
+        quoi: "Les sept sections du guide du CP — de 1 à 19, vingt, trente… quatre-vingts —, le nom au début de chacune, en bandes pour le mur ou sur une page pour l'élève ; et la frise en dizaines et unités." },
+      { id: "unitesMesure", sortes: ["affichage", "outil"], nom: "Les unités de mesure", icone: "🧪", cycles: "Cycles 2 et 3",
+        quoi: "Les relations entre les unités du CE1 et du CE2 — 1 m = 100 cm, 1 kg = 1 000 g, 1 L = 10 dL —, et au cours moyen le tableau qui présente les unités, sans servir à convertir." },
       { id: "martiniere", nom: "Calcul mental", icone: "🧮", cycles: "Cycles 2 et 3",
         quoi: "Un fait numérique ou une procédure à la fois, d'après les programmes : à l'oral (La Martinière) ou en test de fluence." },
       { id: "compteEstBon", nom: "Le nombre cible", icone: "🎯", cycles: "Cycles 2 et 3",
@@ -363,6 +378,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Les cinq étapes de l'enquête, numérotées, avec leurs pictos : la question, les idées, la recherche, la conclusion, ce qu'on retient." },
       { id: "afficheAnimal", sortes: ["affichage"], nom: "L'affiche d'un animal", icone: "🐌", cycles: "Cycle 1 (GS)", pictos: true,
         quoi: "La trame de l'affiche à remplir avec la classe : les étapes de sa vie, son corps, comment il se déplace, ce qu'il mange, où il vit." },
+      { id: "etiquettesPrenoms", sortes: ["affichage"], nom: "Les étiquettes des prénoms", icone: "📛", cycles: "Cycle 1",
+        quoi: "Le prénom de chaque élève, pris dans la liste de la classe, en capitales, en script et en cursive : grandes pour la présence et le portemanteau, petites pour les casiers." },
     ],
   },
 ];
@@ -376,10 +393,10 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
  * avec l'espace et la géométrie.
  */
 export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[] = [
-  { id: "nombres", nom: "Les nombres", outils: ["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "afficheComparer", "oie", "fractions", "numeration"] },
+  { id: "nombres", nom: "Les nombres", outils: ["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "afficheComparer", "tableauNombres", "friseNumerique", "oie", "fractions", "numeration"] },
   { id: "calcul", nom: "Le calcul", outils: ["famillesAddition", "tablesMultiplication", "afficheCalcul", "martiniere", "calcul", "arbre", "posees", "rectangles", "pyramides", "compteEstBon", "coloriage", "calculCM"] },
   { id: "problemes", nom: "Les problèmes", outils: ["partieTout", "multiplicatifs", "afficheProbleme", "problemesCM"] },
-  { id: "grandeurs", nom: "Grandeurs et mesures", outils: ["heure", "monnaie", "mesures", "grandeursCM"] },
+  { id: "grandeurs", nom: "Grandeurs et mesures", outils: ["heure", "monnaie", "mesures", "unitesMesure", "grandeursCM"] },
   { id: "geometrie", nom: "Espace et géométrie", outils: ["motifs", "tangram", "geometrie", "solides", "deplacements", "geometrieCM"] },
   { id: "donnees", nom: "Données", outils: ["donnees", "tableauDouble", "des"] },
 ];
@@ -390,9 +407,9 @@ export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[]
  * l'enseignant, octobre 2026).
  */
 export const PARTIES_DU_FRANCAIS: { id: string; nom: string; outils: Onglet[] }[] = [
-  { id: "langage", nom: "Langage", outils: ["jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres", "afficheContraires", "afficheCouleurs", "afficheEmotions"] },
-  { id: "sons", nom: "Sons et lecture", outils: ["sons", "lotoSyllabes", "lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin", "lotoPhonemesAttaque", "lotoPhonemesFin", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "friseAlphabetique", "valeurLettres", "afficheSons", "afficheListes", "afficheMaisons", "gestes", "motsGestes", "syllabeManquante"] },
-  { id: "ecrit", nom: "Lecture et écriture", outils: ["comprehension", "visibileo", "lecteur", "orthographe", "ecrire", "grammaire", "afficheConjugaison", "affichePronoms", "codeCorrection", "afficheInvariables", "afficheFamilles", "afficheComprehension", "oral", "tri", "phrases", "phrasesPuzzle", "trous", "motsMeles", "cursive"] },
+  { id: "langage", nom: "Langage", outils: ["jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres", "afficheContraires", "afficheCouleurs", "afficheEmotions", "fleurLexicale", "grilleSemique"] },
+  { id: "sons", nom: "Sons et lecture", outils: ["sons", "lotoSyllabes", "lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin", "lotoPhonemesAttaque", "lotoPhonemesFin", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "friseAlphabetique", "valeurLettres", "afficheSons", "afficheListes", "afficheMaisons", "murSyllabes", "gestes", "motsGestes", "syllabeManquante"] },
+  { id: "ecrit", nom: "Lecture et écriture", outils: ["comprehension", "visibileo", "lecteur", "orthographe", "ecrire", "grammaire", "afficheConjugaison", "affichePronoms", "codeCorrection", "afficheInvariables", "afficheFamilles", "afficheComprehension", "oral", "tri", "phrases", "phrasesPuzzle", "trous", "motsMeles", "cursive", "repertoireGraphique"] },
 ];
 
 /** Les familles qui se découpent, et leurs parties. */
