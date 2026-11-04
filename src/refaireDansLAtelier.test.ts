@@ -3,6 +3,7 @@ import { REGLAGES_PLAN_CLASSE, htmlPlanClasse, reglagesPlanSurs } from "./planDe
 import { REGLAGES_FRISE, htmlFrise, reglagesFriseSurs } from "./frisesTemps";
 import { REGLAGES_PAYSAGE, htmlPaysage, reglagesPaysageSurs } from "./lireUnPaysage";
 import { REGLAGES_REPERTOIRE, htmlRepertoire, reglagesRepertoireSurs } from "./repertoireGraphique";
+import { htmlSequentiel, reglagesSequentielSurs } from "./aidesALaTache";
 import { REGLAGES_TABLEAU_NOMBRES, htmlTableauNombres, reglagesTableauNombresSurs } from "./tableauNombres";
 
 // Ce qu'une feuille dit pouvoir refaire dans son atelier (`refaire`), l'atelier doit le refaire tel quel : les mêmes
@@ -138,6 +139,8 @@ const ATELIERS: Record<string, (m: Memoires, g: number) => string> = {
   // Les fiches du 4 novembre 2026 : les traits à repasser, le tableau des nombres à compléter.
   repertoireGraphique: (m) => htmlRepertoire(reglagesRepertoireSurs(lu(REGLAGES_REPERTOIRE, m.repertoireGraphique))),
   tableauNombres: (m) => htmlTableauNombres(reglagesTableauNombresSurs(lu(REGLAGES_TABLEAU_NOMBRES, m.tableauNombres))),
+  // Les plateaux de la petite section : le séquentiel de « Décomposer la tâche » (ses pictos se chargent dans l'application).
+  sequentiel: (m) => htmlSequentiel(reglagesSequentielSurs(m.sequentiel), [], {}),
   coloriage: (m, g) => { const r = lu(REGLAGES_COLORIAGE, m.coloriage); return feuilleDuColoriage(fabriquerColoriage(r, g, []), r, false).corps; },
   planClasse: (m, g) => htmlPlanClasse(reglagesPlanSurs(lu(REGLAGES_PLAN_CLASSE, m.planClasse)), g),
   frise: (m) => htmlFrise(reglagesFriseSurs(lu(REGLAGES_FRISE, m.frise))),

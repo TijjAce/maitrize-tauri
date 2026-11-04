@@ -16,7 +16,7 @@ import { dureeDuMinuteur, MINUTEURS_DES_TABLETTES } from "../journalTelephone";
 // pour les fiches à venir : celles déjà faites gardent le leur. Le réglage
 // passe à l'autre ordinateur avec les autres.
 
-const RUBRIQUES = ["Maternelle", "Mathématiques", "Français"] as const;
+const RUBRIQUES = ["Maternelle", "Plateaux de manipulation", "Mathématiques", "Français"] as const;
 
 export function ReglagesEnRetard() {
   const [regles, setRegles] = React.useState<Record<string, number> | null>(null);

@@ -44,6 +44,8 @@ import { REGLAGES_MOTIFS, STYLE_MOTIFS, htmlMotifs, reglagesDuNiveau as motifsDu
 import { REGLAGES_OMBRES, STYLE_OMBRES, htmlOmbres, type ImageOmbre, type ReglagesOmbres } from "./ombres";
 import { REGLAGES_REPERTOIRE, STYLE_REPERTOIRE, htmlRepertoire, type ReglagesRepertoire, type Signe } from "./repertoireGraphique";
 import { REGLAGES_ETIQUETTES_PRENOMS, htmlEtiquettesPrenoms, styleEtiquettesPrenoms, type ReglagesEtiquettesPrenoms } from "./etiquettesPrenoms";
+import { REGLAGES_SEQUENTIEL, htmlSequentiel, styleDuSequentiel, type ReglagesSequentiel } from "./aidesALaTache";
+import { PLATEAUX_PS, type FamilleDePlateau, type Plateau } from "./plateauxAutonomes";
 // Mathématiques
 import { PART_A_REGROUPER, REGLAGES_CUBES, exercicesCubes, htmlCubes, reglagesCubesSurs, type IdNiveauCubes, type ReglagesCubes } from "./cubesNumeration";
 import { STYLE_SEQUENCE_CUBES, reglagesDeLaFeuille as feuilleDeCubes } from "./sequenceCubes";
@@ -107,8 +109,11 @@ export const combienDeFiches = (n: NiveauFiches, creneaux = 0) =>
 
 // ── Les fiches ────────────────────────────────────────────────────────────
 
-/** Ce qu'une fiche travaille ; « atelier », une photo de Mes pictos ; « seance », la séance qui vient d'une séquence. */
-export type Domaine = "langage" | "temps" | "nombres" | "lettres" | "francais" | "maths" | "atelier" | "seance";
+/**
+ * Ce qu'une fiche travaille ; « atelier », une photo de Mes pictos ; « seance », la séance qui vient d'une séquence ;
+ * « plateau », un plateau de manipulation de la petite section (voir plateauxAutonomes.ts).
+ */
+export type Domaine = "langage" | "temps" | "nombres" | "lettres" | "francais" | "maths" | "atelier" | "seance" | "plateau";
 
 /** Ce qu'une fiche sait de l'élève qui la reçoit. */
 export interface ContexteFiche { niveau: NiveauFiches; periode: number; prenom: string }
@@ -121,6 +126,8 @@ export interface OutilsFiche {
   pictos: (mots: string[]) => Promise<Record<string, number>>;
   /** L'ombre d'une image, en data URL — tout ce qui est peint devient noir ; rien si elle ne se calcule pas. */
   ombre: (image: string) => Promise<string | null>;
+  /** Le séquentiel de « Décomposer la tâche », avec les pictos de ses étapes ; sans lui, les étapes seules. */
+  sequentiel?: (r: ReglagesSequentiel) => Promise<{ html: string; style: string }>;
 }
 
 export interface FicheFabriquee {
@@ -153,7 +160,8 @@ export const nomDeLaRecette = (r: RecetteDeFiche, c: ContexteFiche) => (typeof r
 
 /** L'icône de l'atelier qui fait la fiche ; celle du bouton 📚 pour une séance. */
 export const iconeDeLaRecette = (r: RecetteDeFiche) =>
-  r.seance ? "📚" : r.atelier === ATELIER_SUPPORT ? "📷" : FAMILLES.flatMap((f) => f.outils).find((o) => o.id === r.atelier)?.icone ?? "📄";
+  r.seance ? "📚" : r.atelier === ATELIER_SUPPORT ? "📷" : r.domaine === "plateau" ? "🧺"
+    : FAMILLES.flatMap((f) => f.outils).find((o) => o.id === r.atelier)?.icone ?? "📄";
 
 const elementaire = (n: NiveauFiches): Elementaire => (enMaternelle(n) ? "CP" : n);
 
@@ -407,6 +415,25 @@ function phrasesARanger(c: ContexteFiche, graine: number): FicheFabriquee {
 const C2: NiveauFiches[] = ["CP", "CE1", "CE2"];
 const DES_PERIODES = (de: number) => [1, 2, 3, 4, 5].filter((p) => p >= de);
 
+/**
+ * Un plateau de manipulation (demande de l'enseignant, 4 novembre 2026) : sa
+ * fiche est le séquentiel visuel de « Décomposer la tâche » — ce qu'on pose
+ * sur le plateau, ses étapes en grand avec leurs pictos, ce qu'on doit
+ * obtenir. La tablette le montre entier, avec la voix ; l'atelier le refait
+ * tel quel. Il vient à la période où sa séquence le montre.
+ */
+const recetteDuPlateau = (p: Plateau): RecetteDeFiche => ({
+  id: p.id, atelier: "sequentiel", nom: p.nom, domaine: "plateau", niveaux: ["PS"], periodes: DES_PERIODES(p.periode),
+  fabriquer: async (_c, _g, outils) => {
+    const r: ReglagesSequentiel = {
+      ...REGLAGES_SEQUENTIEL, titre: p.nom, etapes: p.etapes, forme: "sequentiel", disposition: "liste", pictos: true, cases: false, chainage: "aucun",
+      materiel: p.surLePlateau, resultat: p.resultat, redire: false, verifier: false, soliloque: false,
+    };
+    const rendu = outils.sequentiel ? await outils.sequentiel(r) : { html: htmlSequentiel(r, [], {}), style: styleDuSequentiel(r) };
+    return { html: rendu.html, style: STYLE_FEUILLE + rendu.style, refaire: { sequentiel: r } };
+  },
+});
+
 export const RECETTES: RecetteDeFiche[] = [
   // ── Maternelle
   { id: "suite", atelier: "suites", nom: "Remets les images dans l'ordre", domaine: "temps", niveaux: ["PS", "MS", "GS"],
@@ -431,6 +458,8 @@ export const RECETTES: RecetteDeFiche[] = [
       const r: ReglagesSuite = { titre: "", exercices: ["manquants"], de: 1, a: 10, grand: true };
       return commeLAtelier(htmlSuite(r, g), STYLE_FEUILLE + STYLE_NUMERATION_CP, "suiteNombres", r);
     } },
+  // Les plateaux de manipulation de la petite section, plutôt que des feuilles (demande de l'enseignant, même jour).
+  ...PLATEAUX_PS.map(recetteDuPlateau),
   // ── Mathématiques
   { id: "cubes-ecrire", atelier: "cubes", nom: "Lire les cubes, écrire le nombre", domaine: "maths", niveaux: C2,
     fabriquer: (c, g) => feuilleCubes("ecrire", c, g) },
@@ -688,6 +717,8 @@ export const MINUTEURS_DE_BASE: Record<string, number> = {
   cursive: 10, "mots-meles": 15, comprendre: 15, grammaire: 10, listes: 10, "mots-imposes": 15,
   motif: 10, droite: 10, ordinaux: 10, "suite-nombres": 10, donnees: 10, fractions: 10, arbre: 10, "phrases-desordre": 15, "etre-avoir": 10,
   ombres: 10, graphisme: 10, "prenom-lettres": 10, "nombres-gs": 10, "tableau-nombres": 15, estimer: 10, conjuguer: 15,
+  // Un plateau : le temps de le faire, de le refaire, et de le ranger.
+  ...Object.fromEntries(PLATEAUX_PS.map((p) => [p.id, 10])),
 };
 
 /** Où Réglages › En retard garde les temps changés : un réglage partagé avec l'autre ordinateur (préfixe « fabriquer: »). */
@@ -722,6 +753,14 @@ export function nomDeToutesLesFiches(r: RecetteDeFiche): string {
 // passer (voir journalTelephone). Chaque cadre porte le picto de son domaine,
 // et lui seul (demande de l'enseignant, octobre 2026) : Réglages ›
 // Personnalisation, ou la page CAA.
+
+/** La matière et le domaine d'un plateau, d'après sa famille : le monde des objets et des sens, les grandeurs, le geste de l'écriture. */
+const DOMAINE_DU_PLATEAU: Record<FamilleDePlateau, { matiere: string; domaine: string }> = {
+  viePratique: { matiere: "Explorer le monde", domaine: "Découvrir le monde du vivant, de la matière et des objets" },
+  sens: { matiere: "Explorer le monde", domaine: "Découvrir le monde du vivant, de la matière et des objets" },
+  tailles: { matiere: "Structurer sa pensée", domaine: "Acquérir les premiers outils mathématiques" },
+  tracer: { matiere: "Mobiliser le langage", domaine: "Mobiliser le langage dans toutes ses dimensions" },
+};
 
 /**
  * La matière et le domaine de chaque fiche : ceux de la liste des matières et
@@ -767,6 +806,7 @@ export const DOMAINE_DES_FICHES: Record<string, { matiere: string; domaine: stri
   "tableau-nombres": { matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" },
   estimer: { matiere: "Mathématiques", domaine: "Grandeurs et mesures" },
   conjuguer: { matiere: "Français", domaine: "Grammaire et orthographe" },
+  ...Object.fromEntries(PLATEAUX_PS.map((p) => [p.id, DOMAINE_DU_PLATEAU[p.famille]])),
 };
 
 /** La matière d'une fiche, écrite au-dessus de son nom dans le déroulement. */
@@ -785,9 +825,10 @@ export function recetteDuTitre(base: string): RecetteDeFiche | undefined {
   return RECETTES.find((r) => r.niveaux.some((niveau) => nomDeLaRecette(r, { niveau, periode: 1, prenom: "" }).toLowerCase() === t));
 }
 
-/** La rubrique d'une fiche dans les réglages : la maternelle, puis les mathématiques et le français de l'élémentaire. */
-export const rubriqueDeLaRecette = (r: RecetteDeFiche): "Maternelle" | "Mathématiques" | "Français" =>
-  r.niveaux.every(enMaternelle) ? "Maternelle" : r.domaine === "maths" ? "Mathématiques" : "Français";
+/** La rubrique d'une fiche dans les réglages : la maternelle et ses plateaux, puis les mathématiques et le français de l'élémentaire. */
+export const rubriqueDeLaRecette = (r: RecetteDeFiche): "Maternelle" | "Plateaux de manipulation" | "Mathématiques" | "Français" =>
+  r.domaine === "plateau" ? "Plateaux de manipulation"
+    : r.niveaux.every(enMaternelle) ? "Maternelle" : r.domaine === "maths" ? "Mathématiques" : "Français";
 
 /**
  * Les fabrications que « En retard » sait donner à ce niveau — à tous, sans
@@ -800,7 +841,8 @@ export function fabricationsDesFiches(n: NiveauFiches | null): { atelier: string
     if (n && !r.niveaux.includes(n)) continue;
     if (vus.has(r.atelier)) continue;
     const outil = FAMILLES.flatMap((f) => f.outils).find((o) => o.id === r.atelier);
-    vus.set(r.atelier, outil?.nom ?? (typeof r.nom === "string" ? r.nom : r.atelier));
+    // Les plateaux se font avec « Décomposer la tâche » : c'est sous leur nom qu'on les écarte.
+    vus.set(r.atelier, r.domaine === "plateau" ? "Les plateaux de manipulation" : outil?.nom ?? (typeof r.nom === "string" ? r.nom : r.atelier));
   }
   return [...vus].map(([atelier, nom]) => ({ atelier, nom })).sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
 }
@@ -808,28 +850,31 @@ export function fabricationsDesFiches(n: NiveauFiches | null): { atelier: string
 /**
  * Les fiches qu'on peut donner à cet élève, à cette période — sans celles des
  * fabrications que sa fiche écarte (`exclues` : des ateliers, comme le
- * coloriage magique pour qui ne sait pas encore le faire).
+ * coloriage magique pour qui ne sait pas encore le faire), ni celles qu'on
+ * écarte une à une — les plateaux dont la classe n'a pas le matériel.
  */
 export function recettesPour(
   n: NiveauFiches, periode: number, nonVerbal: boolean, exclues: readonly string[] = [], supports: readonly RecetteDeFiche[] = [],
 ): RecetteDeFiche[] {
   return [...RECETTES, ...supports].filter((r) => r.niveaux.includes(n)
     && !(nonVerbal && r.lecture)
-    && !exclues.includes(r.atelier)
+    && !exclues.includes(r.atelier) && !exclues.includes(r.id)
     && !(n === "CP" && PERIODES_DU_CP[r.id] && !PERIODES_DU_CP[r.id].includes(periode))
     && (!r.periodes || r.periodes.includes(periode)));
 }
 
 /**
  * L'ordre des domaines, d'une fiche à la suivante : en maternelle, les
- * nombres, les lettres, le temps — à chaque âge, depuis que la petite section
- * a ses ombres et ses traits à repasser ; ensuite, le français et les maths
- * tour à tour. Le langage n'a plus de fiche à faire seul : il se
+ * nombres, les lettres, le temps — en petite section, les plateaux de
+ * manipulation d'abord, deux sur trois : à cet âge, on apprend en
+ * manipulant (demande de l'enseignant, 4 novembre 2026) ; ensuite, le
+ * français et les maths tour à tour. Le langage n'a plus de fiche à faire seul : il se
  * travaille en parlant. La séance qui vient d'une séquence passe en premier,
  * et l'atelier en photo prend sa place parmi les autres : chacun n'y est que
  * si l'élève en a un (voir ordreServi).
  */
 export function ordreDesDomaines(n: NiveauFiches): Domaine[] {
+  if (n === "PS") return ["seance", "plateau", "atelier", "plateau", "nombres", "plateau", "lettres", "temps"];
   if (enMaternelle(n)) return ["seance", "nombres", "atelier", "lettres", "temps"];
   return ["seance", "francais", "maths", "atelier"];
 }

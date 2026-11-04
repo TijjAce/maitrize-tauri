@@ -77,12 +77,19 @@ describe("les fiches qu'on propose", () => {
     }
   });
 
-  it("en maternelle : les nombres, les lettres, le temps — à chaque âge, la petite section comprise", () => {
-    for (let g = 1; g < 20; g++) for (const n of ["PS", "MS", "GS"] as const) {
-      const fiches = proposer(n, 1, false, 3, g);
-      expect(fiches.map((f) => recetteDe(f.recette)?.domaine), `${n} ${g}`).toEqual(["nombres", "lettres", "temps"]);
-      // Trois fiches différentes : la petite section ne reçoit plus trois fois les mêmes images à ranger.
-      expect(new Set(fiches.map((f) => f.recette)).size, `${n} ${g}`).toBe(3);
+  it("en maternelle : les nombres, les lettres, le temps ; en petite section, des plateaux de manipulation d'abord", () => {
+    for (let g = 1; g < 20; g++) {
+      for (const n of ["MS", "GS"] as const) {
+        const fiches = proposer(n, 1, false, 3, g);
+        expect(fiches.map((f) => recetteDe(f.recette)?.domaine), `${n} ${g}`).toEqual(["nombres", "lettres", "temps"]);
+        expect(new Set(fiches.map((f) => f.recette)).size, `${n} ${g}`).toBe(3);
+      }
+      // Deux plateaux sur trois en petite section, tous différents — et plus jamais trois fois les mêmes images à ranger.
+      for (const periode of [1, 3, 5]) {
+        const ps = proposer("PS", periode, false, 3, g);
+        expect(ps.map((f) => recetteDe(f.recette)?.domaine), `PS P${periode} ${g}`).toEqual(["plateau", "plateau", "nombres"]);
+        expect(new Set(ps.map((f) => f.recette)).size, `PS P${periode} ${g}`).toBe(3);
+      }
     }
   });
 
@@ -107,9 +114,10 @@ describe("les fiches qu'on propose", () => {
     expect(autre.recette).not.toBe(choisies[1].recette);
     expect(choisies.map((f) => f.recette)).not.toContain(autre.recette);
     expect(recetteDe(autre.recette)?.domaine).toBe(recetteDe(choisies[1].recette)?.domaine);
-    // Toutes les fiches de la petite section déjà prises : la même, autrement tirée.
-    const ps = proposer("PS", 1, false, 4, 5);
-    expect(new Set(ps.map((f) => f.recette)).size).toBe(4);
+    // Toutes les fiches de la petite section déjà prises, en période 1 : la même, autrement tirée.
+    const toutes = recettesPour("PS", 1, false).length;
+    const ps = proposer("PS", 1, false, toutes, 5);
+    expect(new Set(ps.map((f) => f.recette)).size).toBe(toutes);
     const meme = uneAutre(ps[0], ps, "PS", 1, false, 7);
     expect(meme.recette).toBe(ps[0].recette);
     expect(meme.graine).not.toBe(ps[0].graine);

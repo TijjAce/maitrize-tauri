@@ -18,6 +18,9 @@ import { estUnSupport } from "../supportsDeTravail";
 import { dureeDuMinuteur, minuteurDeLaSeance, MINUTEURS_DES_TABLETTES } from "../journalTelephone";
 import { usePictoImage } from "./ChoixPicto";
 import { ombreDe } from "./MesImages";
+import { sequentielImprimable } from "../aidesDesSequences";
+import { CLE_INVENTAIRE, lireInventaire } from "../materielDeClasse";
+import { plateauxSansMateriel } from "../plateauxAutonomes";
 import { ligneDuPdf } from "../materielAImprimer";
 import { suivisDesSequences, type SuiviSequence } from "../suiviSequences";
 
@@ -76,6 +79,8 @@ const OUTILS: OutilsFiche = {
   ombre: async (image) => {
     try { return await ombreDe(image, false); } catch { return null; }
   },
+  // Le séquentiel d'un plateau, avec les pictos de ses étapes, comme dans « Décomposer la tâche ».
+  sequentiel: (r) => sequentielImprimable(r),
 };
 
 /**
@@ -125,6 +130,13 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
   }, []);
   // Les photos réglées comme supports de travail (Réglages › Personnalisation) : des fiches de plus, pour leur niveau.
   const [supports, setSupports] = React.useState<RecetteDeFiche[] | null>(null);
+  // Les plateaux dont la classe n'a pas le matériel, d'après son inventaire : ils ne se proposent pas.
+  const [sansMateriel, setSansMateriel] = React.useState<string[] | null>(null);
+  React.useEffect(() => {
+    api.settingGet(CLE_INVENTAIRE).then((brut) => setSansMateriel(plateauxSansMateriel(lireInventaire(brut)))).catch(() => setSansMateriel([]));
+  }, []);
+  /** Ce qu'un élève ne reçoit pas : les fabrications que sa fiche écarte, et les plateaux qui manquent. */
+  const exclusDe = React.useCallback((eleve: Eleve) => [...(eleve.fichesExclues ?? []), ...(sansMateriel ?? [])], [sansMateriel]);
   React.useEffect(() => {
     void (async () => {
       const [photos, jeux] = await Promise.all([lireMesPictos().catch(() => []), api.jeuxList().catch(() => [])]);
@@ -166,13 +178,13 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
     niveau, inclus: niveau !== null,
     fiches: niveau
       ? proposer(niveau, periode, eleve.nonVerbal ?? false, combienDeFiches(niveau, creneaux.length), graineDe(`${eleve.id}|${jour}|${tirage}`),
-        eleve.fichesExclues ?? [], extrasDe(eleve.id))
+        exclusDe(eleve), extrasDe(eleve.id))
         .map(avecSonTemps)
       : [],
-  }), [periode, jour, tirage, avecSonTemps, extrasDe]);
+  }), [periode, jour, tirage, avecSonTemps, extrasDe, exclusDe]);
 
   React.useEffect(() => {
-    if (!journee || !minuteurs || !supports || !seancesDe) return;
+    if (!journee || !minuteurs || !supports || !seancesDe || !sansMateriel) return;
     setLignes(Object.fromEntries(journee.presents.map(({ eleve, creneaux }) => [eleve.id, propositions(eleve, creneaux, niveauDesFiches(eleve.niveau))])));
   }, [journee, minuteurs, propositions]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -346,7 +358,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
                           )}
                           <button className="btn ghost sm" disabled={occupe} title="Une autre fiche"
                             onClick={() => changer(p.eleve.id, (x) => ({ ...x, fiches: x.fiches.map((y, j) => (j === i
-                              ? avecSonTemps(uneAutre(y, x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|${i}|${y.graine}`), p.eleve.fichesExclues ?? [], extras))
+                              ? avecSonTemps(uneAutre(y, x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|${i}|${y.graine}`), exclusDe(p.eleve), extras))
                               : y)) }))}>🔄</button>
                           <button className="btn ghost sm" disabled={occupe} title="Retirer cette fiche"
                             onClick={() => changer(p.eleve.id, (x) => ({ ...x, fiches: x.fiches.filter((_, j) => j !== i) }))}>✕</button>
@@ -355,7 +367,7 @@ export function EnRetard({ jourInitial, onClose, onFini }: {
                     })}
                   </ol>
                   <button className="btn ghost sm" disabled={occupe} onClick={() => changer(p.eleve.id, (x) => {
-                    const plus = uneDePlus(x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|+${x.fiches.length}`), p.eleve.fichesExclues ?? [], extras);
+                    const plus = uneDePlus(x.fiches, ctx.niveau, periode, p.eleve.nonVerbal ?? false, graineDe(`${p.eleve.id}|${jour}|${tirage}|+${x.fiches.length}`), exclusDe(p.eleve), extras);
                     return plus ? { ...x, fiches: [...x.fiches, avecSonTemps(plus)] } : x;
                   })}>＋ Une fiche</button>
                 </>}
