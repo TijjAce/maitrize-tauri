@@ -54,7 +54,7 @@ describe("ciel, herbe, terre", () => {
 
   it("écrit sur les lignes Seyès que trace Marelle : le modèle, puis des rangées d'espaces, à quatre interlignes", () => {
     const html = htmlEcritureCursive({ ...REGLAGES_CURSIVE, guide: "marelle", modeles: "an\nlilas", lignes: 3, reglure: 3 });
-    const blocs = [...html.matchAll(/<div class="cu-marelle" style="font-size: ([\d.]+)mm; --cu-interligne: 3mm">([^<]*)<\/div>/g)];
+    const blocs = [...html.matchAll(/<div class="cu-marelle" style='font-family: [^;]+; font-size: ([\d.]+)mm; --cu-interligne: 3mm'>([^<]*)<\/div>/g)];
     expect(blocs).toHaveLength(2);
     // Une petite lettre sur un interligne : Marelle à 3 / 0,48 mm.
     expect(Number(blocs[0][1])).toBeCloseTo(6.25);

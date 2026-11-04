@@ -19,6 +19,7 @@ import { CONSIGNE_DANS_L_ATELIER, cleConsigne, remplacerConsigne, clePictos, lir
 import { cleOptionsFeuille, consignesDeLaFeuille, feuilleSelonOptions, lireOptionsFeuille, type OptionsFeuille } from "./optionsFeuille";
 import { ATELIERS_D_AIDE } from "./journalTelephone";
 import { documentImprimable, escapeHtml, printHTML } from "./print";
+import { policesPretes } from "./policesEcriture";
 import type { MaterielItem } from "./api";
 import { ecrireFabrication, fabricationDuMoment, lireFabrication, modificationEnCours, type Fabrication, type Modification } from "./modifierFeuille";
 import { feuillePourLaSeance } from "./feuillePourLaSeance";
@@ -238,6 +239,8 @@ export async function styleDeLAtelier(atelier: string): Promise<string> {
  * faite à part, « ne fait pas sérieux » (demande de l'enseignant, octobre 2026).
  */
 export async function imprimerAtelier(atelier: string, titre: string, corps: string, style = "", extras: ExtrasAtelier = {}): Promise<void> {
+  // Une feuille sur les lignes de Marelle attend leur police, qui part avec elle (voir policesEcriture.ts).
+  await policesPretes(corps + style);
   const entete = enteteCompetencesHtml(extras.competences ?? []);
   const consignes = await consignesEnPictos(await avecLaConsigneDeLAtelier(atelier, await avecLesPhotosDePaysage(corps)), await supplementDe(atelier, extras));
   printHTML(titre, entete + consignes.corps, (entete ? style + STYLE_ENTETE_COMPETENCES : style) + consignes.style + await styleDeLAtelier(atelier));
@@ -365,6 +368,7 @@ async function remplacerLaFeuille(
 /** La feuille d'un atelier telle qu'elle s'imprime — compétences en tête, consignes en pictos —, en PDF dans les fichiers. */
 async function pdfDeLAtelier(atelier: string, titre: string, corps: string, style: string, extras: ExtrasAtelier): Promise<string> {
   const { api } = await import("./api");
+  await policesPretes(corps + style);
   // Les compétences en tête : celles de la séquence, s'il y en a ; jamais la liste de l'atelier (voir imprimerAtelier).
   const entete = enteteCompetencesHtml(extras.competences ?? []);
   const consignes = await consignesEnPictos(await avecLaConsigneDeLAtelier(atelier, await avecLesPhotosDePaysage(corps)), await supplementDe(atelier, extras));
@@ -412,6 +416,7 @@ export { titreSansLEleve } from "./materielSeance";
  */
 async function pdfPourLEleve(atelier: string, titre: string, corps: string, style: string, eleve: { prenom: string; date: string }): Promise<string> {
   const { api } = await import("./api");
+  await policesPretes(corps + style);
   const sansCorrige = await avecLaConsigneDeLAtelier(atelier, await avecLesPhotosDePaysage(corps), { consigne: true, corrige: false });
   const consignes = await consignesEnPictos(sansCorrige, await supplementDe(atelier, {}));
   // Ni compétences en tête : une fiche « En retard » n'est pas une feuille de séquence.

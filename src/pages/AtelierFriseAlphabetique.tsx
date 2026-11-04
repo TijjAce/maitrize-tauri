@@ -3,6 +3,7 @@ import { api } from "../api";
 import { Aide } from "../components/Aide";
 import { ApercuFeuille } from "../components/ApercuFeuille";
 import { ChoixPoliceCursive } from "../components/ChoixPoliceCursive";
+import { chargerLesLignes, lignesChargees } from "../policesEcriture";
 import { usePictoImages } from "../components/ChoixPicto";
 import { Field, Select } from "../components/ui";
 import { useReglages } from "../components/useMemoire";
@@ -55,6 +56,15 @@ export function FriseAlphabetiqueTab({ banque }: { banque: boolean }) {
   const dessins = useDessinsDesMots(mots, banque && r.images);
   const html = React.useMemo(() => htmlFrise({ ...r, images: banque && r.images }, dessins), [r, banque, dessins]);
   const style = React.useMemo(() => styleFrise(r), [r]);
+  // Les lignes de Marelle viennent d'une police lourde, chargée à part : on n'imprime qu'une fois qu'elle est là.
+  const surLignes = r.lignes && r.ecritures.includes("cursive");
+  const [lignesPretes, setLignesPretes] = React.useState(lignesChargees());
+  React.useEffect(() => {
+    if (!surLignes || lignesPretes) return;
+    let vivant = true;
+    void chargerLesLignes().then(() => { if (vivant) setLignesPretes(true); });
+    return () => { vivant = false; };
+  }, [surLignes, lignesPretes]);
   return (
     <Colonnes
       gauche={<>
@@ -86,7 +96,10 @@ export function FriseAlphabetiqueTab({ banque }: { banque: boolean }) {
             </Select>
           </Field>
         )}
-        {r.ecritures.includes("cursive") && <ChoixPoliceCursive />}
+        {r.ecritures.includes("cursive") && <>
+          <Coche on={r.lignes} libelle="La cursive sur les lignes Seyès de Marelle" onChange={(lignes) => maj({ lignes })} />
+          <ChoixPoliceCursive />
+        </>}
         <Coche on={r.voyelles} libelle="Les voyelles en rouge, les consonnes en bleu" onChange={(voyelles) => maj({ voyelles })} />
         {banque && <Coche on={r.images} libelle="Le dessin de chaque mot" onChange={(images) => maj({ images })} />}
         <Field label="Les mots, une ligne par lettre">
@@ -95,7 +108,7 @@ export function FriseAlphabetiqueTab({ banque }: { banque: boolean }) {
         {r.mots !== motsParDefaut() && (
           <button type="button" className="btn ghost sm" onClick={() => maj({ mots: motsParDefaut() })}>Remettre les mots de la frise</button>
         )}
-        <Boutons atelier={ATELIER} titre={titreFrise(r)} html={html} style={style} peut />
+        <Boutons atelier={ATELIER} titre={titreFrise(r)} html={html} style={style} peut={!surLignes || lignesPretes} />
       </>}
       droite={<ApercuFeuille html={html} style={style} />}
     />

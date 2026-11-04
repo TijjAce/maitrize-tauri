@@ -155,3 +155,21 @@ describe("les démarches de français", () => {
     for (const d of DEMARCHES_FRANCAIS) expect(d.source, d.id).toMatch(/^Éduscol, livret d'accompagnement du programme de français du (CP|CE1|CE2) \((2025|2026)\)/);
   });
 });
+
+describe("La copie sur les lignes Seyès de Marelle (demande de l'enseignant, 4 novembre 2026)", () => {
+  it("met les feuilles « Copier » de la séquence et la transcription sur les lignes que trace Marelle", () => {
+    const copie = planDesFeuilles("strategies-de-copie", { classe: "CP", periode: 2 })!;
+    expect(copie.feuilles).toHaveLength(3);
+    for (const f of copie.feuilles) {
+      const { html } = f.fabriquer(1);
+      expect(html, f.titre).toContain('class="cu-marelle"');
+      expect(html, f.titre).toContain('class="cu-script"');
+    }
+    const cursive = planDesFeuilles("ecriture-cursive", { classe: "CP", periode: 2 })!;
+    const transcrire = cursive.feuilles.find((f) => f.titre === "Transcrire en cursive")!;
+    expect(transcrire.fabriquer(1).html).toContain('class="cu-marelle"');
+    // La lettre et les mots gardent les lignes du cahier, tracées par la feuille.
+    expect(cursive.feuilles[0].fabriquer(1).html).not.toContain('class="cu-marelle"');
+  });
+});
+

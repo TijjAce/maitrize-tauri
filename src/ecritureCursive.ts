@@ -174,7 +174,8 @@ export function blocMarelle(reglure: number, rangees: string[]): string {
   const marge = INSECABLE.repeat(Math.max(1, Math.round(18 / espace)));
   const suite = INSECABLE.repeat(Math.ceil(LARGEUR / espace) + 4);
   const texte = rangees.map((m) => `${marge}${escapeHtml(m)}${suite}`).join("\n");
-  return `<div class="cu-marelle" style="font-size: ${taille.toFixed(3)}mm; --cu-interligne: ${reglure}mm">${texte}</div>`;
+  // La police écrite ici, et non dans le style de l'atelier : seule une feuille qui s'en sert emporte son fichier (voir policesEcriture.ts).
+  return `<div class="cu-marelle" style='font-family: ${POLICE_LIGNES}; font-size: ${taille.toFixed(3)}mm; --cu-interligne: ${reglure}mm'>${texte}</div>`;
 }
 
 export function htmlEcritureCursive(r: ReglagesCursive): string {
@@ -209,7 +210,7 @@ export const STYLE_CURSIVE = `
   .feuille.cu .cu-ligne { display: block; }
   .feuille.cu .cu-script { font-family: Arial, Helvetica, sans-serif; font-size: 20px; font-weight: 600; margin: 0 0 1mm 18mm; }
   /* Les lignes de Marelle : la ligne du haut et les jambages de la dernière rangée ont leur place dans le bloc ; les espaces au-delà de la page sont coupés. */
-  .feuille.cu .cu-marelle { position: relative; font-family: ${POLICE_LIGNES}; line-height: 1.92; white-space: pre; overflow: hidden; width: ${LARGEUR}mm;
+  .feuille.cu .cu-marelle { position: relative; line-height: 1.92; white-space: pre; overflow: hidden; width: ${LARGEUR}mm;
     color: #1c2233; padding: 0.6mm 0 calc(var(--cu-interligne, 3mm) + 0.6mm); }
   .feuille.cu .cu-marelle::after { content: ""; position: absolute; top: 0; bottom: 0; left: 16mm; width: 0.25mm; background: #d33a32; }
 `;

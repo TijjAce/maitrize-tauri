@@ -122,6 +122,11 @@ export function chargerLesLignes(): Promise<void> {
 
 export const lignesChargees = () => Object.keys(fichiersDesLignes).length > 0;
 
+/** Avant d'imprimer une feuille qui écrit sur les lignes de Marelle : leur police doit être là pour partir avec elle. */
+export async function policesPretes(contenu: string): Promise<void> {
+  if (contenu.includes("--police-lignes")) await chargerLesLignes();
+}
+
 /** Les familles du choix, en CSS, la cursive du système en dernier recours. */
 export function famillesDuChoix(choix: ChoixPoliceCursive): string {
   const c = enVigueur(choix);

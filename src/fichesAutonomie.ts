@@ -414,7 +414,7 @@ export const RECETTES: RecetteDeFiche[] = [
       ? cursive({ modeles: modelesDeLEtape(etapeDeLaSequence("CP", c.periode), "mots", g).join("\n"), reglure: reglureDe("CP", c.periode), lignes: 2 })
       : c.niveau === "CE1"
         ? cursive({ modeles: motsFrequents("CE1", g, 5).join("\n"), reglure: reglureDe("CE1", c.periode), lignes: 2 })
-        : cursive({ modeles: piocher(hasard(g), PHRASES_DU_JOUR.CE2, 2).join("\n"), reglure: reglureDe("CE2", c.periode), lignes: 2, transcrire: true }) },
+        : cursive({ modeles: piocher(hasard(g), PHRASES_DU_JOUR.CE2, 2).join("\n"), reglure: reglureDe("CE2", c.periode), lignes: 2, transcrire: true, guide: "marelle" }) },
   { id: "mots-meles", atelier: "motsMeles", nom: "Mots mêlés", domaine: "francais", niveaux: C2,
     fabriquer: (c, g) => motsMeles(c, g) },
   { id: "comprendre", atelier: "comprehension", nom: "Lire et comprendre un texte", domaine: "francais", niveaux: C2, lecture: true,

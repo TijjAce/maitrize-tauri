@@ -24,6 +24,7 @@
 
 import { ATTRIBUTION_ARASAAC, feuille } from "./cartesImprimables";
 import { POLICE_CURSIVE } from "./ecritureCursive";
+import { POLICE_LIGNES } from "./policesEcriture";
 import { escapeHtml } from "./print";
 
 export type EcritureDeLettre = "capitale" | "script" | "cursive";
@@ -44,6 +45,8 @@ export interface ReglagesFrise {
   format: "frise" | "lettre" | "bande";
   /** La frise : combien de lettres par page, en paysage. */
   parPage: 4 | 6 | 7;
+  /** La cursive posée sur les lignes Seyès que trace Marelle, en couleur. */
+  lignes: boolean;
 }
 
 export const ALPHABET = "abcdefghijklmnopqrstuvwxyz".split("");
@@ -64,7 +67,7 @@ export const RECHERCHE_DU_DESSIN: Record<string, string> = { wagon: "wagonnet" }
 export const motsParDefaut = () => ALPHABET.map((l) => `${l} ${MOTS_DE_LA_FRISE[l]}`).join("\n");
 
 export const REGLAGES_FRISE: ReglagesFrise = {
-  ecritures: ["capitale", "script", "cursive"], mots: motsParDefaut(), images: true, voyelles: false, format: "frise", parPage: 6,
+  ecritures: ["capitale", "script", "cursive"], mots: motsParDefaut(), images: true, voyelles: false, format: "frise", parPage: 6, lignes: true,
 };
 
 /** Des réglages lus de la mémoire, sans leur faire confiance. */
@@ -79,6 +82,7 @@ export function reglagesFriseSurs(brut: Partial<ReglagesFrise> | null | undefine
     voyelles: b.voyelles === true,
     format: b.format === "lettre" || b.format === "bande" ? b.format : "frise",
     parPage: b.parPage === 4 || b.parPage === 7 ? b.parPage : 6,
+    lignes: b.lignes !== false,
   };
 }
 
@@ -109,9 +113,19 @@ export const motDuDessin = (mot: string) => RECHERCHE_DU_DESSIN[plier(mot)] ?? m
 const COULEUR_VOYELLE = "#d33a32", COULEUR_CONSONNE = "#2a6fd6", NOIR = "#1c2233";
 const couleurDe = (lettre: string, r: ReglagesFrise) => (r.voyelles ? (VOYELLES.has(lettre) ? COULEUR_VOYELLE : COULEUR_CONSONNE) : NOIR);
 
-/** Une lettre dans une écriture. */
-function graphie(lettre: string, e: EcritureDeLettre): string {
+const INSECABLES = "\u00a0".repeat(12);
+
+/**
+ * Une lettre dans une écriture. Sur les lignes de Marelle, la cursive est
+ * entourée d'espaces insécables, qui portent les mêmes lignes qu'elle : la
+ * réglure traverse la case, la lettre au milieu. La police est écrite ici :
+ * seule une frise qui s'en sert emporte son fichier (voir policesEcriture.ts).
+ */
+function graphie(lettre: string, e: EcritureDeLettre, r: ReglagesFrise): string {
   const texte = e === "capitale" ? lettre.toUpperCase() : lettre;
+  if (e === "cursive" && r.lignes) {
+    return `<span class="ab-l ab-cursive ab-sur-lignes"><span style='font-family: ${POLICE_LIGNES}'>${INSECABLES}${escapeHtml(texte)}${INSECABLES}</span></span>`;
+  }
   return `<span class="ab-l ab-${e}">${escapeHtml(texte)}</span>`;
 }
 
@@ -120,7 +134,7 @@ function caseDeLaLettre(lettre: string, mot: string, r: ReglagesFrise, images: R
   const dessin = r.images && mot ? images[plier(mot)] : undefined;
   const motHtml = mot ? `<b>${escapeHtml(mot.charAt(0))}</b>${escapeHtml(mot.slice(1))}` : "";
   return `<div class="ab-case" style="--ab-couleur:${couleurDe(lettre, r)}">`
-    + `<div class="ab-lettres">${r.ecritures.map((e) => graphie(lettre, e)).join("")}</div>`
+    + `<div class="ab-lettres">${r.ecritures.map((e) => graphie(lettre, e, r)).join("")}</div>`
     + `<div class="ab-mot">${dessin ? `<img class="ab-dessin" src="${dessin}" alt="" />` : ""}${motHtml ? `<span>${motHtml}</span>` : ""}</div>`
     + `</div>`;
 }
@@ -217,4 +231,11 @@ export const STYLE_FRISE = `
   .feuille.ab .ab-bande { --ab-xc: 2mm; }
   .feuille.ab .ab-bande.ab-1 { --ab-xc: 3.6mm; }
   .feuille.ab .ab-bande.ab-2 { --ab-xc: 2.4mm; }
+  /* Sur les lignes de Marelle : ses proportions à elle (0,48), la lettre au milieu de la réglure, ce qui dépasse de la case coupé. */
+  .feuille.ab .ab-case .ab-l.ab-cursive.ab-sur-lignes { display: flex; justify-content: center; overflow: hidden; width: 100%;
+    font-size: calc(var(--ab-xc, 8mm) / 0.48); }
+  .feuille.ab .ab-sur-lignes > span { flex: none; white-space: pre; }
+  /* Une lettre par page : sur ses lignes, la cursive prend toute une rangée ; plus petite, elle laisse sa place au dessin et au mot. */
+  .feuille.ab .ab-page-lettre .ab-l.ab-sur-lignes { --ab-xc: 12mm; }
+  .feuille.ab .ab-page-lettre.ab-1 .ab-l.ab-sur-lignes { --ab-xc: 24mm; }
 `;

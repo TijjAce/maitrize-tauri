@@ -173,7 +173,7 @@ export function planDuFrancais(demarcheId: string, ctx: ContexteFeuilles): PlanD
     const feuilles = [
       feuilleDeCursive(0, `Écriture cursive — la lettre : ${nom}`, { modeles: modelesDeLEtape(etape, "lettre", 1).join("\n"), reglure, lignes: 3 }),
       feuilleDeCursive(1, `Écriture cursive — syllabes et mots : ${nom}`, { modeles: modelesDeLEtape(etape, "mots", 2).join("\n"), reglure, lignes: 2 }),
-      feuilleDeCursive(2, "Transcrire en cursive", { modeles: modelesDeLEtape(etape, "mots", 3).slice(-4).join("\n"), reglure, lignes: 1, transcrire: true }),
+      feuilleDeCursive(2, "Transcrire en cursive", { modeles: modelesDeLEtape(etape, "mots", 3).slice(-4).join("\n"), reglure, lignes: 1, transcrire: true, guide: "marelle" }),
     ];
     return { feuilles, materiel: notes(feuilles, [
       "L'ardoise ; le petit cahier à la réglure de la classe ; pour qui en a besoin, un crayon à trois faces, un guide-doigts, des lettres rugueuses",
@@ -184,9 +184,10 @@ export function planDuFrancais(demarcheId: string, ctx: ContexteFeuilles): PlanD
     const reglure = reglureDe(classe, periode);
     const leurs = phrasesACopier();
     const feuilles = [
-      feuilleDeCursive(0, "Copier une phrase", { modeles: "Il lit un petit livre.", reglure, lignes: 2, transcrire: true }),
-      feuilleDeCursive(1, "Copier une phrase — entraînement", { modeles: (leurs[0] ?? "Le chat dort sur le canapé."), reglure, lignes: 2, transcrire: true }),
-      feuilleDeCursive(2, "Copier deux ou trois phrases", { modeles: leurs.slice(1, 4).join("\n") || "Maman prépare une tarte aux pommes.\nNous allons à la piscine le mardi.", reglure, lignes: 1, transcrire: true }),
+      // La copie sur les lignes Seyès que trace Marelle, la police du ministère (voir ecritureCursive.ts).
+      feuilleDeCursive(0, "Copier une phrase", { modeles: "Il lit un petit livre.", reglure, lignes: 2, transcrire: true, guide: "marelle" }),
+      feuilleDeCursive(1, "Copier une phrase — entraînement", { modeles: (leurs[0] ?? "Le chat dort sur le canapé."), reglure, lignes: 2, transcrire: true, guide: "marelle" }),
+      feuilleDeCursive(2, "Copier deux ou trois phrases", { modeles: leurs.slice(1, 4).join("\n") || "Maman prépare une tarte aux pommes.\nNous allons à la piscine le mardi.", reglure, lignes: 1, transcrire: true, guide: "marelle" }),
     ];
     return { feuilles, materiel: notes(feuilles, [
       "La phrase au tableau, puis au fond de la classe ; le cahier", "Une nouvelle phrase au tableau ; le cahier", "Les phrases au tableau ; le cahier",

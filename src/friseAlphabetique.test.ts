@@ -17,7 +17,14 @@ describe("la frise alphabétique (programmes de 2024 et de l'école maternelle)"
   it("met chaque lettre dans ses trois écritures, avec son mot et son dessin", () => {
     const html = htmlFrise({}, { avion: "data:image/png;base64,AAAA" });
     expect(html.match(/class="ab-case"/g)).toHaveLength(26);
-    expect(html).toContain('<span class="ab-l ab-capitale">A</span><span class="ab-l ab-script">a</span><span class="ab-l ab-cursive">a</span>');
+    // La cursive sur les lignes Seyès de Marelle, entourée d'espaces insécables qui portent les mêmes lignes.
+    expect(html).toContain('<span class="ab-l ab-capitale">A</span><span class="ab-l ab-script">a</span><span class="ab-l ab-cursive ab-sur-lignes">');
+    expect(html).toContain(`${"\u00a0".repeat(12)}a${"\u00a0".repeat(12)}</span>`);
+    expect(html).toContain("font-family: var(--police-lignes");
+    // Sans les lignes : la cursive seule, et pas de police à lignes dans la feuille.
+    const sans = htmlFrise({ lignes: false });
+    expect(sans).toContain('<span class="ab-l ab-capitale">A</span><span class="ab-l ab-script">a</span><span class="ab-l ab-cursive">a</span>');
+    expect(sans).not.toContain("--police-lignes");
     expect(html).toContain("<b>a</b>vion");
     expect(html.match(/class="ab-dessin"/g)).toHaveLength(1);
     expect(html).toContain("ARASAAC");
