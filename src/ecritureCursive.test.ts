@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { LIGNES_CIEL, REGLAGES_CURSIVE, htmlEcritureCursive, ligneCielHerbeTerre } from "./ecritureCursive";
+import { documentImprimable } from "./print";
+import { LIGNES_CIEL, REGLAGES_CURSIVE, blocMarelle, htmlEcritureCursive, ligneCielHerbeTerre } from "./ecritureCursive";
 
 // Le ciel, l'herbe, la terre : les petites lettres dans l'herbe, les grandes
 // dans le ciel, les jambages dans la terre. Les bandes gardent les proportions
@@ -49,5 +50,32 @@ describe("ciel, herbe, terre", () => {
   it("ramène une hauteur inconnue à celle d'origine", () => {
     const html = htmlEcritureCursive({ ...REGLAGES_CURSIVE, guide: "ciel", herbe: 42 as never, modeles: "a", lignes: 1 });
     expect(html).toContain(`height="${(5 * 10 + 5).toFixed(2)}mm"`);
+  });
+
+  it("écrit sur les lignes Seyès que trace Marelle : le modèle, puis des rangées d'espaces, à quatre interlignes", () => {
+    const html = htmlEcritureCursive({ ...REGLAGES_CURSIVE, guide: "marelle", modeles: "an\nlilas", lignes: 3, reglure: 3 });
+    const blocs = [...html.matchAll(/<div class="cu-marelle" style="font-size: ([\d.]+)mm; --cu-interligne: 3mm">([^<]*)<\/div>/g)];
+    expect(blocs).toHaveLength(2);
+    // Une petite lettre sur un interligne : Marelle à 3 / 0,48 mm.
+    expect(Number(blocs[0][1])).toBeCloseTo(6.25);
+    const rangees = blocs[0][2].split("\n");
+    expect(rangees).toHaveLength(3);
+    expect(rangees[0].trim()).toBe("an");
+    expect(rangees.slice(1).every((x) => x.trim() === "")).toBe(true);
+    // La marge : de quoi passer la ligne rouge du cahier, à 16 mm.
+    expect(rangees[0].indexOf("an") * 0.45 * 6.25).toBeGreaterThan(16);
+    expect(html).toContain("lignes Seyès de Marelle, réglure de 3 mm");
+  });
+
+  it("donne en copiant le modèle en script, et toutes les rangées vides", () => {
+    const html = htmlEcritureCursive({ ...REGLAGES_CURSIVE, guide: "marelle", modeles: "la lune", lignes: 2, transcrire: true });
+    expect(html).toContain('<div class="cu-script">la lune</div>');
+    const texte = html.match(/<div class="cu-marelle"[^>]*>([^<]*)<\/div>/)![1];
+    expect(texte.split("\n")).toHaveLength(2);
+    expect(texte.trim()).toBe("");
+    expect(blocMarelle(2, [""]).split("\u00a0").length - 1).toBeGreaterThan(100);
+    // Rien ne tombe à l'impression : la dernière rangée, faite d'espaces, reste.
+    const doc = documentImprimable("Copier", html, "");
+    expect(doc.match(/<div class="cu-marelle"[^>]*>([^<]*)<\/div>/)![1].split("\n")).toHaveLength(2);
   });
 });

@@ -20,8 +20,12 @@
 // terre de l'atelier d'écriture. Marelle 2 a ses boucles sur deux hauteurs et
 // ses jambages sur une, comme on écrit à la fin de l'école élémentaire ; les
 // variantes « bâton » ont des majuscules d'imprimerie, pour la maternelle et
-// le CP. Les variantes à lignes intégrées ne servent pas : les feuilles
-// tracent leurs propres lignes.
+// le CP. Les variantes « LIGNES » tracent elles-mêmes, sous chaque lettre et
+// chaque espace, les six lignes de la réglure Seyès en couleur — la ligne
+// d'écriture en violet, les autres en lilas — : l'atelier d'écriture cursive
+// en fait ses « lignes Seyès de Marelle » (`--police-lignes`). Elles pèsent
+// plus d'un mégaoctet à elles quatre : elles se chargent à part, après le
+// démarrage (voir policesLignes.ts).
 //
 // Les feuilles n'écrivent pas le nom de la police mais `var(--police-cursive)` :
 // l'application pose la police choisie sur sa page, pour l'aperçu, et
@@ -94,6 +98,30 @@ export const tailleCursive = (hauteur: number, unite = "px") => `calc(${hauteur}
 /** Une autre police, tant qu'on n'a pas écrit son nom : Marelle. */
 const enVigueur = (c: ChoixPoliceCursive): ChoixPoliceCursive => (c.id === "autre" && !c.autre.trim() ? CHOIX_PAR_DEFAUT : c);
 
+/** La police à lignes qui va avec le choix : la même variante de Marelle ; Marelle pour toute autre police. */
+const LIGNES_DU_CHOIX: Partial<Record<IdPoliceCursive, string>> = {
+  "marelle": "Marelle LIGNES", "marelle-baton": "Marelle LIGNES Bâton", "marelle-2": "Marelle LIGNES 2", "marelle-baton-2": "Marelle LIGNES Bâton 2",
+};
+export const lignesDuChoix = (c: ChoixPoliceCursive) => LIGNES_DU_CHOIX[enVigueur(c).id] ?? "Marelle LIGNES";
+
+/** La police des lignes Seyès de Marelle, en CSS : ses petites lettres font 0,48 de sa taille, comme Marelle. */
+export const POLICE_LIGNES = `var(--police-lignes, "Marelle LIGNES"), "Marelle", cursive`;
+
+// Les polices à lignes, une fois chargées : leur fichier par famille.
+const fichiersDesLignes: Record<string, string> = {};
+let chargementDesLignes: Promise<void> | null = null;
+
+/** Charge les polices à lignes, une fois ; la page les prend dès qu'elles sont là. */
+export function chargerLesLignes(): Promise<void> {
+  chargementDesLignes ??= import("./policesLignes").then((m) => {
+    Object.assign(fichiersDesLignes, m.FICHIERS_DES_LIGNES);
+    poserSurLaPage();
+  });
+  return chargementDesLignes;
+}
+
+export const lignesChargees = () => Object.keys(fichiersDesLignes).length > 0;
+
 /** Les familles du choix, en CSS, la cursive du système en dernier recours. */
 export function famillesDuChoix(choix: ChoixPoliceCursive): string {
   const c = enVigueur(choix);
@@ -101,12 +129,19 @@ export function famillesDuChoix(choix: ChoixPoliceCursive): string {
   return [...familles.map((f) => `"${f}"`), "\"Snell Roundhand\"", "cursive"].filter((f, i, l) => l.indexOf(f) === i).join(", ");
 }
 
-/** Ce que pose une page ou un document : la police et ses proportions, et le fichier de la police quand elle est embarquée. */
-export function cssDuChoix(choix: ChoixPoliceCursive, selecteur = ":root"): string {
+const face = (famille: string, fichier: string) => `@font-face { font-family: "${famille}"; src: url(${fichier}) format("woff2"); font-display: block; }\n`;
+
+/**
+ * Ce que pose une page ou un document : la police et ses proportions, le
+ * fichier de la police quand elle est embarquée (sauf `cursive` faux) ; avec
+ * `lignes`, aussi la police à lignes du choix, quand elle est chargée.
+ */
+export function cssDuChoix(choix: ChoixPoliceCursive, selecteur = ":root", lignes = false, cursive = true): string {
   const c = enVigueur(choix);
   const p = policeCursive(c.id);
-  const face = p.fichier ? `@font-face { font-family: "${p.familles[0]}"; src: url(${p.fichier}) format("woff2"); font-display: block; }\n` : "";
-  return `${face}${selecteur} { --police-cursive: ${famillesDuChoix(c)}; --police-cursive-x: ${p.x}; }`;
+  const famille = lignesDuChoix(c);
+  const faces = (cursive && p.fichier ? face(p.familles[0], p.fichier) : "") + (lignes && fichiersDesLignes[famille] ? face(famille, fichiersDesLignes[famille]) : "");
+  return `${faces}${selecteur} { --police-cursive: ${famillesDuChoix(c)}; --police-cursive-x: ${p.x}; --police-lignes: "${famille}"; }`;
 }
 
 // ── Le choix, gardé et partagé ──
@@ -147,7 +182,7 @@ export function poserSurLaPage(): void {
     style.id = "maitrize-police-cursive";
     document.head.appendChild(style);
   }
-  style.textContent = cssDuChoix(actuel);
+  style.textContent = cssDuChoix(actuel, ":root", true);
 }
 
 /**
@@ -155,8 +190,10 @@ export function poserSurLaPage(): void {
  * police choisie, et son fichier quand elle est embarquée — le document
  * s'imprime ainsi sur n'importe quel ordinateur, et sur les tablettes.
  */
-export const policeDuDocument = (contenu: string, c: ChoixPoliceCursive = actuel): string =>
-  contenu.includes("--police-cursive") ? cssDuChoix(c) : "";
+export function policeDuDocument(contenu: string, c: ChoixPoliceCursive = actuel): string {
+  const cursive = contenu.includes("--police-cursive"), lignes = contenu.includes("--police-lignes");
+  return cursive || lignes ? cssDuChoix(c, ":root", lignes, cursive) : "";
+}
 
 /** Une police installée sur l'ordinateur : le texte change de largeur quand on la demande. */
 export function estInstallee(famille: string): boolean {

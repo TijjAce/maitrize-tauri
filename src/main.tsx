@@ -9,7 +9,7 @@ import "./theme.css";
 import { journal } from "./api";
 import { estUnBug, proposerLeRapport } from "./rapportErreur";
 import { installerAnnulation } from "./annulation";
-import { poserSurLaPage } from "./policesEcriture";
+import { chargerLesLignes, poserSurLaPage } from "./policesEcriture";
 
 // Filet global : une erreur de rendu ou une promesse rejetée laisse une trace
 // sur le disque, faute de console dans la fenêtre de l'application ; un vrai
@@ -27,8 +27,10 @@ window.addEventListener("unhandledrejection", (e) => {
 // ⌘Z, un seul écouteur pour toute l'application (voir annulation.ts).
 installerAnnulation();
 
-// La police cursive choisie, pour les aperçus des feuilles (voir policesEcriture.ts).
+// La police cursive choisie, pour les aperçus des feuilles (voir policesEcriture.ts) ; ses
+// variantes à lignes Seyès, lourdes, un peu après le démarrage.
 poserSurLaPage();
+setTimeout(() => { void chargerLesLignes(); }, 1500);
 
 // La vérification des mises à jour est gérée par <UpdateBanner /> (dans App) :
 // téléchargement silencieux puis pastille « Relancer pour mettre à jour ».

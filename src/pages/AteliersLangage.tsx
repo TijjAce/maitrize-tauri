@@ -41,6 +41,7 @@ import { useImagesEtOmbres } from "../components/MesImages";
 import { OMBRES_MINIMUM, REGLAGES_OMBRES, STYLE_OMBRES, feuillesDOmbres, htmlOmbres, type FormeOmbres, type ImageOmbre, type ReglagesOmbres } from "../ombres";
 import { HAUTEURS_HERBE, REGLAGES_CURSIVE, REGLURES, STYLE_CURSIVE, htmlEcritureCursive, modelesDeLEtape, modelesSaisis, type ReglagesCursive } from "../ecritureCursive";
 import { ChoixPoliceCursive } from "../components/ChoixPoliceCursive";
+import { chargerLesLignes, lignesChargees } from "../policesEcriture";
 import { REGLAGES_FLUENCE, nomDeLEtape } from "../fluence";
 import { etapeDe } from "../progressionCgp";
 
@@ -193,6 +194,14 @@ export function CursiveTab() {
   const etape = etapeDe(fluence.son);
   const html = React.useMemo(() => htmlEcritureCursive(r), [r]);
   const modeles = modelesSaisis(r.modeles);
+  // Les lignes de Marelle viennent d'une police lourde, chargée à part : on n'imprime qu'une fois qu'elle est là.
+  const [lignesPretes, setLignesPretes] = React.useState(lignesChargees());
+  React.useEffect(() => {
+    if (r.guide !== "marelle" || lignesPretes) return;
+    let vivant = true;
+    void chargerLesLignes().then(() => { if (vivant) setLignesPretes(true); });
+    return () => { vivant = false; };
+  }, [r.guide, lignesPretes]);
   return (
     <Colonnes
       gauche={<>
@@ -200,6 +209,7 @@ export function CursiveTab() {
           Écriture cursive
           <Aide titre="Écriture cursive" vers="droite"><p>Des modèles en cursive et des lignes à réglure — 3, 2,5 ou 2 mm — pour tracer la lettre du jour, l'enchaîner dans des syllabes et des mots, ou copier une phrase écrite en script.
           Pour les premières lettres, les lignes « ciel, herbe, terre » : les petites lettres dans l'herbe, les grandes dans le ciel, les jambages dans la terre.
+          Les « lignes Seyès de Marelle » sont celles que la police du ministère trace elle-même, en couleur : la ligne d'écriture en violet, les autres en lilas.
           Le modèle s'écrit en Marelle, la police cursive libre du ministère (Éduscol, 2026), ses petites lettres sur un interligne ; on peut
           choisir une de ses variantes, ou une police installée sur l'ordinateur — le choix vaut pour toutes les feuilles en cursive.</p></Aide>
         </h3>
@@ -215,6 +225,7 @@ export function CursiveTab() {
         <Field label="Les lignes">
           <Select value={r.guide} onChange={(e) => maj({ guide: e.target.value as ReglagesCursive["guide"] })}>
             <option value="seyes">Cahier Seyès</option>
+            <option value="marelle">Seyès de Marelle, en couleur</option>
             <option value="ciel">Ciel, herbe, terre</option>
           </Select>
         </Field>
@@ -239,7 +250,8 @@ export function CursiveTab() {
         )}
         <Coche on={r.transcrire} libelle="Copier : le modèle en script, à écrire en cursive" onChange={(v) => maj({ transcrire: v })} />
         <ChoixPoliceCursive />
-        <Boutons atelier="cursive" titre={r.transcrire ? "Copier en cursive" : "Écriture cursive"} html={html} style={STYLE_CURSIVE} peut={modeles.length > 0} />
+        <Boutons atelier="cursive" titre={r.transcrire ? "Copier en cursive" : "Écriture cursive"} html={html} style={STYLE_CURSIVE}
+          peut={modeles.length > 0 && (r.guide !== "marelle" || lignesPretes)} />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_CURSIVE} />}
     />

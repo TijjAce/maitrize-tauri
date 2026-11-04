@@ -13,7 +13,7 @@ import { escapeHtml } from "./print";
 import { feuille } from "./cartesImprimables";
 import { etapeDe, motsDe, syllabesDe } from "./progressionCgp";
 import { hasard, melanger } from "./hasard";
-import { POLICE_CURSIVE, tailleCursive } from "./policesEcriture";
+import { POLICE_CURSIVE, POLICE_LIGNES, tailleCursive } from "./policesEcriture";
 
 export { POLICE_CURSIVE };
 
@@ -26,8 +26,11 @@ export interface ReglagesCursive {
   lignes: number;
   /** Transcrire, copier : le modèle en script au-dessus des lignes, à écrire en cursive. */
   transcrire: boolean;
-  /** Les lignes : le cahier Seyès, ou le ciel, l'herbe et la terre — trois bandes illustrées, pour les premières lettres. */
-  guide: "seyes" | "ciel";
+  /**
+   * Les lignes : le cahier Seyès ; le ciel, l'herbe et la terre — trois bandes illustrées, pour les premières lettres ; ou les
+   * lignes Seyès en couleur que trace la police Marelle elle-même.
+   */
+  guide: "seyes" | "ciel" | "marelle";
   /** Ciel, herbe, terre : la hauteur de l'herbe, celle des petites lettres, en millimètres. */
   herbe: 15 | 10 | 8 | 5;
   /** Ciel, herbe, terre : les trois bandes teintées sur toute la ligne, et pas seulement dans l'image du bord. */
@@ -150,21 +153,51 @@ export function ligneCielHerbeTerre(herbe: number, modele = "", bandes = false):
     + `${texte}</svg>`;
 }
 
+// ── Les lignes Seyès de Marelle ──
+//
+// La police Marelle « LIGNES » trace, sous chaque lettre et sous chaque espace,
+// les six lignes de la réglure Seyès en couleur (voir policesEcriture.ts). Un
+// bloc de texte suffit : une rangée par ligne d'écriture — le modèle puis des
+// espaces jusqu'au bout, ou des espaces seulement —, les rangées à quatre
+// interlignes l'une de l'autre (1,92 fois la taille de la police), si bien que
+// les lignes se raccordent. La marge rouge du cahier se dessine par-dessus.
+
+const INSECABLE = "\u00a0";
+
+/** Un bloc de lignes Marelle : une rangée par texte, la taille de la police met une petite lettre sur un interligne. */
+export function blocMarelle(reglure: number, rangees: string[]): string {
+  const taille = reglure / 0.48;
+  // Une espace de Marelle fait 0,45 de sa taille : de quoi aller jusqu'à la marge, puis jusqu'au bout de la ligne. Des
+  // espaces insécables, qui portent les mêmes lignes : les espaces ordinaires d'une fin de bloc sont retirés à l'impression
+  // (voir references.ts), et la dernière rangée disparaissait avec.
+  const espace = 0.45 * taille;
+  const marge = INSECABLE.repeat(Math.max(1, Math.round(18 / espace)));
+  const suite = INSECABLE.repeat(Math.ceil(LARGEUR / espace) + 4);
+  const texte = rangees.map((m) => `${marge}${escapeHtml(m)}${suite}`).join("\n");
+  return `<div class="cu-marelle" style="font-size: ${taille.toFixed(3)}mm; --cu-interligne: ${reglure}mm">${texte}</div>`;
+}
+
 export function htmlEcritureCursive(r: ReglagesCursive): string {
   const modeles = modelesSaisis(r.modeles);
   const lignes = Math.max(1, Math.min(6, r.lignes));
   const ciel = r.guide === "ciel";
+  const marelle = r.guide === "marelle";
   const herbe = HAUTEURS_HERBE.some((h) => h.mm === r.herbe) ? r.herbe : REGLAGES_CURSIVE.herbe;
   const ligne = (m = "") => (ciel ? ligneCielHerbeTerre(herbe, m, !!r.bandes) : ligneDEcriture(r.reglure, m));
-  const bloc = (m: string) => r.transcrire
-    ? `<div class="cu-bloc"><div class="cu-script">${escapeHtml(m)}</div>${Array.from({ length: lignes }, () => ligne()).join("")}</div>`
-    : `<div class="cu-bloc">${ligne(m)}${Array.from({ length: lignes - 1 }, () => ligne()).join("")}</div>`;
+  const vides = (n: number) => Array.from({ length: n }, () => "");
+  const bloc = (m: string) => marelle
+    ? r.transcrire
+      ? `<div class="cu-bloc"><div class="cu-script">${escapeHtml(m)}</div>${blocMarelle(r.reglure, vides(lignes))}</div>`
+      : `<div class="cu-bloc">${blocMarelle(r.reglure, [m, ...vides(lignes - 1)])}</div>`
+    : r.transcrire
+      ? `<div class="cu-bloc"><div class="cu-script">${escapeHtml(m)}</div>${Array.from({ length: lignes }, () => ligne()).join("")}</div>`
+      : `<div class="cu-bloc">${ligne(m)}${Array.from({ length: lignes - 1 }, () => ligne()).join("")}</div>`;
   const consigne = r.transcrire
     ? "Lis le modèle, repère ce qui est difficile, puis écris-le en cursive, en revenant le moins possible au modèle."
     : ciel
       ? "Regarde le modèle, puis écris en cursive : les petites lettres restent dans l'herbe, les grandes montent dans le ciel, les autres descendent dans la terre."
       : "Regarde le modèle, puis écris en cursive sur les lignes, en levant le moins possible le crayon.";
-  const reperes = ciel ? "ciel, herbe, terre" : `réglure de ${String(r.reglure).replace(".", ",")} mm`;
+  const reperes = ciel ? "ciel, herbe, terre" : `${marelle ? "lignes Seyès de Marelle, " : ""}réglure de ${String(r.reglure).replace(".", ",")} mm`;
   return feuille(`<div class="page"><div class="titre">${r.transcrire ? "Copier en cursive" : "Écriture cursive"}</div>
     <div class="sous">Prénom : ........................................ Date : ........................ · ${reperes}</div>
     <div class="regle">${consigne} <span class="reference">Livret Français CP, Éduscol 2025.</span></div>
@@ -175,6 +208,10 @@ export const STYLE_CURSIVE = `
   .feuille.cu .cu-bloc { margin: 0 0 4mm; page-break-inside: avoid; break-inside: avoid; }
   .feuille.cu .cu-ligne { display: block; }
   .feuille.cu .cu-script { font-family: Arial, Helvetica, sans-serif; font-size: 20px; font-weight: 600; margin: 0 0 1mm 18mm; }
+  /* Les lignes de Marelle : la ligne du haut et les jambages de la dernière rangée ont leur place dans le bloc ; les espaces au-delà de la page sont coupés. */
+  .feuille.cu .cu-marelle { position: relative; font-family: ${POLICE_LIGNES}; line-height: 1.92; white-space: pre; overflow: hidden; width: ${LARGEUR}mm;
+    color: #1c2233; padding: 0.6mm 0 calc(var(--cu-interligne, 3mm) + 0.6mm); }
+  .feuille.cu .cu-marelle::after { content: ""; position: absolute; top: 0; bottom: 0; left: 16mm; width: 0.25mm; background: #d33a32; }
 `;
 
 /**

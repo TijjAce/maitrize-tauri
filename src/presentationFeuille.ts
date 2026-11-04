@@ -45,5 +45,5 @@ export const STYLE_DYS = `
   .feuille .cs .cs-etape + .cs-etape { margin-top: .3em; }
   .feuille i, .feuille em, .feuille cite { font-style: normal; font-weight: 700; }
   .feuille [style*="justify"] { text-align: left !important; }
-  .feuille svg, .feuille .gb-cursive { letter-spacing: normal; word-spacing: normal; }
+  .feuille svg, .feuille .gb-cursive, .feuille .cu-marelle, .feuille .vp-cursive, .feuille .ab-cursive, .feuille .vl-cursive { letter-spacing: normal; word-spacing: normal; }
 `;

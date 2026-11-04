@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { documentImprimable } from "./print";
+import { REGLAGES_CURSIVE, STYLE_CURSIVE, htmlEcritureCursive } from "./ecritureCursive";
 import {
-  CHOIX_PAR_DEFAUT, POLICES_CURSIVES, POLICE_CURSIVE, choixSur, cssDuChoix, famillesDuChoix, policeCursive, policeDuDocument, tailleCursive,
+  CHOIX_PAR_DEFAUT, POLICES_CURSIVES, POLICE_CURSIVE, chargerLesLignes, choixSur, cssDuChoix, famillesDuChoix, lignesChargees, lignesDuChoix,
+  policeCursive, policeDuDocument, tailleCursive,
 } from "./policesEcriture";
 
 describe("La police cursive des feuilles", () => {
@@ -43,5 +45,21 @@ describe("La police cursive des feuilles", () => {
     expect(tailleCursive(3)).toBe("calc(3px / var(--police-cursive-x, 0.4))");
     expect(tailleCursive(9, "mm")).toBe("calc(9mm / var(--police-cursive-x, 0.4))");
     expect(POLICE_CURSIVE.startsWith("var(--police-cursive, ")).toBe(true);
+  });
+
+  it("ajoute la police à lignes de Marelle aux feuilles qui s'en servent, une fois chargée", async () => {
+    const feuille = htmlEcritureCursive({ ...REGLAGES_CURSIVE, guide: "marelle", modeles: "an" });
+    // Avant le chargement : le nom de la police, pas encore son fichier.
+    if (!lignesChargees()) expect(policeDuDocument(feuille + STYLE_CURSIVE, CHOIX_PAR_DEFAUT)).not.toContain('font-family: "Marelle LIGNES"');
+    await chargerLesLignes();
+    const html = documentImprimable("Lignes", feuille, STYLE_CURSIVE);
+    expect(html).toContain('@font-face { font-family: "Marelle LIGNES"; src: url(data:font/woff2;base64,');
+    expect(html).toContain('--police-lignes: "Marelle LIGNES";');
+    // Les variantes suivent le choix ; une autre police prend les lignes de Marelle.
+    expect(lignesDuChoix({ id: "marelle-baton-2", autre: "" })).toBe("Marelle LIGNES Bâton 2");
+    expect(lignesDuChoix({ id: "belle-allure", autre: "" })).toBe("Marelle LIGNES");
+    expect(cssDuChoix({ id: "marelle-2", autre: "" }, ":root", true)).toContain('font-family: "Marelle LIGNES 2"');
+    // Une feuille sans les lignes de Marelle n'emporte pas leur fichier.
+    expect(documentImprimable("Cursive", `<p style="font-family: ${POLICE_CURSIVE}">lilas</p>`)).not.toContain("Marelle LIGNES\"; src");
   });
 });
