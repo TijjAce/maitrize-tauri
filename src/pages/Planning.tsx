@@ -15,6 +15,7 @@ import { labelCourt, CompetenceSelectionnee } from "../components/CompetenceTree
 import { CahierJournal, ecrireLeCahierJournal } from "../components/CahierJournal";
 import { EVT_JOUR } from "../components/CommandPalette";
 import { EVT_BILAN_VERSE } from "../versementDesVocaux";
+import { EVT_REPORT_APPLIQUE } from "../reportsDuTelephone";
 import { jeuxCites, reglesImprimees, sansMarqueurs, STYLE_REGLES } from "../jeuxCites";
 import { sequencesCitees, sequencesImprimees, STYLE_SEQUENCES } from "../sequencesCitees";
 import { minutesParNature, duree, natureDe, plageGrille } from "../heures";
@@ -139,10 +140,15 @@ export default function Planning() {
   }, [vue, ancre]);
 
   const { data: creneaux, reload } = useAsync(() => api.creneauxList(debut, fin), [debut, fin]);
-  // Une dictée du téléphone vient d'être versée dans un bilan : le cahier journal ouvert la montre.
+  // Une dictée du téléphone vient d'être versée dans un bilan, ou une séance reportée depuis le téléphone : le cahier
+  // journal ouvert le montre.
   React.useEffect(() => {
     window.addEventListener(EVT_BILAN_VERSE, reload);
-    return () => window.removeEventListener(EVT_BILAN_VERSE, reload);
+    window.addEventListener(EVT_REPORT_APPLIQUE, reload);
+    return () => {
+      window.removeEventListener(EVT_BILAN_VERSE, reload);
+      window.removeEventListener(EVT_REPORT_APPLIQUE, reload);
+    };
   }, [reload]);
   // Heures de la semaine affichée (ou de la semaine du jour) : relues à chaque changement de créneaux.
   const lundiSemaine = iso(lundiDe(ancre));

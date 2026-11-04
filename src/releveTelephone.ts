@@ -11,6 +11,7 @@ import { toast } from "./components/Toaster";
 import { transcrireCeQuiAttend } from "./vocauxEnFond";
 import { EVT_MES_PICTOS } from "./mesPictos";
 import { publierLeJournal } from "./journalTelephone";
+import { appliquerLesReports, type IssueDuReport } from "./reportsDuTelephone";
 
 /** Intervalle de fond, en millisecondes : celui de la synchronisation. */
 const PERIODE = 30_000;
@@ -93,8 +94,14 @@ async function passage() {
     // Transcrire, puis verser dans le bilan : l'indicateur de transcription et
     // l'annonce du versement disent le reste, sans une annonce de plus ici.
     if (b.vocaux > 0 || b.notes > 0) void transcrireCeQuiAttend();
-    // Le cahier journal et ses aides à la tâche suivent, s'ils ont changé : le téléphone les montre aux tablettes.
-    if (b.relie) void publierLeJournal();
+    if (b.relie) {
+      // Les reports demandés depuis le téléphone s'appliquent avant que le cahier journal reparte : le téléphone les
+      // voit au passage suivant. Chacun se dit, réussi ou non.
+      const issues = await appliquerLesReports().catch((): IssueDuReport[] => []);
+      for (const x of issues) toast(x.message, { icone: x.ok ? "↪️" : "⚠️", duree: 9000 });
+      // Le cahier journal et ses aides à la tâche suivent, s'ils ont changé : le téléphone les montre aux tablettes.
+      void publierLeJournal();
+    }
     // Une photo nommée est prête tout de suite : on le dit, et les listes de Mes pictos se relisent.
     if (b.photos > 0) {
       window.dispatchEvent(new Event(EVT_MES_PICTOS));

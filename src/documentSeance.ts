@@ -455,6 +455,15 @@ export function documentDeLaSeance(s: { deroulement?: string | null; tableauDero
   return ecrireSeance(seance);
 }
 
+/**
+ * Les temps d'une séance — ses phases —, par leur titre, dans l'ordre : le téléphone propose de reporter ceux qui
+ * n'ont pas été faits (voir reportsDuTelephone.ts).
+ */
+export function tempsDeLaSeance(s: { deroulement?: string | null; tableauDeroulement?: string | null; imagesDeroulement?: string | null } | undefined | null): string[] {
+  if (!s) return [];
+  return lireSeance(documentDeLaSeance(s)).phases.map((p) => p.titre.replace(/\s+/g, " ").trim()).filter(Boolean);
+}
+
 /** Les images du document, dans l'ordre. */
 export function imagesDuDocument(markup: string): string[] {
   return [...(markup ?? "").matchAll(RE_IMAGE)].map((m) => m[1].trim());

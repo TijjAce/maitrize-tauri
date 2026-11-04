@@ -74,6 +74,9 @@ let photos = [], photoPrise = null, nomPhoto = "";
  * bilan, séance, aides à la tâche —, et ce qui l'a empêché d'arriver.
  */
 let cahier = null, cahierSouci = "";
+// Reporter la séance d'un créneau au prochain cours de la même matière : les reports qui attendent leur envoi, le
+// créneau dont on choisit ce qui n'a pas été fait, et ses temps cochés (demande de l'enseignant, 4 novembre 2026).
+let reports = [], reportOuvert = "", reportCoches = new Set();
 /**
  * Le portail des tablettes : ouvert, il montre l'aide choisie aux tablettes
  * des élèves, sur le même réseau que le téléphone. Son état vient de Rust.
@@ -334,6 +337,7 @@ async function relire() {
   try { vocaux = await invoke("vocaux_liste"); } catch (e) { vocaux = []; }
   try { notes = await invoke("notes_liste"); } catch (e) { notes = []; }
   try { photos = await invoke("photos_liste"); } catch (e) { photos = []; }
+  try { reports = await invoke("reports_liste"); } catch (e) { reports = []; }
   rendre();
 }
 
@@ -343,12 +347,13 @@ function enAttente() {
     ...vocaux.map((v) => ({ ...v, sorte: "vocal" })),
     ...notes.map((n) => ({ ...n, sorte: "note" })),
     ...photos.map((p) => ({ ...p, sorte: "photo" })),
+    ...reports.map((r) => ({ ...r, sorte: "report" })),
   ].sort((a, b) => String(a.debut).localeCompare(String(b.debut)));
 }
 
 /** La commande qui dépose, ou qui oublie, chaque sorte de ce qui attend. */
-const DEPOSER = { vocal: "vocal_deposer", note: "note_deposer", photo: "photo_deposer" };
-const OUBLIER = { vocal: "vocal_oublier", note: "note_oublier", photo: "photo_oublier" };
+const DEPOSER = { vocal: "vocal_deposer", note: "note_deposer", photo: "photo_deposer", report: "report_deposer" };
+const OUBLIER = { vocal: "vocal_oublier", note: "note_oublier", photo: "photo_oublier", report: "report_oublier" };
 
 /** Ce qui va au cahier journal : les dictées et les notes rangées à un créneau. */
 const versLeJournal = (x) => x.sorte !== "photo" && x.destination !== VERS_LES_NOTES;
@@ -1416,21 +1421,29 @@ function etatDeNuage() {
   return nuage ? { classe: "ok", texte: "Nuage prêt" } : { classe: "loin", texte: "Hors ligne" };
 }
 
+/** Ce qu'un report emporte : ses temps, sinon toute la séance, sinon le prévu. */
+function ceQuiSeReporte(r) {
+  if ((r.temps || []).length) return r.temps.map((t) => t.titre).join(", ");
+  return r.seance ? `toute la séance « ${r.seance} »` : "le prévu";
+}
+
 function rangDAttente(x) {
   const note = x.sorte === "note";
   const photo = x.sorte === "photo";
-  const matiere = photo ? "Mes pictos" : x.destination === VERS_LES_NOTES ? "Notes rapides" : x.creneau ? matiereDuCreneau(x.creneau) : "";
-  // Rangé à un autre jour qu'aujourd'hui : on le dit en tête de la ligne.
-  const jour = jourCourt(String(x.debut).slice(0, 10));
-  const sous = [jour, heureDe(x.debut), matiere, !note && x.octets ? poids(x.octets) : ""].filter(Boolean).map(echapper).join(" · ");
-  const titre = note ? echapper(apercu(x.texte)) : photo ? `Photo · « ${echapper(x.nom)} »` : `Dictée · ${libelleDuree(x.dureeS)}`;
+  const report = x.sorte === "report";
+  const matiere = photo ? "Mes pictos" : report ? x.matiere || "" : x.destination === VERS_LES_NOTES ? "Notes rapides" : x.creneau ? matiereDuCreneau(x.creneau) : "";
+  // Rangé à un autre jour qu'aujourd'hui : on le dit en tête de la ligne. Un report : le jour de son créneau.
+  const jour = jourCourt(String(report ? x.report.jour : x.debut).slice(0, 10));
+  const sous = [jour, report ? "" : heureDe(x.debut), matiere, !note && x.octets ? poids(x.octets) : ""].filter(Boolean).map(echapper).join(" · ");
+  const titre = note ? echapper(apercu(x.texte)) : photo ? `Photo · « ${echapper(x.nom)} »`
+    : report ? `Reporter · ${echapper(ceQuiSeReporte(x.report))}` : `Dictée · ${libelleDuree(x.dureeS)}`;
   return `<div class="rang">
-    <span class="ico">${icone(note ? "crayon" : photo ? "photo" : "micro")}</span>
+    <span class="ico">${icone(note ? "crayon" : photo ? "photo" : report ? "droite" : "micro")}</span>
     <span class="rang-texte">
       <span class="rang-titre">${titre}</span>
       <span class="rang-sous"><span class="coupe">${sous}</span></span>
     </span>
-    ${note || photo ? "" : `<button class="icone-btn" data-ecouter="${echapper(x.id)}" aria-label="${ecoute === x.id ? "Pause" : "Écouter"}">${icone(ecoute === x.id ? "pause" : "lecture")}</button>`}
+    ${note || photo || report ? "" : `<button class="icone-btn" data-ecouter="${echapper(x.id)}" aria-label="${ecoute === x.id ? "Pause" : "Écouter"}">${icone(ecoute === x.id ? "pause" : "lecture")}</button>`}
     <button class="icone-btn danger" data-oublier="${echapper(x.id)}" data-sorte="${x.sorte}" aria-label="Supprimer">${icone("poubelle")}</button>
   </div>`;
 }
@@ -1712,15 +1725,74 @@ function envoiALaClasse(c) {
 /** Le cahier journal du jour choisi, tel que l'ordinateur l'a publié : ses créneaux, leur prévu, ce qui va aux tablettes, leur bilan. */
 function carteCahier() {
   if (!cahier) return `<div class="carte cj">${cahierAbsent()}</div>`;
-  const rangs = cahier.creneaux.map((c) => `<div class="cj-creneau">
-      <div class="cj-tete"><b>${echapper(heureCourte(c.debut))}</b><span>${echapper(c.matiere || "Créneau")}</span></div>
+  const rangs = cahier.creneaux.map((c) => {
+    const reportable = !!c.seance || !!(c.prevu || "").trim();
+    const ouvert = reportOuvert === c.id;
+    // Ce que l'ordinateur a déjà reporté, dit par son bilan ; ce qui attend encore de partir.
+    const reportes = (c.bilan || "").split("\n").filter((l) => /^(↪|⚠️ Aucun créneau)/.test(l.trim()));
+    const enAttenteIci = reports.some((r) => r.creneau === c.id);
+    return `<div class="cj-creneau">
+      <div class="cj-tete"><b>${echapper(heureCourte(c.debut))}</b><span>${echapper(c.matiere || "Créneau")}</span>
+        ${reportable ? `<button class="btn-mini cj-reporter${ouvert ? " on" : ""}" data-reporter="${echapper(c.id)}" aria-expanded="${ouvert}">${ouvert ? "Fermer" : "Reporter"}</button>` : ""}</div>
       ${c.seance ? `<div class="cj-seance">${echapper(c.seance)}</div>` : ""}
       ${(c.prevu || "").trim() ? `<div class="cj-texte">${echapper(c.prevu.trim())}</div>` : ""}
+      ${reportes.map((l) => `<p class="cj-reporte">${echapper(l.trim())}</p>`).join("")}
+      ${enAttenteIci ? `<p class="cj-reporte">${icone("droite", "petit")}Report en attente d'envoi</p>` : ""}
+      ${ouvert ? choixDuReport(c) : ""}
       ${(c.bilan || "").trim() ? `<details class="cj-bilan"><summary>Bilan</summary><div class="cj-texte">${echapper(c.bilan.trim())}</div></details>` : ""}
-    </div>`).join("");
+    </div>`;
+  }).join("");
   const vide = cahier.creneaux.length ? "" : `<p class="carte-info">${icone("coche")}<span>Rien au cahier journal ${estAujourdHui() ? "aujourd'hui" : "ce jour-là"}.</span></p>`;
   const publie = cahier.publie ? `<p class="cj-publie">Publié par l'ordinateur le ${echapper(cahier.publie.slice(8, 10))}/${echapper(cahier.publie.slice(5, 7))} à ${echapper(heureDe(cahier.publie))}${cahier.frais ? "" : " — gardé sur le téléphone, Nuage ne répond pas"}.</p>` : "";
   return `<div class="carte cj">${rangs}${vide}${publie}</div>`;
+}
+
+/**
+ * Reporter un créneau : ses temps, tous cochés d'abord — on décoche ceux qui ont été faits —, et le bouton qui
+ * reporte toute la séance, quelques temps, ou le prévu, au prochain cours de la même matière.
+ */
+function choixDuReport(c) {
+  const temps = c.temps || [];
+  const tout = !temps.length || reportCoches.size === temps.length;
+  const libelle = !c.seance ? "Reporter le prévu" : tout ? "Reporter toute la séance"
+    : `Reporter ${reportCoches.size} temps`;
+  return `<div class="cj-tab cj-report">
+    ${temps.length ? `<div class="cj-tab-tete"><span>Pas faits</span></div>
+      ${temps.map((t, i) => `<label class="cj-report-temps"><input type="checkbox" data-report-temps="${i}" ${reportCoches.has(i) ? "checked" : ""}><span>${echapper(t)}</span></label>`).join("")}` : ""}
+    <div class="deux">
+      <button class="btn-doux" id="report-annuler">Annuler</button>
+      <button class="btn-plein" id="report-valider" ${temps.length && !reportCoches.size ? "disabled" : ""}>${libelle}</button>
+    </div>
+    <p class="cj-report-ou">Au prochain cours de ${echapper(c.matiere || "cette matière")}.</p>
+  </div>`;
+}
+
+/** Ouvre le report d'un créneau, tous ses temps cochés ; le referme s'il l'était. */
+function ouvrirLeReport(id) {
+  const c = cahier && cahier.creneaux.find((x) => x.id === id);
+  reportOuvert = reportOuvert === id || !c ? "" : id;
+  reportCoches = new Set((c && c.temps ? c.temps : []).map((_, i) => i));
+  rendre();
+}
+
+/** Garde la demande de report, puis l'envoie avec ce qui attend : l'ordinateur l'applique quand il la relève. */
+async function reporter() {
+  const c = cahier && cahier.creneaux.find((x) => x.id === reportOuvert);
+  if (!c) return;
+  const temps = c.temps || [];
+  const tout = !temps.length || reportCoches.size === temps.length;
+  try {
+    await invoke("report_garder", {
+      debut: maintenantIso(), creneau: c.id, matiere: c.matiere || "", jour: cahier.jour || jourDeLaDictee(), seance: c.seance || "",
+      temps: tout ? [] : [...reportCoches].sort((a, b) => a - b).map((i) => ({ rang: i, titre: temps[i] })),
+    });
+    reportOuvert = "";
+    souci = "";
+  } catch (e) {
+    souci = String(e);
+  }
+  await relire();
+  void envoyerTout();
 }
 
 /** Ce qu'un créneau montre en ce moment sur les tablettes — à la classe, ou à l'un de ses élèves. */
@@ -2459,6 +2531,16 @@ function rendre() {
   el.querySelectorAll("[data-oublier]").forEach((b) => {
     b.onclick = () => { void oublier(b.dataset.oublier, b.dataset.sorte); };
   });
+  el.querySelectorAll("[data-reporter]").forEach((b) => { b.onclick = () => ouvrirLeReport(b.dataset.reporter); });
+  el.querySelectorAll("[data-report-temps]").forEach((b) => {
+    b.onchange = () => {
+      const i = Number(b.dataset.reportTemps);
+      if (b.checked) reportCoches.add(i); else reportCoches.delete(i);
+      rendre();
+    };
+  });
+  clic("report-annuler", () => { reportOuvert = ""; rendre(); });
+  clic("report-valider", () => { void reporter(); });
   el.querySelectorAll("[data-ecouter]").forEach((b) => {
     b.onclick = () => { void ecouter(b.dataset.ecouter); };
   });

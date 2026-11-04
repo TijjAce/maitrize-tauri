@@ -1024,6 +1024,11 @@ export const api = {
   /** Révoque le lien et oublie les clés ; `sansRevoquer` quand Nuage ne répond pas. */
   telephoneOublier: (sansRevoquer = false) => invoke<EtatRelais>("telephone_oublier", { sansRevoquer }),
   telephoneRelever: () => invoke<BilanReleve>("telephone_relever"),
+  /** Les reports relevés et pas encore appliqués (voir reportsDuTelephone.ts). */
+  reportsEnAttente: () => invoke<ReportRecu[]>("reports_en_attente"),
+  /** Prend un report pour l'appliquer : faux s'il l'était déjà — il ne s'applique jamais deux fois. */
+  reportPrendre: (id: string) => invoke<boolean>("report_prendre", { id }),
+  reportFini: (id: string, resultat: string) => invoke<void>("report_fini", { id, resultat }),
   /** Le cahier journal des jours publiés et ses aides à la tâche, pour le téléphone : chiffrés, et seulement ce qui a changé. */
   telephonePublierJournal: (journal: import("./journalTelephone").JournalTelephone, aides: import("./journalTelephone").AideAPublier[]) =>
     invoke<BilanJournal>("telephone_publier_journal", { journal, aides }),
@@ -1054,8 +1059,13 @@ export interface BilanReleve {
   relie: boolean; occupe: boolean; vocaux: number; notes: number; pages: number;
   /** Les photos nommées, rangées dans Mes pictos. */
   photos: number;
+  /** Les reports demandés depuis le téléphone : la fenêtre les applique (voir reportsDuTelephone.ts). */
+  reports?: number;
   pagesEnAttente: number; illisibles: number; agendaPublie: boolean; agendaErreur: string; erreur: string;
 }
+
+/** Un report demandé depuis le téléphone, relevé ici : son créneau, et la demande en JSON (voir reportsDuTelephone.ts). */
+export interface ReportRecu { id: string; creneau: string; demande: string; demandeLe: string }
 
 export interface PortableInfo {
   url: string;

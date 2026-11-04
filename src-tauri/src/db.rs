@@ -313,7 +313,9 @@ const JOURS_DEPOTS_RANGES: i64 = 183;
 /// Oublie les dépôts du téléphone rangés depuis plus de six mois.
 fn purger_depots_ranges(conn: &Connection) {
     let limite = (chrono::Utc::now() - chrono::Duration::days(JOURS_DEPOTS_RANGES)).to_rfc3339();
-    conn.execute("DELETE FROM depots_ranges WHERE date < ?1", [limite]).ok();
+    conn.execute("DELETE FROM depots_ranges WHERE date < ?1", [&limite]).ok();
+    // Les reports appliqués, de même : leur dépôt est effacé de Nuage depuis longtemps.
+    conn.execute("DELETE FROM reports_recus WHERE applique != '' AND recu < ?1", [&limite]).ok();
 }
 
 /// Ouvre la base, la met au niveau de cette `version` de l'application.
@@ -753,6 +755,20 @@ pub(crate) fn migrate(conn: &Connection) {
         CREATE TABLE IF NOT EXISTS depots_ranges (
             id TEXT PRIMARY KEY,
             date TEXT NOT NULL
+        );
+
+        -- Les reports demandés depuis le téléphone : la séance d'un créneau, ou ceux de ses temps qui
+        -- n'ont pas été faits, au prochain créneau de la même matière. Relevés ici, une fois chacun ; la
+        -- fenêtre les applique, elle qui sait l'emploi du temps, les vacances et les temps des séances
+        -- (voir reportsDuTelephone.ts). `applique` : vide tant qu'il attend. Locale, comme `depots_ranges`.
+        CREATE TABLE IF NOT EXISTS reports_recus (
+            id TEXT PRIMARY KEY,
+            creneau TEXT NOT NULL,
+            demande TEXT NOT NULL,
+            demande_le TEXT NOT NULL DEFAULT '',
+            recu TEXT NOT NULL,
+            applique TEXT NOT NULL DEFAULT '',
+            resultat TEXT NOT NULL DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS sequences (

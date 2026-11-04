@@ -47,6 +47,7 @@ import { titresDesRituels } from "./rituels";
 import { TETE_EN_AUTONOMIE } from "./lignesCitees";
 import { sequencesCitees } from "./sequencesCitees";
 import { cleDuManuel, lireLigneDePages, manuelDuTitre, pagesEnTexte } from "./pagesDesManuels";
+import { tempsDeLaSeance } from "./documentSeance";
 
 /** Les ateliers de Fabriquer dont une feuille est une aide à la tâche : celles-là vont aux tablettes. */
 export const ATELIERS_D_AIDE = ["sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction"] as const;
@@ -84,6 +85,11 @@ export interface CreneauDuJournal {
   deroule: string;
   /** Le déroulement de chaque élève qui a sa partie du prévu ou des fiches — le sien ou celui de la classe, puis ses fiches —, par son prénom. */
   deroules?: Record<string, string>;
+  /**
+   * Les temps de la séance de la classe — ses phases —, par leur titre : le téléphone propose de reporter ceux qui
+   * n'ont pas été faits (voir reportsDuTelephone.ts). Absent sans séance.
+   */
+  temps?: string[];
 }
 export interface JourDuJournal { jour: string; creneaux: CreneauDuJournal[] }
 export interface JournalTelephone { publie: string; jours: JourDuJournal[] }
@@ -430,6 +436,7 @@ export function journalDes(
           const parties = elevesDesParties(c, eleves);
           const lu = parties.length ? { ...c, prevu: prevuSansTetes(c.prevu ?? "", parties) } : c;
           const lesSeances = deLaClasse(lu, seance, sequences, seances, jeux).flatMap((x) => (x.seance ? [x.seance] : []));
+          const temps = tempsDeLaSeance(lesSeances[0]);
           const aFaire = aFaireDuCreneau(lu, fiches, sequences, seances);
           // Le déroulement de la classe : le rituel, ses séances, ses jeux. Celui d'un élève y ajoute ses fiches
           // et ses séances, qui en sont la fin — après le rituel seul, sans rien pour la classe.
@@ -468,6 +475,7 @@ export function journalDes(
             minuteur,
             deroule: pas.length ? cleDuDeroulement(c.id) : "",
             ...(avecLeSien.length ? { deroules: Object.fromEntries(avecLeSien.map((e) => [e, cleDuDeroulementDe(c.id, e)])) } : {}),
+            ...(temps.length ? { temps } : {}),
           };
         }),
     })),

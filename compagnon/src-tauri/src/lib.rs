@@ -39,6 +39,10 @@ pub fn run() {
             note_garder,
             notes_liste,
             note_oublier,
+            // Reporter la séance d'un créneau, ou ceux de ses temps qui n'ont pas été faits.
+            report_garder,
+            reports_liste,
+            report_oublier,
             // Le cahier journal publié par l'ordinateur, et ses aides à la tâche.
             journal_du_jour,
             aide_lire,
@@ -77,6 +81,7 @@ pub fn run() {
             vocal_deposer,
             note_deposer,
             photo_deposer,
+            report_deposer,
             creneaux_du_relais,
             // Par le WiFi, et seulement quand l'ordinateur le demande : pages et photos.
             demande_lire,

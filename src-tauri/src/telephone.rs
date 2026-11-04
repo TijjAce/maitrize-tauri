@@ -492,6 +492,8 @@ pub struct Bilan {
     pub pages: usize,
     /// Les photos nommées, rangées dans Mes pictos.
     pub photos: usize,
+    /// Les reports demandés depuis le téléphone : la fenêtre les applique (voir reportsDuTelephone.ts).
+    pub reports: usize,
     /// Les pages scannées restées sur Nuage : elles attendent qu'on ouvre « Scanner avec le compagnon ».
     pub pages_en_attente: usize,
     /// Les dépôts qui ne s'ouvrent pas avec la clé de cet ordinateur.
@@ -552,6 +554,7 @@ async fn relever_dans(
                         relais::Genre::Note => bilan.notes += 1,
                         relais::Genre::Page => bilan.pages += 1,
                         relais::Genre::Photo => bilan.photos += 1,
+                        relais::Genre::Report => bilan.reports += 1,
                     }
                 }
                 // S'il ne s'efface pas, on le reverra : il est rangé, il ne se rangera pas deux fois.
@@ -660,7 +663,79 @@ fn ranger(c: &Connection, dossier: &std::path::Path, e: &relais::Etiquette, cont
             let neuf = ficher_la_photo(c, &fichier, &nom, &date, &id)?;
             Ok((neuf, nom))
         }
+        relais::Genre::Report => ranger_report(c, &id, &e.creneau, &e.debut, contenu).map(|n| (n, String::new())),
     }
+}
+
+// ── Les reports demandés depuis le téléphone ──────────────────────────────
+//
+// « Depuis le téléphone, sur chaque créneau, il faudrait la possibilité de
+// reporter automatiquement les temps de la séance, voire carrément la séance
+// entière au lendemain si elle n'a pas été faite, et que ça apparaisse
+// correctement dans le cahier journal au lendemain » (l'enseignant,
+// 4 novembre 2026). Le téléphone dépose la demande ; elle se retient ici, une
+// fois — un dépôt relevé deux fois ne reporte pas deux fois —, et la fenêtre
+// l'applique (voir reportsDuTelephone.ts).
+
+/// Retient un report relevé ; faux s'il l'était déjà.
+fn ranger_report(c: &Connection, id: &str, creneau: &str, debut: &str, contenu: &[u8]) -> R<bool> {
+    let report: relais::Report = serde_json::from_slice(contenu).map_err(|_| "Report illisible.".to_string())?;
+    if creneau.trim().is_empty() || report.jour.len() < 10 {
+        return Err("Report sans créneau.".into());
+    }
+    let demande = serde_json::to_string(&report).map_err(|e| e.to_string())?;
+    let n = c.execute(
+        "INSERT OR IGNORE INTO reports_recus (id, creneau, demande, demande_le, recu) VALUES (?1, ?2, ?3, ?4, ?5)",
+        rusqlite::params![id, creneau.trim(), demande, debut, crate::models::now_iso()],
+    ).map_err(|e| e.to_string())?;
+    Ok(n == 1)
+}
+
+/// Un report relevé, tel que la fenêtre l'applique.
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ReportRecu {
+    pub id: String,
+    /// Le créneau dont la séance n'a pas été faite.
+    pub creneau: String,
+    /// La demande du téléphone, en JSON (voir `relais::Report`).
+    pub demande: String,
+    /// Quand le téléphone l'a demandé, en heure locale.
+    pub demande_le: String,
+}
+
+fn reports_en_attente_dans(c: &Connection) -> R<Vec<ReportRecu>> {
+    let mut st = c.prepare("SELECT id, creneau, demande, demande_le FROM reports_recus WHERE applique = '' ORDER BY demande_le, recu, id")
+        .map_err(|e| e.to_string())?;
+    let lignes = st.query_map([], |r| Ok(ReportRecu { id: r.get(0)?, creneau: r.get(1)?, demande: r.get(2)?, demande_le: r.get(3)? }))
+        .map_err(|e| e.to_string())?;
+    lignes.collect::<rusqlite::Result<Vec<_>>>().map_err(|e| e.to_string())
+}
+
+/// Les reports relevés que la fenêtre n'a pas encore appliqués, du plus ancien au plus récent.
+#[tauri::command]
+pub fn reports_en_attente(db: State<'_, Db>) -> R<Vec<ReportRecu>> {
+    reports_en_attente_dans(&db.lock())
+}
+
+/// La fenêtre prend un report pour l'appliquer : vrai si personne ne l'avait pris. Pris, il ne s'applique pas deux fois.
+fn prendre_le_report(c: &Connection, id: &str) -> R<bool> {
+    c.execute("UPDATE reports_recus SET applique = ?2 WHERE id = ?1 AND applique = ''", rusqlite::params![id, crate::models::now_iso()])
+        .map(|n| n == 1)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn report_prendre(db: State<'_, Db>, id: String) -> R<bool> {
+    prendre_le_report(&db.lock(), &id)
+}
+
+/// Ce que le report a fait — ou pourquoi il n'a rien pu faire —, en une phrase.
+#[tauri::command]
+pub fn report_fini(db: State<'_, Db>, id: String, resultat: String) -> R<()> {
+    db.lock().execute("UPDATE reports_recus SET resultat = ?2 WHERE id = ?1", rusqlite::params![id, resultat])
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 /// La relève d'un relais, par le compte : rangée dans l'application — la base,
@@ -674,6 +749,7 @@ async fn relever_avec(app: &AppHandle, db: &State<'_, Db>, r: &Relais, compte: &
             match etiquette.genre {
                 relais::Genre::Page => { let _ = app.emit("photo:recue", annonce); }
                 relais::Genre::Photo => { let _ = app.emit("picto:recu", annonce); }
+                relais::Genre::Report => { let _ = app.emit("report:recu", id_propre(&etiquette.id)); }
                 _ => { let _ = app.emit("vocal:recu", id_propre(&etiquette.id)); }
             }
         }
@@ -1126,6 +1202,30 @@ mod tests {
         c
     }
 
+    #[test]
+    fn un_report_se_retient_une_fois_et_ne_se_prend_qu_une_fois() {
+        let c = base_de_test();
+        let dossier = std::env::temp_dir();
+        let e = relais::Etiquette { creneau: "cr1".into(), debut: "2026-11-04T11:50:00".into(), ..etiquette(relais::Genre::Report, "r1") };
+        let demande = r#"{"jour":"2026-11-04","seance":"Les nombres","temps":[{"rang":2,"titre":"Temps 3 – Recherche"}]}"#.as_bytes();
+        assert_eq!(ranger(&c, &dossier, &e, demande).unwrap(), (true, String::new()));
+        // Relevé deux fois : retenu une fois.
+        assert_eq!(ranger(&c, &dossier, &e, demande).unwrap(), (false, String::new()));
+        let attente = reports_en_attente_dans(&c).unwrap();
+        assert_eq!(attente.len(), 1);
+        assert_eq!((attente[0].creneau.as_str(), attente[0].demande_le.as_str()), ("cr1", "2026-11-04T11:50:00"));
+        assert!(attente[0].demande.contains("Temps 3 – Recherche"), "{}", attente[0].demande);
+        // Pris une fois, il ne se reprend pas, et n'attend plus.
+        assert!(prendre_le_report(&c, "r1").unwrap());
+        assert!(!prendre_le_report(&c, "r1").unwrap());
+        assert!(reports_en_attente_dans(&c).unwrap().is_empty());
+        // Illisible, ou sans créneau : refusé, rien de retenu.
+        assert!(ranger(&c, &dossier, &etiquette(relais::Genre::Report, "r2"), b"pas du json").is_err());
+        let sans_creneau = relais::Etiquette { creneau: String::new(), ..etiquette(relais::Genre::Report, "r3") };
+        assert!(ranger(&c, &dossier, &sans_creneau, demande).is_err());
+        assert_eq!(c.query_row("SELECT COUNT(*) FROM reports_recus", [], |r| r.get::<_, i64>(0)).unwrap(), 1);
+    }
+
     fn en_attendant<T>(f: impl std::future::Future<Output = T>) -> T {
         tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(f)
     }
@@ -1209,6 +1309,7 @@ mod tests {
             bilan: "Lina a compté jusqu'à 40.".into(), seance: "Séance 2".into(),
             aides: aides.into_iter().map(|k| relais::AideDuJournal { id: k.into(), titre: format!("Aide {k}"), minuteur: 10, etape: None, eleve: String::new() }).collect(),
             minuteur: 15, deroule: "deroule:c1".into(), deroules: [("Lina".to_string(), "deroule:c1:Lina".to_string())].into(),
+            temps: Vec::new(),
         }] }] };
         en_attendant(async {
             let (j, par_id) = journal_a_publier(journal(vec!["a", "b", "inconnue"]), &[aide("a", "<p>1</p>"), aide("b", "<p>2</p>")]);

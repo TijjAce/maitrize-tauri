@@ -380,7 +380,7 @@ pub fn dechiffrer_retour(cle: &[u8; 32], blob: &[u8]) -> R<Vec<u8>> {
 
 // ── Ce qu'on dépose ────────────────────────────────────────────────────────
 
-/// Les quatre choses que le téléphone dépose.
+/// Les cinq choses que le téléphone dépose.
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Genre {
@@ -394,12 +394,16 @@ pub enum Genre {
     /// l'étiquette. Un ordinateur d'avant ne reconnaît pas sa lettre : il la
     /// laisse sur Nuage, où un ordinateur à jour la relèvera.
     Photo,
+    /// Un report : la séance d'un créneau qui n'a pas été faite, ou ceux de ses temps qui ne l'ont pas
+    /// été, à reporter au prochain créneau de la même matière (voir `Report`). Le créneau est dans
+    /// l'étiquette. Comme pour une photo, un ordinateur d'avant laisse la lettre sur Nuage.
+    Report,
 }
 
 impl Genre {
     /// La lettre qui ouvre le nom du fichier : l'ordinateur trie sans rien ouvrir.
     fn lettre(self) -> char {
-        match self { Genre::Vocal => 'v', Genre::Note => 'n', Genre::Page => 'p', Genre::Photo => 'i' }
+        match self { Genre::Vocal => 'v', Genre::Note => 'n', Genre::Page => 'p', Genre::Photo => 'i', Genre::Report => 'r' }
     }
 }
 
@@ -435,6 +439,27 @@ pub struct Etiquette {
     pub nom: String,
 }
 
+/// Ce qu'un report demande — « reporter les temps de la séance, voire la séance entière, au
+/// lendemain si elle n'a pas été faite » (l'enseignant, 4 novembre 2026) : le jour de son créneau,
+/// la séance telle que le téléphone l'a vue, et les temps à reporter ; aucun : toute la séance — ou
+/// tout le prévu, sans séance.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Report {
+    pub jour: String,
+    #[serde(default)]
+    pub seance: String,
+    #[serde(default)]
+    pub temps: Vec<TempsReporte>,
+}
+
+/// Un temps de la séance à reporter : son rang parmi les temps publiés (à partir de 0), et son titre.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+pub struct TempsReporte {
+    pub rang: u32,
+    pub titre: String,
+}
+
 /// La destination d'une dictée ou d'une note qui va aux notes rapides de l'ordinateur.
 pub const VERS_LES_NOTES: &str = "notes";
 
@@ -452,6 +477,7 @@ pub fn genre_du_nom(nom: &str) -> Option<Genre> {
         ("n", id) if !id.is_empty() => Some(Genre::Note),
         ("p", id) if !id.is_empty() => Some(Genre::Page),
         ("i", id) if !id.is_empty() => Some(Genre::Photo),
+        ("r", id) if !id.is_empty() => Some(Genre::Report),
         _ => None,
     }
 }
@@ -598,6 +624,10 @@ pub struct CreneauDuJournal {
     /// séance, puis ses fiches —, par son prénom : l'empreinte de sa page. Sa tablette le montre.
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub deroules: std::collections::BTreeMap<String, String>,
+    /// Les temps de la séance de la classe — ses phases, par leur titre —, dans l'ordre : le téléphone
+    /// propose de reporter ceux qui n'ont pas été faits (voir `Report`). Absent sans séance.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub temps: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
@@ -794,6 +824,7 @@ mod tests {
                 prevu: "📚 Les dizaines — séance 2".into(), bilan: String::new(), seance: "Les dizaines entières".into(),
                 aides: vec![AideDuJournal { id: id.clone(), titre: aide.titre.clone(), minuteur: 10, etape: Some(0), eleve: "Lina".into() }], minuteur: 15,
                 deroule: id.clone(), deroules: [("Lina".to_string(), id.clone())].into(),
+                temps: vec!["Temps 1 – Découverte".into(), "Temps 2 – Recherche".into()],
             }] }],
         };
         let blob = chiffrer_journal(&retour, &journal).unwrap();
@@ -842,6 +873,30 @@ mod tests {
         assert_eq!(contenu, jpeg);
         // Sans nom, l'étiquette reste celle des autres dépôts.
         assert!(!serde_json::to_string(&Etiquette { nom: String::new(), ..photo }).unwrap().contains("\"nom\""));
+    }
+
+    #[test]
+    fn un_report_voyage_avec_son_creneau_et_ses_temps() {
+        let (a, privee, _) = appairage();
+        let etiquette = Etiquette {
+            genre: Genre::Report, id: "r1".into(), debut: "2026-11-04T11:50:00".into(), duree_s: 0.0, creneau: "cr-maths".into(),
+            ext: String::new(), destination: String::new(), nom: String::new(),
+        };
+        let report = Report {
+            jour: "2026-11-04".into(), seance: "Les nombres jusqu'à 20".into(),
+            temps: vec![TempsReporte { rang: 2, titre: "Temps 3 – Recherche".into() }],
+        };
+        let contenu = serde_json::to_vec(&report).unwrap();
+        let (relue, relu) = ouvrir_depot(&privee, &preparer_depot(&a, &etiquette, &contenu).unwrap()).unwrap();
+        assert_eq!(relue, etiquette);
+        assert_eq!(serde_json::from_slice::<Report>(&relu).unwrap(), report);
+        // Toute la séance : aucun temps.
+        assert_eq!(serde_json::from_str::<Report>(r#"{"jour":"2026-11-04"}"#).unwrap().temps, vec![]);
+        // Un créneau sans séance ne publie pas de temps ; un téléphone d'avant relit le journal sans eux.
+        let sans = CreneauDuJournal { id: "c".into(), ..Default::default() };
+        assert!(!serde_json::to_string(&sans).unwrap().contains("temps"));
+        let avec = CreneauDuJournal { temps: vec!["Temps 1 – Découverte".into()], ..sans };
+        assert!(serde_json::to_string(&avec).unwrap().contains(r#""temps":["Temps 1 – Découverte"]"#));
     }
 
     #[test]
@@ -936,6 +991,8 @@ mod tests {
         assert_eq!(genre_du_nom("p-1.mtz"), Some(Genre::Page));
         assert_eq!(nom_du_depot(Genre::Photo, "9c1e"), "i-9c1e.mtz");
         assert_eq!(genre_du_nom("i-9c1e.mtz"), Some(Genre::Photo));
+        assert_eq!(nom_du_depot(Genre::Report, "r-7"), "r-r-7.mtz");
+        assert_eq!(genre_du_nom("r-r-7.mtz"), Some(Genre::Report));
         // Ce que Nuage ou un curieux pose là n'est pas un dépôt.
         for nom in ["agenda.mtz", "v-.mtz", "i-.mtz", "x-1.mtz", "v-1.txt", ".DS_Store", "Readme.md"] {
             assert_eq!(genre_du_nom(nom), None, "{nom}");

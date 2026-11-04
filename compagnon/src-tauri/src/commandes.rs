@@ -578,6 +578,94 @@ pub fn note_oublier(app: tauri::AppHandle, id: String) -> R<()> {
     std::fs::remove_file(note_fichier(&app, &id)?).map_err(|e| e.to_string())
 }
 
+// ── Les reports ───────────────────────────────────────────────────────────
+//
+// « Depuis le téléphone, sur chaque créneau, il faudrait la possibilité de
+// reporter automatiquement les temps de la séance, voire carrément la séance
+// entière au lendemain si elle n'a pas été faite » (l'enseignant, 4 novembre
+// 2026). Depuis le cahier journal, on dit ce qui n'a pas été fait ; la
+// demande attend ici, `reports/<id>.json`, comme une note — en classe, le
+// réseau manque souvent —, puis part par Nuage. L'ordinateur l'applique en la
+// relevant : le créneau du lendemain la montre au cahier journal.
+
+/// Un report qui attend son ordinateur.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ReportGarde {
+    pub id: String,
+    /// Quand on l'a demandé, en heure locale.
+    pub debut: String,
+    /// Le créneau dont la séance n'a pas été faite, et son intitulé, pour la liste de ce qui attend.
+    pub creneau: String,
+    #[serde(default)]
+    pub matiere: String,
+    pub report: relais::Report,
+}
+
+fn dossier_reports(app: &tauri::AppHandle) -> R<PathBuf> {
+    let d = dossier(app)?.join("reports");
+    std::fs::create_dir_all(&d).map_err(|e| e.to_string())?;
+    Ok(d)
+}
+
+/// L'identifiant d'un report, et rien d'autre : pas de chemin.
+fn id_de_report(id: &str) -> R<&str> {
+    if !id.is_empty() && id.len() <= 64 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+        Ok(id)
+    } else {
+        Err("Report inconnu.".into())
+    }
+}
+
+/// Garde un report dans le dossier.
+pub fn garder_report_dans(d: &std::path::Path, r: ReportGarde) -> R<ReportGarde> {
+    let id = id_de_report(&r.id)?;
+    std::fs::write(d.join(format!("{id}.json")), serde_json::to_vec(&r).map_err(|e| e.to_string())?)
+        .map_err(|e| format!("Écriture impossible : {e}"))?;
+    Ok(r)
+}
+
+/// Les reports du dossier, du plus ancien au plus récent ; un fichier illisible ne se montre pas.
+pub fn reports_du_dossier(d: &std::path::Path) -> Vec<ReportGarde> {
+    let mut sortie: Vec<ReportGarde> = std::fs::read_dir(d).into_iter().flatten().flatten()
+        .filter(|e| e.file_name().to_string_lossy().ends_with(".json"))
+        .filter_map(|e| serde_json::from_slice(&std::fs::read(e.path()).ok()?).ok())
+        .collect();
+    sortie.sort_by(|a, b| a.debut.cmp(&b.debut).then_with(|| a.id.cmp(&b.id)));
+    sortie
+}
+
+pub fn oublier_report_dans(d: &std::path::Path, id: &str) -> R<()> {
+    std::fs::remove_file(d.join(format!("{}.json", id_de_report(id)?))).map_err(|e| e.to_string())
+}
+
+/// Garde la demande de report d'un créneau : toute sa séance (aucun temps), ou ceux de ses temps qui n'ont pas été faits.
+#[tauri::command]
+pub fn report_garder(
+    app: tauri::AppHandle, debut: String, creneau: String, matiere: String, jour: String, seance: String, temps: Vec<relais::TempsReporte>,
+) -> R<ReportGarde> {
+    if creneau.trim().is_empty() || jour.len() < 10 {
+        return Err("Choisissez le créneau à reporter.".into());
+    }
+    let r = ReportGarde {
+        id: uuid::Uuid::new_v4().to_string(), debut, creneau: creneau.trim().into(), matiere,
+        report: relais::Report { jour, seance, temps },
+    };
+    garder_report_dans(&dossier_reports(&app)?, r)
+}
+
+/// Les reports qui attendent leur ordinateur.
+#[tauri::command]
+pub fn reports_liste(app: tauri::AppHandle) -> R<Vec<ReportGarde>> {
+    Ok(reports_du_dossier(&dossier_reports(&app)?))
+}
+
+/// Oublie un report avant son départ.
+#[tauri::command]
+pub fn report_oublier(app: tauri::AppHandle, id: String) -> R<()> {
+    oublier_report_dans(&dossier_reports(&app)?, &id)
+}
+
 // ── Les photos pour Mes pictos ────────────────────────────────────────────
 //
 // Certains élèves n'entrent pas dans l'abstraction d'un pictogramme : il leur
@@ -966,6 +1054,22 @@ pub async fn note_deposer(app: tauri::AppHandle, id: String) -> R<()> {
     std::fs::remove_file(&chemin).map_err(|e| e.to_string())
 }
 
+/// Dépose un report sur Nuage, scellé pour l'ordinateur, et ne l'oublie que s'il est arrivé.
+#[tauri::command]
+pub async fn report_deposer(app: tauri::AppHandle, id: String) -> R<()> {
+    let (a, k) = relais_et_connexion(&app)?;
+    let d = dossier_reports(&app)?;
+    let r = reports_du_dossier(&d).into_iter().find(|r| r.id == id).ok_or("Ce report n'est plus là.")?;
+    let etiquette = relais::Etiquette {
+        genre: relais::Genre::Report, id: r.id.clone(), debut: r.debut.clone(), duree_s: 0.0, creneau: r.creneau.clone(),
+        ext: String::new(), destination: String::new(), nom: String::new(),
+    };
+    let contenu = serde_json::to_vec(&r.report).map_err(|e| e.to_string())?;
+    let blob = relais::preparer_depot(&a, &etiquette, &contenu)?;
+    oublier_si_retire(relais::porte::deposer(&a, &k, &relais::nom_du_depot(relais::Genre::Report, &r.id), blob).await)?;
+    oublier_report_dans(&d, &r.id)
+}
+
 /// Dépose une photo sur Nuage, scellée pour l'ordinateur, avec son nom.
 #[tauri::command]
 pub async fn photo_deposer(app: tauri::AppHandle, id: String) -> R<()> {
@@ -1145,6 +1249,36 @@ fn urlencode(s: &str) -> String {
             c => format!("%{:02X}", c as u32),
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests_reports {
+    use super::*;
+
+    #[test]
+    fn un_report_attend_dans_son_dossier_jusqu_a_son_depart() {
+        let d = std::env::temp_dir().join(format!("reports-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&d).unwrap();
+        let report = |id: &str, debut: &str| ReportGarde {
+            id: id.into(), debut: debut.into(), creneau: "cr-maths".into(), matiere: "Mathématiques".into(),
+            report: relais::Report {
+                jour: "2026-11-04".into(), seance: "Compter par dizaines".into(),
+                temps: vec![relais::TempsReporte { rang: 2, titre: "Temps 3 – Recherche".into() }],
+            },
+        };
+        garder_report_dans(&d, report("b-2", "2026-11-04T11:55:00")).unwrap();
+        garder_report_dans(&d, report("a-1", "2026-11-04T11:50:00")).unwrap();
+        std::fs::write(d.join("abime.json"), b"pas du json").unwrap();
+        let liste = reports_du_dossier(&d);
+        assert_eq!(liste.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(), vec!["a-1", "b-2"]);
+        assert_eq!(liste[0].report.temps[0].titre, "Temps 3 – Recherche");
+        oublier_report_dans(&d, "a-1").unwrap();
+        assert_eq!(reports_du_dossier(&d).len(), 1);
+        // Un identifiant qui serait un chemin ne sort pas du dossier.
+        assert!(oublier_report_dans(&d, "../creneaux").is_err());
+        assert!(garder_report_dans(&d, report("../x", "2026-11-04T12:00:00")).is_err());
+        std::fs::remove_dir_all(&d).ok();
+    }
 }
 
 #[cfg(test)]

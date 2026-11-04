@@ -243,6 +243,7 @@ pub fn run() {
             telephone::telephone_etat, telephone::telephone_comptes, telephone::telephone_relier,
             telephone::telephone_code, telephone::telephone_code_ordinateur, telephone::telephone_code_appliquer,
             telephone::telephone_oublier, telephone::telephone_relever, telephone::telephone_publier_journal,
+            telephone::reports_en_attente, telephone::report_prendre, telephone::report_fini,
         ]))
         .build(contexte)
         .expect("error while running tauri application")
