@@ -7,7 +7,7 @@ export const ONGLETS = [
   "sons", "lotoSyllabes", "lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin", "lotoPhonemesAttaque", "lotoPhonemesFin", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante",
   "comprehension", "visibileo", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "phrasesPuzzle", "trous", "motsMeles", "cursive",
   "martiniere", "compteEstBon", "pyramides", "partieTout", "multiplicatifs", "problemesCM", "coloriage", "collections", "problemeDuJour", "motifs", "tangram", "nombres", "cubes", "billes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "calcul", "arbre", "posees", "rectangles", "calculCM", "soustractionPosee", "sequencesPS", "sequencesMS", "sequencesGS", "sequencesCP", "sequencesCE1", "sequencesCE2", "sequencesCM1", "sequencesCM2", "fractions", "oie", "heure", "monnaie", "mesures", "grandeursCM", "geometrie", "solides", "deplacements", "geometrieCM", "donnees", "tableauDouble", "des", "numeration",
-  "carteMentale", "famillesAddition", "taches",
+  "carteMentale", "famillesAddition", "tablesMultiplication", "afficheConjugaison", "friseAlphabetique", "taches",
   "sequentiel", "priseDeParole", "codePhrase", "codeLecture", "resolution", "modelisation", "fonction",
   "planClasse", "frise", "paysage",
   "perso",
@@ -137,6 +137,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Le jeu de l'ascenseur : deux bandes qui glissent, la syllabe apparaît." },
       { id: "lettres", nom: "Les lettres", icone: "🔠", cycles: "Cycles 1 et 2",
         quoi: "Jeu de mémoire, mistigri et loto des lettres, majuscule et minuscule ; la planche de l'ophtalmologue." },
+      { id: "friseAlphabetique", sortes: ["affichage", "outil"], nom: "La frise alphabétique", icone: "🔡", cycles: "Cycles 1 et 2", pictos: true,
+        quoi: "Chaque lettre en capitale, en script et en cursive, avec un mot et son dessin : la frise du mur, une lettre par page, ou la bande de la table de l'élève." },
       { id: "gestes", sortes: ["affichage", "outil", "support"], nom: "Gestes Borel-Maisonny", icone: "🤲", cycles: "Cycles 1 et 2",
         quoi: "Vos images des gestes en cartes à découper : petites pour les mains, grandes pour le tableau — et, d'un clic, en loto ou en mémory." },
       { id: "motsGestes", nom: "Mots codés en gestes", icone: "🫱", cycles: "Cycle 2",
@@ -156,6 +158,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
         quoi: "Les gammes sur une phrase modèle, des mots imposés, déplacer-ajouter-remplacer-supprimer, de l'oral à l'écrit, le jogging d'écriture, transformer un texte, ajouter un épisode, les connecteurs, le brouillon, la grille de relecture, la lettre." },
       { id: "grammaire", nom: "Grammaire et conjugaison", icone: "🧩", cycles: "Cycle 2",
         quoi: "La phrase, ses types et ses formes, les classes de mots, groupe sujet, verbe et compléments, les paroles rapportées ; la chaîne d'accords, le sujet et le verbe ; les tableaux de conjugaison, changer le temps, l'infinitif." },
+      { id: "afficheConjugaison", sortes: ["affichage"], nom: "Les tableaux de conjugaison", icone: "✒️", cycles: "Cycle 2",
+        quoi: "Les verbes et les temps du programme de la classe, du CP au CE2 : une page par verbe ou par temps, les terminaisons en couleur, les pictogrammes des pronoms." },
       { id: "oral", nom: "L'oral", icone: "🗣", cycles: "Cycle 2",
         quoi: "Les grilles pour raconter, présenter un exposé, dire un poème, débattre ; la carte du récit ; le poème à apprendre ; le plan d'exposé ; les cartes « Je prends la parole » ; les rôles du débat ; les registres de langue et les jeux de rôles." },
       { id: "tri", nom: "Les maisons du tri", icone: "🏠", cycles: "Cycles 2 et 3",
@@ -186,6 +190,8 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
     outils: [
       { id: "famillesAddition", sortes: ["affichage"], nom: "Les tables d'addition", icone: "➕", cycles: "Cycle 2",
         quoi: "La maison de chaque nombre — ses façons de le faire en deux parties, en billes bleues et rouges —, la table de chaque nombre, la table de Pythagore : pour le mur, ou en petit pour le cahier de l'élève." },
+      { id: "tablesMultiplication", sortes: ["affichage"], nom: "Les tables de multiplication", icone: "✖️", cycles: "Cycle 2",
+        quoi: "La table de chaque nombre, chaque produit avec son rectangle de points, ou la table de Pythagore : pour le mur, ou en petit pour le cahier de l'élève." },
       { id: "martiniere", nom: "Calcul mental", icone: "🧮", cycles: "Cycles 2 et 3",
         quoi: "Un fait numérique ou une procédure à la fois, d'après les programmes : à l'oral (La Martinière) ou en test de fluence." },
       { id: "compteEstBon", nom: "Le nombre cible", icone: "🎯", cycles: "Cycles 2 et 3",
@@ -326,7 +332,7 @@ export const FAMILLES: { id: string; libelle: string; aide: string; outils: Outi
  */
 export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[] = [
   { id: "nombres", nom: "Les nombres", outils: ["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "oie", "fractions", "numeration"] },
-  { id: "calcul", nom: "Le calcul", outils: ["famillesAddition", "martiniere", "calcul", "arbre", "posees", "rectangles", "pyramides", "compteEstBon", "coloriage", "calculCM"] },
+  { id: "calcul", nom: "Le calcul", outils: ["famillesAddition", "tablesMultiplication", "martiniere", "calcul", "arbre", "posees", "rectangles", "pyramides", "compteEstBon", "coloriage", "calculCM"] },
   { id: "problemes", nom: "Les problèmes", outils: ["partieTout", "multiplicatifs", "problemesCM"] },
   { id: "grandeurs", nom: "Grandeurs et mesures", outils: ["heure", "monnaie", "mesures", "grandeursCM"] },
   { id: "geometrie", nom: "Espace et géométrie", outils: ["motifs", "tangram", "geometrie", "solides", "deplacements", "geometrieCM"] },
@@ -340,8 +346,8 @@ export const DOMAINES_DES_MATHS: { id: string; nom: string; outils: Onglet[] }[]
  */
 export const PARTIES_DU_FRANCAIS: { id: string; nom: string; outils: Onglet[] }[] = [
   { id: "langage", nom: "Langage", outils: ["jeux", "memory", "imagier", "categoriser", "suites", "etiquettes", "ombres"] },
-  { id: "sons", nom: "Sons et lecture", outils: ["sons", "lotoSyllabes", "lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin", "lotoPhonemesAttaque", "lotoPhonemesFin", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "gestes", "motsGestes", "syllabeManquante"] },
-  { id: "ecrit", nom: "Lecture et écriture", outils: ["comprehension", "visibileo", "lecteur", "orthographe", "ecrire", "grammaire", "oral", "tri", "phrases", "phrasesPuzzle", "trous", "motsMeles", "cursive"] },
+  { id: "sons", nom: "Sons et lecture", outils: ["sons", "lotoSyllabes", "lotoAttaques", "lotoRimes", "lotoSyllabesAttaque", "lotoSyllabesFin", "lotoPhonemesAttaque", "lotoPhonemesFin", "dominos", "intrus", "paires", "fluence", "voixHaute", "syllabaire", "lettres", "friseAlphabetique", "gestes", "motsGestes", "syllabeManquante"] },
+  { id: "ecrit", nom: "Lecture et écriture", outils: ["comprehension", "visibileo", "lecteur", "orthographe", "ecrire", "grammaire", "afficheConjugaison", "oral", "tri", "phrases", "phrasesPuzzle", "trous", "motsMeles", "cursive"] },
 ];
 
 /** Les familles qui se découpent, et leurs parties. */

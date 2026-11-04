@@ -66,7 +66,9 @@ export const USAGE_PAR_DEFAUT: Record<string, Usage> = {
   coloriage: "reinvestissement", collections: "manipulation", problemeDuJour: "rituel", motifs: "manipulation", tangram: "manipulation", nombres: "manipulation", cubes: "manipulation", billes: "manipulation", abaque: "manipulation", suiteNombres: "entrainement", demiDroite: "entrainement", ordinaux: "entrainement", comparer: "entrainement", calcul: "entrainement", arbre: "entrainement", posees: "entrainement", rectangles: "manipulation", calculCM: "entrainement",
   fractions: "manipulation", oie: "reinvestissement", heure: "entrainement", monnaie: "manipulation", mesures: "entrainement", grandeursCM: "entrainement", geometrie: "entrainement", solides: "manipulation", deplacements: "entrainement", geometrieCM: "entrainement", donnees: "entrainement", tableauDouble: "entrainement", des: "reinvestissement", numeration: "entrainement",
   // Affichages : la trace qu'on reprend, au mur ; les familles d'addition, qu'on apprend par cœur.
-  carteMentale: "reinvestissement", famillesAddition: "entrainement",
+  carteMentale: "reinvestissement", famillesAddition: "entrainement", tablesMultiplication: "entrainement",
+  // La conjugaison et la frise alphabétique : des référents, qu'on consulte en écrivant.
+  afficheConjugaison: "reinvestissement", friseAlphabetique: "reinvestissement",
   // Évaluer : en fin de séquence, savoir où en est chacun.
   taches: "reinvestissement",
   // Aides à la tâche : on les manipule pendant qu'on fait ; la prise de parole se prépare pour le bilan.

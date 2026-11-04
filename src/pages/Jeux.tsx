@@ -31,6 +31,9 @@ import { CursiveTab, EtiquettesTab, MotsMelesTab, OmbresTab, PhrasesTab, TriTab 
 import { AbaqueTab, BillesTab, SuiteNombresTab } from "./AteliersNumerationCP";
 import { DemiDroiteTab, OrdinauxTab } from "./AteliersReperage";
 import { FamillesAdditionTab } from "./AtelierFamillesAddition";
+import { TablesMultiplicationTab } from "./AtelierTablesMultiplication";
+import { AfficheConjugaisonTab } from "./AtelierAfficheConjugaison";
+import { FriseAlphabetiqueTab } from "./AtelierFriseAlphabetique";
 import { CalculCMTab, GeometrieCMTab, GrandeursCMTab, ProblemesCMTab } from "./AteliersCoursMoyen";
 import { RectanglesTab } from "./AtelierRectangles";
 import { TangramTab } from "./AtelierTangram";
@@ -537,6 +540,7 @@ export default function Jeux() {
         : onglet === "fluence" ? <FluenceTab />
         : onglet === "syllabaire" ? <SyllabaireTab />
         : onglet === "lettres" ? <LettresTab />
+        : onglet === "friseAlphabetique" ? <FriseAlphabetiqueTab banque={Boolean(etat?.installee)} />
         : onglet === "gestes" ? <GestesTab />
         : onglet === "motsGestes" ? <MotsEnGestesTab banque={Boolean(etat?.installee)} />
         : onglet === "syllabeManquante" ? <SyllabeManquanteTab banque={Boolean(etat?.installee)} />
@@ -549,6 +553,7 @@ export default function Jeux() {
         : onglet === "vilainPetitCanard" ? <VilainPetitCanardTab />
         : onglet === "carteMentale" ? <CarteMentaleTab banque={Boolean(etat?.installee)} />
         : onglet === "famillesAddition" ? <FamillesAdditionTab />
+        : onglet === "tablesMultiplication" ? <TablesMultiplicationTab />
         : onglet === "nombres" ? <CartesNombresTab />
         : onglet === "cubes" ? <CubesTab />
         : onglet === "billes" ? <BillesTab />
@@ -581,6 +586,7 @@ export default function Jeux() {
         : onglet === "orthographe" ? <OrthographeTab />
         : onglet === "ecrire" ? <EcrireTab />
         : onglet === "grammaire" ? <GrammaireTab />
+        : onglet === "afficheConjugaison" ? <AfficheConjugaisonTab banque={Boolean(etat?.installee)} />
         : onglet === "oral" ? <OralTab />
         : onglet === "fractions" ? <FractionsTab />
         : onglet === "oie" ? <JeuDeLOieTab />

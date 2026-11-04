@@ -42,6 +42,9 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
   carteMentale: `${SOURCE_INCONNUE}.`,
   famillesAddition: `${MATHS_C2}, CP : « Connaitre dans les deux sens les tables d'addition » ; les décompositions des nombres inférieurs à dix, vues `
     + "en maternelle, « sont réintroduits progressivement pendant les deux premières périodes du CP ».",
+  tablesMultiplication: `${MATHS_C2}, CE1 : « Connaitre dans les deux sens les tables de multiplication », A × B = C ou C = A × B avec A et B `
+    + "entre 0 et 10, un apprentissage qui « s'étale sur l'année scolaire tout entière » (p. 14) ; au CE2, leur mémorisation « se poursuit » (p. 22) ; "
+    + `${GUIDE_CP_NOMBRES}, p. 63 : la table de Pythagore affichée au mur.`,
   taches: `${SOURCE_INCONNUE}.`,
 
   // ── Sons et lecture ──
@@ -68,6 +71,9 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
   voixHaute: "Livrets d'accompagnement de français CP (2025), CE1 (2026) et CE2, Éduscol, focus « Fluence et lecture à voix haute ».",
   syllabaire: "Livrets d'accompagnement de français CP (2025) et CE1 (2026), Éduscol : le syllabaire et le jeu de l'ascenseur, pour s'entraîner en autonomie.",
   lettres: "Livret d'accompagnement de français CP (Éduscol, 2025) : le loto, le mémory et le mistigri des lettres, le jeu de l'ophtalmologue.",
+  friseAlphabetique: `${FRANCAIS_C2}, p. 10 : l'élève « utilise les outils présents dans la classe (frise alphabétique, répertoire de mots, affichages, etc.) » ; `
+    + "programme de l'école maternelle (2025), p. 14 : « les différentes graphies d'une même lettre dans les trois graphies (majuscule lettre capitale ; "
+    + "minuscules scriptes ; cursives) ».",
   gestes: "La méthode des gestes Borel-Maisonny, qui associe un geste à chaque son ; aucun texte officiel. Les images des gestes sont les vôtres.",
   motsGestes: "La méthode des gestes Borel-Maisonny, qui associe un geste à chaque son ; aucun texte officiel. Les images des gestes sont les vôtres.",
   syllabeManquante: `${SOURCE_INCONNUE} — sur le modèle des fichiers de lecture.`,
@@ -80,6 +86,9 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
     + `${FRANCAIS_C2.charAt(0).toLowerCase()}${FRANCAIS_C2.slice(1)}.`,
   ecrire: `${FRANCAIS_C2}, « Produire des écrits » ; guide « Pour enseigner la lecture et l'écriture au CE1 » (Éduscol, 2019), « La rédaction », p. 77-89.`,
   grammaire: `${FRANCAIS_C2}, étude de la langue ; guide « Pour enseigner la lecture et l'écriture au CE1 » (Éduscol, 2019), p. 95-97.`,
+  afficheConjugaison: `${FRANCAIS_C2} : au CP, être et avoir au présent (p. 20) ; au CE1, le présent, l'imparfait, le futur puis le passé composé `
+    + "d'être, d'avoir et des verbes du premier groupe (p. 21) ; au CE2, aussi « faire, aller, dire, venir, pouvoir, voir, vouloir, prendre » (p. 22) ; "
+    + "les outils d'aide à l'écriture que le professeur élabore avec les élèves, dont « l'affichage » (p. 9).",
   oral: `${FRANCAIS_C2}, « Oral » ; Éduscol, « Organiser l'enseignement de l'oral » ; guide « Pour enseigner la lecture et l'écriture au CP » `
     + "(Éduscol, 2018), p. 52-53 et 105.",
   tri: "Trier pour apprendre une notion, comme la leçon de grammaire du guide « Pour enseigner la lecture et l'écriture au CE1 » (Éduscol, 2019), "
