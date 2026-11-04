@@ -13,13 +13,18 @@
 // sur les tablettes et dans les bandes (demande de l'enseignant, 2026-11-01).
 // Elle peut aussi montrer un élément du plan de travail — du matériel, un
 // outil pour l'élève, un affichage — : elle lui sert alors d'image dans la
-// séance qui le pose et au cahier journal du créneau (même jour).
+// séance qui le pose et au cahier journal du créneau (même jour). Un outil
+// pour l'enseignant ou un espace de la classe aussi — ses classeurs,
+// l'armoire… : « il faudrait également ajouter, espace de classe et outils
+// pour l'enseignant » (l'enseignant, 4 novembre 2026). Sur le bureau du plan
+// de travail, elle sert d'image à ce qu'elle montre.
 //
 // Un niveau suffit — « tous les niveaux » compris — ; la matière ne fait que
 // s'écrire au-dessus de la photo sur les tablettes. L'enseignant voulait voir
 // ses ateliers en photo proposés sans avoir à leur chercher une matière
 // (demande de l'enseignant, octobre 2026).
 
+import type { Espace } from "./api";
 import type { MonPicto } from "./mesPictos";
 
 /** Le niveau d'un support qui sert à tous les élèves. */
@@ -39,11 +44,30 @@ export type PhotoDeJeu = Pick<MonPicto, "id" | "origine" | "jeuId">;
 export const photoDuJeu = (photos: PhotoDeJeu[], jeuId: string): number | undefined =>
   photos.find((p) => p.origine === "photo" && p.jeuId === jeuId)?.id;
 
-/** Ce qu'une photo peut montrer du plan de travail, dans l'ordre de son menu : le matériel, les outils pour l'élève, les affichages. */
-export const GENRES_MONTRES = ["materiel", "outil", "affichage"] as const;
+/**
+ * Ce qu'une photo peut montrer du plan de travail, dans l'ordre de son menu :
+ * le matériel, les outils pour l'élève et pour l'enseignant, les affichages ;
+ * puis les espaces de la classe (voir espacesMontres).
+ */
+export const GENRES_MONTRES = ["materiel", "outil", "enseignant", "affichage"] as const;
 
-/** Un élément du plan de travail tel qu'une photo le garde : « outil:<id> ». */
+/** Un élément du plan de travail tel qu'une photo le garde : « outil:<id> », « espace:<id> ». */
 export const cleDeLElement = (r: { genre: string; source: string }) => `${r.genre}:${r.source}`;
+
+/** Le groupe des espaces, dans le menu d'une photo. */
+export const ESPACES_DE_LA_CLASSE = "Espaces de la classe";
+
+const comparer = new Intl.Collator("fr", { sensitivity: "base", numeric: true }).compare;
+
+/**
+ * Les espaces de la classe — l'armoire, le coin regroupement… — qu'une photo
+ * peut montrer, tels qu'elle les garde (« espace:<id> ») : par ordre
+ * alphabétique, sans ceux qui n'ont pas de nom.
+ */
+export const espacesMontres = (espaces: Pick<Espace, "id" | "titre">[]): { cle: string; titre: string }[] =>
+  espaces.filter((e) => e.titre.trim())
+    .map((e) => ({ cle: cleDeLElement({ genre: "espace", source: e.id }), titre: e.titre }))
+    .sort((a, b) => comparer(a.titre, b.titre));
 
 /** Les photos liées à un jeu ou à un élément du plan de travail. */
 export const photosLiees = (photos: MonPicto[]): MonPicto[] => photos.filter((p) => p.origine === "photo" && (!!p.jeuId || !!p.elementId));

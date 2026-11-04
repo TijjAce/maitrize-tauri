@@ -20,7 +20,9 @@ import { openCtx } from "./ctxmenu";
 // (référentiels, règles de vie, emploi du temps visuel…) — où ils sont, quand
 // ils sont au mur, et le fichier pour les réimprimer ; et les évaluations —
 // quelle compétence elles évaluent, comment les faire passer, et le sujet à
-// imprimer.
+// imprimer. Un quatrième, les outils pour l'enseignant — ses classeurs, ses
+// cahiers… —, à quoi ils servent et où ils sont rangés (demande de
+// l'enseignant, 4 novembre 2026).
 
 const liste = <T,>(json: string): T[] => {
   try { const v = JSON.parse(json || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
@@ -53,6 +55,13 @@ const MOTS = {
     consignes: "Comment la faire passer",
     consignesExemple: "En individuel, la consigne lue à voix haute, sans limite de temps ; réussi si 8 items sur 10…",
     documents: "Le sujet à imprimer (PDF)", ajouter: "📎 Ajouter un PDF", icone: "📋",
+  },
+  enseignant: {
+    nouveau: "Nouvel outil pour l'enseignant", modifier: "Modifier l'outil pour l'enseignant", titre: "Nom de l'outil",
+    lieu: "Rangement", lieuExemple: "ex. Étagère du bureau", categorie: "Catégorie", usage: "À quoi il sert",
+    usageExemple: "Garder les préparations, suivre les progrès de chaque élève…",
+    consignes: "À savoir", consignesExemple: "Un intercalaire par élève ; à compléter chaque vendredi…",
+    documents: "Documents à imprimer", ajouter: "📎 Ajouter un document", icone: "🧑‍🏫",
   },
 } as const;
 
@@ -128,7 +137,8 @@ export function OutilForm({ o, onClose, onSaved }: { o: OutilClasse; onClose: ()
       </div>
       <Field label={mots.usage}>
         <Textarea value={v.usage} placeholder={mots.usageExemple} onChange={(e) => up({ usage: e.target.value })} />
-        {!evaluation && <ChoixCompetencesBo valeur={v.competencesBo} onChange={(competencesBo) => up({ competencesBo })} />}
+        {/* Les compétences des programmes : celles qu'un outil ou un affichage fait travailler aux élèves ; l'outil de l'enseignant n'en fait travailler aucune. */}
+        {!evaluation && v.genre !== "enseignant" && <ChoixCompetencesBo valeur={v.competencesBo} onChange={(competencesBo) => up({ competencesBo })} />}
       </Field>
       <Field label={mots.consignes}>
         <Textarea value={v.consignes} placeholder={mots.consignesExemple} rows={Math.min(10, Math.max(3, v.consignes.split("\n").length + 1))}

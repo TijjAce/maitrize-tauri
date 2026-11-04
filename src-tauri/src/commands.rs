@@ -264,7 +264,8 @@ pub fn outil_classe_save(db: State<Db>, outil: OutilClasse) -> R<OutilClasse> {
 }
 
 pub(crate) fn ecrire_outil_classe(c: &rusqlite::Connection, o: OutilClasse) -> R<OutilClasse> {
-    if !matches!(o.genre.as_str(), "outil" | "affichage" | "evaluation") {
+    // « enseignant » : un outil pour l'enseignant — ses classeurs… — (demande de l'enseignant, 4 novembre 2026).
+    if !matches!(o.genre.as_str(), "outil" | "affichage" | "evaluation" | "enseignant") {
         return Err("Genre inconnu.".into());
     }
     c.execute(
@@ -3109,7 +3110,8 @@ const SOURCES: &[(&str, &str)] = &[
              COALESCE(regles,'') || '\n' || COALESCE(description_jeu,'') || '\n' || COALESCE(competences,''),
              COALESCE(date_creation,''), '' FROM jeux WHERE ", hors_poubelle!("dossier"))),
     ("outil", concat!("SELECT id, COALESCE(NULLIF(titre,''),'Outil'),
-               CASE genre WHEN 'affichage' THEN 'Affichage' WHEN 'evaluation' THEN 'Évaluation' ELSE 'Outil' END
+               CASE genre WHEN 'affichage' THEN 'Affichage' WHEN 'evaluation' THEN 'Évaluation'
+                 WHEN 'enseignant' THEN 'Outil pour l''enseignant' ELSE 'Outil' END
                || COALESCE(' · ' || NULLIF(categorie,''),''),
                COALESCE(usage,'') || '\n' || COALESCE(consignes,''), COALESCE(date_creation,''), COALESCE(genre,'') FROM outils_classe WHERE ", hors_poubelle!("dossier"))),
     ("texte", concat!("SELECT id, COALESCE(NULLIF(titre,''),'Texte'), COALESCE(dossier,''), COALESCE(contenu,''),
@@ -3915,6 +3917,24 @@ mod tests_fiches_de_classe {
             "id": "x1", "genre": "chose", "titre": "?"
         })).unwrap();
         assert!(super::ecrire_outil_classe(&c, inconnu).is_err());
+    }
+
+    /// Un outil pour l'enseignant — ses classeurs… — entre dans la même table,
+    /// et la recherche le nomme tel qu'il est (demande de l'enseignant,
+    /// 4 novembre 2026).
+    #[test]
+    fn un_outil_pour_l_enseignant_s_enregistre_et_se_retrouve() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrer_pour_test(&c);
+        let classeurs: OutilClasse = serde_json::from_value(serde_json::json!({
+            "id": "en1", "genre": "enseignant", "titre": "Classeurs de suivi", "categorie": "Suivi des élèves",
+        })).unwrap();
+        super::ecrire_outil_classe(&c, classeurs).unwrap();
+        let lu = c.query_row("SELECT * FROM outils_classe WHERE id='en1'", [], OutilClasse::from_row).unwrap();
+        assert_eq!(lu.genre, "enseignant");
+        let trouves = super::chercher(&c, "classeurs");
+        assert_eq!(trouves.first().map(|r| (r.kind.as_str(), r.id.as_str(), r.sous_titre.as_str())),
+            Some(("outil", "en1", "Outil pour l'enseignant · Suivi des élèves")));
     }
 }
 

@@ -1,6 +1,8 @@
 // Les supports d'une séance : un outil pour l'élève, un affichage, un jeu,
 // une évaluation ou un matériel du plan de travail, posés dans la séance
-// (demande de l'enseignant, octobre 2026).
+// (demande de l'enseignant, octobre 2026) ; un outil pour l'enseignant aussi
+// — ses classeurs… —, « il faudrait également ajouter […] outils pour
+// l'enseignant » (l'enseignant, 4 novembre 2026).
 //
 // Le support reste sur le bureau, à sa place : la séance y renvoie. Le renvoi
 // est une ligne de son matériel qui porte la sorte et l'identifiant de
@@ -17,7 +19,7 @@ import type { Creneau, Jeu, MaterielItem, OutilClasse, Seance, Sequence } from "
 import { liensDuCreneau } from "./materielAImprimer";
 import { escapeHtml } from "./print";
 
-export type GenreDeSupport = "outil" | "affichage" | "evaluation" | "jeu" | "materiel";
+export type GenreDeSupport = "outil" | "enseignant" | "affichage" | "evaluation" | "jeu" | "materiel";
 
 export interface RenvoiDeSupport {
   genre: GenreDeSupport;
@@ -28,6 +30,7 @@ export interface RenvoiDeSupport {
 /** Les sortes de supports, dans l'ordre du menu « Nouveau support » du plan de travail. */
 export const GENRES_DE_SUPPORT: readonly { id: GenreDeSupport; nom: string; pluriel: string; ico: string; nouveau: string }[] = [
   { id: "outil", nom: "Outil pour l'élève", pluriel: "Outils pour l'élève", ico: "📏", nouveau: "Nouvel outil pour l'élève" },
+  { id: "enseignant", nom: "Outil pour l'enseignant", pluriel: "Outils pour l'enseignant", ico: "🧑‍🏫", nouveau: "Nouvel outil pour l'enseignant" },
   { id: "affichage", nom: "Affichage", pluriel: "Affichages", ico: "🖼", nouveau: "Nouvel affichage" },
   { id: "jeu", nom: "Jeu", pluriel: "Jeux", ico: "🎲", nouveau: "Nouveau jeu" },
   { id: "evaluation", nom: "Évaluation", pluriel: "Évaluations", ico: "📋", nouveau: "Nouvelle évaluation" },

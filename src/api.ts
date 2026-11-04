@@ -174,10 +174,10 @@ export interface Jeu {
   imageNom: string | null; dossier: string;
 }
 
-/** Un outil pour l'élève (bande numérique, casque…) ou un affichage de la classe. */
+/** Un outil pour l'élève (bande numérique, casque…), un affichage de la classe, une évaluation, ou un outil pour l'enseignant (ses classeurs…). */
 export interface OutilClasse {
   id: string;
-  genre: "outil" | "affichage" | "evaluation";
+  genre: "outil" | "affichage" | "evaluation" | "enseignant";
   titre: string; categorie: string;
   /** À quoi il sert, ce qu'il travaille. */
   usage: string;
@@ -540,15 +540,21 @@ export const CATEGORIES_EVALUATION = [
   "Diagnostique (avant d'apprendre)", "En cours d'apprentissage", "Bilan de fin de séquence",
   "Positionnement (livret, PPI)", "Autre",
 ];
+/** Les outils pour l'enseignant : ses classeurs, ses cahiers… (demande de l'enseignant, 4 novembre 2026). */
+export const CATEGORIES_ENSEIGNANT = [
+  "Préparation de la classe", "Suivi des élèves", "Organisation de la classe", "Familles et partenaires",
+  "Documents administratifs", "Autre",
+];
 export const PERIODES_AFFICHAGE = [
   "Toute l'année", "Période 1", "Période 2", "Période 3", "Période 4", "Période 5", "Rangé (plus affiché)",
 ];
 
 /** Les catégories proposées, selon la sorte de fiche. */
 export const categoriesDuGenre = (genre: OutilClasse["genre"]): readonly string[] =>
-  genre === "outil" ? CATEGORIES_OUTIL : genre === "affichage" ? CATEGORIES_AFFICHAGE : CATEGORIES_EVALUATION;
+  genre === "outil" ? CATEGORIES_OUTIL : genre === "affichage" ? CATEGORIES_AFFICHAGE
+    : genre === "enseignant" ? CATEGORIES_ENSEIGNANT : CATEGORIES_EVALUATION;
 
-const COULEUR_DU_GENRE: Record<OutilClasse["genre"], string> = { outil: "teal", affichage: "orange", evaluation: "indigo" };
+const COULEUR_DU_GENRE: Record<OutilClasse["genre"], string> = { outil: "teal", affichage: "orange", evaluation: "indigo", enseignant: "pink" };
 
 export const nouvelOutil = (genre: OutilClasse["genre"]): OutilClasse => ({
   id: newId(), genre, titre: "", categorie: categoriesDuGenre(genre)[0],

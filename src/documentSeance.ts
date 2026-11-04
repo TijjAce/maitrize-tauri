@@ -12,8 +12,9 @@
 //   Du texte, **en gras**, *en italique*.      son déroulement
 //   - un élément de liste
 //   [img:photo.jpg]                   une image, seule sur sa ligne
-//   [@outil:o1|Réglette de lecture]   un support cité (outil, affichage,
-//                                     évaluation, jeu, materiel, feuille)
+//   [@outil:o1|Réglette de lecture]   un support cité (outil, enseignant,
+//                                     affichage, évaluation, jeu, materiel,
+//                                     feuille)
 //   [cite:…]                          une citation d'un document du coffre
 //   {rouge|un mot}                    la couleur du texte ; {fond-jaune|…} :
 //                                     le surligneur (voir COULEURS_DU_TEXTE)
@@ -33,11 +34,11 @@
 
 import { ENTETE_TABLEAU } from "./demarches";
 
-export type GenreCite = "outil" | "affichage" | "evaluation" | "jeu" | "materiel" | "feuille";
-const GENRES: readonly GenreCite[] = ["outil", "affichage", "evaluation", "jeu", "materiel", "feuille"];
+export type GenreCite = "outil" | "enseignant" | "affichage" | "evaluation" | "jeu" | "materiel" | "feuille";
+const GENRES: readonly GenreCite[] = ["outil", "enseignant", "affichage", "evaluation", "jeu", "materiel", "feuille"];
 
 export const ICONE_CITE: Record<GenreCite, string> = {
-  outil: "📏", affichage: "🖼", evaluation: "📋", jeu: "🎲", materiel: "🧰", feuille: "📄",
+  outil: "📏", enseignant: "🧑‍🏫", affichage: "🖼", evaluation: "📋", jeu: "🎲", materiel: "🧰", feuille: "📄",
 };
 
 export type Bloc =

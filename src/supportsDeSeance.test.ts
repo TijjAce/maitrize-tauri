@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Jeu, MaterielItem, OutilClasse } from "./api";
 import {
-  chercherElements, dejaPose, elementDuRenvoi, elementsDuBureau, lireRenvoi, renvoiVers, supportsDeLaSeance, supportsDuCreneau, supportsImprimes,
+  GENRES_DE_SUPPORT, chercherElements, dejaPose, elementDuRenvoi, elementsDuBureau, genreDeSupport, lireRenvoi, renvoiVers, supportsDeLaSeance,
+  supportsDuCreneau, supportsImprimes,
 } from "./supportsDeSeance";
 import type { Seance, Sequence } from "./api";
 
@@ -25,6 +26,7 @@ const bureau = {
     outil({ id: "o1", titre: "Bande numérique", categorie: "Nombres", lieu: "Bac bleu" }),
     outil({ id: "o2", genre: "affichage", titre: "Affiche des sons" }),
     outil({ id: "o3", genre: "evaluation", titre: "Évaluation des doubles" }),
+    outil({ id: "o4", genre: "enseignant", titre: "Classeurs de suivi", categorie: "Suivi des élèves", lieu: "Étagère du bureau" }),
   ],
   jeux: [jeu({ id: "j1", titre: "Halli Galli", duree: 15 })],
   materiel: [
@@ -68,6 +70,26 @@ describe("les supports d'une séance", () => {
     const tous = elementsDuBureau("evaluation", bureau, aDesPdfs);
     expect(chercherElements(tous, "evaluation doubles").map((e) => e.titre)).toEqual(["Évaluation des doubles"]);
     expect(chercherElements(tous, "triples")).toEqual([]);
+  });
+});
+
+describe("un outil pour l'enseignant, un support comme les autres (demande de l'enseignant, 4 novembre 2026)", () => {
+  it("a son nom, son icône et sa création, juste après l'outil pour l'élève", () => {
+    expect(GENRES_DE_SUPPORT.map((g) => g.id).slice(0, 2)).toEqual(["outil", "enseignant"]);
+    expect(genreDeSupport("enseignant")).toEqual({
+      id: "enseignant", nom: "Outil pour l'enseignant", pluriel: "Outils pour l'enseignant", ico: "🧑‍🏫", nouveau: "Nouvel outil pour l'enseignant",
+    });
+  });
+
+  it("se choisit sur le bureau à part des outils pour l'élève, et se pose dans la séance", () => {
+    expect(elementsDuBureau("enseignant", bureau, aDesPdfs).map((e) => [e.titre, e.detail])).toEqual([["Classeurs de suivi", "Suivi des élèves · Étagère du bureau"]]);
+    expect(elementsDuBureau("outil", bureau, aDesPdfs).map((e) => e.titre)).toEqual(["Bande numérique"]);
+    const lien = renvoiVers({ id: "s1", sequenceId: null }, { genre: "enseignant", source: "o4" }, "Classeurs de suivi", "l1", "2026-11-04T09:00:00Z");
+    expect(lireRenvoi(lien.supportJson)).toEqual({ genre: "enseignant", source: "o4" });
+    expect(elementDuRenvoi({ genre: "enseignant", source: "o4" }, bureau)?.titre).toBe("Classeurs de suivi");
+    // Le même numéro sous une autre sorte n'est pas lui.
+    expect(elementDuRenvoi({ genre: "outil", source: "o4" }, bureau)).toBeNull();
+    expect(supportsImprimes([lien], bureau)).toContain("🧑‍🏫 Classeurs de suivi");
   });
 });
 

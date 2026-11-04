@@ -165,6 +165,13 @@ describe("dire ce qu'un dossier Maitrize contient", () => {
     expect(r.auteur).toBe("Clément Titet");
   });
 
+  it("compte les outils pour l'enseignant avec les outils : la version d'avant les lit aussi (demande de l'enseignant, 4 novembre 2026)", () => {
+    const vide: Contenu = { sequences: [], seances: [], pieces: [], materiels: [], textes: [], jeux: [], ateliers: [], espaces: [], outils: [] };
+    const r = resume({ ...vide, outils: [{ ...nouvelOutil("enseignant"), id: "o9", titre: "Classeurs de suivi" }, { ...nouvelOutil("outil"), id: "o1" }] });
+    expect(r.compte).toEqual({ outils: 2 });
+    expect(descriptionDuResume(r)).toEqual({ icone: "📏", texte: "2 outils" });
+  });
+
   it("annonce une séquence seule par ses séances", () => {
     const r = resume(contenuDUnElement("sequence", "q1", bureau()));
     expect(descriptionDuResume(r)).toEqual({ icone: "📚", texte: "Séquence · 1 séance" });

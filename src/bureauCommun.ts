@@ -72,7 +72,8 @@ export function resumeDe(contenu: Contenu, auteur: string, depose: string, fichi
   ajouter("jeux", contenu.jeux.length);
   ajouter("ateliers", contenu.ateliers.length);
   ajouter("espaces", contenu.espaces.length);
-  ajouter("outils", contenu.outils.filter((o) => o.genre === "outil").length);
+  // Les outils pour l'enseignant comptent avec les autres : un collègue à la version d'avant lit encore « 2 outils ».
+  ajouter("outils", contenu.outils.filter((o) => o.genre === "outil" || o.genre === "enseignant").length);
   ajouter("affichages", contenu.outils.filter((o) => o.genre === "affichage").length);
   ajouter("evaluations", contenu.outils.filter((o) => o.genre === "evaluation").length);
   return { auteur, depose, compte, seances: contenu.seances.length, fichiers };

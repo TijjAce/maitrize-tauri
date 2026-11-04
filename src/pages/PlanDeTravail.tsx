@@ -49,6 +49,10 @@ import {
 import { FAMILLES_DE_SUPPORTS } from "../catalogueAteliers";
 import { iconeEtNom } from "../components/PliDuCatalogue";
 import { ouvrirOnglet } from "../ongletDemande";
+import { usePictoImage } from "../components/ChoixPicto";
+import { usePhotosLiees } from "../components/usePhotosLiees";
+import { photoDeLElement } from "../supportsDeTravail";
+import type { MonPicto } from "../mesPictos";
 
 // ── Le bureau ──────────────────────────────────────────────────────────────
 //
@@ -226,6 +230,8 @@ export default function PlanDeTravail() {
   const { data: liens, reload: rL } = useAsync(() => api.atelierEspaceList(), []);
   const { data: jeux, reload: rJ } = useAsync(() => api.jeuxList(true), []);
   const { data: outilsClasse, reload: rO } = useAsync(() => api.outilsClasseList(true), []);
+  // Les photos de « Mes photos » qui montrent un matériel, un outil, un affichage ou un espace : leur image sur le bureau.
+  const photosLiees = usePhotosLiees();
   // La copie de ce bureau dans un vrai dossier de l'ordinateur (voir CopieDuBureau).
   const { data: copie } = useAsync(() => api.copieBureauInfo(), []);
   const ouvrirCopie = () => {
@@ -1196,6 +1202,7 @@ export default function PlanDeTravail() {
       menuGroupe={selection.size > 1 && selection.has(cleElement(e)) ? menuDuGroupe : undefined}
       onSeule={() => setSelection(new Set([cleElement(e)]))}
       suivi={e.genre === "sequence" ? suivis.get(e.id) : undefined}
+      photo={photoDeLaTuile(e, photosLiees)}
       onOuvrir={() => ouvrir(e)}
       onModifier={e.genre === "materiel" && contenuDirect(e.mat) ? () => setMaterielOuvert(e.mat)
         : e.genre === "sequence" ? () => setSequenceFiche({ sequence: e.seq, nouvelle: false }) : undefined}
@@ -1333,6 +1340,8 @@ export default function PlanDeTravail() {
             { label: "Nouveau support", icon: "🧰", enfants: [
               { label: "Matériel", icon: "🧰", onClick: creerMateriel },
               { label: "Outil pour l'élève", icon: "📏", onClick: () => setEditO({ ...nouvelOutil("outil"), dossier }) },
+              // Ses classeurs, ses cahiers… : « il faudrait également ajouter […] outils pour l'enseignant » (l'enseignant, 4 novembre 2026).
+              { label: "Outil pour l'enseignant", icon: "🧑‍🏫", onClick: () => setEditO({ ...nouvelOutil("enseignant"), dossier }) },
               { label: "Jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu(), dossier }) },
               { label: "Évaluation", icon: "📋", onClick: () => setEditO({ ...nouvelOutil("evaluation"), dossier }) },
               { label: "Affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage"), dossier }) },
@@ -1622,6 +1631,15 @@ function TuileDossier({
 const ficheDe = (e: Element) =>
   e.genre === "atelier" ? e.at : e.genre === "espace" ? e.esp : e.genre === "jeu" ? e.jeu : e.genre === "outil" ? e.outil : null;
 
+/**
+ * La photo de « Mes photos » qui montre un élément du bureau — un matériel,
+ * un outil, un affichage, un espace de la classe — : elle lui sert d'image,
+ * comme dans la séance qui le pose (voir supportsDeTravail).
+ */
+const photoDeLaTuile = (e: Element, photos: Pick<MonPicto, "id" | "origine" | "elementId">[]): number | undefined =>
+  e.genre === "materiel" || e.genre === "espace" ? photoDeLElement(photos, { genre: e.genre, source: e.id })
+    : e.genre === "outil" ? photoDeLElement(photos, { genre: e.outil.genre, source: e.id }) : undefined;
+
 /** Ce qu'on lit sous le nom : de quoi il s'agit, en deux ou trois mots. */
 function sousTitreDe(e: Element): string {
   switch (e.genre) {
@@ -1636,7 +1654,8 @@ function sousTitreDe(e: Element): string {
     }
     case "outil": return e.outil.genre === "affichage"
       ? ["Affichage", e.outil.periode].filter(Boolean).join(" · ")
-      : [e.outil.genre === "evaluation" ? "Évaluation" : "Outil", e.outil.categorie].filter(Boolean).join(" · ");
+      : [e.outil.genre === "evaluation" ? "Évaluation" : e.outil.genre === "enseignant" ? "Outil pour l'enseignant" : "Outil", e.outil.categorie]
+        .filter(Boolean).join(" · ");
   }
 }
 
@@ -1644,15 +1663,17 @@ function sousTitreDe(e: Element): string {
 const EMOJI: Record<Element["genre"], string> = {
   sequence: "📚", materiel: "🧰", texte: "📝", atelier: "🧩", espace: "🪑", jeu: "🎲", outil: "📏",
 };
-/** Outils, affichages et évaluations partagent une fiche : leur icône les distingue. */
-const EMOJI_FICHE: Record<OutilClasse["genre"], string> = { outil: "📏", affichage: "🖼", evaluation: "📋" };
+/** Outils pour l'élève ou pour l'enseignant, affichages et évaluations partagent une fiche : leur icône les distingue. */
+const EMOJI_FICHE: Record<OutilClasse["genre"], string> = { outil: "📏", enseignant: "🧑‍🏫", affichage: "🖼", evaluation: "📋" };
 const emojiDe = (e: Element) => (e.genre === "outil" ? EMOJI_FICHE[e.outil.genre] : EMOJI[e.genre]);
 
 function TuileElement({
   element, actions = [], onOuvrir, onModifier, onRanger, onSupprimer, onDuplique, onGlisser, onFinGlisser, designe = false, suivi, jete,
-  cle, choisie, onPresse, onClic, menuGroupe, onSeule,
+  cle, choisie, onPresse, onClic, menuGroupe, onSeule, photo,
 }: ChoixDeTuile & {
   element: Element; onOuvrir: () => void; onRanger: () => void;
+  /** La photo de « Mes photos » qui le montre (voir photoDeLaTuile) : elle passe avant son image. */
+  photo?: number;
   /** Pour une séquence : où elle en est d'après le cahier journal. */
   suivi?: SuiviSequence;
   /** Vrai quand ⌘K vient de mener ici : la tuile se signale quelques secondes. */
@@ -1674,6 +1695,7 @@ function TuileElement({
   const apercuVideo = videos.find((v) => v.youtubeId);
   const image = element.genre === "materiel" ? liste(element.mat.imagesJson)[0] : seq ? seq.imageNom : fiche?.imageNom;
   const pdf = element.genre === "materiel" ? liste(element.mat.pdfsJson)[0] : undefined;
+  const srcPhoto = usePictoImage(photo ?? null, true);
 
   return (
     <div draggable data-cle={cle} className={`tuile-bureau${choisie ? " choisie" : ""}`}
@@ -1707,7 +1729,10 @@ function TuileElement({
       <div style={{ position: "relative", width: "100%", aspectRatio: "1", borderRadius: 8,
         overflow: "hidden", background: t + "1f", border: `1px solid ${t}44`,
         display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {apercuVideo ? (
+        {photo != null ? (
+          srcPhoto ? <img src={srcPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            : <span style={{ fontSize: 40 }}>{emojiDe(element)}</span>
+        ) : apercuVideo ? (
           <img src={vignetteYoutube(apercuVideo.youtubeId!)} alt="" loading="lazy"
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />

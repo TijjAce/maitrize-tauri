@@ -88,6 +88,13 @@ describe("le déroulement en document", () => {
     expect(marqueDeCitation("jeu", "j1", "Le jeu [rapide] | 2")).toBe("[@jeu:j1|Le jeu [rapide) / 2]");
     expect(imagesDuDocument(DOC)).toEqual(["livre.jpg"]);
   });
+
+  it("cite un outil pour l'enseignant comme les autres supports (demande de l'enseignant, 4 novembre 2026)", () => {
+    const marque = marqueDeCitation("enseignant", "o4", "Classeurs de suivi");
+    expect(marque).toBe("[@enseignant:o4|Classeurs de suivi]");
+    expect(citationsDuDocument(`## Accueil (5 min)\nOn ouvre ${marque}.`)).toEqual([{ genre: "enseignant", id: "o4", titre: "Classeurs de suivi", phase: 1 }]);
+    expect(ligneEnHtml(marque)).toBe('<span class="cite cite-enseignant">🧑‍🏫 Classeurs de suivi</span>');
+  });
 });
 
 describe("une séance d'avant devient un document", () => {

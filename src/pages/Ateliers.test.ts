@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { jeuAccepte } from "./Ateliers";
-import { CATEGORIES_EVALUATION, CATEGORIES_OUTIL, categoriesDuGenre, nouveauJeu, nouvelOutil, type Jeu } from "../api";
+import { CATEGORIES_ENSEIGNANT, CATEGORIES_EVALUATION, CATEGORIES_OUTIL, categoriesDuGenre, nouveauJeu, nouvelOutil, type Jeu } from "../api";
 
 const jeu = (p: Partial<Jeu>): Jeu => ({ ...nouveauJeu(), ...p });
 
@@ -81,5 +81,16 @@ describe("les trois sortes de fiches de classe", () => {
     expect(categoriesDuGenre("outil")).toEqual(CATEGORIES_OUTIL);
     expect(categoriesDuGenre("evaluation")).toEqual(CATEGORIES_EVALUATION);
     expect(nouvelOutil("outil").couleur).not.toBe(nouvelOutil("evaluation").couleur);
+  });
+
+  it("part d'un outil pour l'enseignant vide, avec ses catégories et sa couleur (demande de l'enseignant, 4 novembre 2026)", () => {
+    const o = nouvelOutil("enseignant");
+    expect(o.genre).toBe("enseignant");
+    expect(categoriesDuGenre("enseignant")).toEqual(CATEGORIES_ENSEIGNANT);
+    expect(o.categorie).toBe(CATEGORIES_ENSEIGNANT[0]);
+    expect(o.periode).toBe("");
+    expect(o.elevesJson).toBe("[]");
+    // Sa couleur le distingue des trois autres sortes sur le bureau.
+    expect(new Set((["outil", "affichage", "evaluation", "enseignant"] as const).map((g) => nouvelOutil(g).couleur)).size).toBe(4);
   });
 });

@@ -79,7 +79,7 @@ const ONGLETS: { id: Onglet; nom: string }[] = [
 
 /** Un support à créer, tel que sa fiche s'ouvre : il naît sur le bureau, et se pose dans la séance. */
 type Nouveau =
-  | { genre: "outil" | "affichage" | "evaluation"; outil: OutilClasse }
+  | { genre: OutilClasse["genre"]; outil: OutilClasse }
   | { genre: "jeu"; jeu: Jeu }
   | { genre: "materiel"; materiel: MaterielItem };
 
@@ -94,9 +94,9 @@ const chemin = (dossier: string) => filDAriane(dossier).slice(1).map((x) => x.no
 
 /**
  * Prendre un support sur le plan de travail pour la séance : une feuille PDF
- * (copiée, elle s'imprime avec le cahier journal), ou un outil pour l'élève,
- * un affichage, un jeu, une évaluation, un matériel (la séance y renvoie, il
- * reste sur le bureau). Ce qui manque se crée ici, sur le bureau, et se pose
+ * (copiée, elle s'imprime avec le cahier journal), ou un outil pour l'élève ou
+ * pour l'enseignant, un affichage, un jeu, une évaluation, un matériel (la
+ * séance y renvoie, il reste sur le bureau). Ce qui manque se crée ici, sur le bureau, et se pose
  * dans la séance. La fenêtre reste ouverte : on prend souvent plusieurs
  * supports d'un coup.
  */

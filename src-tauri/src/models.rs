@@ -1235,7 +1235,7 @@ impl Projet {
 pub struct OutilClasse {
     #[serde(default = "new_id")]
     pub id: String,
-    /// « outil » ou « affichage ».
+    /// « outil » (pour l'élève), « affichage », « evaluation » ou « enseignant » (un outil pour l'enseignant).
     #[serde(default = "genre_outil")]
     pub genre: String,
     #[serde(default)]

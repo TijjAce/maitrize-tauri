@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { ficheEcrite, lireFiches, type MonPicto } from "./mesPictos";
-import { cleDeLElement, estUnSupport, photoDeLElement, photosLiees, supportsDeLaSequence, TOUS_LES_NIVEAUX } from "./supportsDeTravail";
+import {
+  ESPACES_DE_LA_CLASSE, GENRES_MONTRES, cleDeLElement, espacesMontres, estUnSupport, photoDeLElement, photosLiees, supportsDeLaSequence, TOUS_LES_NIVEAUX,
+} from "./supportsDeTravail";
 import { lireFabrication, seRefaitDansFabriquer } from "./modifierFeuille";
 import { NIVEAUX_FICHES, iconeDeLaRecette, pageDuSupport, recetteDe, recettesDesSupports, recettesPour } from "./fichesAutonomie";
 
@@ -80,5 +82,31 @@ describe("une photo qui montre un élément du plan de travail (demande de l'ens
     expect(photoDeLElement([relue], { genre: "outil", source: "o1" })).toBe(PHOTO);
     expect(photoDeLElement([relue], { genre: "affichage", source: "o1" })).toBeUndefined();
     expect(photosLiees([relue, photo({ id: PHOTO - 1 }), photo({ id: PHOTO - 2, jeuId: "j1" })]).map((x) => x.id)).toEqual([PHOTO, PHOTO - 2]);
+  });
+});
+
+describe("une photo qui montre un outil pour l'enseignant ou un espace de la classe (demande de l'enseignant, 4 novembre 2026)", () => {
+  it("propose les outils pour l'enseignant après ceux de l'élève, ni les jeux ni les évaluations", () => {
+    expect(GENRES_MONTRES).toEqual(["materiel", "outil", "enseignant", "affichage"]);
+  });
+
+  it("propose les espaces de la classe dans leur groupe, par ordre alphabétique, sans ceux qui n'ont pas de nom", () => {
+    expect(ESPACES_DE_LA_CLASSE).toBe("Espaces de la classe");
+    expect(espacesMontres([{ id: "e2", titre: "Coin regroupement" }, { id: "e1", titre: "armoire de la classe" }, { id: "e3", titre: "  " }]))
+      .toEqual([{ cle: "espace:e1", titre: "armoire de la classe" }, { cle: "espace:e2", titre: "Coin regroupement" }]);
+    expect(espacesMontres([])).toEqual([]);
+  });
+
+  it("garde l'espace ou l'outil dans sa fiche, et lui sert d'image, à lui seul", () => {
+    const armoire = photo({ mot: "L'armoire", elementId: cleDeLElement({ genre: "espace", source: "e1" }) });
+    const classeurs = photo({ id: PHOTO - 1, mot: "Les classeurs", elementId: cleDeLElement({ genre: "enseignant", source: "o4" }) });
+    const relues = lireFiches({ [`pictos:${PHOTO}`]: ficheEcrite(armoire), [`pictos:${PHOTO - 1}`]: ficheEcrite(classeurs) });
+    expect(relues.map((p) => [p.mot, p.elementId])).toEqual([["L'armoire", "espace:e1"], ["Les classeurs", "enseignant:o4"]]);
+    expect(photoDeLElement(relues, { genre: "espace", source: "e1" })).toBe(PHOTO);
+    expect(photoDeLElement(relues, { genre: "enseignant", source: "o4" })).toBe(PHOTO - 1);
+    // Le même numéro sous une autre sorte n'est pas montré par elles.
+    expect(photoDeLElement(relues, { genre: "outil", source: "o4" })).toBeUndefined();
+    expect(photoDeLElement(relues, { genre: "materiel", source: "e1" })).toBeUndefined();
+    expect(photosLiees(relues)).toHaveLength(2);
   });
 });

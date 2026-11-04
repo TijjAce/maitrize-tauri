@@ -40,8 +40,8 @@ export interface MonPicto {
    * Une photo est aussi un support de travail : l'objet, le jeu de la classe.
    * Sa matière, son niveau (« tous », ou CP, CE1…), le jeu de la ludothèque
    * dont elle prend les règles, le matériel, l'outil ou l'affichage du plan de
-   * travail qu'elle montre (« outil:<id> »), la séquence où elle sert (voir
-   * supportsDeTravail).
+   * travail qu'elle montre (« outil:<id> »), ou l'espace de la classe
+   * (« espace:<id> »), la séquence où elle sert (voir supportsDeTravail).
    */
   matiere?: string;
   niveau?: string;

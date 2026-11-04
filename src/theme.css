@@ -2434,6 +2434,7 @@ button.ph-chip:hover, button.ph-orga:hover { color: var(--accent); }
   white-space: nowrap; background: color-mix(in srgb, var(--cite) 14%, transparent); color: color-mix(in srgb, var(--cite) 82%, var(--text)); }
 .doc-case .cite { cursor: pointer; }
 .cite-outil { --cite: #3b82f6; }
+.cite-enseignant { --cite: #ec4899; }
 .cite-affichage { --cite: #f59e0b; }
 .cite-evaluation { --cite: #10b981; }
 .cite-jeu { --cite: #8b5cf6; }

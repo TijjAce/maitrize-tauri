@@ -190,4 +190,10 @@ describe("le plan de la copie", () => {
     const ailleurs = planDeCopie(donnees({ jeux: [{ ...jeu, dossier: "" }] }), "windows");
     expect(ailleurs.fichiers[0].empreinte).toBe(trouver(plan.fichiers, "cycle 1/Loto des animaux (jeu).html").empreinte);
   });
+
+  it("nomme à part l'outil pour l'enseignant (demande de l'enseignant, 4 novembre 2026)", () => {
+    const plan = planDeCopie(donnees({ outils: [{ ...nouvelOutil("enseignant"), id: "o9", titre: "Classeurs de suivi", dossier: "" }] }), "windows");
+    expect(chemins(plan.fichiers)).toEqual(["Classeurs de suivi (outil pour l'enseignant).html"]);
+    expect(contenuDe(plan.fichiers[0])).toContain("Outil pour l&#39;enseignant · Préparation de la classe");
+  });
 });

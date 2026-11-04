@@ -31,12 +31,12 @@ export function jeuAccepte(j: Jeu, f: { typeJeu?: string; joueurs?: string; doss
   return true;
 }
 
-type SorteVue = "ateliers" | "espaces" | "jeux" | "outils" | "affichages" | "evaluations";
+type SorteVue = "ateliers" | "espaces" | "jeux" | "outils" | "outilsEnseignant" | "affichages" | "evaluations";
 
-/** Ce que disent les trois sortes de fiches qui partagent le même formulaire. */
-const SORTE_DU_GENRE = { outil: "outils", affichage: "affichages", evaluation: "evaluations" } as const;
+/** Ce que disent les quatre sortes de fiches qui partagent le même formulaire — les outils pour l'enseignant depuis le 4 novembre 2026. */
+const SORTE_DU_GENRE = { outil: "outils", enseignant: "outilsEnseignant", affichage: "affichages", evaluation: "evaluations" } as const;
 const TITRE_DU_GENRE = {
-  outil: "📏 Outils pour l'élève", affichage: "🖼 Affichages", evaluation: "📋 Évaluations",
+  outil: "📏 Outils pour l'élève", enseignant: "🧑‍🏫 Outils pour l'enseignant", affichage: "🖼 Affichages", evaluation: "📋 Évaluations",
 } as const;
 
 export default function Ateliers() {
@@ -47,8 +47,6 @@ export default function Ateliers() {
   const { data: outilsClasse, reload: rO } = useAsync(() => api.outilsClasseList(), []);
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const outils = (outilsClasse ?? []).filter((o) => o.genre === "outil");
-  const affichages = (outilsClasse ?? []).filter((o) => o.genre === "affichage");
-  const evaluations = (outilsClasse ?? []).filter((o) => o.genre === "evaluation");
   const [editO, setEditO] = React.useState<OutilClasse | null>(null);
   // Filtres des outils et affichages : la catégorie, et pour les outils l'élève.
   const [categorie, setCategorie] = React.useState("");
@@ -68,7 +66,7 @@ export default function Ateliers() {
   const supprimerOutil = async (o: OutilClasse) => {
     await api.outilClasseDelete(o.id);
     rO();
-    const quoi = { outil: "L'outil", affichage: "L'affichage", evaluation: "L'évaluation" }[o.genre];
+    const quoi = { outil: "L'outil", enseignant: "L'outil", affichage: "L'affichage", evaluation: "L'évaluation" }[o.genre];
     toastAnnulable(`${quoi} « ${o.titre} » supprimé${o.genre === "evaluation" ? "e" : ""}.`,
       async () => { await api.outilClasseSave(o); rO(); });
   };
@@ -94,10 +92,9 @@ export default function Ateliers() {
 
   const cherche = recherche.trim().toLowerCase();
   const filtrer = <T extends { titre: string }>(l: T[]) => (cherche ? l.filter((x) => x.titre.toLowerCase().includes(cherche)) : l);
-  const fichesDuGenre = (genre: OutilClasse["genre"]) =>
-    genre === "outil" ? outils : genre === "affichage" ? affichages : evaluations;
+  const fichesDuGenre = (genre: OutilClasse["genre"]) => (outilsClasse ?? []).filter((o) => o.genre === genre);
   /** Les fiches de chaque sorte, une fois la recherche et les filtres passés. */
-  const sections = (["outil", "affichage", "evaluation"] as const)
+  const sections = (["outil", "enseignant", "affichage", "evaluation"] as const)
     .filter((genre) => montre(SORTE_DU_GENRE[genre]))
     .map((genre) => ({
       genre,
@@ -112,7 +109,8 @@ export default function Ateliers() {
     { court: "Atelier", label: "Nouvel atelier", icon: "🧩", onClick: () => setEditA({ ...nouvelAtelier() }) },
     { court: "Espace", label: "Nouvel espace", icon: "🪑", onClick: () => setEditE({ ...nouvelEspace() }) },
     { court: "Jeu", label: "Nouveau jeu", icon: "🎲", onClick: () => setEditJ({ ...nouveauJeu() }) },
-    { court: "Outil", label: "Nouvel outil", icon: "📏", onClick: () => setEditO({ ...nouvelOutil("outil") }) },
+    { court: "Outil", label: "Nouvel outil pour l'élève", icon: "📏", onClick: () => setEditO({ ...nouvelOutil("outil") }) },
+    { court: "Outil de l'enseignant", label: "Nouvel outil pour l'enseignant", icon: "🧑‍🏫", onClick: () => setEditO({ ...nouvelOutil("enseignant") }) },
     { court: "Affichage", label: "Nouvel affichage", icon: "🖼", onClick: () => setEditO({ ...nouvelOutil("affichage") }) },
     { court: "Évaluation", label: "Nouvelle évaluation", icon: "📋", onClick: () => setEditO({ ...nouvelOutil("evaluation") }) },
   ];

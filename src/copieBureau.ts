@@ -329,7 +329,8 @@ export function planDeCopie(d: DonneesBureau, plateforme: Plateforme): PlanDeCop
     { ...e, dossier: "" });
   }
   for (const o of outils) {
-    const sorte = o.genre === "affichage" ? "Affichage" : o.genre === "evaluation" ? "Évaluation" : "Outil";
+    const sorte = o.genre === "affichage" ? "Affichage" : o.genre === "evaluation" ? "Évaluation"
+      : o.genre === "enseignant" ? "Outil pour l'enseignant" : "Outil";
     fiche(o.id, o.dateCreation, o.dossier, o.titre, sorte, () => pageDeFiche(o.titre.trim() || "Sans titre", [sorte, o.categorie].filter(Boolean).join(" · "), o.imageNom, [
       ligneDeFiche(o.genre === "affichage" ? "Affiché" : "Rangé", o.lieu), ligneDeFiche("Période", o.periode),
     ], [blocDeFiche(o.genre === "affichage" ? "À quoi il sert" : o.genre === "evaluation" ? "Ce qu'elle évalue" : "Usage", o.usage),
