@@ -41,6 +41,9 @@ import { ETAPES_CONSEILLEES, REGLAGES_SUITES, STYLE_SUITES, htmlSuites, suitesPo
 import { MOTIFS, REGLAGES_PAR_DEFAUT as REGLAGES_COLORIAGE, couleursDuMotif, fabriquerColoriage, feuilleDuColoriage, type Graphie, type ReglagesColoriage } from "./coloriageMagique";
 import { REGLAGES_CURSIVE, STYLE_CURSIVE, htmlEcritureCursive, modelesDeLEtape, type ReglagesCursive } from "./ecritureCursive";
 import { REGLAGES_MOTIFS, STYLE_MOTIFS, htmlMotifs, reglagesDuNiveau as motifsDuNiveau, type ReglagesMotifs } from "./motifs";
+import { REGLAGES_OMBRES, STYLE_OMBRES, htmlOmbres, type ImageOmbre, type ReglagesOmbres } from "./ombres";
+import { REGLAGES_REPERTOIRE, STYLE_REPERTOIRE, htmlRepertoire, type ReglagesRepertoire, type Signe } from "./repertoireGraphique";
+import { REGLAGES_ETIQUETTES_PRENOMS, htmlEtiquettesPrenoms, styleEtiquettesPrenoms, type ReglagesEtiquettesPrenoms } from "./etiquettesPrenoms";
 // Mathématiques
 import { PART_A_REGROUPER, REGLAGES_CUBES, exercicesCubes, htmlCubes, reglagesCubesSurs, type IdNiveauCubes, type ReglagesCubes } from "./cubesNumeration";
 import { STYLE_SEQUENCE_CUBES, reglagesDeLaFeuille as feuilleDeCubes } from "./sequenceCubes";
@@ -53,10 +56,11 @@ import { REGLAGES_GEOMETRIE, STYLE_GEOMETRIE, htmlGeometrie } from "./geometrie"
 import { REGLAGES_DEPLACEMENTS, STYLE_DEPLACEMENTS, htmlDeplacements } from "./deplacements";
 import { REGLAGES_HEURE, STYLE_DUREES, STYLE_HEURE, htmlAtelierHeure, type ReglagesHeure } from "./heure";
 import { REGLAGES_MONNAIE, STYLE_MONNAIE, htmlMonnaie } from "./monnaie";
-import { REGLAGES_MESURES, STYLE_MESURES, htmlMesures } from "./mesures";
+import { REGLAGES_MESURES, STYLE_MESURES, exerciceDisponible, htmlMesures } from "./mesures";
 import { STYLE_REPERAGE, htmlReperage, type ReglagesReperage } from "./reperageNombres";
 import { STYLE_NUMERATION_CP, htmlSuite, type ReglagesSuite } from "./numerationCP";
 import { REGLAGES_DONNEES, STYLE_DONNEES, htmlDonnees, type ReglagesDonnees } from "./donnees";
+import { STYLE_TABLEAU_NOMBRES, htmlTableauNombres, type ReglagesTableauNombres } from "./tableauNombres";
 import { REGLAGES_ARBRE, REGLAGES_FRACTIONS, STYLE_JEUX_MATHS, additionsArbre, htmlArbreCalcul, htmlFractions, type ReglagesArbre, type ReglagesFractions } from "./jeuxMaths";
 // Français
 import { REGLAGES_MOTS_MELES, STYLE_MOTS_MELES, grilleMotsMeles, htmlMotsMeles } from "./motsMeles";
@@ -115,6 +119,8 @@ export interface OutilsFiche {
   image: (id: number) => Promise<string | null>;
   /** Le numéro du pictogramme de chaque mot trouvé, par mot en minuscules. */
   pictos: (mots: string[]) => Promise<Record<string, number>>;
+  /** L'ombre d'une image, en data URL — tout ce qui est peint devient noir ; rien si elle ne se calcule pas. */
+  ombre: (image: string) => Promise<string | null>;
 }
 
 export interface FicheFabriquee {
@@ -221,7 +227,86 @@ function cursive(r: Partial<ReglagesCursive>): FicheFabriquee {
   return commeLAtelier(htmlEcritureCursive(reglages), STYLE_FEUILLE + STYLE_CURSIVE, "cursive", reglages);
 }
 
+/**
+ * Des images de la banque dont les ombres ne se confondent pas, par famille :
+ * une fiche en prend une par famille — jamais deux bêtes de la ferme, deux
+ * fruits ou deux véhicules ensemble. Ni l'étoile, ni la lune, ni le soleil :
+ * dessinés sur un fond, leur ombre est un rectangle.
+ */
+export const IMAGES_DES_OMBRES: { mot: string; id: number }[][] = [
+  [{ mot: "chat", id: 2406 }, { mot: "poule", id: 2403 }, { mot: "lapin", id: 2351 }, { mot: "canard", id: 2563 }, { mot: "cheval", id: 2294 }, { mot: "vache", id: 2609 }],
+  [{ mot: "escargot", id: 2685 }, { mot: "papillon", id: 2465 }, { mot: "tortue", id: 2596 }, { mot: "souris", id: 2546 }],
+  [{ mot: "girafe", id: 2437 }, { mot: "éléphant", id: 2372 }, { mot: "kangourou", id: 2313 }, { mot: "dinosaure", id: 2738 }, { mot: "pingouin", id: 3243 },
+    { mot: "crocodile", id: 2343 }],
+  [{ mot: "poire", id: 2561 }, { mot: "pomme", id: 2462 }, { mot: "banane", id: 2530 }, { mot: "ananas", id: 2525 }, { mot: "carotte", id: 2619 },
+    { mot: "champignon", id: 8328 }],
+  [{ mot: "tasse", id: 2582 }, { mot: "chaise", id: 3155 }, { mot: "parapluie", id: 2500 }, { mot: "théière", id: 7276 }, { mot: "ciseaux", id: 2591 },
+    { mot: "clé", id: 8153 }, { mot: "arrosoir", id: 2817 }],
+  [{ mot: "vélo", id: 2277 }, { mot: "avion", id: 2264 }, { mot: "bateau", id: 2273 }, { mot: "voiture", id: 2339 }],
+  [{ mot: "guitare", id: 2417 }, { mot: "trompette", id: 2607 }, { mot: "marteau", id: 2922 }],
+];
+
+/** Combien d'images à relier : trois en petite section, quatre en moyenne, cinq en grande. */
+const OMBRES_DU_NIVEAU: Record<Maternelle, number> = { PS: 3, MS: 4, GS: 5 };
+
+/** Le jeu des ombres, la fiche où l'on relie chaque image à son ombre — sans les mots : on ne lit pas. */
+async function ombresARelier(c: ContexteFiche, graine: number, outils: OutilsFiche): Promise<FicheFabriquee> {
+  const alea = hasard(graine);
+  const choisies = melanger(alea, IMAGES_DES_OMBRES).slice(0, OMBRES_DU_NIVEAU[c.niveau as Maternelle]).map((f) => melanger(alea, f)[0]);
+  const items: ImageOmbre[] = [];
+  for (const x of choisies) {
+    const image = await outils.image(x.id).catch(() => null);
+    const ombre = image ? await outils.ombre(image).catch(() => null) : null;
+    if (image && ombre) items.push({ id: x.id, mot: x.mot, image, ombre });
+  }
+  const r: ReglagesOmbres = { ...REGLAGES_OMBRES, forme: "relier", legendes: false, grise: false };
+  // Ses images ne sont pas celles que l'atelier garde : il ne la refait pas telle quelle.
+  return { html: htmlOmbres(items, r, graine), style: STYLE_FEUILLE + STYLE_OMBRES };
+}
+
+/**
+ * Les signes à repasser, d'après le programme de l'école maternelle : avant
+ * 4 ans, les formes de base — « traits verticaux, traits horizontaux, points,
+ * boucles et cercles » (p. 17), les boucles en fin d'année ; ensuite, ceux du
+ * répertoire de la classe, « boucles, spirales, formes géométriques » (p. 28).
+ */
+function signesARepasser(c: ContexteFiche): Signe[] {
+  if (c.niveau === "PS") return c.periode <= 3 ? ["verticales", "horizontales", "ronds"] : ["verticales", "horizontales", "ronds", "boucles"];
+  const ms: Signe[] = ["verticales", "horizontales", "obliques", "ronds", "croix", "ponts", "coupes", "vagues", "zigzags", "boucles", "spirales"];
+  return c.niveau === "MS" ? ms : [...ms, "creneaux"];
+}
+
+/** Repasser les traits : deux signes en petite section, trois ensuite — chacun son modèle et deux lignes en pointillés. */
+function traitsARepasser(c: ContexteFiche, graine: number): FicheFabriquee {
+  const tous = signesARepasser(c);
+  const pris = piocher(hasard(graine), tous, c.niveau === "PS" ? 2 : 3);
+  const r: ReglagesRepertoire = { ...REGLAGES_REPERTOIRE, format: "repasser", capitales: true, photo: false, signes: tous.filter((s) => pris.includes(s)) };
+  return commeLAtelier(htmlRepertoire(r), STYLE_FEUILLE + STYLE_REPERTOIRE, "repertoireGraphique", r);
+}
+
+/** Les lettres de mon prénom : douze grandes cases en petite section, vingt en moyenne. */
+function ficheDesLettresDuPrenom(c: ContexteFiche, graine: number): FicheFabriquee {
+  const r: ReglagesEtiquettesPrenoms = { ...REGLAGES_ETIQUETTES_PRENOMS, forme: "lettres", cases: c.niveau === "PS" ? 12 : 20, graine };
+  // L'atelier ne la refait pas telle quelle : il reprend les prénoms de la classe, et n'en garde aucun.
+  return { html: htmlEtiquettesPrenoms([c.prenom.trim() || "Prénom"], r), style: STYLE_FEUILLE + styleEtiquettesPrenoms(r) };
+}
+
 // Le CP, le CE1, le CE2.
+
+/**
+ * Le tableau des nombres à compléter : de 1 à 100 au CP, quand les nombres
+ * vont jusque-là ; au CE1, de 0 à 99 d'abord, puis une centaine plus loin ;
+ * au CE2, une centaine, des lignes entières à retrouver.
+ */
+function tableauACompleter(c: ContexteFiche, graine: number): FicheFabriquee {
+  const plusLoin = 1 + (graine % 9);
+  const r: ReglagesTableauNombres = c.niveau === "CP"
+    ? { depart: 1, de: 0, centaines: 1, couleurs: true, caches: "quelques", graine, format: "mur" }
+    : c.niveau === "CE1"
+      ? { depart: 0, de: c.periode <= 2 ? 0 : plusLoin, centaines: 1, couleurs: true, caches: c.periode <= 2 ? "moitie" : "quelques", graine, format: "mur" }
+      : { depart: 0, de: plusLoin, centaines: 1, couleurs: true, caches: "lignes", graine, format: "mur" };
+  return commeLAtelier(htmlTableauNombres(r), STYLE_FEUILLE + STYLE_TABLEAU_NOMBRES, "tableauNombres", r);
+}
 
 const niveauDesCubes = (c: ContexteFiche): IdNiveauCubes =>
   c.niveau === "CE1" ? "ce1" : c.niveau === "CE2" ? "ce2" : c.periode <= 1 ? "cp-19" : c.periode === 2 ? "cp-59" : "cp-100";
@@ -333,6 +418,19 @@ export const RECETTES: RecetteDeFiche[] = [
     fabriquer: (c, g) => coloriageDesLettres(c, g) },
   { id: "prenom", atelier: "cursive", nom: "J'écris mon prénom", domaine: "lettres", niveaux: ["GS"],
     fabriquer: (c) => cursive({ modeles: Array.from({ length: 3 }, () => prenomEcrit(c.prenom) || "Prénom").join("\n"), reglure: 3, lignes: 3 }) },
+  // Encore des fiches à faire seul (demande de l'enseignant, 4 novembre 2026), la petite section d'abord, qui n'en avait qu'une.
+  { id: "ombres", atelier: "ombres", nom: "Relie chaque image à son ombre", domaine: "nombres", niveaux: ["PS", "MS", "GS"],
+    fabriquer: (c, g, o) => ombresARelier(c, g, o) },
+  { id: "graphisme", atelier: "repertoireGraphique", nom: "Je repasse les traits", domaine: "lettres", niveaux: ["PS", "MS", "GS"],
+    fabriquer: (c, g) => traitsARepasser(c, g) },
+  { id: "prenom-lettres", atelier: "etiquettesPrenoms", nom: "Les lettres de mon prénom", domaine: "lettres", niveaux: ["PS", "MS"],
+    fabriquer: (c, g) => ficheDesLettresDuPrenom(c, g) },
+  // « Écrire en chiffres les nombres de un à dix » en grande section (programme de l'école maternelle, p. 41).
+  { id: "nombres-gs", atelier: "suiteNombres", nom: "Les nombres qui manquent", domaine: "nombres", niveaux: ["GS"],
+    fabriquer: (_c, g) => {
+      const r: ReglagesSuite = { titre: "", exercices: ["manquants"], de: 1, a: 10, grand: true };
+      return commeLAtelier(htmlSuite(r, g), STYLE_FEUILLE + STYLE_NUMERATION_CP, "suiteNombres", r);
+    } },
   // ── Mathématiques
   { id: "cubes-ecrire", atelier: "cubes", nom: "Lire les cubes, écrire le nombre", domaine: "maths", niveaux: C2,
     fabriquer: (c, g) => feuilleCubes("ecrire", c, g) },
@@ -403,6 +501,16 @@ export const RECETTES: RecetteDeFiche[] = [
       const r: ReglagesFractions = { ...REGLAGES_FRACTIONS, materiel: ["colorier"], denominateurs: c.niveau === "CE1" ? [2, 3, 4] : [2, 3, 4, 5, 6, 8, 10] };
       return commeLAtelier(htmlFractions(r, g), STYLE_FEUILLE + STYLE_JEUX_MATHS, "fractions", r);
     } },
+  { id: "tableau-nombres", atelier: "tableauNombres", nom: "Complète le tableau des nombres", domaine: "maths", niveaux: C2,
+    fabriquer: (c, g) => tableauACompleter(c, g) },
+  { id: "estimer", atelier: "mesures", nom: "Estimer : la bonne mesure", domaine: "maths", niveaux: ["CE1", "CE2"], lecture: true,
+    fabriquer: (c, g) => {
+      const classe = elementaire(c.niveau);
+      // Les longueurs au CE1, et ce que la classe sait estimer au CE2 : les masses, les contenances.
+      const possibles = (["longueur", "masse", "contenance"] as const).filter((x) => exerciceDisponible("estimer", x, classe));
+      const reglages = { ...REGLAGES_MESURES, exercice: "estimer" as const, grandeur: possibles[g % possibles.length] ?? "longueur", classe, combien: 6 };
+      return commeLAtelier(htmlMesures(reglages, g), STYLE_FEUILLE + STYLE_MESURES, "mesures", reglages);
+    } },
   { id: "arbre", atelier: "arbre", nom: "Les arbres de calcul", domaine: "maths", niveaux: ["CE1", "CE2"],
     fabriquer: (c, g) => {
       const r: ReglagesArbre = { ...REGLAGES_ARBRE, combien: 6, retenue: c.niveau === "CE1" ? "sans" : "mixte", aide: true };
@@ -425,6 +533,12 @@ export const RECETTES: RecetteDeFiche[] = [
   { id: "grammaire", atelier: "grammaire", nom: (c) => GRAMMAIRE[elementaire(c.niveau)].nom, domaine: "francais", niveaux: C2, lecture: true,
     fabriquer: (c, g) => {
       const reglages = { ...REGLAGES_GRAMMAIRE, exercice: GRAMMAIRE[elementaire(c.niveau)].exercice, classe: elementaire(c.niveau) };
+      return commeLAtelier(htmlGrammaire(reglages, g), STYLE_FEUILLE + STYLE_GRAMMAIRE, "grammaire", reglages);
+    } },
+  // Le présent, que les programmes du CE1 et du CE2 font conjuguer, avec les verbes de la classe.
+  { id: "conjuguer", atelier: "grammaire", nom: "Conjuguer au présent", domaine: "francais", niveaux: ["CE1", "CE2"], lecture: true,
+    fabriquer: (c, g) => {
+      const reglages = { ...REGLAGES_GRAMMAIRE, exercice: "conjuguer" as const, classe: elementaire(c.niveau), temps: "present" as const, verbes: "" };
       return commeLAtelier(htmlGrammaire(reglages, g), STYLE_FEUILLE + STYLE_GRAMMAIRE, "grammaire", reglages);
     } },
   { id: "listes", atelier: "orthographe", nom: "Les listes de mots qui se ressemblent", domaine: "francais", niveaux: ["CE1", "CE2"], lecture: true,
@@ -450,6 +564,8 @@ const PERIODES_DU_CP: Record<string, number[]> = {
   comprendre: DES_PERIODES(3), grammaire: DES_PERIODES(4), monnaie: DES_PERIODES(4),
   // Des phrases à lire seul quand le code est avancé ; la droite graduée quand les nombres vont au-delà de vingt.
   "phrases-desordre": DES_PERIODES(3), droite: DES_PERIODES(3),
+  // Le tableau jusqu'à cent, quand les nombres y vont : la période 3, comme la droite graduée.
+  "tableau-nombres": DES_PERIODES(3),
 };
 
 /** La recette d'une fiche : l'une de la liste, ou l'un des supports de travail et des séances du jour. */
@@ -571,6 +687,7 @@ export const MINUTEURS_DE_BASE: Record<string, number> = {
   reproduire: 15, fusee: 10, heure: 10, monnaie: 10, mesurer: 10,
   cursive: 10, "mots-meles": 15, comprendre: 15, grammaire: 10, listes: 10, "mots-imposes": 15,
   motif: 10, droite: 10, ordinaux: 10, "suite-nombres": 10, donnees: 10, fractions: 10, arbre: 10, "phrases-desordre": 15, "etre-avoir": 10,
+  ombres: 10, graphisme: 10, "prenom-lettres": 10, "nombres-gs": 10, "tableau-nombres": 15, estimer: 10, conjuguer: 15,
 };
 
 /** Où Réglages › En retard garde les temps changés : un réglage partagé avec l'autre ordinateur (préfixe « fabriquer: »). */
@@ -642,6 +759,14 @@ export const DOMAINE_DES_FICHES: Record<string, { matiere: string; domaine: stri
   arbre: { matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" },
   "phrases-desordre": { matiere: "Français", domaine: "Lecture" },
   "etre-avoir": { matiere: "Français", domaine: "Grammaire et orthographe" },
+  // Reconnaître la même forme : « Explorer les solides et les formes planes ».
+  ombres: { matiere: "Structurer sa pensée", domaine: "Acquérir les premiers outils mathématiques" },
+  graphisme: { matiere: "Mobiliser le langage", domaine: "Mobiliser le langage dans toutes ses dimensions" },
+  "prenom-lettres": { matiere: "Mobiliser le langage", domaine: "Mobiliser le langage dans toutes ses dimensions" },
+  "nombres-gs": { matiere: "Structurer sa pensée", domaine: "Acquérir les premiers outils mathématiques" },
+  "tableau-nombres": { matiere: "Mathématiques", domaine: "Nombres, calcul et résolution de problèmes" },
+  estimer: { matiere: "Mathématiques", domaine: "Grandeurs et mesures" },
+  conjuguer: { matiere: "Français", domaine: "Grammaire et orthographe" },
 };
 
 /** La matière d'une fiche, écrite au-dessus de son nom dans le déroulement. */
@@ -697,16 +822,15 @@ export function recettesPour(
 
 /**
  * L'ordre des domaines, d'une fiche à la suivante : en maternelle, les
- * nombres, les lettres en grande section, le temps ; ensuite, le français et
- * les maths tour à tour. Le langage n'a plus de fiche à faire seul : il se
+ * nombres, les lettres, le temps — à chaque âge, depuis que la petite section
+ * a ses ombres et ses traits à repasser ; ensuite, le français et les maths
+ * tour à tour. Le langage n'a plus de fiche à faire seul : il se
  * travaille en parlant. La séance qui vient d'une séquence passe en premier,
  * et l'atelier en photo prend sa place parmi les autres : chacun n'y est que
  * si l'élève en a un (voir ordreServi).
  */
 export function ordreDesDomaines(n: NiveauFiches): Domaine[] {
-  if (n === "PS") return ["seance", "atelier", "temps"];
-  if (n === "MS") return ["seance", "nombres", "atelier", "temps"];
-  if (n === "GS") return ["seance", "nombres", "atelier", "lettres", "temps"];
+  if (enMaternelle(n)) return ["seance", "nombres", "atelier", "lettres", "temps"];
   return ["seance", "francais", "maths", "atelier"];
 }
 

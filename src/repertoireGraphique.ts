@@ -8,6 +8,13 @@
 // photo de l'endroit où la classe l'a trouvé — dans l'école, le quartier, une
 // œuvre. Les tracés sont dessinés ici, en vectoriel : ils restent nets à
 // toutes les tailles.
+//
+// La même bande se repasse (demande de l'enseignant, 4 novembre 2026 :
+// « ajoute encore des ateliers autonomes ») : le modèle en trait plein, puis
+// deux lignes en pointillés, un point vert au départ de chaque trait — « Tracer
+// quelques formes de base » avant 4 ans, s'entraîner « à reproduire différents
+// motifs » ensuite (programme de l'école maternelle, p. 17 et 28). Les points
+// et le quadrillage ne se repassent pas.
 
 import { feuille } from "./cartesImprimables";
 import { escapeHtml } from "./print";
@@ -30,7 +37,8 @@ export interface ReglagesRepertoire {
   capitales: boolean;
   /** Une case pour la photo de l'endroit où on l'a trouvé. */
   photo: boolean;
-  format: "mur" | "etiquettes";
+  /** Au mur ; en grandes cartes ; ou une fiche où l'élève repasse chaque signe. */
+  format: "mur" | "etiquettes" | "repasser";
 }
 
 export const REGLAGES_REPERTOIRE: ReglagesRepertoire = {
@@ -47,7 +55,7 @@ export function reglagesRepertoireSurs(brut: Partial<ReglagesRepertoire> | null 
     signes: signes.length ? signes : d.signes,
     capitales: typeof o.capitales === "boolean" ? o.capitales : d.capitales,
     photo: typeof o.photo === "boolean" ? o.photo : d.photo,
-    format: o.format === "etiquettes" ? "etiquettes" : "mur",
+    format: o.format === "etiquettes" || o.format === "repasser" ? o.format : "mur",
   };
 }
 
@@ -85,8 +93,60 @@ const dessinDuSigne = (s: Signe, bandes = 1) =>
   `<svg class="rg-trace" viewBox="0 0 150 ${34 * bandes + 6 * (bandes - 1)}" preserveAspectRatio="xMidYMid meet" fill="none" stroke-linecap="round" stroke-linejoin="round">`
   + Array.from({ length: bandes }, (_, k) => `<g transform="translate(0 ${k * 40})">${traceDuSigne(s)}</g>`).join("") + `</svg>`;
 
+/** Les signes qui se repassent : ni les points, ni le quadrillage. */
+export const SIGNES_A_REPASSER: Signe[] = SIGNES.map((s) => s.id).filter((s) => s !== "points" && s !== "quadrillage");
+
+/**
+ * Le départ de chaque trait d'un signe, dans sa bande : en haut pour les
+ * traits qui descendent — obliques comprises —, à gauche pour ceux qui
+ * avancent, à « deux heures » pour un rond, qui tourne dans le sens de
+ * l'écriture, au centre d'une spirale.
+ */
+export function departsDuSigne(s: Signe): [number, number][] {
+  const H = 34, m = 8;
+  switch (s) {
+    case "verticales": return Array.from({ length: 12 }, (_, i) => [m + i * 12, 6]);
+    case "horizontales": return [7, 17, 27].map((y) => [m, y]);
+    case "obliques": return Array.from({ length: 11 }, (_, i) => [m + 10 + i * 12, 6]);
+    case "ronds": return Array.from({ length: 9 }, (_, i) => [m + 6 + i * 15.5 + 6.5 * Math.cos(Math.PI / 3), H / 2 - 6.5 * Math.sin(Math.PI / 3)]);
+    case "croix": return Array.from({ length: 10 }, (_, i): [number, number][] => [[m + i * 14, 12], [m + 10 + i * 14, 12]]).flat();
+    case "ponts": case "zigzags": case "creneaux": return [[m, H - 7]];
+    case "coupes": return [[m, 7]];
+    case "vagues": return [[m, H / 2]];
+    case "boucles": return [[m - 2, H / 2 + 10]];
+    case "spirales": return [0, 1, 2, 3].map((k) => [m + 15 + k * 36, H / 2]);
+    case "points": case "quadrillage": return [];
+  }
+}
+
+/** Une ligne à repasser : le signe en pointillés, et le point vert de chaque départ. */
+const ligneARepasser = (s: Signe) =>
+  `<svg class="rg-trace rg-pointilles" viewBox="0 0 150 34" preserveAspectRatio="xMidYMid meet" fill="none" stroke-linecap="round" stroke-linejoin="round">`
+  + `<g>${traceDuSigne(s)}</g>${departsDuSigne(s).map(([x, y]) => `<circle class="rg-depart" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="1.6"/>`).join("")}</svg>`;
+
+/** La fiche à repasser : trois signes par page, chacun son nom, son modèle et deux lignes en pointillés. */
+function htmlARepasser(r: ReglagesRepertoire): string {
+  const signes = r.signes.filter((s) => SIGNES_A_REPASSER.includes(s));
+  const choisis = signes.length ? signes : (["verticales", "horizontales", "ronds"] as Signe[]);
+  const pages: string[] = [];
+  for (let i = 0; i < choisis.length; i += 3) {
+    const tranche = choisis.slice(i, i + 3);
+    const cartes = tranche.map((id) => {
+      const nom = SIGNES.find((s) => s.id === id)?.nom ?? id;
+      return `<div class="rg-carte rg-a-repasser"><div class="rg-entete"><div class="rg-nom">${escapeHtml(r.capitales ? nom.toLocaleUpperCase("fr-FR") : nom)}</div>`
+        + `<div class="rg-modele">${dessinDuSigne(id)}</div></div>${ligneARepasser(id)}${ligneARepasser(id)}</div>`;
+    }).join("");
+    const titre = r.capitales ? "JE REPASSE LES TRAITS" : "Je repasse les traits";
+    pages.push(`<div class="page rg-page rg-repasser"><div class="rg-titre">${titre}</div>`
+      + `<p class="consigne">Je regarde le modèle. Je pars du point vert et je repasse sur les pointillés.</p>`
+      + `<div class="rg-grille" style="grid-template-rows: repeat(${tranche.length}, minmax(0, 1fr))">${cartes}</div></div>`);
+  }
+  return feuille(pages.join(""), "rg");
+}
+
 export function htmlRepertoire(brut: Partial<ReglagesRepertoire>): string {
   const r = reglagesRepertoireSurs(brut);
+  if (r.format === "repasser") return htmlARepasser(r);
   const cartes = r.signes.map((id) => {
     const nom = SIGNES.find((s) => s.id === id)?.nom ?? id;
     const photo = r.photo ? `<div class="rg-photo"></div>` : "";
@@ -105,7 +165,8 @@ export function htmlRepertoire(brut: Partial<ReglagesRepertoire>): string {
   return feuille(pages.join(""), "rg");
 }
 
-export const titreRepertoire = () => "Le répertoire graphique";
+export const titreRepertoire = (brut?: Partial<ReglagesRepertoire>) =>
+  (reglagesRepertoireSurs(brut).format === "repasser" ? "Je repasse les traits" : "Le répertoire graphique");
 
 const NOIR = "#1c2233";
 const POLICE_SCRIPT = `"Andika", "Andika New Basic", "Century Gothic", "Avenir Next", "Helvetica Neue", Arial, sans-serif`;
@@ -130,5 +191,17 @@ export const STYLE_REPERTOIRE = `
   .feuille.rg .rg-etiquettes .rg-pied { width: auto; flex-direction: row; justify-content: center; }
   .feuille.rg .rg-photo { flex: none; width: 30mm; height: 22mm; border: 0.5mm dashed #9aa0b4; border-radius: 2mm; }
   .feuille.rg .rg-nom { flex: 1; text-align: center; font-size: 6.5mm; font-weight: 800; }
+  /* La fiche à repasser : le nom et le petit modèle sur une ligne, puis deux lignes en pointillés, aussi grandes que la place le permet. */
+  .feuille.rg .rg-repasser .rg-titre { margin-bottom: 2mm; }
+  .feuille.rg .rg-repasser .consigne { flex: none; margin: 0 0 4mm; font-size: 4.6mm; font-weight: 600; line-height: 1.4; }
+  .feuille.rg .rg-repasser .rg-grille { grid-template-columns: 1fr; }
+  .feuille.rg .rg-a-repasser { flex-direction: column; align-items: stretch; gap: 2mm; padding: 2.5mm 4mm; }
+  .feuille.rg .rg-entete { flex: none; display: flex; align-items: center; gap: 5mm; }
+  .feuille.rg .rg-entete .rg-nom { flex: none; text-align: left; font-size: 5mm; }
+  .feuille.rg .rg-modele { flex: none; width: 44mm; height: 10mm; display: flex; }
+  .feuille.rg .rg-modele .rg-trace { stroke-width: 2.2; }
+  .feuille.rg .rg-pointilles { flex: 1 1 0; height: auto; min-height: 0; width: 100%; stroke: #8a91a8; stroke-width: 1.6; stroke-dasharray: 0.01 2.7; }
+  .feuille.rg .rg-pointilles .rg-plein { fill: none; }
+  .feuille.rg .rg-depart { fill: #2e9d4f; stroke: none; }
   .feuille.rg .rg-etiquettes .rg-nom { font-size: 7.5mm; }
 `;

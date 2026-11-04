@@ -17,6 +17,7 @@ import { lireMesPictos, imageDeMonPicto } from "../mesPictos";
 import { estUnSupport } from "../supportsDeTravail";
 import { dureeDuMinuteur, minuteurDeLaSeance, MINUTEURS_DES_TABLETTES } from "../journalTelephone";
 import { usePictoImage } from "./ChoixPicto";
+import { ombreDe } from "./MesImages";
 import { ligneDuPdf } from "../materielAImprimer";
 import { suivisDesSequences, type SuiviSequence } from "../suiviSequences";
 
@@ -70,6 +71,10 @@ const OUTILS: OutilsFiche = {
   pictos: async (mots) => {
     const [trouves] = await api.arasaacParMots(mots);
     return Object.fromEntries(trouves.map((p) => [p.mot.toLowerCase(), p.id]));
+  },
+  // L'ombre que calcule le jeu des ombres de Fabriquer.
+  ombre: async (image) => {
+    try { return await ombreDe(image, false); } catch { return null; }
   },
 };
 

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { htmlEtiquettesPrenoms, lirePrenoms, reductionDuPrenom, styleEtiquettesPrenoms } from "./etiquettesPrenoms";
+import { PIEGES_MINIMUM, casesDuPrenom, htmlEtiquettesPrenoms, lettresDuPrenom, lirePrenoms, reductionDuPrenom, styleEtiquettesPrenoms } from "./etiquettesPrenoms";
 import { GRILLE_DES_SIEGES, PETALES_DE_LA_PEUR, htmlFleur, htmlGrilleSemique, lireGrille, lirePetales, motEtDessin, placesDesPetales } from "./fleurLexicale";
 import { elementsDe, htmlMurSyllabes, pagesDuMur, styleMurSyllabes } from "./murSyllabes";
-import { SIGNES, htmlRepertoire, traceDuSigne } from "./repertoireGraphique";
+import { SIGNES, SIGNES_A_REPASSER, departsDuSigne, htmlRepertoire, traceDuSigne } from "./repertoireGraphique";
 import {
   SECTIONS, bandesDuMur, enDizainesEtUnites, htmlFrise, htmlTableauNombres, lignesDuTableau, morceauxDeLaFrise, nombresCaches, reglagesFriseSurs,
   styleFrise,
@@ -20,6 +20,12 @@ describe("le tableau des nombres (guide CP, p. 110)", () => {
     expect(lignesDuTableau(0, 9)[9][9]).toBe(999);
     expect(pages(htmlTableauNombres({ centaines: 10 }))).toBe(10);
     expect(htmlTableauNombres({ depart: 1 })).toContain("de 1 à 100");
+    // Une centaine plus loin, pour le CE1 : jamais au-delà de mille.
+    expect(htmlTableauNombres({ de: 3 })).toContain("de 300 à 399");
+    expect(pages(htmlTableauNombres({ de: 8, centaines: 10 }))).toBe(2);
+    // Des cases vides : la consigne le dit ; le tableau du mur n'en a pas.
+    expect(htmlTableauNombres({ caches: "quelques" })).toContain("J'écris les nombres qui manquent.");
+    expect(htmlTableauNombres({})).not.toContain("consigne");
   });
 
   it("cache des nombres au hasard rejouable, jamais le premier ; ou trois lignes entières", () => {
@@ -147,6 +153,35 @@ describe("le répertoire graphique (programme de maternelle, p. 28)", () => {
     expect(pages(htmlRepertoire({ signes: SIGNES.map((s) => s.id) }))).toBe(3);
     expect(htmlRepertoire({ capitales: true })).toContain("LES SPIRALES");
   });
+
+  it("se repasse : le modèle, deux lignes en pointillés, un point vert au départ de chaque trait (demande du 4 novembre 2026)", () => {
+    expect(SIGNES_A_REPASSER).not.toContain("points");
+    expect(SIGNES_A_REPASSER).not.toContain("quadrillage");
+    const html = htmlRepertoire({ format: "repasser", signes: SIGNES.map((s) => s.id) });
+    // Trois signes par page : douze qui se repassent, quatre pages.
+    expect(pages(html)).toBe(4);
+    expect(html).toContain("JE REPASSE LES TRAITS");
+    expect(html).toMatch(/<p class="consigne">Je regarde le modèle\. Je pars du point vert/);
+    expect((html.match(/class="rg-trace rg-pointilles"/g) ?? []).length).toBe(2 * SIGNES_A_REPASSER.length);
+    const departs = SIGNES_A_REPASSER.reduce((n, s) => n + departsDuSigne(s).length, 0);
+    expect((html.match(/class="rg-depart"/g) ?? []).length).toBe(2 * departs);
+    // Chaque départ est au bout d'un trait : là où commence un chemin, ou sur un rond.
+    for (const s of SIGNES_A_REPASSER) {
+      expect(departsDuSigne(s).length, s).toBeGreaterThan(0);
+      for (const [x, y] of departsDuSigne(s)) {
+        expect(x, s).toBeGreaterThanOrEqual(0);
+        expect(x, s).toBeLessThanOrEqual(150);
+        expect(y, s).toBeGreaterThanOrEqual(0);
+        expect(y, s).toBeLessThanOrEqual(34);
+      }
+    }
+    expect(traceDuSigne("verticales")).toContain(`M ${departsDuSigne("verticales")[0].join(" ")} `);
+    expect(traceDuSigne("ponts")).toContain(`M ${departsDuSigne("ponts")[0].join(" ")} `);
+    const [rx, ry] = departsDuSigne("ronds")[0];
+    expect(Math.hypot(rx - 14, ry - 17)).toBeCloseTo(6.5, 5);
+    // Le titre de l'atelier suit la sorte de feuille.
+    expect(htmlRepertoire({ format: "repasser", signes: ["verticales"], capitales: false })).toContain("Je repasse les traits");
+  });
 });
 
 describe("les unités de mesure (programmes des cycles 2 et 3)", () => {
@@ -197,5 +232,31 @@ describe("les étiquettes des prénoms (« L'écriture à l'école maternelle »
     expect(reductionDuPrenom("Anatole-Barnabé", "grandes", true)).toBeLessThan(reductionDuPrenom("Anatole-Barnabé", "grandes", false));
     expect(styleEtiquettesPrenoms({ ecritures: ["capitales", "script"] })).not.toContain("--police-cursive");
     expect(styleEtiquettesPrenoms({})).toContain("--police-cursive");
+  });
+
+  it("fait la fiche des lettres de son prénom : chacune à retrouver, des lettres qui n'en sont pas, une page par élève (demande du 4 novembre 2026)", () => {
+    expect(lettresDuPrenom("Anatole-Barnabé")).toEqual(["A", "N", "T", "O", "L", "E", "B", "R", "É"]);
+    for (const [prenom, cases] of [["Othon", 12], ["Zéphyrine", 12], ["Anatole-Barnabé", 20], ["Othon", 20]] as const) {
+      for (const graine of [1, 2, 3]) {
+        const c = casesDuPrenom(prenom, cases, graine);
+        expect(c, prenom).toHaveLength(cases);
+        // Chaque lettre du prénom est à colorier au moins une fois — les premières d'un très long prénom.
+        const cibles = lettresDuPrenom(prenom).slice(0, cases - PIEGES_MINIMUM[cases]);
+        for (const l of cibles) expect(c.some((x) => x.aColorier && x.lettre === l), `${prenom} ${l}`).toBe(true);
+        // Les autres ne sont jamais une lettre du prénom, ni la même sans son accent.
+        const bases = new Set(cibles.map((l) => l.normalize("NFD").replace(/\p{M}/gu, "")));
+        for (const x of c.filter((y) => !y.aColorier)) expect(bases.has(x.lettre), `${prenom} ${x.lettre}`).toBe(false);
+        // Toujours des cases qui n'en sont pas : sinon, il n'y a rien à chercher.
+        expect(c.filter((x) => !x.aColorier).length, prenom).toBeGreaterThanOrEqual(PIEGES_MINIMUM[cases]);
+        expect(casesDuPrenom(prenom, cases, graine)).toEqual(c);
+      }
+    }
+    // En moyenne section, chaque lettre deux fois quand la place le permet.
+    expect(casesDuPrenom("Othon", 20, 1).filter((x) => x.aColorier)).toHaveLength(8);
+    const html = htmlEtiquettesPrenoms(prenoms, { forme: "lettres", cases: 12 });
+    expect(pages(html)).toBe(prenoms.length);
+    expect(html).toContain("ZÉPHYRINE");
+    expect((html.match(/class="ep-case"/g) ?? []).length).toBe(12 * prenoms.length);
+    expect(html).toMatch(/<p class="consigne">Je regarde mon prénom\. Je colorie/);
   });
 });

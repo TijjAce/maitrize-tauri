@@ -6,6 +6,7 @@ import {
   MINUTEURS_DE_BASE, lireMinuteursRetard, minuteurDeLaRecette, nomDeToutesLesFiches, rubriqueDeLaRecette,
   DOMAINE_DES_FICHES, domaineDeLaRecette, matiereDeLaRecette, recetteDuTitre,
   creneauDeLaFiche, detailDeLaSeance, estUneSeance, familleDeMatiere, iconeDeLaRecette, ligneDeLaSeance, prevuEnAutonomie, recettesDesSeances, recettesDesSupports,
+  IMAGES_DES_OMBRES,
 } from "./fichesAutonomie";
 import { MATIERES } from "./api";
 import { MINUTEURS_DES_TABLETTES } from "./journalTelephone";
@@ -18,6 +19,7 @@ import { suivisDesSequences } from "./suiviSequences";
 const outils: OutilsFiche = {
   image: async (id) => `data:image/png;base64,${id}`,
   pictos: async (mots) => Object.fromEntries(mots.map((m, i) => [m.toLowerCase(), 1000 + i])),
+  ombre: async (image) => image,
 };
 
 const eleve = (id: string, nom: string, niveau: string, plus: Partial<Eleve> = {}): Eleve =>
@@ -75,11 +77,12 @@ describe("les fiches qu'on propose", () => {
     }
   });
 
-  it("en maternelle : les nombres, les lettres, le temps — chaque âge les siens", () => {
-    for (let g = 1; g < 20; g++) {
-      expect(proposer("PS", 1, false, 3, g).map((f) => f.recette)).toEqual(["suite", "suite", "suite"]);
-      expect(proposer("MS", 1, false, 3, g).map((f) => recetteDe(f.recette)?.domaine)).toEqual(["nombres", "temps", "nombres"]);
-      expect(proposer("GS", 1, false, 3, g).map((f) => recetteDe(f.recette)?.domaine)).toEqual(["nombres", "lettres", "temps"]);
+  it("en maternelle : les nombres, les lettres, le temps — à chaque âge, la petite section comprise", () => {
+    for (let g = 1; g < 20; g++) for (const n of ["PS", "MS", "GS"] as const) {
+      const fiches = proposer(n, 1, false, 3, g);
+      expect(fiches.map((f) => recetteDe(f.recette)?.domaine), `${n} ${g}`).toEqual(["nombres", "lettres", "temps"]);
+      // Trois fiches différentes : la petite section ne reçoit plus trois fois les mêmes images à ranger.
+      expect(new Set(fiches.map((f) => f.recette)).size, `${n} ${g}`).toBe(3);
     }
   });
 
@@ -104,7 +107,9 @@ describe("les fiches qu'on propose", () => {
     expect(autre.recette).not.toBe(choisies[1].recette);
     expect(choisies.map((f) => f.recette)).not.toContain(autre.recette);
     expect(recetteDe(autre.recette)?.domaine).toBe(recetteDe(choisies[1].recette)?.domaine);
-    const ps = proposer("PS", 1, false, 3, 5);
+    // Toutes les fiches de la petite section déjà prises : la même, autrement tirée.
+    const ps = proposer("PS", 1, false, 4, 5);
+    expect(new Set(ps.map((f) => f.recette)).size).toBe(4);
     const meme = uneAutre(ps[0], ps, "PS", 1, false, 7);
     expect(meme.recette).toBe(ps[0].recette);
     expect(meme.graine).not.toBe(ps[0].graine);
@@ -178,8 +183,8 @@ describe("chaque fiche se fabrique, à chaque niveau et chaque période", () => 
         expect(f.html.length, `${r.id} ${niveau} P${periode}`).toBeGreaterThan(200);
         expect(f.html, `${r.id} ${niveau} P${periode}`).not.toMatch(/undefined|NaN|\[object Object\]/);
         expect(nomDeLaRecette(r, c).length).toBeGreaterThan(3);
-        // Seul « J'écris mon prénom » le prend : c'est le modèle à copier.
-        if (r.id !== "prenom" && f.html.includes("Eliot")) aSonNom.add(`${r.id} ${niveau}`);
+        // Seuls « J'écris mon prénom » et « Les lettres de mon prénom » le prennent : c'est le modèle, à copier ou à retrouver.
+        if (r.id !== "prenom" && r.id !== "prenom-lettres" && f.html.includes("Eliot")) aSonNom.add(`${r.id} ${niveau}`);
       }
     }
     expect([...aSonNom]).toEqual([]);
@@ -266,6 +271,56 @@ describe("ce que l'enseignant a demandé pour « En retard » (octobre 2026)", (
 });
 
 
+
+describe("encore des fiches à faire seul (demande de l'enseignant, 4 novembre 2026)", () => {
+  const fabriquer = (id: string, niveau: (typeof NIVEAUX_FICHES)[number], periode: number, graine: number) =>
+    recetteDe(id)!.fabriquer({ niveau, periode, prenom: "Eliot" }, graine, outils);
+
+  it("relie trois images à leur ombre en petite section, quatre en moyenne, cinq en grande — une par famille, qui ne se confondent pas", async () => {
+    const famille = new Map(IMAGES_DES_OMBRES.flatMap((f, i) => f.map((x) => [x.id, i] as const)));
+    expect(famille.size).toBe(IMAGES_DES_OMBRES.flat().length);
+    for (const [niveau, combien] of [["PS", 3], ["MS", 4], ["GS", 5]] as const) for (const graine of [1, 2, 3, 4]) {
+      const f = await fabriquer("ombres", niveau, 1, graine);
+      const ids = [...f.html.matchAll(/data:image\/png;base64,(\d+)/g)].map((m) => Number(m[1]));
+      const vues = [...new Set(ids)];
+      expect(vues, `${niveau} ${graine}`).toHaveLength(combien);
+      expect(new Set(vues.map((id) => famille.get(id))).size, `${niveau} ${graine}`).toBe(combien);
+      expect(f.html).toContain("Relie chaque image à son ombre.");
+    }
+  });
+
+  it("fait repasser les formes de base en petite section, le répertoire de la classe ensuite", async () => {
+    for (const graine of [1, 2, 3, 4, 5]) {
+      const ps = await fabriquer("graphisme", "PS", 1, graine);
+      expect((ps.html.match(/class="rg-a-repasser"|class="rg-carte rg-a-repasser"/g) ?? []).length).toBe(2);
+      expect(ps.html).toMatch(/LES LIGNES VERTICALES|LES LIGNES HORIZONTALES|LES RONDS/);
+      expect(ps.html).not.toMatch(/LES BOUCLES|LES SPIRALES|LES CRÉNEAUX/);
+      const ms = await fabriquer("graphisme", "MS", 1, graine);
+      expect((ms.html.match(/class="rg-carte rg-a-repasser"/g) ?? []).length).toBe(3);
+      expect(ms.html).not.toContain("LES CRÉNEAUX");
+      expect(ms.refaire).toMatchObject({ repertoireGraphique: { format: "repasser" } });
+    }
+  });
+
+  it("donne les lettres de son prénom à retrouver, en petite et en moyenne section ; l'atelier n'en garde rien", async () => {
+    const ps = await fabriquer("prenom-lettres", "PS", 2, 3);
+    expect(ps.html).toContain("ELIOT");
+    expect((ps.html.match(/class="ep-case"/g) ?? []).length).toBe(12);
+    expect((((await fabriquer("prenom-lettres", "MS", 2, 3)).html).match(/class="ep-case"/g) ?? []).length).toBe(20);
+    expect(ps.refaire).toBeUndefined();
+    expect(recetteDe("prenom-lettres")!.niveaux).toEqual(["PS", "MS"]);
+  });
+
+  it("fait compléter le tableau des nombres : jusqu'à cent au CP, à partir de la période 3 ; une centaine plus loin ensuite", async () => {
+    expect(recettesPour("CP", 2, false).map((r) => r.id)).not.toContain("tableau-nombres");
+    expect((await fabriquer("tableau-nombres", "CP", 3, 5)).html).toContain("de 1 à 100");
+    expect((await fabriquer("tableau-nombres", "CE1", 1, 5)).html).toContain("de 0 à 99");
+    expect((await fabriquer("tableau-nombres", "CE1", 4, 5)).html).toMatch(/de [1-9]00 à [1-9]99/);
+    expect((await fabriquer("tableau-nombres", "CE2", 1, 5)).html).toContain("J'écris les nombres qui manquent.");
+    // Les nombres qui manquent de la grande section, jusqu'à dix.
+    expect((await fabriquer("nombres-gs", "GS", 1, 5)).html).toContain("La frise jusqu'à 10");
+  });
+});
 
 describe("le temps de chaque fiche", () => {
   it("chaque sorte de fiche a son temps de base, parmi ceux qu'on propose", () => {
@@ -356,7 +411,7 @@ describe("les ateliers en photo et les séances qui viennent (demande de l'ensei
   it("chaque élève reçoit un atelier en photo dès qu'il y en a un à son niveau, à sa place dans la journée", () => {
     for (let g = 1; g < 30; g++) {
       expect(proposer("CE1", 1, false, 4, g, [], atelier).map((f) => recetteDe(f.recette, atelier)?.domaine)).toEqual(["francais", "maths", "atelier", "francais"]);
-      expect(proposer("MS", 1, false, 3, g, [], atelier).map((f) => recetteDe(f.recette, atelier)?.domaine)).toEqual(["nombres", "atelier", "temps"]);
+      expect(proposer("MS", 1, false, 3, g, [], atelier).map((f) => recetteDe(f.recette, atelier)?.domaine)).toEqual(["nombres", "atelier", "lettres"]);
       // Une seule photo : elle ne revient pas, même quand toutes les fiches sont prises.
       expect(proposer("PS", 1, false, 5, g, [], atelier).filter((f) => f.recette === `support:${PHOTO}`)).toHaveLength(1);
     }

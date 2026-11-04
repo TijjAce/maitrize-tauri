@@ -65,9 +65,14 @@ export function TableauNombresTab() {
             <option value="1">De 1 à 10, de 11 à 20… : la ligne finit par la dizaine</option>
           </Select>
         </Field>
+        <Field label="À partir de">
+          <Select value={String(r.de)} onChange={(e) => maj({ de: Number(e.target.value) })}>
+            {Array.from({ length: 10 }, (_, i) => i).map((c) => <option key={c} value={c}>{c * 100 + r.depart}</option>)}
+          </Select>
+        </Field>
         <Field label="Jusqu'à">
           <Select value={String(r.centaines)} onChange={(e) => maj({ centaines: Number(e.target.value) })}>
-            {Array.from({ length: 10 }, (_, i) => i + 1).map((c) => <option key={c} value={c}>{c * 100}{c > 1 ? ` — ${c} pages` : ""}</option>)}
+            {Array.from({ length: 10 - r.de }, (_, i) => i + 1).map((c) => <option key={c} value={c}>{(r.de + c) * 100 - 1 + r.depart}{c > 1 ? ` — ${c} pages` : ""}</option>)}
           </Select>
         </Field>
         <Coche on={r.couleurs} libelle="Une couleur par ligne" onChange={(couleurs) => maj({ couleurs })} />
@@ -270,12 +275,13 @@ export function RepertoireGraphiqueTab() {
         <Coche on={r.capitales} libelle="Les noms en capitales" onChange={(capitales) => maj({ capitales })} />
         <Coche on={r.photo} libelle="Une case pour la photo de l'endroit où on l'a trouvé" onChange={(photo) => maj({ photo })} />
         <Field label="Ce qu'on imprime">
-          <Select value={r.format} onChange={(e) => maj({ format: e.target.value === "etiquettes" ? "etiquettes" : "mur" })}>
+          <Select value={r.format} onChange={(e) => maj({ format: e.target.value === "etiquettes" || e.target.value === "repasser" ? e.target.value : "mur" })}>
             <option value="mur">Six signes par page</option>
             <option value="etiquettes">De grandes cartes, quatre par page</option>
+            <option value="repasser">Une fiche à repasser, trois signes par page</option>
           </Select>
         </Field>
-        <Boutons atelier={ATELIER} titre={titreRepertoire()} html={html} style={STYLE_REPERTOIRE} peut />
+        <Boutons atelier={ATELIER} titre={titreRepertoire(r)} html={html} style={STYLE_REPERTOIRE} peut />
       </>}
       droite={<ApercuFeuille html={html} style={STYLE_REPERTOIRE} />}
     />
@@ -358,19 +364,35 @@ export function EtiquettesPrenomsTab() {
           <TextareaAuto value={texte} minHauteur={140} maxHauteur="40vh" spellCheck={false} onChange={(e) => setSaisie(e.target.value)} />
         </Field>
         {saisie !== null && <button type="button" className="btn ghost sm" onClick={reprendre}>Reprendre la liste de la classe</button>}
-        <Field label="Les écritures">
-          <Chips liste={ECRITURES_PRENOM.map((e) => e.id)} choisis={r.ecritures} libelle={(id: EcriturePrenom) => ECRITURES_PRENOM.find((e) => e.id === id)?.nom ?? id}
-            onChange={(ecritures) => { if (ecritures.length) maj({ ecritures: ECRITURES_PRENOM.map((e) => e.id).filter((e) => ecritures.includes(e)) }); }} />
-        </Field>
-        {r.ecritures.includes("cursive") && <ChoixPoliceCursive />}
-        <Coche on={r.photo} libelle="Une case pour la photo" onChange={(photo) => maj({ photo })} />
-        <Field label="Les étiquettes">
-          <Select value={r.taille} onChange={(e) => maj({ taille: e.target.value === "petites" ? "petites" : "grandes" })}>
-            <option value="grandes">Grandes, huit par page : la présence, le portemanteau</option>
-            <option value="petites">Petites, vingt-quatre par page : les casiers, les cahiers</option>
+        <Field label="Ce qu'on imprime">
+          <Select value={r.forme} onChange={(e) => maj({ forme: e.target.value === "lettres" ? "lettres" : "etiquettes" })}>
+            <option value="etiquettes">Les étiquettes</option>
+            <option value="lettres">Pour chaque élève, la fiche des lettres de son prénom</option>
           </Select>
         </Field>
-        <Boutons atelier={ATELIER} titre={titreEtiquettesPrenoms()} html={html} style={style} peut={prenoms.length > 0} />
+        {r.forme === "lettres" ? (
+          <Field label="Les cases à colorier">
+            <Select value={String(r.cases)} onChange={(e) => maj({ cases: e.target.value === "20" ? 20 : 12 })}>
+              <option value="12">Douze grandes cases : la petite section</option>
+              <option value="20">Vingt cases : la moyenne section</option>
+            </Select>
+          </Field>
+        ) : <>
+          <Field label="Les écritures">
+            <Chips liste={ECRITURES_PRENOM.map((e) => e.id)} choisis={r.ecritures} libelle={(id: EcriturePrenom) => ECRITURES_PRENOM.find((e) => e.id === id)?.nom ?? id}
+              onChange={(ecritures) => { if (ecritures.length) maj({ ecritures: ECRITURES_PRENOM.map((e) => e.id).filter((e) => ecritures.includes(e)) }); }} />
+          </Field>
+          {r.ecritures.includes("cursive") && <ChoixPoliceCursive />}
+          <Coche on={r.photo} libelle="Une case pour la photo" onChange={(photo) => maj({ photo })} />
+          <Field label="Les étiquettes">
+            <Select value={r.taille} onChange={(e) => maj({ taille: e.target.value === "petites" ? "petites" : "grandes" })}>
+              <option value="grandes">Grandes, huit par page : la présence, le portemanteau</option>
+              <option value="petites">Petites, vingt-quatre par page : les casiers, les cahiers</option>
+            </Select>
+          </Field>
+        </>}
+        <Boutons atelier={ATELIER} titre={titreEtiquettesPrenoms(r)} html={html} style={style} peut={prenoms.length > 0}
+          onTirage={r.forme === "lettres" ? () => maj({ graine: graineAuHasard() }) : undefined} />
       </>}
       droite={<ApercuFeuille html={html} style={style} />}
     />

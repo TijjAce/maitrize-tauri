@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { REGLAGES_PLAN_CLASSE, htmlPlanClasse, reglagesPlanSurs } from "./planDeLaClasse";
 import { REGLAGES_FRISE, htmlFrise, reglagesFriseSurs } from "./frisesTemps";
 import { REGLAGES_PAYSAGE, htmlPaysage, reglagesPaysageSurs } from "./lireUnPaysage";
+import { REGLAGES_REPERTOIRE, htmlRepertoire, reglagesRepertoireSurs } from "./repertoireGraphique";
+import { REGLAGES_TABLEAU_NOMBRES, htmlTableauNombres, reglagesTableauNombresSurs } from "./tableauNombres";
 
 // Ce qu'une feuille dit pouvoir refaire dans son atelier (`refaire`), l'atelier doit le refaire tel quel : les mêmes
 // réglages, relus comme l'atelier les relit, et le même tirage donnent la même feuille. Les « ateliers » ci-dessous
@@ -133,6 +135,9 @@ const ATELIERS: Record<string, (m: Memoires, g: number) => string> = {
     return htmlCategoriser({ ...brut, categories: normaliserCategories(brut.categories) }, {}, hasard(g));
   },
   suites: (m, g) => htmlSuites(suitesSures(lu(REGLAGES_SUITES, m.suites)), {}, hasard(g)),
+  // Les fiches du 4 novembre 2026 : les traits à repasser, le tableau des nombres à compléter.
+  repertoireGraphique: (m) => htmlRepertoire(reglagesRepertoireSurs(lu(REGLAGES_REPERTOIRE, m.repertoireGraphique))),
+  tableauNombres: (m) => htmlTableauNombres(reglagesTableauNombresSurs(lu(REGLAGES_TABLEAU_NOMBRES, m.tableauNombres))),
   coloriage: (m, g) => { const r = lu(REGLAGES_COLORIAGE, m.coloriage); return feuilleDuColoriage(fabriquerColoriage(r, g, []), r, false).corps; },
   planClasse: (m, g) => htmlPlanClasse(reglagesPlanSurs(lu(REGLAGES_PLAN_CLASSE, m.planClasse)), g),
   frise: (m) => htmlFrise(reglagesFriseSurs(lu(REGLAGES_FRISE, m.frise))),
@@ -193,6 +198,7 @@ describe("une fiche « En retard » se refait dans son atelier", () => {
     image: async () => null,
     // Chaque mot a son picto : les catégories de la maternelle se forment toutes.
     pictos: async (mots: string[]) => Object.fromEntries(mots.map((m, i) => [m.toLowerCase(), 1000 + i])),
+    ombre: async () => null,
   };
   it("telle quelle, pour toutes celles qui le disent", async () => {
     let verifiees = 0;

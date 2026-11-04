@@ -12,8 +12,17 @@
 //
 // Les prénoms viennent de la liste de la classe, au moment d'imprimer : ils
 // ne sont gardés nulle part ailleurs.
+//
+// L'atelier fait aussi, pour chaque élève, la fiche des lettres de son prénom
+// (demande de l'enseignant, 4 novembre 2026 : « ajoute encore des ateliers
+// autonomes ») : son prénom en capitales pour modèle, et des cases où il
+// colorie chacune de ses lettres, parmi d'autres. Le programme fait
+// « reconnaitre et nommer certaines lettres de son prénom écrit en
+// capitales » avant 4 ans, puis « nommer les lettres de son prénom » (p. 13) :
+// douze grandes cases en petite section, vingt en moyenne.
 
 import { feuille } from "./cartesImprimables";
+import { hasard, melanger } from "./hasard";
 import { POLICE_CURSIVE, tailleCursive } from "./policesEcriture";
 import { escapeHtml } from "./print";
 
@@ -27,15 +36,27 @@ export interface ReglagesEtiquettesPrenoms {
   photo: boolean;
   /** Grandes : huit par page, pour la présence ou le portemanteau ; petites : vingt-quatre, pour les casiers et les cahiers. */
   taille: "grandes" | "petites";
+  /** Des étiquettes ; ou, pour chaque élève, la fiche où il retrouve les lettres de son prénom. */
+  forme: "etiquettes" | "lettres";
+  /** Les cases de cette fiche : douze en petite section, vingt en moyenne. */
+  cases: 12 | 20;
+  /** Le tirage des cases. */
+  graine: number;
 }
 
-export const REGLAGES_ETIQUETTES_PRENOMS: ReglagesEtiquettesPrenoms = { ecritures: ["capitales", "script", "cursive"], photo: false, taille: "grandes" };
+export const REGLAGES_ETIQUETTES_PRENOMS: ReglagesEtiquettesPrenoms = {
+  ecritures: ["capitales", "script", "cursive"], photo: false, taille: "grandes", forme: "etiquettes", cases: 12, graine: 0,
+};
 
 export function reglagesEtiquettesPrenomsSurs(brut: Partial<ReglagesEtiquettesPrenoms> | null | undefined): ReglagesEtiquettesPrenoms {
   const o = (brut && typeof brut === "object" ? brut : {}) as Partial<ReglagesEtiquettesPrenoms>;
   const d = REGLAGES_ETIQUETTES_PRENOMS;
   const ecritures = Array.isArray(o.ecritures) ? ECRITURES_PRENOM.map((e) => e.id).filter((e) => o.ecritures?.includes(e)) : d.ecritures;
-  return { ecritures: ecritures.length ? ecritures : d.ecritures, photo: typeof o.photo === "boolean" ? o.photo : d.photo, taille: o.taille === "petites" ? "petites" : "grandes" };
+  return {
+    ecritures: ecritures.length ? ecritures : d.ecritures, photo: typeof o.photo === "boolean" ? o.photo : d.photo, taille: o.taille === "petites" ? "petites" : "grandes",
+    forme: o.forme === "lettres" ? "lettres" : "etiquettes", cases: o.cases === 20 ? 20 : 12,
+    graine: Number.isFinite(o.graine) ? Math.trunc(Number(o.graine)) : d.graine,
+  };
 }
 
 /** Les prénoms d'une saisie, un par ligne, sans doublon, dans l'ordre alphabétique. */
@@ -54,10 +75,52 @@ export function reductionDuPrenom(prenom: string, taille: "grandes" | "petites",
   return Math.min(1, place / Math.max(1, prenom.length * 0.82 * f.capitales));
 }
 
+/** Les lettres d'un prénom, en capitales, chacune une fois, dans l'ordre : ce que l'élève cherche. */
+export function lettresDuPrenom(prenom: string): string[] {
+  return [...new Set([...prenom.toLocaleUpperCase("fr-FR")].filter((c) => /\p{L}/u.test(c)))];
+}
+
+const sansAccent = (c: string) => c.normalize("NFD").replace(/\p{M}/gu, "");
+
+/** Une case de la fiche : sa lettre, et si elle est du prénom. */
+export interface CaseDuPrenom { lettre: string; aColorier: boolean }
+
+/** Les cases qui ne sont pas du prénom, au moins : sans elles, il n'y a rien à distinguer. */
+export const PIEGES_MINIMUM: Record<12 | 20, number> = { 12: 4, 20: 6 };
+
+/**
+ * Les cases de la fiche : chaque lettre du prénom au moins une fois — deux
+ * fois quand la place le permet, en moyenne section —, puis des lettres qui
+ * n'en sont pas, jamais la même sans son accent : qui cherche le É ne doit pas
+ * se demander s'il colorie le E. Un très long prénom garde ses premières
+ * lettres : il faut laisser la place des autres.
+ */
+export function casesDuPrenom(prenom: string, cases: 12 | 20, graine: number): CaseDuPrenom[] {
+  const alea = hasard(graine * 7919 + prenom.length + 1);
+  const cibles = lettresDuPrenom(prenom).slice(0, cases - PIEGES_MINIMUM[cases]);
+  const voulues = cases === 20 ? Math.max(cibles.length, Math.min(cases / 2, cibles.length * 2)) : cibles.length;
+  const aColorier = [...cibles, ...melanger(alea, cibles)].slice(0, voulues);
+  const bases = new Set(cibles.map(sansAccent));
+  const autres = melanger(alea, [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].filter((c) => !bases.has(c)));
+  const pieges = Array.from({ length: cases - aColorier.length }, (_, i) => autres[i % autres.length]);
+  return melanger(alea, [...aColorier.map((lettre) => ({ lettre, aColorier: true })), ...pieges.map((lettre) => ({ lettre, aColorier: false }))]);
+}
+
+/** La fiche d'un élève : son prénom pour modèle, et les cases où il colorie ses lettres. */
+function ficheDesLettres(prenom: string, r: ReglagesEtiquettesPrenoms, graine: number): string {
+  const capitales = prenom.toLocaleUpperCase("fr-FR");
+  const k = Math.min(1, 150 / Math.max(1, capitales.length * 0.9 * 16)).toFixed(3);
+  const cases = casesDuPrenom(prenom, r.cases, graine).map((c) => `<div class="ep-case">${escapeHtml(c.lettre)}</div>`).join("");
+  return `<div class="page ep-page ep-lettres ep-lettres-${r.cases}"><div class="ep-titre">Les lettres de mon prénom</div>`
+    + `<p class="consigne">Je regarde mon prénom. Je colorie les cases où je trouve ses lettres.</p>`
+    + `<div class="ep-modele" style="--ep-k: ${k}">${escapeHtml(capitales)}</div><div class="ep-grille">${cases}</div></div>`;
+}
+
 export function htmlEtiquettesPrenoms(prenoms: string[], brut: Partial<ReglagesEtiquettesPrenoms>): string {
   const r = reglagesEtiquettesPrenomsSurs(brut);
   const f = FORMATS[r.taille];
   if (!prenoms.length) return feuille(`<div class="page ep-page"><div class="ep-vide">Écrivez un prénom par ligne, ou reprenez la liste de la classe.</div></div>`, "ep");
+  if (r.forme === "lettres") return feuille(prenoms.map((p, i) => ficheDesLettres(p, r, r.graine + i)).join(""), "ep");
   const etiquette = (p: string) => {
     const k = reductionDuPrenom(p, r.taille, r.photo).toFixed(3);
     const lignes = r.ecritures.map((e) => `<div class="ep-${e}">${escapeHtml(e === "capitales" ? p.toLocaleUpperCase("fr-FR") : p)}</div>`).join("");
@@ -71,7 +134,8 @@ export function htmlEtiquettesPrenoms(prenoms: string[], brut: Partial<ReglagesE
   return feuille(pages.join(""), "ep");
 }
 
-export const titreEtiquettesPrenoms = () => "Les étiquettes des prénoms";
+export const titreEtiquettesPrenoms = (brut?: Partial<ReglagesEtiquettesPrenoms>) =>
+  (reglagesEtiquettesPrenomsSurs(brut).forme === "lettres" ? "Les lettres de mon prénom" : "Les étiquettes des prénoms");
 
 /** Le style des étiquettes ; la cursive seulement quand on l'a choisie : un document qui la nomme emporte sa police. */
 export const styleEtiquettesPrenoms = (brut: Partial<ReglagesEtiquettesPrenoms>) => STYLE_ETIQUETTES_PRENOMS
@@ -99,4 +163,17 @@ export const STYLE_ETIQUETTES_PRENOMS = `
   .feuille.ep .ep-petites .ep-capitales { font-size: calc(${FORMATS.petites.capitales}mm * var(--ep-k, 1)); }
   .feuille.ep .ep-petites .ep-script { font-size: calc(${FORMATS.petites.script}mm * var(--ep-k, 1)); }
   .feuille.ep .ep-vide { color: #687087; font-size: 5mm; padding: 10mm 0; text-align: center; grid-column: 1 / -1; }
+  /* La fiche des lettres du prénom : le modèle encadré, puis les cases à colorier. */
+  .feuille.ep .ep-lettres { display: flex; flex-direction: column; gap: 5mm; }
+  .feuille.ep .ep-titre { font-size: 7mm; font-weight: 800; text-align: center; }
+  .feuille.ep .ep-lettres .consigne { margin: 0; font-size: 4.6mm; font-weight: 600; line-height: 1.4; }
+  .feuille.ep .ep-modele { align-self: center; border: 0.8mm solid ${NOIR}; border-radius: 3mm; padding: 3mm 8mm; font-size: calc(16mm * var(--ep-k, 1));
+    font-weight: 800; letter-spacing: 0.08em; line-height: 1.2; white-space: nowrap; }
+  .feuille.ep .ep-grille { flex: 1; min-height: 0; display: grid; gap: 4mm; }
+  .feuille.ep .ep-lettres-12 .ep-grille { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); }
+  .feuille.ep .ep-lettres-20 .ep-grille { grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); }
+  .feuille.ep .ep-case { border: 0.7mm solid #6b7186; border-radius: 4mm; display: flex; align-items: center; justify-content: center; font-weight: 800;
+    min-height: 0; line-height: 1; }
+  .feuille.ep .ep-lettres-12 .ep-case { font-size: 26mm; }
+  .feuille.ep .ep-lettres-20 .ep-case { font-size: 18mm; }
 `;

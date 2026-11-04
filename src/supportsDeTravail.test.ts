@@ -57,7 +57,7 @@ describe("un support de travail dans « En retard »", () => {
   });
 
   it("montre la photo, que la tablette reçoit, et les règles de son jeu", async () => {
-    const { html } = await supports[0].fabriquer({ niveau: "CP", periode: 1, prenom: "JULES" }, 1, { image: async () => null, pictos: async () => ({}) });
+    const { html } = await supports[0].fabriquer({ niveau: "CP", periode: 1, prenom: "JULES" }, 1, { image: async () => null, pictos: async () => ({}), ombre: async () => null });
     expect(html).toContain('<div class="titre">Le jeu des boîtes</div>');
     expect(html).toContain('<div class="consigne sp-support"><div class="sp-photo"><img src="data:image/jpeg;base64,AAAA"');
     expect(html).toContain('<div class="regle"><b>Les règles du jeu « Le jeu des boîtes »</b>Je lance le dé.<br>Je mets autant de jetons dans la boîte.</div>');

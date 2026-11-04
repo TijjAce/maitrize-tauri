@@ -37,6 +37,8 @@ export type CasesCachees = "aucune" | "quelques" | "moitie" | "lignes";
 export interface ReglagesTableauNombres {
   /** 0 : une ligne par dizaine, de 0 à 99 ; 1 : de 1 à 100, chaque ligne finit par la dizaine. */
   depart: 0 | 1;
+  /** La première centaine : 0 pour commencer à 0 (ou 1), 3 pour commencer à 300 — une fiche du CE1 sur une centaine plus loin. */
+  de: number;
   /** Combien de centaines, une page chacune : jusqu'à 100, jusqu'à 1 000. */
   centaines: number;
   couleurs: boolean;
@@ -46,14 +48,17 @@ export interface ReglagesTableauNombres {
   format: "mur" | "cahier";
 }
 
-export const REGLAGES_TABLEAU_NOMBRES: ReglagesTableauNombres = { depart: 0, centaines: 1, couleurs: true, caches: "aucune", graine: 0, format: "mur" };
+export const REGLAGES_TABLEAU_NOMBRES: ReglagesTableauNombres = { depart: 0, de: 0, centaines: 1, couleurs: true, caches: "aucune", graine: 0, format: "mur" };
 
 export function reglagesTableauNombresSurs(brut: Partial<ReglagesTableauNombres> | null | undefined): ReglagesTableauNombres {
   const o = (brut && typeof brut === "object" ? brut : {}) as Partial<ReglagesTableauNombres>;
   const d = REGLAGES_TABLEAU_NOMBRES;
-  const centaines = Number.isFinite(o.centaines) ? Math.max(1, Math.min(10, Math.round(Number(o.centaines)))) : d.centaines;
+  const de = Number.isFinite(o.de) ? Math.max(0, Math.min(9, Math.round(Number(o.de)))) : d.de;
+  // Jamais au-delà de mille : la dernière page est celle de 900 à 999.
+  const centaines = Number.isFinite(o.centaines) ? Math.max(1, Math.min(10 - de, Math.round(Number(o.centaines)))) : Math.min(d.centaines, 10 - de);
   return {
     depart: o.depart === 1 ? 1 : 0,
+    de,
     centaines,
     couleurs: typeof o.couleurs === "boolean" ? o.couleurs : d.couleurs,
     caches: o.caches === "quelques" || o.caches === "moitie" || o.caches === "lignes" ? o.caches : "aucune",
@@ -83,14 +88,17 @@ export function nombresCaches(nombres: number[][], caches: CasesCachees, graine:
 export function htmlTableauNombres(brut: Partial<ReglagesTableauNombres>): string {
   const r = reglagesTableauNombresSurs(brut);
   const pages: string[] = [];
-  for (let c = 0; c < r.centaines; c++) {
+  for (let c = r.de; c < r.de + r.centaines; c++) {
     const lignes = lignesDuTableau(r.depart, c);
     const caches = nombresCaches(lignes, r.caches, r.graine);
     const premier = lignes[0][0], dernier = lignes[9][9];
     const corps = lignes.map((ligne, l) => `<tr${r.couleurs ? ` style="background: ${TEINTES[l]}"` : ""}>`
       + ligne.map((n) => `<td${n % 10 === 0 ? ` class="tn-rond"` : ""}>${caches.has(n) ? "" : n}</td>`).join("") + `</tr>`).join("");
     pages.push(`<div class="tn-page${dernier >= 100 ? " tn-trois" : ""}"><div class="tn-titre">Le tableau des nombres</div>`
-      + `<div class="tn-sous">de ${premier} à ${dernier}</div><table class="tn-table">${corps}</table></div>`);
+      + `<div class="tn-sous">de ${premier} à ${dernier}</div>`
+      // Des cases vides : la feuille d'un élève, qui dit ce qu'on y fait.
+      + (caches.size ? `<p class="consigne tn-consigne">J'écris les nombres qui manquent.</p>` : "")
+      + `<table class="tn-table">${corps}</table></div>`);
   }
   if (r.format === "cahier") return feuille(pages.map((p) => `<div class="page tn-planche">${`<div class="tn-petit">${p}</div>`.repeat(4)}</div>`).join(""), "tn");
   return feuille(pages.map((p) => p.replace(`<div class="tn-page`, `<div class="page tn-page`)).join(""), "tn");
@@ -98,7 +106,7 @@ export function htmlTableauNombres(brut: Partial<ReglagesTableauNombres>): strin
 
 export const titreTableauNombres = (brut: Partial<ReglagesTableauNombres>) => {
   const r = reglagesTableauNombresSurs(brut);
-  return `Le tableau des nombres, de ${r.depart} à ${r.centaines * 100 - 1 + r.depart}`;
+  return `Le tableau des nombres, de ${r.de * 100 + r.depart} à ${(r.de + r.centaines) * 100 - 1 + r.depart}`;
 };
 
 export const STYLE_TABLEAU_NOMBRES = `
@@ -107,6 +115,7 @@ export const STYLE_TABLEAU_NOMBRES = `
   .feuille.tn .tn-page { width: 182mm; margin: 0 auto; box-sizing: border-box; }
   .feuille.tn .tn-titre { font-size: 8.5mm; font-weight: 800; text-align: center; line-height: 1.2; }
   .feuille.tn .tn-sous { font-size: 5mm; text-align: center; color: #4a5068; margin: 1mm 0 5mm; }
+  .feuille.tn .tn-consigne { margin: 0 0 5mm; font-size: 5mm; font-weight: 600; text-align: center; }
   .feuille.tn .tn-table { border-collapse: collapse; margin: 0 auto; table-layout: fixed; }
   .feuille.tn .tn-table td { width: 17mm; height: 17mm; border: 0.5mm solid #6b7186; text-align: center; vertical-align: middle; padding: 0;
     font-size: 8mm; font-weight: 700; line-height: 1; }
