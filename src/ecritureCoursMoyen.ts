@@ -17,9 +17,13 @@
 //
 // Les textes sont ceux du cours moyen (voir textesCoursMoyen.ts) ; les
 // photographies, celles de « Lire un paysage ». Les prénoms sont inventés.
+// La copie se fait au verso, sur les lignes Seyès que trace Marelle, la
+// police cursive du ministère, à la réglure du cours moyen (2 mm) — demande
+// de l'enseignant, 4 novembre 2026 (voir ecritureCursive.ts).
 
 import { escapeHtml } from "./print";
 import { feuille } from "./cartesImprimables";
+import { STYLE_LIGNES_MARELLE, blocMarelle } from "./ecritureCursive";
 import { hasard, melanger } from "./hasard";
 import { ATTENTE_PHOTO, creditPhoto, photoPaysage } from "./photosPaysages";
 import { lignesNumerotees, texteDe, type TexteAComprendre } from "./textesDeComprehension";
@@ -62,14 +66,20 @@ const texteSeul = (t: TexteAComprendre, n?: number) => lignesNumerotees(t).filte
 
 function feuilleCopie(r: ReglagesEcritureCM): string {
   const t = texteDe(r.texte) ?? texteDe(r.classe === "CM1" ? "pommier-cm1" : "lion-rat-cm2")!;
-  const n = t.lignes.filter((l) => l.trim()).length;
   return `<div class="page">${titre(`Je copie : ${t.titre}`)}${TETE}
     ${rappel("La copie différée : je lis un groupe de mots, je le dis dans ma tête, je le cache ; je l'écris de mémoire ; je vérifie, mot à mot, lettre à lettre. Je garde la ponctuation, les majuscules et les retours à la ligne.")}
     ${regle(`Je copie le texte au verso de la feuille, par groupes de mots, en copie différée. Puis je compare ma copie au modèle, mot à mot, et j'entoure mes erreurs. ${SOURCE}`)}
     <div class="ew-modele">${texteSeul(t)}</div>${t.source ? `<div class="ew-source">${escapeHtml(t.source)}</div>` : ""}
     <div class="ew-bilan">J'ai copié en ......... minutes. Après vérification : ......... erreur(s).</div></div>
-    <div class="page"><div class="titre">Ma copie</div>${lignes(n + 3)}</div>`;
+    <div class="page"><div class="titre">Ma copie</div>${blocMarelle(2, Array.from({ length: RANGEES_DE_LA_COPIE }, () => ""))}</div>`;
 }
+
+/**
+ * Les rangées de la copie : toute la page — huit millimètres chacune —, de quoi copier
+ * une vingtaine de lignes au CM2 sans jamais en manquer, même d'une écriture plus large
+ * que le texte imprimé.
+ */
+export const RANGEES_DE_LA_COPIE = 28;
 
 // ── Écrire pour réfléchir et apprendre ────────────────────────────────────
 
@@ -300,6 +310,7 @@ export const STYLE_ECRITURE_CM = `
   .feuille.ew .ew-bilan { font-size: 13px; margin-top: 4mm; }
   .feuille.ew .ew-lignes { margin: 1mm 0 3mm; }
   .feuille.ew .ew-ligne { border-bottom: 1px solid #9aa0b4; height: 9mm; }
+${STYLE_LIGNES_MARELLE}
   .feuille.ew .ew-cadre { margin: 0 0 3mm; break-inside: avoid; page-break-inside: avoid; }
   .feuille.ew .ew-cadre-titre { font-size: 12.5px; font-weight: 700; color: #2c3346; }
   .feuille.ew .ew-schema { border: 1px dashed #9aa0b4; border-radius: 2mm; height: 50mm; margin-top: 1mm; }

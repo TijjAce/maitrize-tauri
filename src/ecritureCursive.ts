@@ -205,15 +205,23 @@ export function htmlEcritureCursive(r: ReglagesCursive): string {
     ${modeles.map(bloc).join("")}</div>`, "cu");
 }
 
+/**
+ * Le style des lignes de Marelle (voir `blocMarelle`), pour toute feuille qui
+ * s'en sert : la ligne du haut et les jambages de la dernière rangée ont leur
+ * place dans le bloc ; les espaces au-delà de la page sont coupés ; la marge
+ * rouge du cahier par-dessus.
+ */
+export const STYLE_LIGNES_MARELLE = `
+  .feuille .cu-marelle { position: relative; line-height: 1.92; white-space: pre; overflow: hidden; width: ${LARGEUR}mm;
+    color: #1c2233; padding: 0.6mm 0 calc(var(--cu-interligne, 3mm) + 0.6mm); }
+  .feuille .cu-marelle::after { content: ""; position: absolute; top: 0; bottom: 0; left: 16mm; width: 0.25mm; background: #d33a32; }
+`;
+
 export const STYLE_CURSIVE = `
   .feuille.cu .cu-bloc { margin: 0 0 4mm; page-break-inside: avoid; break-inside: avoid; }
   .feuille.cu .cu-ligne { display: block; }
   .feuille.cu .cu-script { font-family: Arial, Helvetica, sans-serif; font-size: 20px; font-weight: 600; margin: 0 0 1mm 18mm; }
-  /* Les lignes de Marelle : la ligne du haut et les jambages de la dernière rangée ont leur place dans le bloc ; les espaces au-delà de la page sont coupés. */
-  .feuille.cu .cu-marelle { position: relative; line-height: 1.92; white-space: pre; overflow: hidden; width: ${LARGEUR}mm;
-    color: #1c2233; padding: 0.6mm 0 calc(var(--cu-interligne, 3mm) + 0.6mm); }
-  .feuille.cu .cu-marelle::after { content: ""; position: absolute; top: 0; bottom: 0; left: 16mm; width: 0.25mm; background: #d33a32; }
-`;
+${STYLE_LIGNES_MARELLE}`;
 
 /**
  * Les modèles d'une étape de la progression des graphèmes : le graphème,
