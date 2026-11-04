@@ -71,6 +71,12 @@ export const USAGE_PAR_DEFAUT: Record<string, Usage> = {
   afficheConjugaison: "reinvestissement", affichePronoms: "reinvestissement", codeCorrection: "reinvestissement", friseAlphabetique: "reinvestissement", valeurLettres: "reinvestissement",
   // Le problème de référence : on s'y reporte quand on reconnaît « c'est comme le problème de… ».
   afficheProbleme: "reinvestissement",
+  // Les affiches à cartes : des référents, qu'on consulte ; celles de la vie de la classe servent chaque jour.
+  afficheConsignes: "reinvestissement", afficheSons: "reinvestissement", afficheListes: "reinvestissement", afficheMaisons: "reinvestissement",
+  afficheInvariables: "reinvestissement", afficheContraires: "reinvestissement", afficheFamilles: "reinvestissement", afficheCouleurs: "reinvestissement",
+  afficheEmotions: "reinvestissement", afficheComprehension: "reinvestissement", afficheDemarche: "reinvestissement", afficheAnimal: "reinvestissement",
+  afficheCalcul: "reinvestissement", afficheComparer: "reinvestissement",
+  afficheResponsabilites: "rituel", afficheCoins: "rituel", afficheRegles: "rituel", afficheLangue: "rituel",
   // Évaluer : en fin de séquence, savoir où en est chacun.
   taches: "reinvestissement",
   // Aides à la tâche : on les manipule pendant qu'on fait ; la prise de parole se prépare pour le bilan.

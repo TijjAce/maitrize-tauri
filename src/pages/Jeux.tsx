@@ -33,6 +33,8 @@ import { DemiDroiteTab, OrdinauxTab } from "./AteliersReperage";
 import { FamillesAdditionTab } from "./AtelierFamillesAddition";
 import { TablesMultiplicationTab } from "./AtelierTablesMultiplication";
 import { AfficheProblemeTab } from "./AtelierAfficheProbleme";
+import { AfficheCartesTab } from "./AtelierAffichesACartes";
+import { sorteDeLAtelier } from "../affichesACartes";
 import { AfficheConjugaisonTab } from "./AtelierAfficheConjugaison";
 import { PronomsTab } from "./AtelierPronoms";
 import { CodeCorrectionTab } from "./AtelierCodeCorrection";
@@ -558,6 +560,7 @@ export default function Jeux() {
         : onglet === "visibileo" ? <VisibileoTab banque={Boolean(etat?.installee)} />
         : onglet === "vilainPetitCanard" ? <VilainPetitCanardTab />
         : onglet === "carteMentale" ? <CarteMentaleTab banque={Boolean(etat?.installee)} />
+        : sorteDeLAtelier(onglet) ? <AfficheCartesTab key={onglet} sorte={sorteDeLAtelier(onglet)!} banque={Boolean(etat?.installee)} />
         : onglet === "famillesAddition" ? <FamillesAdditionTab />
         : onglet === "tablesMultiplication" ? <TablesMultiplicationTab />
         : onglet === "nombres" ? <CartesNombresTab />

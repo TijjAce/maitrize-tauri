@@ -124,6 +124,25 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
     + "« La résolution de problèmes mathématiques au cours moyen » (Éduscol, 2021), p. 101-102 : l'institutionnalisation d'un problème de "
     + "comparaison, en affichage ou au cahier de leçons.",
   coloriage: `${SOURCE_INCONNUE}.`,
+  // Les affiches à cartes (« fais-les tous », 4 novembre 2026) : voir affichesACartes.ts.
+  afficheConsignes: "Document « Aménager l'espace » (Éduscol, 2017), p. 6 : les verbes de consignes parmi les affichages pédagogiques « incontournables », avec l'alphabet et les mots-repères.",
+  afficheSons: "Guide « Pour enseigner la lecture et l'écriture au CE1 » (Éduscol, 2019), p. 87 : les affichettes des correspondances graphèmes-phonèmes, présentes en classe ; guide « Pour enseigner la lecture et l'écriture au CP » (Éduscol, 2018), p. 100 : les mots-référents parmi les outils de la classe.",
+  afficheListes: "Guide « Pour enseigner la lecture et l'écriture au CE1 » (Éduscol, 2019), p. 22 : une liste analogique sur le graphème « ien » ; p. 124 : les listes analogiques parmi les outils à garder du CP au CE1.",
+  afficheMaisons: `${GUIDE_MATERNELLE_LECTURE}, p. 43 : les « maisons des sons » ; guide pour l'enseignement des langues vivantes à l'école (Éduscol), p. 20 et 33 : les maisons des sons de l'anglais, chacune avec son mot repère.`,
+  afficheResponsabilites: "Document « Aménager l'espace » (Éduscol, 2017), p. 6 : les responsabilités parmi les affichages organisationnels de la classe.",
+  afficheCoins: "« L'écriture à l'école maternelle » (Éduscol, 2015), p. 20-21 : les « coins » de la classe et la désignation des activités, illustrée pour les plus jeunes ; programme de l'école maternelle (2025), p. 16 : les étiquettes de rangement.",
+  afficheRegles: "Programme de l'école maternelle (2025), p. 4 : l'élaboration collective de règles de vie, « libertés régulées » et « instructions données » ; programme d'enseignement moral et civique : les règles de vie de la classe, au CP et au CE2.",
+  afficheLangue: "Programme de langues vivantes du cycle 2 : la date et la météo du jour, montrées sur les étiquettes du coin langue ; guide pour l'enseignement des langues vivantes à l'école (Éduscol), p. 8 et 27 : le double affichage des lieux de l'école, le panneau des saisons ; guide pour l'éveil à la diversité linguistique en maternelle (Éduscol, 2023), p. 33 : « bonjour » dans les langues rencontrées.",
+  afficheInvariables: "Guide « La grammaire du français du CP à la 6e » (Éduscol, 2022), p. 167 : des corpus de mots invariables, en affichage notamment — et p. 182, ce n'est pas une catégorie grammaticale ; programme de français du cycle 2 (2024) : au CE1, un corpus organisé de mots invariables.",
+  afficheContraires: "Guide « Pour enseigner la lecture et l'écriture au CP » (Éduscol, 2018), p. 105 : un album des contraires, des paires d'antonymes collectées et affichées.",
+  afficheFamilles: "Guide « Pour enseigner la lecture et l'écriture au CP » (Éduscol, 2018), p. 100 et 105 : les familles de mots et les fiches morphologiques, une famille par semaine ; guide « Pour enseigner le vocabulaire à l'école maternelle » (Éduscol, 2020), p. 39 : les maisons de familles de mots.",
+  afficheCouleurs: "Guide « Pour enseigner le vocabulaire à l'école maternelle » (Éduscol, 2020), p. 91 : un affichage référent pour chaque couleur abordée.",
+  afficheEmotions: "Guide « Pour enseigner le vocabulaire à l'école maternelle » (Éduscol, 2020), p. 73 : une affiche des émotions, leurs mots rangés par gradation ; programme d'éducation à la vie affective et relationnelle : au CP, deux affiches des sentiments et des émotions.",
+  afficheComprehension: "Guide « La compréhension au cours moyen » (Éduscol), p. 99 : écrire avant, pendant et après la lecture (figure 7) ; p. 89 et 111 : les stratégies gardées sur des affiches.",
+  afficheDemarche: "« Questionner le monde — Mettre en œuvre son enseignement dans la classe » (Éduscol, 2016), p. 1 : la démarche d'investigation.",
+  afficheAnimal: "Programme de l'école maternelle (2025), à partir de 5 ans, p. 59 : une affiche pour réinvestir le lexique — étapes de la vie, morphologie, locomotion, alimentation, milieu de vie.",
+  afficheCalcul: `Le ${GUIDE_CP_NOMBRES}, p. 61 : les sept familles de calculs ; p. 65 et 68 : les connaissances structurées par des affichages.`,
+  afficheComparer: `Le ${GUIDE_CP_NOMBRES}, p. 45 : le savoir à retenir pour comparer deux nombres, en affichage collectif.`,
   collections: "Guide « La construction du nombre à l'école maternelle » (Éduscol, 2023) et livrets d'accompagnement « Avant 4 ans » et « À partir de "
     + "4 ans » (Éduscol, 2025) ; programme de l'école maternelle (2025).",
   problemeDuJour: "Programme de l'école maternelle (2025), « Utiliser les nombres pour résoudre des problèmes » ; livrets d'accompagnement « Avant 4 "

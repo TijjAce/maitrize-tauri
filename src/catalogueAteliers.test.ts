@@ -13,7 +13,7 @@ describe("le catalogue de Fabriquer", () => {
     // Les domaines ne nomment que des ateliers du catalogue des supports.
     for (const d of DOMAINES_DES_MATHS) for (const id of d.outils) expect(maths.outils.some((o) => o.id === id), id).toBe(true);
     // Les billes, l'abaque, la suite des nombres, la demi-droite et les ordinaux vont avec les nombres, après les cubes.
-    expect(parties[0].outils.map((o) => o.id)).toEqual(["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "oie", "fractions", "numeration"]);
+    expect(parties[0].outils.map((o) => o.id)).toEqual(["collections", "nombres", "billes", "cubes", "abaque", "suiteNombres", "demiDroite", "ordinaux", "comparer", "afficheComparer", "oie", "fractions", "numeration"]);
   });
 
   it("rassemble le langage, les sons et la lecture, la lecture et l'écriture sous « Français » : chaque atelier dans une partie", () => {
@@ -43,6 +43,10 @@ describe("Fabriquer s'ouvre sur un choix : un support de séance, un outil pour 
     expect(ids("affichage")).toEqual(expect.arrayContaining(["nombres", "carteMentale", "famillesAddition", "fractions", "frise", "codePhrase"]));
     // D'après les programmes et les guides (demande de l'enseignant, 4 novembre 2026) : la conjugaison, la frise alphabétique, les tables de multiplication.
     expect(ids("affichage")).toEqual(expect.arrayContaining(["afficheConjugaison", "friseAlphabetique", "tablesMultiplication", "afficheProbleme", "valeurLettres", "affichePronoms", "codeCorrection"]));
+    // Éduscol, les guides et les programmes (« fais-les tous », 4 novembre 2026) : les affiches à cartes.
+    expect(ids("affichage")).toEqual(expect.arrayContaining(["afficheConsignes", "afficheSons", "afficheListes", "afficheMaisons", "afficheResponsabilites",
+      "afficheCoins", "afficheRegles", "afficheLangue", "afficheInvariables", "afficheContraires", "afficheFamilles", "afficheCouleurs", "afficheEmotions",
+      "afficheComprehension", "afficheDemarche", "afficheAnimal", "afficheCalcul", "afficheComparer"]));
     expect(ids("outil")).toContain("friseAlphabetique");
     // « Les tables d'addition, c'est plus un affichage de classe. »
     expect(ids("outil")).not.toContain("famillesAddition");
