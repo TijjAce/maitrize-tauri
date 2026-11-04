@@ -68,7 +68,9 @@ export const USAGE_PAR_DEFAUT: Record<string, Usage> = {
   // Affichages : la trace qu'on reprend, au mur ; les familles d'addition, qu'on apprend par cœur.
   carteMentale: "reinvestissement", famillesAddition: "entrainement", tablesMultiplication: "entrainement",
   // La conjugaison et la frise alphabétique : des référents, qu'on consulte en écrivant.
-  afficheConjugaison: "reinvestissement", friseAlphabetique: "reinvestissement",
+  afficheConjugaison: "reinvestissement", affichePronoms: "reinvestissement", codeCorrection: "reinvestissement", friseAlphabetique: "reinvestissement", valeurLettres: "reinvestissement",
+  // Le problème de référence : on s'y reporte quand on reconnaît « c'est comme le problème de… ».
+  afficheProbleme: "reinvestissement",
   // Évaluer : en fin de séquence, savoir où en est chacun.
   taches: "reinvestissement",
   // Aides à la tâche : on les manipule pendant qu'on fait ; la prise de parole se prépare pour le bilan.

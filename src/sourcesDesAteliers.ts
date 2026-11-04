@@ -74,6 +74,9 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
   friseAlphabetique: `${FRANCAIS_C2}, p. 10 : l'élève « utilise les outils présents dans la classe (frise alphabétique, répertoire de mots, affichages, etc.) » ; `
     + "programme de l'école maternelle (2025), p. 14 : « les différentes graphies d'une même lettre dans les trois graphies (majuscule lettre capitale ; "
     + "minuscules scriptes ; cursives) ».",
+  valeurLettres: `${FRANCAIS_C2}, p. 18 : au CE1, classer et mémoriser les mots où une lettre se prononce de deux façons — « s prononcé –ss `
+    + "ou –z, c prononcé –ss ou –k, g prononcé –j ou –g » —, et anticiper une lettre muette finale grâce à un mot de la même famille ; guide « Pour "
+    + "enseigner la lecture et l'écriture au CE1 » (Éduscol, 2019), p. 108-112 : la valeur des lettres, et la carte mentale de la lettre c.",
   gestes: "La méthode des gestes Borel-Maisonny, qui associe un geste à chaque son ; aucun texte officiel. Les images des gestes sont les vôtres.",
   motsGestes: "La méthode des gestes Borel-Maisonny, qui associe un geste à chaque son ; aucun texte officiel. Les images des gestes sont les vôtres.",
   syllabeManquante: `${SOURCE_INCONNUE} — sur le modèle des fichiers de lecture.`,
@@ -89,6 +92,12 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
   afficheConjugaison: `${FRANCAIS_C2} : au CP, être et avoir au présent (p. 20) ; au CE1, le présent, l'imparfait, le futur puis le passé composé `
     + "d'être, d'avoir et des verbes du premier groupe (p. 21) ; au CE2, aussi « faire, aller, dire, venir, pouvoir, voir, vouloir, prendre » (p. 22) ; "
     + "les outils d'aide à l'écriture que le professeur élabore avec les élèves, dont « l'affichage » (p. 9).",
+  affichePronoms: "Guide « La grammaire du français du CP à la 6e » (Éduscol, 2022), p. 174 : dès le CP, des corpus de pronoms personnels sujets "
+    + "— ceux qui désignent des personnes, ceux qui remplacent un groupe nominal —, « collectivement et sous la forme d'affichage en classe » ; au CE1, "
+    + "le singulier puis le pluriel ; p. 173 : la personne qui parle, celle à qui l'on parle, celle de qui l'on parle.",
+  codeCorrection: "Guide « Pour enseigner la lecture et l'écriture au CE1 » (Éduscol, 2019), p. 106 : une typologie des erreurs pour l'élève, "
+    + "chacune avec ce qu'il fait pour corriger son écrit ; au CE1, les erreurs de sons, les erreurs lexicales et les erreurs d'accord. Les phrases "
+    + "et les exemples de l'affiche sont de Maitrize ; les codes et les couleurs, de la classe.",
   oral: `${FRANCAIS_C2}, « Oral » ; Éduscol, « Organiser l'enseignement de l'oral » ; guide « Pour enseigner la lecture et l'écriture au CP » `
     + "(Éduscol, 2018), p. 52-53 et 105.",
   tri: "Trier pour apprendre une notion, comme la leçon de grammaire du guide « Pour enseigner la lecture et l'écriture au CE1 » (Éduscol, 2019), "
@@ -110,6 +119,10 @@ export const SOURCES_DES_ATELIERS: Record<string, string> = {
     + "d'accompagnement de mathématiques CE1 (Éduscol, 2025).",
   multiplicatifs: `${MATHS_C2} : « résoudre des problèmes multiplicatifs de type parties-tout en une étape ».`,
   problemesCM: `${MATHS_C3}.`,
+  afficheProbleme: `Le ${GUIDE_CP_NOMBRES}, p. 100-101 : l'affiche du problème de référence, de l'énoncé au calcul en passant par le schéma, et `
+    + "« c'est comme le problème de… » ; p. 94-95 et p. 98 : le schéma en barres, et « qui en a le plus » d'abord devant une comparaison. Guide "
+    + "« La résolution de problèmes mathématiques au cours moyen » (Éduscol, 2021), p. 101-102 : l'institutionnalisation d'un problème de "
+    + "comparaison, en affichage ou au cahier de leçons.",
   coloriage: `${SOURCE_INCONNUE}.`,
   collections: "Guide « La construction du nombre à l'école maternelle » (Éduscol, 2023) et livrets d'accompagnement « Avant 4 ans » et « À partir de "
     + "4 ans » (Éduscol, 2025) ; programme de l'école maternelle (2025).",

@@ -32,8 +32,12 @@ import { AbaqueTab, BillesTab, SuiteNombresTab } from "./AteliersNumerationCP";
 import { DemiDroiteTab, OrdinauxTab } from "./AteliersReperage";
 import { FamillesAdditionTab } from "./AtelierFamillesAddition";
 import { TablesMultiplicationTab } from "./AtelierTablesMultiplication";
+import { AfficheProblemeTab } from "./AtelierAfficheProbleme";
 import { AfficheConjugaisonTab } from "./AtelierAfficheConjugaison";
+import { PronomsTab } from "./AtelierPronoms";
+import { CodeCorrectionTab } from "./AtelierCodeCorrection";
 import { FriseAlphabetiqueTab } from "./AtelierFriseAlphabetique";
+import { ValeurLettresTab } from "./AtelierValeurLettres";
 import { CalculCMTab, GeometrieCMTab, GrandeursCMTab, ProblemesCMTab } from "./AteliersCoursMoyen";
 import { RectanglesTab } from "./AtelierRectangles";
 import { TangramTab } from "./AtelierTangram";
@@ -534,6 +538,7 @@ export default function Jeux() {
       <ModeImagesDeLAtelier atelier={onglet} />
       {onglet === "partieTout" ? <PartieToutTab />
         : onglet === "multiplicatifs" ? <MultiplicatifsTab />
+        : onglet === "afficheProbleme" ? <AfficheProblemeTab />
         : onglet === "problemesCM" ? <ProblemesCMTab />
         : onglet === "coloriage" ? <ColoriageMagiqueTab />
         : onglet === "sons" ? <LectureSonsTab />
@@ -541,6 +546,7 @@ export default function Jeux() {
         : onglet === "syllabaire" ? <SyllabaireTab />
         : onglet === "lettres" ? <LettresTab />
         : onglet === "friseAlphabetique" ? <FriseAlphabetiqueTab banque={Boolean(etat?.installee)} />
+        : onglet === "valeurLettres" ? <ValeurLettresTab banque={Boolean(etat?.installee)} />
         : onglet === "gestes" ? <GestesTab />
         : onglet === "motsGestes" ? <MotsEnGestesTab banque={Boolean(etat?.installee)} />
         : onglet === "syllabeManquante" ? <SyllabeManquanteTab banque={Boolean(etat?.installee)} />
@@ -587,6 +593,8 @@ export default function Jeux() {
         : onglet === "ecrire" ? <EcrireTab />
         : onglet === "grammaire" ? <GrammaireTab />
         : onglet === "afficheConjugaison" ? <AfficheConjugaisonTab banque={Boolean(etat?.installee)} />
+        : onglet === "affichePronoms" ? <PronomsTab banque={Boolean(etat?.installee)} />
+        : onglet === "codeCorrection" ? <CodeCorrectionTab />
         : onglet === "oral" ? <OralTab />
         : onglet === "fractions" ? <FractionsTab />
         : onglet === "oie" ? <JeuDeLOieTab />

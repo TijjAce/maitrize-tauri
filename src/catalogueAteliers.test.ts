@@ -42,7 +42,7 @@ describe("Fabriquer s'ouvre sur un choix : un support de séance, un outil pour 
   it("range les cartes des nombres et les tables d'addition avec les affichages, ce qui fait aussi des feuilles dans plusieurs", () => {
     expect(ids("affichage")).toEqual(expect.arrayContaining(["nombres", "carteMentale", "famillesAddition", "fractions", "frise", "codePhrase"]));
     // D'après les programmes et les guides (demande de l'enseignant, 4 novembre 2026) : la conjugaison, la frise alphabétique, les tables de multiplication.
-    expect(ids("affichage")).toEqual(expect.arrayContaining(["afficheConjugaison", "friseAlphabetique", "tablesMultiplication"]));
+    expect(ids("affichage")).toEqual(expect.arrayContaining(["afficheConjugaison", "friseAlphabetique", "tablesMultiplication", "afficheProbleme", "valeurLettres", "affichePronoms", "codeCorrection"]));
     expect(ids("outil")).toContain("friseAlphabetique");
     // « Les tables d'addition, c'est plus un affichage de classe. »
     expect(ids("outil")).not.toContain("famillesAddition");
