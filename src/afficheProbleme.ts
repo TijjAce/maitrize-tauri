@@ -355,6 +355,8 @@ const NOIR = "#1c2233";
 const BLEU = "#2438d6";
 
 export const STYLE_AFFICHE_PROBLEME = `
+  /* La page prend toute la largeur utile : sans la marge du document (voir print.ts), qui la faisait réduire et décentrer. */
+  @media print { body { padding: 0; } }
   .feuille.pa .pa-page { width: 182mm; height: 250mm; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 4mm; color: ${NOIR}; }
   .feuille.pa .pa-page.pa-paysage { width: 263mm; height: 170mm; display: grid; grid-template-columns: 1fr 1.2fr; grid-template-rows: auto auto 1fr auto;
     gap: 4mm 5mm; }

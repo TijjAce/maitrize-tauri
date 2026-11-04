@@ -180,6 +180,8 @@ export function styleFrise(brut: Partial<ReglagesFrise>): string {
 }
 
 export const STYLE_FRISE = `
+  /* La page prend toute la largeur utile : sans la marge du document (voir print.ts), qui la faisait réduire et décentrer. */
+  @media print { body { padding: 0; } }
   .feuille.ab .ab-case { display: flex; flex-direction: column; align-items: center; justify-content: space-between; box-sizing: border-box;
     border: 0.8mm solid ${NOIR}; border-radius: 3mm; background: #fff; overflow: hidden; min-width: 0; }
   .feuille.ab .ab-lettres { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; width: 100%; }

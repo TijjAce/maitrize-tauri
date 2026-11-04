@@ -154,6 +154,8 @@ const BLEU = "#2a6fd6";
 const POLICE_SCRIPT = `"Andika", "Andika New Basic", "Century Gothic", "Avenir Next", "Helvetica Neue", Arial, sans-serif`;
 
 export const STYLE_PRONOMS = `
+  /* La page prend toute la largeur utile : sans la marge du document (voir print.ts), qui la faisait réduire et décentrer. */
+  @media print { body { padding: 0; } }
   .feuille.pp .pp-page { width: 182mm; height: 250mm; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 4mm;
     color: ${NOIR}; font-family: ${POLICE_SCRIPT}; }
   .feuille.pp .pp-titre { font-size: 10mm; font-weight: 800; text-align: center; line-height: 1.15; }

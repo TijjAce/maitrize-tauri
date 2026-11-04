@@ -291,6 +291,8 @@ const TEINTES = { bleu: "#2a6fd6", rouge: "#d33a32", gris: "#6b7287", violet: "#
 const POLICE_SCRIPT = `"Andika", "Andika New Basic", "Century Gothic", "Avenir Next", "Helvetica Neue", Arial, sans-serif`;
 
 export const STYLE_VALEUR_LETTRES = `
+  /* La page prend toute la largeur utile : sans la marge du document (voir print.ts), qui la faisait réduire et décentrer. */
+  @media print { body { padding: 0; } }
   .feuille.vl .vl-page { width: 182mm; height: 250mm; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; color: ${NOIR};
     font-family: ${POLICE_SCRIPT}; }
   .feuille.vl .vl-tete { display: flex; align-items: center; gap: 6mm; margin: 0 0 4mm; }
