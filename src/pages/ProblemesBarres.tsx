@@ -10,7 +10,7 @@ import { useMemoire, useReglages } from "../components/useMemoire";
 import {
   genererPartieTout, genererMultiplicatifs, blocProbleme, blocCorrige, enteteFeuille, feuilleProblemes, classesFeuille,
   decouperEnPages, lirePrenoms, retoucheDe, retoucher, schemaSvg, styleSchema, normaliserPresentation, memePresentation,
-  STYLE_FEUILLE, TYPES_MULTIPLICATIFS, PLAFONDS, PRESENTATION_COMPLETE, PRESENTATION_MODELE_SEUL, nombre, contextesChoisis,
+  STYLE_FEUILLE, TYPES_MULTIPLICATIFS, PLAFONDS, PRESENTATION_COMPLETE, PRESENTATION_MODELE_SEUL, nombre, contextesChoisis, retoucherPresentation,
   type Probleme, type Presentation, type Retouche, type InconnuePartieTout, type TypeMultiplicatif, type ContexteParties,
 } from "../problemesBarres";
 import {
@@ -88,7 +88,7 @@ export function PartieToutTab() {
     <Atelier atelier="partieTout" titre={r.titre} setTitre={(titre) => maj({ titre })} nombre={r.nombre} setNombre={(nombre) => maj({ nombre })}
       prenoms={r.prenoms} setPrenoms={(prenoms) => maj({ prenoms })}
       presentation={presentation} setPresentation={setPresentation} problemes={problemes} tirage={tirage}
-      assistant={<AssistantDesProblemes etat={{ sorte: "partieTout", reglages: { ...REGLAGES_NEUTRES, ...r }, problemes }} appliquer={appliquer} />}
+      pilote={{ sorte: "partieTout", reglages: { ...REGLAGES_NEUTRES, ...r }, appliquer }}
       intro={<>Un tout et ses parties : l'élève voit ce qui manque avant de choisir l'opération. Programmes : « résoudre des
         problèmes additifs en une étape de type parties-tout ».</>}
     >
@@ -164,7 +164,7 @@ export function MultiplicatifsTab() {
     <Atelier atelier="multiplicatifs" titre={r.titre} setTitre={(titre) => maj({ titre })} nombre={r.nombre} setNombre={(nombre) => maj({ nombre })}
       prenoms={r.prenoms} setPrenoms={(prenoms) => maj({ prenoms })}
       presentation={presentation} setPresentation={setPresentation} problemes={problemes} tirage={tirage}
-      assistant={<AssistantDesProblemes etat={{ sorte: "multiplicatifs", reglages: { ...REGLAGES_NEUTRES, ...r }, problemes }} appliquer={appliquer} />}
+      pilote={{ sorte: "multiplicatifs", reglages: { ...REGLAGES_NEUTRES, ...r }, appliquer }}
       intro={<>Des parts égales qui font un tout, ou une quantité plusieurs fois plus grande qu'une autre. Programmes :
         « résoudre des problèmes multiplicatifs de type parties-tout en une étape ».</>}
     >
@@ -221,7 +221,7 @@ function NombreChamp({ label, valeur, min, onChange }: { label: string; valeur: 
 
 // ── Mise en page commune ───────────────────────────────────────────────────
 
-function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, setNombre, prenoms, setPrenoms, presentation, setPresentation, problemes, tirage, assistant, children }: {
+function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, setNombre, prenoms, setPrenoms, presentation, setPresentation, problemes, tirage, pilote, children }: {
   /** L'onglet de Fabriquer, où l'enseignant a choisi les compétences. */
   atelier: string;
   intro: React.ReactNode;
@@ -231,13 +231,44 @@ function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, set
   presentation: Presentation; setPresentation: (p: Presentation) => void;
   problemes: Probleme[];
   tirage: Tirage;
-  /** L'assistant de l'atelier : on lui dit la feuille voulue. */
-  assistant?: React.ReactNode;
+  /** Ce que l'assistant de l'onglet lit et change : la sorte de problèmes, ses réglages, et comment les appliquer. */
+  pilote: { sorte: SorteDeProblemes; reglages: ReglagesDeLAtelier; appliquer: (r: ReponseProblemes) => void };
   children: React.ReactNode;
 }) {
   const [corrige, setCorrige] = React.useState(false);
   const [edite, setEdite] = React.useState<number | null>(null);
   const p = presentation;
+  const enregistrees = usePresentationsEnregistrees();
+  // « Tout ça, je voulais dire le tchatbot » : l'atelier n'a plus que l'assistant. Sans clé Mistral, les réglages
+  // à la main reviennent ; avec elle, ils restent à portée (hors ligne, par exemple), repliés.
+  const [cle, setCle] = React.useState<boolean | null>(null);
+  React.useEffect(() => {
+    api.settingGet("mistralApiKey").then((k) => setCle(!!k && k.trim().length > 0)).catch(() => setCle(false));
+  }, []);
+  const [aLaMain, setALaMain] = React.useState(false);
+  const reglagesVisibles = cle === false || aLaMain;
+
+  /** Ce que l'assistant a compris : les réglages de l'onglet, puis la présentation, l'aperçu, l'impression. */
+  const appliquer = (r: ReponseProblemes) => {
+    pilote.appliquer(r);
+    const base = r.presentationEnregistree ? enregistrees.liste.find((x) => x.nom === r.presentationEnregistree)?.presentation
+      : r.modele === "complete" ? PRESENTATION_COMPLETE : r.modele === "modele-seul" ? PRESENTATION_MODELE_SEUL : undefined;
+    const suite = r.presentation ? retoucherPresentation(base ?? p, r.presentation) : base;
+    if (suite && !memePresentation(suite, p)) setPresentation(suite);
+    if (r.enregistrerPresentation) enregistrees.enregistrer(r.enregistrerPresentation, suite ?? p);
+    if (r.voirCorrige !== undefined) setCorrige(r.voirCorrige);
+    // L'impression et le bureau partent après le rendu de la feuille changée.
+    if (r.imprimer || r.surLeBureau) {
+      window.setTimeout(() => {
+        const etat = etatRef.current;
+        if (r.imprimer) imprimer(atelier, etat.problemes, etat.titre, etat.presentation);
+        if (r.surLeBureau) void bureau(atelier, etat.problemes, etat.titre, etat.presentation);
+      }, 300);
+    }
+  };
+  // La feuille la plus récente, pour l'impression demandée à l'assistant.
+  const etatRef = React.useRef({ problemes, titre, presentation: p });
+  etatRef.current = { problemes, titre, presentation: p };
   const pages = corrige
     ? [problemes.map((pb, i) => ({ i, html: blocCorrige(pb, i, p) }))]
     : decouperEnPages(problemes.map((pb, i) => ({ i, html: blocProbleme(pb, i, p) })), p.parPage);
@@ -245,7 +276,14 @@ function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, set
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 360px) 1fr", gap: 14, alignItems: "start" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {assistant}
+        <AssistantDesProblemes cle={cle} intro={intro} appliquer={appliquer}
+          etat={{ sorte: pilote.sorte, reglages: pilote.reglages, problemes, presentation: p, presentationsEnregistrees: enregistrees.liste.map((x) => x.nom), voirCorrige: corrige }} />
+        {cle && (
+          <button type="button" className="btn sm" style={{ alignSelf: "flex-start" }} onClick={() => setALaMain((v) => !v)}>
+            {aLaMain ? "Masquer les réglages" : "⚙︎ Réglages à la main"}
+          </button>
+        )}
+        {reglagesVisibles && <>
         <div className="card">
           <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
             Les problèmes
@@ -268,7 +306,8 @@ function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, set
             </Field>
           )}
         </div>
-        <ReglagesPresentation p={p} set={setPresentation} />
+        <ReglagesPresentation p={p} set={setPresentation} enregistrees={enregistrees} />
+        </>}
       </div>
 
       <div className="card" style={{ position: "sticky", top: 12 }}>
@@ -355,9 +394,11 @@ function Groupe({ titre, children }: { titre: string; children: React.ReactNode 
   );
 }
 
-function ReglagesPresentation({ p, set }: { p: Presentation; set: (p: Presentation) => void }) {
+function ReglagesPresentation({ p, set, enregistrees }: {
+  p: Presentation; set: (p: Presentation) => void; enregistrees: ReturnType<typeof usePresentationsEnregistrees>;
+}) {
   const maj = (m: Partial<Presentation>) => set({ ...p, ...m });
-  const { liste, enregistrer, supprimer } = usePresentationsEnregistrees();
+  const { liste, enregistrer, supprimer } = enregistrees;
   const [nom, setNom] = React.useState<string | null>(null);
   const courante = liste.find((x) => memePresentation(x.presentation, p));
 
@@ -588,14 +629,12 @@ type Bulle = { role: "user" | "assistant"; content: string; erreur?: boolean };
  * « Essaye de faire un tchatbot ici » : un fil de bulles et un champ. L'enseignant dit la feuille qu'il veut ;
  * l'assistant règle l'atelier (voir assistantProblemes.ts). Le fil ne se garde pas d'une ouverture à l'autre.
  */
-function AssistantDesProblemes({ etat, appliquer }: { etat: EtatDeLAtelier; appliquer: (r: ReponseProblemes) => void }) {
-  const [fil, setFil] = React.useState<Bulle[]>(() => [{ role: "assistant", content: accueilDesProblemes(etat.sorte as SorteDeProblemes) }]);
+function AssistantDesProblemes({ etat, appliquer, cle, intro }: {
+  etat: EtatDeLAtelier; appliquer: (r: ReponseProblemes) => void; cle: boolean | null; intro: React.ReactNode;
+}) {
+  const [fil, setFil] = React.useState<Bulle[]>(() => [{ role: "assistant", content: accueilDesProblemes(etat.sorte) }]);
   const [saisie, setSaisie] = React.useState("");
   const [occupe, setOccupe] = React.useState(false);
-  const [cle, setCle] = React.useState<boolean | null>(null);
-  React.useEffect(() => {
-    api.settingGet("mistralApiKey").then((k) => setCle(!!k && k.trim().length > 0)).catch(() => setCle(false));
-  }, []);
   // L'atelier le plus récent : la conversation part de la feuille telle qu'elle est quand on envoie.
   const etatRef = React.useRef(etat);
   etatRef.current = etat;
@@ -622,14 +661,17 @@ function AssistantDesProblemes({ etat, appliquer }: { etat: EtatDeLAtelier; appl
 
   return (
     <div className="card">
-      <h3 style={{ marginTop: 0 }}>L'assistant</h3>
+      <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
+        L'assistant
+        <Aide titre="Les problèmes" vers="droite"><p>{intro}</p></Aide>
+      </h3>
       <div className="projet-assistant pb-assistant">
         <div className="projet-assistant-fil" ref={filRef} aria-live="polite">
           {fil.map((m, i) => (
             <div key={i} className={`projet-assistant-bulle ${m.role === "user" ? "moi" : "lui"}${m.erreur ? " erreur" : ""}`}>{m.content}</div>
           ))}
           {cle === false && (
-            <div className="projet-assistant-bulle lui erreur">Pour répondre, l'assistant a besoin de la clé Mistral : Réglages › Assistant IA.</div>
+            <div className="projet-assistant-bulle lui erreur">Pour répondre, l'assistant a besoin de la clé Mistral : Réglages › Assistant IA. En attendant, les réglages sont ci-dessous.</div>
           )}
           {occupe && <div className="projet-assistant-bulle lui en-cours" aria-label="L'assistant écrit">…</div>}
         </div>

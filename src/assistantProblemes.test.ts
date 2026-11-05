@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   consigneDesProblemes, lireReponseProblemes, nombreDeProblemes, type EtatDeLAtelier, type ReglagesDeLAtelier,
 } from "./assistantProblemes";
-import { contexteLu, contextesChoisis, genererPartieTout, type ContexteParties } from "./problemesBarres";
+import { PRESENTATION_COMPLETE, contexteLu, contextesChoisis, genererPartieTout, retoucherPresentation, type ContexteParties } from "./problemesBarres";
 
 const REGLAGES: ReglagesDeLAtelier = {
   titre: "Problèmes partie-tout", nombre: 6, prenoms: "",
@@ -104,3 +104,35 @@ describe("l'assistant de l'atelier Problèmes (« essaye de faire un tchatbot ic
     expect(c).toMatch(/^1\. .+\[parties \d+ et \d+, tout \d+/m);
   });
 });
+
+describe("l'assistant règle aussi la présentation (« tout ça, je voulais dire le tchatbot »)", () => {
+  const e = (): EtatDeLAtelier => ({ ...etat(), presentation: PRESENTATION_COMPLETE, presentationsEnregistrees: ["Pour les CP"], voirCorrige: false });
+
+  it("relit les éléments un à un : ce qui ne se lit pas est laissé de côté", () => {
+    const r = lireReponseProblemes(JSON.stringify({
+      reponse: "En grand et en capitales, sur deux colonnes.",
+      presentation: { tailleTexte: "grande", capitales: true, colonnes: "2", police: "papyrus", couleurTout: "#12AB34", motTout: "  LE TOUT ", inconnu: 3 },
+    }), e());
+    expect(r.presentation).toEqual({ tailleTexte: "grande", capitales: true, colonnes: 2, couleurTout: "#12ab34", motTout: "LE TOUT" });
+    const p = retoucherPresentation(PRESENTATION_COMPLETE, r.presentation!);
+    expect(p.police).toBe("arial");
+    expect(p.colonnes).toBe(2);
+  });
+
+  it("une présentation toute faite, une enregistrée (si elle existe), le corrigé, l'impression, le bureau", () => {
+    const r = lireReponseProblemes(JSON.stringify({
+      reponse: "ok", modele: "modele-seul", presentationEnregistree: "pour les cp", enregistrerPresentation: "Grand format",
+      voirCorrige: true, imprimer: true, surLeBureau: true,
+    }), e());
+    expect(r).toMatchObject({ modele: "modele-seul", presentationEnregistree: "Pour les CP", enregistrerPresentation: "Grand format", voirCorrige: true, imprimer: true, surLeBureau: true });
+    expect(lireReponseProblemes(JSON.stringify({ reponse: "ok", presentationEnregistree: "inconnue" }), e()).presentationEnregistree).toBeUndefined();
+  });
+
+  it("la consigne dit la présentation telle qu'elle est, et ce qu'on peut en changer", () => {
+    const c = consigneDesProblemes(e());
+    expect(c).toMatch(/Présentation : titre oui/);
+    expect(c).toMatch(/tailleTexte/);
+    expect(c).toMatch(/Présentations enregistrées : Pour les CP/);
+  });
+});
+

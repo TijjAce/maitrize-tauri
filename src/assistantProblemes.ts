@@ -8,6 +8,14 @@
 // nombres, le nombre de problèmes, le titre, les prénoms, les thèmes ; il
 // remplace un problème, en choisit les nombres, tire une autre feuille.
 //
+// Puis « tout ça, je voulais dire le tchatbot » (le même jour, sur les
+// panneaux « Les problèmes » et « La présentation ») : l'atelier n'a plus
+// que lui. Il règle donc aussi toute la présentation — titre, lignes
+// « Prénom » et « Date », colonnes, police, taille du texte, capitales,
+// lignes « Calcul » et « Réponse », le schéma, ses mots, ses couleurs, les
+// images dans les cases —, reprend ou garde une présentation enregistrée,
+// montre le corrigé, imprime la feuille ou la pose sur le bureau.
+//
 // Mistral ne choisit que des réglages et des mots. Les nombres, les calculs
 // et les réponses restent ceux du générateur (problemesBarres.ts) : un
 // thème qu'il invente n'apporte que son vocabulaire (« citrouilles
@@ -21,8 +29,8 @@ import { api, type ChatMessage } from "./api";
 import { pseudonymiserTout, restaurer } from "./confidentialite";
 import { nomsAMasquer } from "./nomsAMasquer";
 import {
-  CONTEXTES_PARTIES, PLAFONDS, TYPES_MULTIPLICATIFS, contexteLu, lirePrenoms, nomDuContexte,
-  type ContexteParties, type InconnuePartieTout, type Probleme, type TypeMultiplicatif,
+  CONTEXTES_PARTIES, PLAFONDS, TYPES_MULTIPLICATIFS, contexteLu, lirePrenoms, nomDuContexte, valeurDePresentation,
+  type ContexteParties, type InconnuePartieTout, type Presentation, type Probleme, type TypeMultiplicatif,
 } from "./problemesBarres";
 
 export type SorteDeProblemes = "partieTout" | "multiplicatifs";
@@ -56,17 +64,48 @@ export interface ReponseProblemes {
   /** Les nombres choisis pour un problème partie-tout : ses parties, et la case cherchée (-1 : le tout). */
   nombres?: { probleme: number; valeurs: number[]; inconnue: number }[];
   nouvelleFeuille?: boolean;
+  /** Une présentation toute faite : la feuille complète, ou le modèle en barres seul ; avant les autres changements. */
+  modele?: "complete" | "modele-seul";
+  /** Une présentation enregistrée à reprendre, par son nom. */
+  presentationEnregistree?: string;
+  /** Les éléments de présentation qui changent, relus. */
+  presentation?: Partial<Presentation>;
+  /** Garder la présentation (après les changements) sous ce nom. */
+  enregistrerPresentation?: string;
+  voirCorrige?: boolean;
+  imprimer?: boolean;
+  surLeBureau?: boolean;
 }
 
-/** Ce que l'assistant voit de l'atelier : ses réglages, et la feuille telle qu'elle est. */
-export interface EtatDeLAtelier { sorte: SorteDeProblemes; reglages: ReglagesDeLAtelier; problemes: Probleme[] }
+/** Ce que l'assistant voit de l'atelier : ses réglages, la présentation, et la feuille telle qu'elle est. */
+export interface EtatDeLAtelier {
+  sorte: SorteDeProblemes; reglages: ReglagesDeLAtelier; problemes: Probleme[];
+  presentation?: Presentation; presentationsEnregistrees?: string[]; voirCorrige?: boolean;
+}
 
 export const NOMBRES_DE_PROBLEMES = [1, 2, 3, 4, 5, 6, 8, 10, 12];
 
 /** Ce que l'assistant dit en s'ouvrant. */
 export const accueilDesProblemes = (sorte: SorteDeProblemes) => (sorte === "partieTout"
-  ? "Quelle feuille voulez-vous ? Par exemple : « 8 problèmes jusqu'à 20 où l'on cherche une partie », « des problèmes avec des citrouilles », « remplace le 3 »."
-  : "Quelle feuille voulez-vous ? Par exemple : « seulement des partages en parts égales », « tables de 2 à 5 », « 4 problèmes », « remplace le 2 ».");
+  ? "Quelle feuille voulez-vous ? Les problèmes — « 8 problèmes jusqu'à 20 où l'on cherche une partie », « avec des citrouilles », « remplace le 3 » — "
+    + "et la présentation — « en grand », « le modèle en barres seul », « 2 colonnes », « des images à compter ». Je peux aussi imprimer."
+  : "Quelle feuille voulez-vous ? Les problèmes — « seulement des partages en parts égales », « tables de 2 à 5 », « remplace le 2 » — "
+    + "et la présentation — « en grand », « sans énoncé », « 2 par page ». Je peux aussi imprimer.");
+
+const ouiNon = (v: boolean) => (v ? "oui" : "non");
+
+/** La présentation en clair, pour l'assistant. */
+export function presentationEnClair(p: Presentation): string {
+  return [
+    `titre ${ouiNon(p.titre)}, lignes Prénom et Date ${ouiNon(p.nomDate)}, numéros ${ouiNon(p.numeros)}, cadres ${ouiNon(p.cadres)}, `
+      + `${p.parPage ? `${p.parPage} par page` : "à la suite"}, ${p.colonnes} colonne(s), police ${p.police}, corrigé à la fin ${ouiNon(p.corrige)}`,
+    `énoncé ${ouiNon(p.enonce)}, texte ${p.tailleTexte}, capitales ${ouiNon(p.capitales)}, ligne Calcul ${ouiNon(p.calcul)}, ligne Réponse ${ouiNon(p.reponse)}`,
+    `schéma : ${p.schema}, case à trouver « ${p.inconnue} », mots ${ouiNon(p.etiquettes)} (« ${p.motTout} », « ${p.motPartie} »), accolades ${ouiNon(p.aides)}, `
+      + `proportionnel ${ouiNon(p.proportionnel)}, tout en bas ${ouiNon(p.toutEnBas)}, couleurs ${p.couleurs}`
+      + `${p.couleurs === "perso" ? ` (${p.couleurTout}, ${p.couleurPartie1}, ${p.couleurPartie2}, ${p.couleurPartie3})` : ""}, `
+      + `traits ${p.epaisseur}, taille ${p.tailleSchema}, images dans les cases ${p.images}${p.images !== "non" ? ` (${p.formeImages})` : ""}`,
+  ].join(" ; ");
+}
 
 const nomsDesThemes = (r: ReglagesDeLAtelier) => [...CONTEXTES_PARTIES, ...r.themesPerso].map(nomDuContexte);
 
@@ -88,6 +127,9 @@ export function ficheDesProblemes(e: EtatDeLAtelier): string {
       `Nombres : ${r.perso ? `parts (ou fois) de ${r.partsMin} à ${r.partsMax}, valeur d'une part de ${r.valeurMin} à ${r.valeurMax}` : `tables de 2 à ${r.table}`}`,
     );
   }
+  if (e.presentation) lignes.push(`Présentation : ${presentationEnClair(e.presentation)}`);
+  lignes.push(`Présentations enregistrées : ${e.presentationsEnregistrees?.length ? e.presentationsEnregistrees.join(", ") : "aucune"}`);
+  lignes.push(`Aperçu : ${e.voirCorrige ? "le corrigé" : "la feuille"}`);
   lignes.push("La feuille :");
   e.problemes.forEach((p, i) => {
     const s = p.schema;
@@ -127,8 +169,26 @@ export function consigneDesProblemes(e: EtatDeLAtelier): string {
       + "\"nombre\" (le nombre de parts), \"grand\" (la grande quantité, n fois plus), \"petit\" (la petite quantité) ; « table » : 5 "
       + "(tables de 2 à 5) ou 10 (de 2 à 10) ; ou « plage » : {\"partsMin\": …, \"partsMax\": …, \"valeurMin\": …, \"valeurMax\": …}.",
   ];
+  const presentation = [
+    "La présentation : « modele » : \"complete\" (la feuille complète) ou \"modele-seul\" (le modèle en barres et ses nombres, rien "
+      + "d'autre). « presentation » : les seuls éléments qui changent, parmi titre, nomDate (lignes Prénom et Date), numeros, cadres, "
+      + "parPage (0 : à la suite ; 1, 2, 3, 4 ou 6 par page), colonnes (1 ou 2), police (\"arial\", \"verdana\", \"comic\"), "
+      + "corrige (corrigé à la fin), enonce (écrire l'énoncé), tailleTexte (\"normale\", \"grande\", \"tres-grande\"), capitales, "
+      + "calcul (ligne Calcul), reponse (ligne Réponse), schema (\"nombres\" : les nombres dans le schéma, \"vide\" : cases que "
+      + "l'élève remplit, \"sans\" : un cadre pour dessiner), inconnue (la case à trouver : \"?\", \"vide\", \"surlignee\"), "
+      + "etiquettes (mots sur le schéma), motTout, motPartie, aides (accolades et légendes), proportionnel, toutEnBas, couleurs "
+      + "(\"classe\", \"noir\", \"perso\"), couleurTout, couleurPartie1, couleurPartie2, couleurPartie3 (en #rrggbb, avec couleurs "
+      + "\"perso\"), epaisseur (\"fin\", \"normal\", \"epais\"), tailleSchema (\"moyen\", \"grand\", \"pleine\"), images "
+      + "(dans les cases : \"non\", \"oui\" : des images à compter, \"avec-nombres\"), formeImages (\"enonce\", \"ronds\"). Les cases "
+      + "à cocher valent true ou false.",
+    "« presentationEnregistree » : le nom d'une présentation enregistrée à reprendre. « enregistrerPresentation » : le nom sous lequel "
+      + "garder la présentation. « voirCorrige » : true pour montrer le corrigé dans l'aperçu, false pour la feuille. « imprimer » : true "
+      + "quand l'enseignant demande d'imprimer. « surLeBureau » : true pour poser la feuille en PDF sur le bureau.",
+    "L'enseignant n'a que toi pour régler l'atelier : quand il demande les réglages, la présentation ou la feuille, réponds d'après "
+      + "l'atelier ci-dessous, dans « reponse », sans rien changer.",
+  ];
   return [
-    ...commun, ...propre,
+    ...commun, ...propre, ...presentation,
     "Les marqueurs [P1], [P2]… remplacent des prénoms : recopie-les tels quels quand l'enseignant veut ces prénoms dans les énoncés.",
     "L'atelier, tel qu'il est :",
     ficheDesProblemes(e),
@@ -241,6 +301,25 @@ export function lireReponseProblemes(brut: string, e: EtatDeLAtelier): ReponsePr
     if (n.length) r.remplacer = n;
   }
   if (o.nouvelleFeuille === true) r.nouvelleFeuille = true;
+
+  // La présentation : une toute faite, une enregistrée, puis les éléments qui changent — relus un à un.
+  if (o.modele === "complete" || o.modele === "modele-seul") r.modele = o.modele;
+  const enregistree = chaine(o.presentationEnregistree, 60);
+  const connue = enregistree && e.presentationsEnregistrees?.find((n) => plier(n) === plier(enregistree));
+  if (connue) r.presentationEnregistree = connue;
+  if (o.presentation && typeof o.presentation === "object" && !Array.isArray(o.presentation)) {
+    const partielle: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(o.presentation as Record<string, unknown>)) {
+      const lu = valeurDePresentation(k, v);
+      if (lu !== undefined) partielle[k] = lu;
+    }
+    if (Object.keys(partielle).length) r.presentation = partielle as Partial<Presentation>;
+  }
+  const nom = chaine(o.enregistrerPresentation, 60);
+  if (nom) r.enregistrerPresentation = nom;
+  if (typeof o.voirCorrige === "boolean") r.voirCorrige = o.voirCorrige;
+  if (o.imprimer === true) r.imprimer = true;
+  if (o.surLeBureau === true) r.surLeBureau = true;
   return r;
 }
 

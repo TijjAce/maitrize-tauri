@@ -710,6 +710,31 @@ export function normaliserPresentation(brut: unknown): Presentation {
   return sortie as unknown as Presentation;
 }
 
+/** Un élément de présentation lu (par l'assistant de l'atelier) : sa valeur s'il se lit, rien sinon. « 2 » se lit comme 2. */
+export function valeurDePresentation(cle: string, brut: unknown): unknown {
+  if (!(cle in PRESENTATION_COMPLETE)) return undefined;
+  const defaut = (PRESENTATION_COMPLETE as unknown as Record<string, unknown>)[cle];
+  const choix = CHOIX[cle as keyof Presentation];
+  if (choix) {
+    const v = typeof choix[0] === "number" && typeof brut === "string" ? Number(brut) : brut;
+    return choix.includes(v) ? v : undefined;
+  }
+  if (/^couleur(Tout|Partie\d)$/.test(cle)) return typeof brut === "string" && /^#[0-9a-f]{6}$/i.test(brut.trim()) ? brut.trim().toLowerCase() : undefined;
+  if (typeof defaut === "boolean") return typeof brut === "boolean" ? brut : undefined;
+  if (typeof defaut === "string") return typeof brut === "string" && brut.trim() ? brut.replace(/\s+/g, " ").trim().slice(0, 30) : undefined;
+  return undefined;
+}
+
+/** Des éléments de présentation changés un à un : seuls ceux qui se lisent comptent, les autres gardent leur valeur. */
+export function retoucherPresentation(base: Presentation, m: Record<string, unknown>): Presentation {
+  const sortie = { ...base } as Record<string, unknown>;
+  for (const [cle, brut] of Object.entries(m)) {
+    const v = valeurDePresentation(cle, brut);
+    if (v !== undefined) sortie[cle] = v;
+  }
+  return sortie as unknown as Presentation;
+}
+
 export const memePresentation = (a: Presentation, b: Presentation) =>
   (Object.keys(PRESENTATION_COMPLETE) as (keyof Presentation)[]).every((k) => a[k] === b[k]);
 
