@@ -8,7 +8,8 @@ import {
   NATURES, CORPS_DU_MOT, PLACES_DU_MOT, apparence, couleurSure, dupliquer, nouveauGabarit, pourImpression, redimensionner,
   casesPerdues, poser, echanger, remplies, verifier, lireGabarit, tableauSurTheme, accueilDu, pagesDuClasseur, classeurPourImpression,
 } from "../tla";
-import { chercherPictos, estMonPicto, lireMesPictos, mentionDeMesPictos, type MonPicto } from "../mesPictos";
+import { chercherPictos, estMonPicto, garderMonPicto, lireMesPictos, mentionDeMesPictos, type MonPicto } from "../mesPictos";
+import { gabaritsDepuisObz } from "../tlaObz";
 import { EtiquetteMonPicto, usePictoImage } from "../components/ChoixPicto";
 import { FenetreCouleurs, LegendeTla, garderPaletteParDefaut, usePaletteParDefaut } from "../components/CouleursTla";
 import { SQUELETTES, squelettePour, placesDuTheme, motsDuNoyau } from "../squelettes";
@@ -65,6 +66,21 @@ export function TlaTab() {
 
   const importer = async (f: File) => {
     try {
+      // Un classeur au format ouvert — celui du classeur de l'iPad : toutes ses pages, liées comme elles l'étaient.
+      if (/\.obz$/i.test(f.name)) {
+        const donnees = await new Promise<string>((ok, ko) => {
+          const lecteur = new FileReader();
+          lecteur.onload = () => ok(String(lecteur.result));
+          lecteur.onerror = () => ko(lecteur.error);
+          lecteur.readAsDataURL(f);
+        });
+        const pages = await gabaritsDepuisObz(await api.tlaOuvrirObz(donnees),
+          async (mot, base64, ext) => (await garderMonPicto({ mot, base64, ext, origine: "photo" }).catch(() => null))?.id ?? null);
+        enregistrer([...ref.current, ...pages]);
+        setOuvert(pages[0].id);
+        toast(`Classeur repris : ${pages.length} ${pages.length > 1 ? "pages" : "page"}.`, { icone: "📥" });
+        return;
+      }
       const g = lireGabarit(await f.text());
       enregistrer([...ref.current, g]);
       setOuvert(g.id);
@@ -107,7 +123,7 @@ export function TlaTab() {
           <button className="btn primary" onClick={() => setSurTheme(true)}>✨ Tableau sur un thème</button>
           <button className="btn" onClick={creer}>➕ Tableau vide</button>
           <button className="btn" onClick={() => importInput.current?.click()}>📥 Importer un gabarit</button>
-          <input ref={importInput} type="file" accept="application/json" hidden
+          <input ref={importInput} type="file" accept="application/json,.json,.obz" hidden
             onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = ""; }} />
           <div style={{ flex: 1 }} />
           <button className="btn" onClick={() => setCouleursParDefaut(true)}

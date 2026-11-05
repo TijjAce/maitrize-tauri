@@ -14,7 +14,7 @@
 use crate::tla_pdf::{Gabarit, LicenceImage};
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
-use std::io::{Cursor, Write};
+use std::io::{Cursor, Read, Write};
 
 const FORMAT: &str = "open-board-0.1";
 /// Le côté d'une image dans l'archive, au plus : assez pour une tablette, sans alourdir le fichier.
@@ -51,6 +51,42 @@ fn en_png(chemin: &str) -> Option<(Vec<u8>, u32, u32)> {
     let mut octets = Cursor::new(Vec::new());
     image.write_to(&mut octets, ::image::ImageOutputFormat::Png).ok()?;
     Some((octets.into_inner(), image.width(), image.height()))
+}
+
+/// Un classeur reçu au format ouvert — celui du classeur de l'iPad compris : ses tableaux et son manifeste en
+/// texte, ses images en base64. La page en fait des tableaux de langage (`tlaObz.ts`).
+#[derive(serde::Serialize, Default, Debug)]
+pub struct FichiersObz {
+    pub textes: HashMap<String, String>,
+    pub images: HashMap<String, String>,
+}
+
+/// Ouvre une archive `.obz` en fichiers ; refuse ce qui n'en est pas une, et ce qui pèserait plus de 200 Mo.
+pub fn lire_obz(octets: &[u8]) -> Result<FichiersObz, String> {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    let mut archive = zip::ZipArchive::new(Cursor::new(octets)).map_err(|e| format!("Ce n'est pas un classeur .obz : {e}"))?;
+    let mut f = FichiersObz::default();
+    let mut total = 0u64;
+    for i in 0..archive.len() {
+        let mut fichier = archive.by_index(i).map_err(|e| e.to_string())?;
+        if fichier.is_dir() {
+            continue;
+        }
+        total += fichier.size();
+        if total > 200 * 1024 * 1024 {
+            return Err("Ce classeur est trop lourd pour être ouvert.".into());
+        }
+        let nom = fichier.name().trim_start_matches("./").to_string();
+        let mut contenu = Vec::new();
+        fichier.read_to_end(&mut contenu).map_err(|e| e.to_string())?;
+        let minuscule = nom.to_lowercase();
+        if minuscule.ends_with(".json") || minuscule.ends_with(".obf") {
+            f.textes.insert(nom, String::from_utf8_lossy(&contenu).into_owned());
+        } else if [".png", ".jpg", ".jpeg", ".gif", ".webp"].iter().any(|x| minuscule.ends_with(x)) {
+            f.images.insert(nom, STANDARD.encode(&contenu));
+        }
+    }
+    Ok(f)
 }
 
 /// L'archive `.obz` du classeur : les pages dans l'ordre reçu, la première est l'accueil.
@@ -193,6 +229,16 @@ mod tests {
         let mut texte = String::new();
         zip.by_name(nom).expect(nom).read_to_string(&mut texte).unwrap();
         serde_json::from_str(&texte).unwrap()
+    }
+
+    #[test]
+    fn une_archive_ecrite_se_relit_en_fichiers() {
+        let octets = construire_obz(&[page("Accueil", &["manger", "boire", "", ""])]).unwrap();
+        let f = lire_obz(&octets).unwrap();
+        assert!(f.textes.contains_key("manifest.json"));
+        let tableau: Value = serde_json::from_str(&f.textes["boards/page1.obf"]).unwrap();
+        assert_eq!(tableau["name"], "Accueil");
+        assert!(lire_obz(b"pas une archive").is_err());
     }
 
     #[test]

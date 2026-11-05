@@ -929,6 +929,8 @@ export const api = {
   tlaClasseur: (pages: GabaritImprime[], ouvrir = true) => invoke<string>("tla_classeur", { pages, ouvrir }),
   /** Le classeur au format ouvert OBZ, que lisent LibreAAC, Cboard ou AsTeRICS Grid : écrit au chemin choisi. */
   tlaExporterObz: (pages: GabaritImprime[], chemin: string) => invoke<void>("tla_exporter_obz", { pages, chemin }),
+  /** Un classeur reçu au format ouvert (.obz, en adresse `data:` ou base64) — celui de l'iPad compris —, en fichiers. */
+  tlaOuvrirObz: (donnees: string) => invoke<{ textes: Record<string, string>; images: Record<string, string> }>("tla_ouvrir_obz", { donnees }),
 
   // Amis (appariement chiffré, 100 % local pour l'instant)
   identiteGet: () => invoke<Identite>("identite_get"),

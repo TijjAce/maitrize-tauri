@@ -2949,6 +2949,15 @@ pub fn tla_classeur(mut pages: Vec<crate::tla_pdf::Gabarit>, ouvrir: Option<bool
     ecrire_pdf_du_tableau("classeur", accueil, &bytes, ouvrir)
 }
 
+/// Ouvre un classeur reçu au format ouvert (`.obz`, en base64) — celui du classeur de l'iPad compris — en fichiers.
+#[tauri::command(async)]
+pub fn tla_ouvrir_obz(donnees: String) -> R<crate::tla_obz::FichiersObz> {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    let b64 = donnees.split_once(',').map(|(_, b)| b).unwrap_or(&donnees);
+    let octets = STANDARD.decode(b64.trim()).map_err(|e| format!("Fichier illisible : {e}"))?;
+    crate::tla_obz::lire_obz(&octets)
+}
+
 /// Écrit le classeur au format ouvert OBZ, au chemin choisi dans la fenêtre « Enregistrer sous ».
 #[tauri::command(async)]
 pub fn tla_exporter_obz(mut pages: Vec<crate::tla_pdf::Gabarit>, chemin: String) -> R<()> {
