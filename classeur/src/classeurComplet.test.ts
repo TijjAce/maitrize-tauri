@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MODELE_COMPLET, aPoser, ajouterLesPoids, classeurComplet, pictosDuModele, poserLesPictos } from "./classeurComplet";
-import { ensemblesApres } from "./ensembles";
+import { categoriesApres } from "./ensembles";
 import { nouveauClasseur } from "./modele";
 import { numeroDePage, ordreDesPages, pageDe, pageVoisine, sectionsDe } from "./modele";
 import { depuisObz, versObz } from "./obz";
@@ -156,11 +156,11 @@ describe("un classeur complet d'avant les poids", () => {
     expect(repris.modifieLe).toBe(sansPoids.modifieLe);
     const jeVeux = (c: typeof neuf) => c.pages.flatMap((p) => p.cases).find((k) => k?.mot === "je veux" && k.lien)!;
     const page = (c: typeof neuf, nom: string) => c.pages.find((p) => p.nom === nom)!.id;
-    const vu = (c: typeof neuf, e: ReturnType<typeof ensemblesApres>) => e.map((x) => `${x.nom}: ${x.cases.map((k) => k.mot).join(", ")}`);
-    expect(vu(repris, ensemblesApres(repris, jeVeux(repris), page(repris, "Je veux"))))
-      .toEqual(vu(neuf, ensemblesApres(neuf, jeVeux(neuf), page(neuf, "Je veux"))));
+    const vu = (e: ReturnType<typeof categoriesApres>) => e.map((x) => `${x.nom} (${x.image})`);
+    expect(vu(categoriesApres(repris, jeVeux(repris), page(repris, "Je veux"))))
+      .toEqual(vu(categoriesApres(neuf, jeVeux(neuf), page(neuf, "Je veux"))));
     const bonjour = (c: typeof neuf) => c.pages.flatMap((p) => p.cases).find((k) => k?.mot === "bonjour")!;
-    expect(vu(repris, ensemblesApres(repris, bonjour(repris), repris.accueil))).toEqual(["Les gens: maman, papa, maîtresse, copain"]);
+    expect(vu(categoriesApres(repris, bonjour(repris), repris.accueil))).toEqual(["Les gens (arasaac-34557)"]);
     expect(repris.pages.map((p) => p.cases.map((k) => k?.mot ?? null))).toEqual(neuf.pages.map((p) => p.cases.map((k) => k?.mot ?? null)));
   });
   it("garde les suites que l'enseignant a choisies quand les poids livrés changent", () => {

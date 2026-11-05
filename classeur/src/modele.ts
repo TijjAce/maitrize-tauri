@@ -45,6 +45,11 @@ export interface Page {
   cases: (Case | null)[];
   /** La suite de la page d'avant : la même section (« 5b » après « 5a »), où l'on arrive en tournant la page. */
   suite?: boolean;
+  /**
+   * Le picto de la catégorie, celui qu'elle montre dans la bande du haut (« chaque catégorie doit pouvoir avoir un
+   * picto ») ; sans lui, celui de la case qui y mène (voir `pictoDeLaPage`).
+   */
+  image?: string;
 }
 
 export interface Classeur {
@@ -129,6 +134,10 @@ export function poserCase(c: Classeur, pageId: string, index: number, valeur: Ca
 export const ajouterPage = (c: Classeur, page: Page): Classeur => touche(c, [...c.pages, page]);
 
 export const renommerPage = (c: Classeur, pageId: string, nom: string): Classeur => avecPage(c, pageId, (p) => ({ ...p, nom }));
+
+/** Le picto choisi pour une page ; rien : elle reprend celui de la case qui y mène. */
+export const changerImageDePage = (c: Classeur, pageId: string, image: string | undefined): Classeur =>
+  avecPage(c, pageId, (p) => { const { image: _, ...reste } = p; return image ? { ...reste, image } : reste; });
 
 export const changerTaille = (c: Classeur, pageId: string, lignes: number, colonnes: number): Classeur =>
   avecPage(c, pageId, (p) => redimensionner(p, lignes, colonnes));
@@ -244,9 +253,27 @@ export function deplacerSection(c: Classeur, pageId: string, sens: 1 | -1): Clas
   return touche(c, rangees.flatMap((s) => s.pages));
 }
 
-/** Les images dont le classeur se sert. */
+/** Les images dont le classeur se sert : celles des cases, et celles que l'enseignant a choisies pour des pages. */
 export const imagesDuClasseur = (c: Classeur): string[] =>
-  [...new Set(c.pages.flatMap((p) => p.cases.flatMap((k) => (k?.image ? [k.image] : []))))];
+  [...new Set(c.pages.flatMap((p) => [...(p.image ? [p.image] : []), ...p.cases.flatMap((k) => (k?.image ? [k.image] : []))]))];
+
+/**
+ * Le picto d'une catégorie (une page) : celui qu'on lui a choisi ; sinon celui de la case qui y mène depuis la page
+ * des catégories — l'index que l'élève connaît —, ou qui mène au début de sa section ; sinon celui d'une case qui y
+ * mène d'ailleurs ; sinon le premier picto de la page.
+ */
+export function pictoDeLaPage(c: Classeur, pageId: string): string | undefined {
+  const p = pageDe(c, pageId);
+  if (!p) return undefined;
+  if (p.image) return p.image;
+  const debut = sectionDe(c, pageId)?.pages[0]?.id;
+  const cibles = [pageId, ...(debut && debut !== pageId ? [debut] : [])];
+  const liens = (dans: Page[]) => cibles.flatMap((cible) => dans.flatMap((x) => x.cases.filter((k): k is Case => !!k?.image && k.lien === cible)));
+  const index = pageDe(c, c.categories);
+  return (index ? liens([index]) : [])[0]?.image
+    ?? liens(ordreDesPages(c).filter((x) => x.id !== pageId))[0]?.image
+    ?? p.cases.find((k) => k?.image)?.image;
+}
 
 export function dupliquer(c: Classeur, nom: string, maintenant = new Date().toISOString()): Classeur {
   const copie = JSON.parse(JSON.stringify(c)) as Classeur; // structuredClone n'arrive qu'avec iOS 15.4
@@ -267,7 +294,10 @@ export function lireClasseur(brut: unknown): Classeur | null {
     (Array.isArray(p.cases) ? p.cases : []).slice(0, lignes * colonnes).forEach((k, i) => {
       if (k && typeof k === "object" && typeof k.mot === "string") cases[i] = { ...k, id: typeof k.id === "string" ? k.id : nouvelId() };
     });
-    return { id: p.id, nom: typeof p.nom === "string" ? p.nom : "Page", lignes, colonnes, cases, ...(p.suite === true ? { suite: true } : {}) };
+    return {
+      id: p.id, nom: typeof p.nom === "string" ? p.nom : "Page", lignes, colonnes, cases, ...(p.suite === true ? { suite: true } : {}),
+      ...(typeof p.image === "string" && p.image ? { image: p.image } : {}),
+    };
   });
   if (!pages.length) return null;
   return {

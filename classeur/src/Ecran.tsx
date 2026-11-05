@@ -1,12 +1,13 @@
 import React from "react";
 import {
-  LIGNES_MAX, COLONNES_MAX, ajouterPageSuivante, ajouterSectionApres, casesPerdues, changerSuite, changerTaille, deplacerSection,
+  LIGNES_MAX, COLONNES_MAX, ajouterPageSuivante, ajouterSectionApres, casesPerdues, changerImageDePage, changerSuite, changerTaille, deplacerSection,
   ditDeLaCase, fairePageDAccueil, fairePageDesCategories, imagesDuClasseur, nouvellePage, numeroDePage, pageDe, pageVoisine,
-  poserCase, renommerPage, sectionDe, sectionsDe, supprimerPage, texteDeLaPhrase, type Case, type Classeur, type MotDit,
+  pictoDeLaPage, poserCase, renommerPage, sectionDe, sectionsDe, supprimerPage, texteDeLaPhrase, type Case, type Classeur, type MotDit,
 } from "./modele";
 import { dire, garderClasseur, lireImages, voixDisponibles, type VoixDisponible } from "./pont";
 import { FicheCase } from "./FicheCase";
-import { ensemblesApres } from "./ensembles";
+import { CATEGORIES_MAX, categoriesApres } from "./ensembles";
+import { FichePicto } from "./FichePicto";
 import { Fenetre, annoncer, confirmer, saisir } from "./Fenetre";
 
 // ── Le classeur ouvert ────────────────────────────────────────────────────
@@ -36,13 +37,12 @@ const COULEURS_SECTIONS = ["#f6c9c4", "#fbe3a6", "#bfe3cf", "#c8d9f6", "#ddd2ee"
 export const couleurDeSection = (numero: number) => COULEURS_SECTIONS[(Math.max(1, numero) - 1) % COULEURS_SECTIONS.length];
 
 /**
- * Combien d'ensembles tiennent dans la largeur, avec des pictos assez grands pour un doigt d'enfant (les mêmes mesures
- * que styles.css : .ensemble-case) : un sur un iPhone tenu droit, deux sur un iPad, trois sur un grand écran.
+ * Combien de catégories tiennent dans la largeur, assez grandes pour un doigt d'enfant (les mêmes mesures que
+ * styles.css : .categorie-proposee) : quatre sur un iPhone tenu droit, cinq ailleurs.
  */
-export function ensemblesQuiTiennent(largeur: number): number {
-  const picto = largeur <= 520 ? 64 : Math.min(96, Math.max(56, largeur * 0.075));
-  const ensemble = 92 + 4 * picto + 24;
-  return Math.max(1, Math.min(3, Math.floor((largeur - 10) / (ensemble + 10))));
+export function categoriesQuiTiennent(largeur: number): number {
+  const tuile = largeur <= 520 ? 84 : Math.min(120, Math.max(96, largeur * 0.1));
+  return Math.max(1, Math.min(CATEGORIES_MAX, Math.floor((largeur - 16) / (tuile + 8))));
 }
 
 function useLargeur(): number {
@@ -65,6 +65,7 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
   const [chemin, setChemin] = React.useState<string[]>([]);
   const [phrase, setPhrase] = React.useState<MotDit[]>([]);
   const [fiche, setFiche] = React.useState<number | null>(null);
+  const [fichePicto, setFichePicto] = React.useState(false);
   const [passes, setPasses] = React.useState<Classeur[]>([]);
   const [appui, setAppui] = React.useState(false);
   const [voix, setVoix] = React.useState<VoixDisponible[]>([]);
@@ -198,7 +199,7 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
   };
 
   const enModif = mode === "modifier";
-  // Après la dernière case dite, les ensembles par thème (poids calculés à l'avance) ; rien en mode modifier.
+  // Après la dernière case dite, les catégories proposées (poids calculés à l'avance) ; rien en mode modifier.
   const derniereCase = React.useMemo(() => {
     const id = phrase[phrase.length - 1]?.caseId;
     if (!id) return null;
@@ -206,7 +207,7 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
     return null;
   }, [phrase, c]);
   const largeur = useLargeur();
-  const ensembles = enModif || c.suggestions === false ? [] : ensemblesApres(c, derniereCase, page.id, ensemblesQuiTiennent(largeur));
+  const categoriesProposees = enModif || c.suggestions === false ? [] : categoriesApres(c, derniereCase, page.id, categoriesQuiTiennent(largeur));
   const numero = numeroDePage(c, page.id);
   const section = sectionDe(c, page.id);
   const couleur = couleurDeSection(section?.numero ?? 1);
@@ -236,6 +237,10 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
       {enModif && (
         <div className="barre-pages">
           <input className="champ court" value={page.nom} aria-label="Le nom de la page" onChange={(e) => changer(renommerPage(c, page.id, e.target.value))} />
+          <button className="bouton picto-de-page" aria-label="Le picto de la catégorie" title="Le picto de la catégorie" onClick={() => setFichePicto(true)}>
+            {(() => { const picto = pictoDeLaPage(c, page.id); return picto && images[picto] ? <img src={images[picto]} alt="" /> : "🖼"; })()}
+            <span className="large-seulement"> Picto</span>
+          </button>
           <select className="champ etroit" value={page.lignes} aria-label="Lignes" onChange={(e) => { void taille(Number(e.target.value), page.colonnes); }}>
             {Array.from({ length: LIGNES_MAX }, (_, i) => <option key={i} value={i + 1}>{i + 1} lignes</option>)}
           </select>
@@ -266,7 +271,7 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
           </select>
           <label className="coche petite">
             <input type="checkbox" checked={c.suggestions !== false}
-              onChange={(e) => changer({ ...c, suggestions: e.target.checked ? undefined : false })} /> Ensembles par thème
+              onChange={(e) => changer({ ...c, suggestions: e.target.checked ? undefined : false })} /> Catégories proposées en haut
           </label>
           <label className="coche petite">
             <input type="checkbox" checked={c.balayer !== false}
@@ -278,20 +283,13 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
         </div>
       )}
 
-      {ensembles.length > 0 && (
-        <div className="ensembles" aria-label="Ensembles par thème">
-          {ensembles.map((e) => (
-            <div key={e.page} className="ensemble" style={{ borderColor: couleurDeSection(e.section) }}>
-              <button className="ensemble-theme" style={{ background: couleurDeSection(e.section) }} onClick={() => aller(e.page)}>
-                {e.nom}
-              </button>
-              {e.cases.map((k) => (
-                <button key={k.id} className="ensemble-case" style={{ background: k.fond, borderColor: k.bord }} onClick={() => toucher(k)}>
-                  {k.image && images[k.image] && <img src={images[k.image]} alt="" />}
-                  <span>{k.mot}</span>
-                </button>
-              ))}
-            </div>
+      {categoriesProposees.length > 0 && (
+        <div className="categories-proposees" aria-label="Catégories proposées">
+          {categoriesProposees.map((e) => (
+            <button key={e.page} className="categorie-proposee" style={{ background: couleurDeSection(e.section) }} onClick={() => aller(e.page)}>
+              {e.image && images[e.image] && <img src={images[e.image]} alt="" />}
+              <span>{e.nom}</span>
+            </button>
           ))}
         </div>
       )}
@@ -372,6 +370,12 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
             ))}
           </div>
         </Fenetre>
+      )}
+
+      {fichePicto && (
+        <FichePicto classeur={c} page={page} couleur={couleur} images={images}
+          onImage={(id, donnees) => setImages((i) => ({ ...i, [id]: donnees }))}
+          onChoisir={(image) => { changer(changerImageDePage(c, page.id, image)); setFichePicto(false); }} onFermer={() => setFichePicto(false)} />
       )}
 
       {fiche !== null && (

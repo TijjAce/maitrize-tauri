@@ -1,88 +1,65 @@
-// ── Les ensembles de pictos par thème ─────────────────────────────────────
+// ── Les catégories proposées en haut ──────────────────────────────────────
 //
-// Après une case, quelques thèmes proposés, chacun avec ses pictos, dans une
-// bande au-dessus de la grille : « je veux » → Manger (pain, pomme…), Jouer
-// (ballon, puzzle…), Boire… Les poids sont calculés à l'avance, pour le
-// classeur complet, par outils/classeur-par-defaut.py (les thèmes qui suivent
-// chaque mot, le poids de chaque picto dans son thème) ; l'application ne
+// Après une case, quelques catégories proposées dans une bande au-dessus de
+// la grille, chacune avec son picto : « je veux » → Manger, Jouer, Boire…
+// Toucher une catégorie ouvre sa page. « En haut, il faut que des
+// propositions de catégories avec des pictos représentatifs » (l'enseignant,
+// 5 novembre 2026) : la bande ne montre plus les pictos d'une catégorie, mais
+// la catégorie elle-même, avec le sien (voir `pictoDeLaPage`).
+//
+// Les catégories qui suivent chaque mot et leur poids sont calculés à
+// l'avance, pour le classeur complet, par outils/classeur-par-defaut.py ;
+// l'enseignant les choisit lui-même dans la fiche d'une case. L'application ne
 // fait que les lire : pas d'IA dedans, rien n'apprend, rien ne part.
 //
 // Les pictos de la grille ne bougent jamais : la bande est à part, et l'élève
 // garde la mémoire des places.
 
-import { pageDe, sectionDe, type Case, type Classeur, type Suite } from "./modele";
+import { pageDe, pictoDeLaPage, sectionDe, type Case, type Classeur, type Suite } from "./modele";
 
-export interface Ensemble {
-  /** La page du thème : toucher le thème y mène. */
+export interface CategorieProposee {
+  /** La page de la catégorie : la toucher y mène. */
   page: string;
   nom: string;
   /** Le numéro de sa section (sa couleur). */
   section: number;
   poids: number;
-  cases: Case[];
+  /** Son picto, s'il y en a un. */
+  image?: string;
 }
 
-export const ENSEMBLES_MAX = 3;
-export const PICTOS_PAR_ENSEMBLE = 4;
+/** Combien de catégories une case peut proposer. */
+export const CATEGORIES_MAX = 5;
 
 /**
- * Les ensembles à proposer après une case : ses thèmes, du plus lourd au plus léger, chacun avec les pictos les plus
- * lourds de sa page (puis de la suite de sa section, s'il en manque). Un thème dont la page est ouverte n'est pas
- * proposé ; sur la page suivante d'une section, sa première page l'est. Le poids d'un picto mêle sa fréquence en français parlé (Lexique 3.83) et son rang sur la page.
+ * Les catégories à proposer après une case : ses suites, de la plus lourde à la plus légère, une par section — la
+ * deuxième page d'une section ne double pas la première. La page ouverte n'est pas proposée.
  */
-export function ensemblesApres(
-  c: Classeur, k: Case | null | undefined, pageOuverte: string, max = ENSEMBLES_MAX, parEnsemble = PICTOS_PAR_ENSEMBLE,
-): Ensemble[] {
+export function categoriesApres(c: Classeur, k: Case | null | undefined, pageOuverte: string, max = CATEGORIES_MAX): CategorieProposee[] {
   if (!k?.suites?.length) return [];
-  const parId = new Map(c.pages.flatMap((pg) => pg.cases.flatMap((x) => (x ? [[x.id, x] as const] : []))));
-  const sortie: Ensemble[] = [];
+  const sortie: CategorieProposee[] = [];
+  const sections = new Set<number>();
   for (const s of [...k.suites].sort((a, b) => b.poids - a.poids)) {
     const p = pageDe(c, s.page);
     const section = p && sectionDe(c, p.id);
-    if (!p || !section || sortie.some((e) => e.page === p.id)) continue;
-    if (p.id === pageOuverte) continue;
-    const ouverte = new Set((pageDe(c, pageOuverte)?.cases ?? []).flatMap((x) => (x ? [x.id] : [])));
-    const montrable = (x: Case | null | undefined): x is Case =>
-      !!x && !x.masquee && x.id !== k.id && !ouverte.has(x.id) && !!(x.mot.trim() || x.image);
-    // Les pictos choisis pour cette suite d'abord (« bonjour » → maman, papa…), dans leur ordre.
-    const choisies = (s.cases ?? []).map((id) => parId.get(id)).filter(montrable);
-    // Puis, s'il en manque, la page du thème, ses pictos les plus lourds en tête, et la suite de sa section.
-    const pages = section.pages.slice(section.pages.findIndex((x) => x.id === p.id)).filter((x) => x.id !== pageOuverte);
-    const lourdes = pages.flatMap((x, page) => x.cases.map((y, rang) => ({ x: y, page, rang })))
-      .filter((y): y is { x: Case; page: number; rang: number } => montrable(y.x) && !choisies.includes(y.x))
-      .sort((a, b) => a.page - b.page || (b.x.poids ?? 0) - (a.x.poids ?? 0) || a.rang - b.rang)
-      .map(({ x }) => x);
-    const cases = [...choisies, ...lourdes].slice(0, parEnsemble);
-    if (!cases.length) continue;
-    sortie.push({ page: p.id, nom: p.nom, section: section.numero, poids: s.poids, cases });
+    if (!p || !section || p.id === pageOuverte || sections.has(section.numero)) continue;
+    sections.add(section.numero);
+    sortie.push({ page: p.id, nom: p.nom, section: section.numero, poids: s.poids, image: pictoDeLaPage(c, p.id) });
     if (sortie.length >= max) break;
   }
   return sortie;
 }
 
-// ── Les suites choisies par l'enseignant, dans la fiche d'une case ────────
+// ── Les catégories choisies par l'enseignant, dans la fiche d'une case ────
 
-/** Une ligne de la fiche : un thème (une page), et les pictos choisis, dans l'ordre. */
-export interface LigneDeSuite { page: string; cases: string[] }
+/** Les catégories d'une case, telles que la fiche les montre : la plus lourde d'abord. */
+export const categoriesDeLaCase = (suites: Suite[] | undefined): string[] =>
+  [...(suites ?? [])].sort((a, b) => b.poids - a.poids).slice(0, CATEGORIES_MAX).map((s) => s.page);
 
-/** Les lignes de la fiche, d'après les suites d'une case : la plus lourde d'abord. */
-export const lignesDeSuites = (suites: Suite[] | undefined): LigneDeSuite[] =>
-  [...(suites ?? [])].sort((a, b) => b.poids - a.poids).slice(0, ENSEMBLES_MAX).map((s) => ({ page: s.page, cases: [...(s.cases ?? [])] }));
-
-/** Les suites d'après les lignes de la fiche : le rang fait le poids (la première d'abord) ; quatre pictos au plus. */
-export function suitesDeLaFiche(lignes: LigneDeSuite[]): Suite[] {
-  const retenues = lignes.filter((l, i) => l.page && lignes.findIndex((x) => x.page === l.page) === i).slice(0, ENSEMBLES_MAX);
+/** Les suites d'après les catégories de la fiche : le rang fait le poids (la première d'abord) ; une catégorie en double ne compte qu'une fois. */
+export function suitesDeLaFiche(pages: string[]): Suite[] {
+  const retenues = pages.filter((p, i) => p && pages.indexOf(p) === i).slice(0, CATEGORIES_MAX);
   const parts = retenues.map((_, i) => retenues.length - i);
   const total = parts.reduce((a, b) => a + b, 0);
-  return retenues.map((l, i) => ({
-    page: l.page, poids: Math.round((parts[i] / total) * 1000) / 1000,
-    ...(l.cases.length ? { cases: l.cases.slice(0, PICTOS_PAR_ENSEMBLE) } : {}),
-  }));
+  return retenues.map((page, i) => ({ page, poids: Math.round((parts[i] / total) * 1000) / 1000 }));
 }
-
-/** Les pictos d'un thème, à choisir dans la fiche : toute sa section. */
-export function casesDuTheme(c: Classeur, pageId: string): Case[] {
-  const section = sectionDe(c, pageId);
-  return (section?.pages ?? []).flatMap((p) => p.cases).filter((k): k is Case => !!k && !!(k.mot.trim() || k.image));
-}
-

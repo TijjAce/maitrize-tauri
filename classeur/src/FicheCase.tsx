@@ -1,36 +1,19 @@
 import React from "react";
-import { COULEURS, nouvelId, numeroDePage, ordreDesPages, type Case, type Classeur, type Page } from "./modele";
-import { chercherPictos, garderImage, prendrePicto, vignetteArasaac, type PictoTrouve } from "./pont";
+import { COULEURS, nouvelId, numeroDePage, ordreDesPages, pictoDeLaPage, type Case, type Classeur, type Page } from "./modele";
+import { type PictoTrouve } from "./pont";
 import { COULEUR_DE_LA_NATURE } from "./recherche";
-import { Fenetre, annoncer } from "./Fenetre";
-import { ENSEMBLES_MAX, PICTOS_PAR_ENSEMBLE, casesDuTheme, lignesDeSuites, suitesDeLaFiche, type LigneDeSuite } from "./ensembles";
+import { Fenetre } from "./Fenetre";
+import { ChoixImage } from "./ChoixImage";
+import { CATEGORIES_MAX, categoriesDeLaCase, suitesDeLaFiche } from "./ensembles";
 
 // ── La fiche d'une case, en mode modifier ────────────────────────────────
 //
 // Le mot, ce qui se dit, l'image — un picto d'ARASAAC ou une photo —, la
 // couleur, la page qu'elle ouvre (ou une nouvelle, à son nom), cachée ou non ;
-// et ce qu'on propose ensuite, dans la bande au-dessus de la grille : jusqu'à
-// trois thèmes, chacun avec ses pictos, que l'enseignant choisit lui-même.
+// et les catégories qu'on propose ensuite, dans la bande au-dessus de la
+// grille, chacune avec son picto, que l'enseignant choisit lui-même.
 
 export const NOUVELLE_PAGE = "__nouvelle__";
-
-/** Une photo réduite pour le classeur : assez nette sur une tablette, légère à garder. */
-async function reduire(fichier: File, cote = 480): Promise<string> {
-  const url = URL.createObjectURL(fichier);
-  try {
-    const img = new Image();
-    img.src = url;
-    await img.decode();
-    const r = Math.min(1, cote / Math.max(img.naturalWidth, img.naturalHeight));
-    const toile = document.createElement("canvas");
-    toile.width = Math.max(1, Math.round(img.naturalWidth * r));
-    toile.height = Math.max(1, Math.round(img.naturalHeight * r));
-    toile.getContext("2d")!.drawImage(img, 0, 0, toile.width, toile.height);
-    return toile.toDataURL("image/jpeg", 0.85);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
 
 export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, onFermer }: {
   classeur: Classeur; page: Page; valeur: Case | null; images: Record<string, string>;
@@ -45,54 +28,21 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
   const [couleur, setCouleur] = React.useState<{ fond?: string; bord?: string }>({ fond: valeur?.fond, bord: valeur?.bord });
   const [lien, setLien] = React.useState(valeur?.lien ?? "");
   const [masquee, setMasquee] = React.useState(!!valeur?.masquee);
-  const [recherche, setRecherche] = React.useState(valeur?.mot ?? "");
-  const [trouves, setTrouves] = React.useState<PictoTrouve[] | null>(null);
   const [occupe, setOccupe] = React.useState(false);
-  const photo = React.useRef<HTMLInputElement>(null);
-  // Ce qu'on propose ensuite : les thèmes, dans l'ordre, et leurs pictos choisis. Intact tant qu'on n'y touche pas.
-  const [lignes, setLignes] = React.useState<LigneDeSuite[]>(() => lignesDeSuites(valeur?.suites));
+  // Les catégories proposées ensuite, dans l'ordre. Intactes tant qu'on n'y touche pas.
+  const [categories, setCategories] = React.useState<string[]>(() => categoriesDeLaCase(valeur?.suites));
   const [suitesTouchees, setSuitesTouchees] = React.useState(false);
-  const changerLignes = (f: (l: LigneDeSuite[]) => LigneDeSuite[]) => { setLignes(f); setSuitesTouchees(true); };
-  const basculerPicto = (i: number, id: string) => changerLignes((l) => l.map((x, j) => {
-    if (j !== i) return x;
-    if (x.cases.includes(id)) return { ...x, cases: x.cases.filter((y) => y !== id) };
-    return x.cases.length >= PICTOS_PAR_ENSEMBLE ? x : { ...x, cases: [...x.cases, id] };
-  }));
+  const changerCategories = (f: (l: string[]) => string[]) => { setCategories(f); setSuitesTouchees(true); };
 
-  const chercher = async () => {
-    if (!recherche.trim()) return;
-    setOccupe(true);
-    try { setTrouves(await chercherPictos(recherche)); }
-    catch (e) { annoncer(`La recherche n'a pas abouti : ${String((e as Error)?.message ?? e)}`); }
-    finally { setOccupe(false); }
-  };
-
-  const prendre = async (t: PictoTrouve) => {
-    setOccupe(true);
-    try {
-      const p = await prendrePicto(t.id);
-      onImage(p.image, p.donnees);
-      setImage(p.image);
-      setTrouves(null);
-      if (!mot.trim()) setMot(t.mot);
-      // Sans couleur choisie, celle de la nature du mot : vert pour un verbe, orange pour une chose…
-      const nature = COULEURS.find((c) => c.id === COULEUR_DE_LA_NATURE[t.nature ?? 0]);
-      if (!couleur.fond && nature) setCouleur({ fond: nature.fond, bord: nature.bord });
-    } catch (e) { annoncer(`Le picto n'a pas pu être pris : ${String((e as Error)?.message ?? e)}`); }
-    finally { setOccupe(false); }
-  };
-
-  const prendrePhoto = async (fichier: File | undefined) => {
-    if (!fichier) return;
-    setOccupe(true);
-    try {
-      const donnees = await reduire(fichier);
-      const id = `photo-${nouvelId()}`;
-      await garderImage(id, donnees);
-      onImage(id, donnees);
-      setImage(id);
-    } catch (e) { annoncer(`La photo n'a pas pu être prise : ${String((e as Error)?.message ?? e)}`); }
-    finally { setOccupe(false); }
+  /** Une image prise : un picto donne aussi son mot, si la case n'en a pas, et la couleur de sa nature. */
+  const prise = (id: string, donnees: string, t?: PictoTrouve) => {
+    onImage(id, donnees);
+    setImage(id);
+    if (!t) return;
+    if (!mot.trim()) setMot(t.mot);
+    // Sans couleur choisie, celle de la nature du mot : vert pour un verbe, orange pour une chose…
+    const nature = COULEURS.find((c) => c.id === COULEUR_DE_LA_NATURE[t.nature ?? 0]);
+    if (!couleur.fond && nature) setCouleur({ fond: nature.fond, bord: nature.bord });
   };
 
   const enregistrer = () => {
@@ -102,7 +52,7 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
     // Les poids calculés à l'avance restent à la case qu'on retouche ; ses suites aussi, sauf si on les a changées.
     if (valeur?.poids !== undefined) k.poids = valeur.poids;
     if (suitesTouchees) {
-      const suites = suitesDeLaFiche(lignes);
+      const suites = suitesDeLaFiche(categories);
       if (suites.length) k.suites = suites;
       k.suitesPerso = true;
     } else {
@@ -140,26 +90,8 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
             <input className="champ" value={dire} onChange={(e) => setDire(e.target.value)} placeholder="Comme le mot" />
           </label>
           <div className="etiquette">L'image
-            <div className="rangee">
-              <input className="champ" value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="Chercher un picto"
-                onKeyDown={(e) => { if (e.key === "Enter") void chercher(); }} />
-              <button className="bouton" disabled={occupe || !recherche.trim()} onClick={() => { void chercher(); }}>Chercher</button>
-              <button className="bouton" disabled={occupe} onClick={() => photo.current?.click()}>📷 Photo</button>
-              {image && <button className="bouton discret" onClick={() => setImage(undefined)}>Sans image</button>}
-              <input ref={photo} type="file" accept="image/*" hidden onChange={(e) => { void prendrePhoto(e.target.files?.[0]); e.target.value = ""; }} />
-            </div>
+            <ChoixImage rechercheDeDepart={valeur?.mot ?? ""} image={image} onPrise={prise} onSansImage={() => setImage(undefined)} onOccupe={setOccupe} />
           </div>
-          {trouves && (
-            trouves.length === 0
-              ? <p className="discret">Aucun picto pour « {recherche} ».</p>
-              : <div className="trouves">
-                {trouves.map((t) => (
-                  <button key={t.id} className="trouve" disabled={occupe} title={t.mot} onClick={() => { void prendre(t); }}>
-                    <img src={vignetteArasaac(t.id)} alt={t.mot} loading="lazy" />
-                  </button>
-                ))}
-              </div>
-          )}
           <div className="etiquette">La couleur
             <div className="couleurs">
               <button className={`pastille${!couleur.fond ? " choisie" : ""}`} style={{ background: "#fff" }} title="Aucune"
@@ -180,36 +112,25 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
           <label className="coche">
             <input type="checkbox" checked={masquee} onChange={(e) => setMasquee(e.target.checked)} /> Cachée à l'élève (la place reste)
           </label>
-          <div className="etiquette">Ensuite, proposer
-            {lignes.map((l, i) => (
-              <div key={i} className="suite-fiche">
-                <div className="rangee">
-                  <select className="champ" value={l.page} aria-label={`Thème ${i + 1}`}
-                    onChange={(e) => changerLignes((x) => x.map((y, j) => (j === i ? { page: e.target.value, cases: [] } : y)))}>
+          <div className="etiquette">Ensuite, proposer les catégories
+            {categories.map((id, i) => {
+              const picto = pictoDeLaPage(classeur, id);
+              return (
+                <div key={i} className="rangee categorie-fiche">
+                  <span className="categorie-fiche-picto" aria-hidden="true">{picto && images[picto] && <img src={images[picto]} alt="" />}</span>
+                  <select className="champ" value={id} aria-label={`Catégorie ${i + 1}`}
+                    onChange={(e) => changerCategories((x) => x.map((y, j) => (j === i ? e.target.value : y)))}>
                     {autresPages.map((p) => <option key={p.id} value={p.id}>Page {numeroDePage(classeur, p.id)} · {p.nom}</option>)}
                   </select>
                   <button className="bouton discret" aria-label="Plus tôt" disabled={i === 0}
-                    onClick={() => changerLignes((x) => { const y = [...x]; [y[i - 1], y[i]] = [y[i], y[i - 1]]; return y; })}>↑</button>
-                  <button className="bouton discret" aria-label="Retirer ce thème" onClick={() => changerLignes((x) => x.filter((_, j) => j !== i))}>✕</button>
+                    onClick={() => changerCategories((x) => { const y = [...x]; [y[i - 1], y[i]] = [y[i], y[i - 1]]; return y; })}>↑</button>
+                  <button className="bouton discret" aria-label="Retirer cette catégorie" onClick={() => changerCategories((x) => x.filter((_, j) => j !== i))}>✕</button>
                 </div>
-                <div className="suite-pictos">
-                  {casesDuTheme(classeur, l.page).map((k) => {
-                    const rang = l.cases.indexOf(k.id);
-                    return (
-                      <button key={k.id} className={`suite-picto${rang >= 0 ? " choisi" : ""}`} aria-pressed={rang >= 0}
-                        style={{ background: k.fond ?? "#fff", borderColor: k.bord ?? "#8c8c96" }} onClick={() => basculerPicto(i, k.id)}>
-                        {k.image && images[k.image] && <img src={images[k.image]} alt="" />}
-                        <span>{k.mot}</span>
-                        {rang >= 0 && <span className="rang">{rang + 1}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-            {lignes.length < ENSEMBLES_MAX && autresPages.length > 0 && (
-              <button className="bouton" onClick={() => changerLignes((x) => [...x, { page: autresPages.find((p) => !x.some((y) => y.page === p.id))?.id ?? autresPages[0].id, cases: [] }])}>
-                ＋ Un thème
+              );
+            })}
+            {categories.length < CATEGORIES_MAX && autresPages.length > 0 && (
+              <button className="bouton" onClick={() => changerCategories((x) => [...x, autresPages.find((p) => !x.includes(p.id))?.id ?? autresPages[0].id])}>
+                ＋ Une catégorie
               </button>
             )}
           </div>

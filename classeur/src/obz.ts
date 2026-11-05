@@ -61,6 +61,26 @@ export function versObz(c: Classeur, images: Record<string, string>): FichiersOb
   const cheminsTableaux: Record<string, string> = {};
   const decrites = new Map<string, Record<string, unknown>>();
 
+  /** La description d'une image dans l'archive, écrite une fois ; rien sans ses données. */
+  const decrire = (imageId: string): Record<string, unknown> | undefined => {
+    const donnee = images[imageId];
+    if (!donnee) return undefined;
+    let decrite = decrites.get(imageId);
+    if (!decrite) {
+      const m = decrites.size + 1;
+      const type = typeDe(donnee);
+      const chemin = `images/image${m}.${extension(type)}`;
+      decrite = { id: `image${m}`, path: chemin, content_type: type, license: licenceDe(imageId) };
+      // Un picto d'ARASAAC dit son numéro (le champ « symbol » du format) : Maitrize, qui a la banque, le reprend tel quel.
+      const arasaac = imageId.match(/^arasaac-(\d+)$/);
+      if (arasaac) decrite.symbol = { set: "arasaac", filename: `${arasaac[1]}.png` };
+      decrites.set(imageId, decrite);
+      cheminsImages[`image${m}`] = chemin;
+      fichiersImages[chemin] = base64De(donnee);
+    }
+    return decrite;
+  };
+
   // L'identifiant de bouton de chaque case (« 3-7 »), pour les cases choisies des suites.
   const bouton = new Map(ordre.flatMap((p) => p.cases.flatMap((k, i) => (k ? [[k.id, `${numero.get(p.id)}-${i + 1}`] as const] : []))));
   for (const p of ordre) {
@@ -89,27 +109,17 @@ export function versObz(c: Classeur, images: Record<string, string>): FichiersOb
       if (k.suitesPerso) b.ext_maitrize_suites_perso = true;
       const cible = k.lien ? numero.get(k.lien) : undefined;
       if (cible) b.load_board = { id: `page${cible}`, path: `boards/page${cible}.obf` };
-      const donnee = k.image ? images[k.image] : undefined;
-      if (k.image && donnee) {
-        let decrite = decrites.get(k.image);
-        if (!decrite) {
-          const m = decrites.size + 1;
-          const type = typeDe(donnee);
-          const chemin = `images/image${m}.${extension(type)}`;
-          decrite = { id: `image${m}`, path: chemin, content_type: type, license: licenceDe(k.image) };
-          // Un picto d'ARASAAC dit son numéro (le champ « symbol » du format) : Maitrize, qui a la banque, le reprend tel quel.
-          const arasaac = k.image.match(/^arasaac-(\d+)$/);
-          if (arasaac) decrite.symbol = { set: "arasaac", filename: `${arasaac[1]}.png` };
-          decrites.set(k.image, decrite);
-          cheminsImages[`image${m}`] = chemin;
-          fichiersImages[chemin] = base64De(donnee);
-        }
+      const decrite = k.image ? decrire(k.image) : undefined;
+      if (decrite) {
         b.image_id = decrite.id;
-        if (!imagesDuTableau.some((x) => x.id === decrite!.id)) imagesDuTableau.push(decrite);
+        if (!imagesDuTableau.some((x) => x.id === decrite.id)) imagesDuTableau.push(decrite);
       }
       boutons.push(b);
       grille[rang].push(id);
     });
+    // Le picto choisi pour la catégorie : une image du tableau, que les autres applications ignorent.
+    const imageDeLaPage = p.image ? decrire(p.image) : undefined;
+    if (imageDeLaPage && !imagesDuTableau.some((x) => x.id === imageDeLaPage.id)) imagesDuTableau.push(imageDeLaPage);
     const chemin = `boards/page${n}.obf`;
     cheminsTableaux[`page${n}`] = chemin;
     textes[chemin] = JSON.stringify({
@@ -117,6 +127,7 @@ export function versObz(c: Classeur, images: Record<string, string>): FichiersOb
       grid: { rows: p.lignes, columns: p.colonnes, order: grille }, images: imagesDuTableau, sounds: [], license: { type: "private" },
       ...(p.suite && n > 1 ? { ext_maitrize_suite: true } : {}),
       ...(c.categories === p.id ? { ext_maitrize_categories: true } : {}),
+      ...(imageDeLaPage ? { ext_maitrize_image_id: imageDeLaPage.id } : {}),
     }, null, 2);
   }
   textes["manifest.json"] = JSON.stringify({
@@ -133,7 +144,7 @@ interface BoutonObf {
 interface TableauObf {
   id?: unknown; name?: unknown; buttons?: BoutonObf[]; grid?: { rows?: unknown; columns?: unknown; order?: unknown[][] };
   images?: { id?: unknown; path?: unknown; data?: unknown; url?: unknown; symbol?: { set?: unknown; filename?: unknown } }[];
-  ext_maitrize_suite?: unknown; ext_maitrize_categories?: unknown;
+  ext_maitrize_suite?: unknown; ext_maitrize_categories?: unknown; ext_maitrize_image_id?: unknown;
 }
 
 const texte = (v: unknown) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
@@ -177,6 +188,24 @@ export function depuisObz(f: FichiersObz, nom: string, maintenant = new Date().t
       })
       : Array.from({ length: lignes * colonnes }, (_, i) => boutons[i]);
     const imagesDuTableau = Array.isArray(t.images) ? t.images : [];
+    /** L'image d'un identifiant du tableau, gardée une fois ; rien si l'archive ne l'a pas. */
+    const imageDe = (imageIdObf: unknown): string | undefined => {
+      const decrite = texte(imageIdObf) ? imagesDuTableau.find((x) => texte(x.id) === texte(imageIdObf)) : undefined;
+      if (!decrite) return undefined;
+      const chemin = typeof decrite.path === "string" ? normalise(decrite.path) : "";
+      const donnees = chemin && f.images[chemin] ? f.images[chemin] : typeof decrite.data === "string" ? decrite.data : "";
+      // Un picto d'ARASAAC garde son numéro : le même picto, déjà pris, n'est pas gardé deux fois.
+      const numero = texte(decrite.symbol?.set).toLowerCase() === "arasaac" ? texte(decrite.symbol?.filename).match(/^(\d+)/)?.[1] : undefined;
+      if (!donnees) return undefined;
+      const cle = chemin || `${chemin}#${texte(decrite.id)}`;
+      let imageId = imageDuChemin.get(cle);
+      if (!imageId) {
+        imageId = numero ? `arasaac-${numero}` : `image-${nouvelId()}`;
+        imageDuChemin.set(cle, imageId);
+        images[imageId] = donnees;
+      }
+      return imageId;
+    };
     const cases = placesDeBoutons.map((b): Case | null => {
       if (!b) return null;
       const mot = texte(b.label).trim();
@@ -204,27 +233,14 @@ export function depuisObz(f: FichiersObz, nom: string, maintenant = new Date().t
         const cible = (typeof vers.path === "string" && parChemin.get(normalise(vers.path))) || parId.get(texte(vers.id));
         if (cible) k.lien = cible;
       }
-      const decrite = imagesDuTableau.find((x) => texte(x.id) === texte(b.image_id) && texte(b.image_id));
-      if (decrite) {
-        const chemin = typeof decrite.path === "string" ? normalise(decrite.path) : "";
-        const donnees = chemin && f.images[chemin] ? f.images[chemin] : typeof decrite.data === "string" ? decrite.data : "";
-        // Un picto d'ARASAAC garde son numéro : le même picto, déjà pris, n'est pas gardé deux fois.
-        const numero = texte(decrite.symbol?.set).toLowerCase() === "arasaac" ? texte(decrite.symbol?.filename).match(/^(\d+)/)?.[1] : undefined;
-        if (donnees) {
-          const cle = chemin || `${chemin}#${texte(decrite.id)}`;
-          let imageId = imageDuChemin.get(cle);
-          if (!imageId) {
-            imageId = numero ? `arasaac-${numero}` : `image-${nouvelId()}`;
-            imageDuChemin.set(cle, imageId);
-            images[imageId] = donnees;
-          }
-          k.image = imageId;
-        }
-      }
+      const image = imageDe(b.image_id);
+      if (image) k.image = image;
       return mot || k.image ? k : null;
     });
     const page: Page = { id: pageId, nom: texte(t.name).trim() || chemin.replace(/^boards\//, "").replace(/\.obf$/i, ""), lignes, colonnes, cases };
     if (t.ext_maitrize_suite === true) page.suite = true;
+    const imageDeLaPage = imageDe(t.ext_maitrize_image_id);
+    if (imageDeLaPage) page.image = imageDeLaPage;
     return page;
   });
   if (pages[0]) delete pages[0].suite;
