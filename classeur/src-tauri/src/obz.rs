@@ -71,7 +71,7 @@ pub(crate) fn refaire(fichiers: &Fichiers) -> Result<Vec<u8>, String> {
 
 /// Ouvre un classeur .obz reçu (en base64) : ses fichiers, pour que la page les lise.
 #[tauri::command]
-pub fn obz_ouvrir(donnees: String) -> Result<Fichiers, String> {
+pub async fn obz_ouvrir(donnees: String) -> Result<Fichiers, String> {
     let b64 = donnees.split_once(',').map(|(_, b)| b).unwrap_or(&donnees);
     let octets = STANDARD.decode(b64.trim()).map_err(|e| format!("Fichier illisible : {e}"))?;
     ouvrir(&octets)
@@ -89,7 +89,7 @@ fn nom_de_fichier(nom: &str) -> String {
 
 /// Écrit le classeur exporté dans les Documents de l'application, visibles dans l'app Fichiers. Rend son nom.
 #[tauri::command]
-pub fn obz_enregistrer<R: Runtime>(app: AppHandle<R>, nom: String, fichiers: Fichiers) -> Result<String, String> {
+pub async fn obz_enregistrer<R: Runtime>(app: AppHandle<R>, nom: String, fichiers: Fichiers) -> Result<String, String> {
     let octets = refaire(&fichiers)?;
     let dossier = app.path().document_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&dossier).map_err(|e| e.to_string())?;

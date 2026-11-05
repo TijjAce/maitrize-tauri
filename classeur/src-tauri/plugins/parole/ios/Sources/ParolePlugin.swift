@@ -9,6 +9,8 @@ import UIKit
 
 class ParolePlugin: Plugin {
   private let synthese = AVSpeechSynthesizer()
+  /// La session audio s'ouvre ici, pas sur le fil principal : iOS prévient qu'elle peut y figer l'écran.
+  private let file = DispatchQueue(label: "fr.clementsapp.maitrize.parole", qos: .userInitiated)
 
   struct ADire: Decodable {
     let texte: String
@@ -29,28 +31,28 @@ class ParolePlugin: Plugin {
       return
     }
     let texte = a.texte.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !texte.isEmpty else {
-      invoke.resolve()
-      return
-    }
-    DispatchQueue.main.async {
+    // La réponse part tout de suite : elle n'attend pas le fil principal, qui peut être celui qui attend la réponse.
+    invoke.resolve()
+    guard !texte.isEmpty else { return }
+    file.async {
       self.ouvrirLaSession()
-      if self.synthese.isSpeaking { self.synthese.stopSpeaking(at: .immediate) }
-      let enonce = AVSpeechUtterance(string: texte)
-      enonce.voice = a.voix.flatMap { AVSpeechSynthesisVoice(identifier: $0) } ?? AVSpeechSynthesisVoice(language: "fr-FR")
-      if let d = a.debit {
-        let debit = AVSpeechUtteranceDefaultSpeechRate * d
-        enonce.rate = min(max(debit, AVSpeechUtteranceMinimumSpeechRate), AVSpeechUtteranceMaximumSpeechRate)
+      DispatchQueue.main.async {
+        if self.synthese.isSpeaking { self.synthese.stopSpeaking(at: .immediate) }
+        let enonce = AVSpeechUtterance(string: texte)
+        enonce.voice = a.voix.flatMap { AVSpeechSynthesisVoice(identifier: $0) } ?? AVSpeechSynthesisVoice(language: "fr-FR")
+        if let d = a.debit {
+          let debit = AVSpeechUtteranceDefaultSpeechRate * d
+          enonce.rate = min(max(debit, AVSpeechUtteranceMinimumSpeechRate), AVSpeechUtteranceMaximumSpeechRate)
+        }
+        self.synthese.speak(enonce)
       }
-      self.synthese.speak(enonce)
-      invoke.resolve()
     }
   }
 
   @objc public func taire(_ invoke: Invoke) {
+    invoke.resolve()
     DispatchQueue.main.async {
       self.synthese.stopSpeaking(at: .immediate)
-      invoke.resolve()
     }
   }
 

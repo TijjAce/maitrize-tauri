@@ -101,9 +101,12 @@ pub(crate) fn data_url(octets: &[u8]) -> String {
     format!("data:{};base64,{}", type_image(octets), STANDARD.encode(octets))
 }
 
-/// Les images demandées, en adresses `data:` ; celles qui manquent n'y sont pas.
+/// Les images demandées, en adresses `data:` ; celles qui manquent n'y sont pas. Asynchrone : un classeur complet
+/// en a des centaines, que le fil principal (celui de l'écran) n'a pas à lire. Les écritures, elles, restent dans
+/// l'ordre où elles arrivent (des commandes ordinaires) : une version plus ancienne d'un classeur ne doit jamais
+/// passer après une plus récente.
 #[tauri::command]
-pub fn images_lire<R: Runtime>(app: AppHandle<R>, ids: Vec<String>) -> Result<HashMap<String, String>, String> {
+pub async fn images_lire<R: Runtime>(app: AppHandle<R>, ids: Vec<String>) -> Result<HashMap<String, String>, String> {
     let d = dossier_images(&app)?;
     let mut lues = HashMap::new();
     for id in ids {
