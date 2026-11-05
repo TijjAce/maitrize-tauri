@@ -4,7 +4,7 @@ import { demarcheDuLivretDeProblemes } from "./demarchesProblemes";
 import { planDesFeuilles } from "./feuillesDesSequences";
 import { avecLaSeanceDesMots, enoncesDuHtml, estLaSeanceDesMots } from "./motsDesProblemes";
 import { PRESENTATION_COMPLETE, blocCorrige, blocProbleme, valeurDePresentation, type Probleme } from "./problemesBarres";
-import { PROBLEMES_A_DIRE, problemesDuDebutDuCP } from "./problemesDebutCP";
+import { PROBLEMES_A_DIRE, PROBLEMES_A_DIRE_CE1, problemesADireCE1, problemesPartiesTout as problemesDuDebutDuCP } from "./problemesDebutDAnnee";
 import { periodeDeLaDemarche, repereDeLaDemarche, sequencesToutesFaites } from "./sequencesToutesFaites";
 
 const plan = (id: string, periode = 1) => planDesFeuilles(id, { classe: "CP", periode })!;
@@ -123,6 +123,74 @@ describe("le rituel des problèmes à dire (« dix problèmes par semaine »)", 
       domaineTitre: "Mathématiques", sousDomaineTitre: "La résolution de problèmes", competenceGeneraleTitre: null };
     expect(demarchesPour(cible, "", 1).map((x) => x.id)).toEqual(expect.arrayContaining(["chercher-le-tout-cp", "problemes-a-dire-cp"]));
     expect(repereDeLaDemarche(d.id, "CP")?.raison).toMatch(/doit débuter dès le début de l'année de CP/);
+  });
+});
+
+describe("le début du CE1 : les parties-tout jusqu'à 100 (« fais pareil pour le CE1 »)", () => {
+  const d = demarcheDe("parties-tout-100-ce1")!;
+  const planCE1 = (id: string, periode = 1) => planDesFeuilles(id, { classe: "CE1", periode })!;
+  const htmlCE1 = (id: string, seance: number, periode = 1) =>
+    planCE1(id, periode).feuilles.filter((f) => f.seance === seance).map((f) => f.fabriquer(1).html).join("");
+
+  it("douze séances, une feuille pour chacune, des nombres sous cent", () => {
+    expect(d.nom).toBe("Problèmes parties-tout jusqu'à 100 (CE1)");
+    expect(d.seances).toHaveLength(12);
+    const p = planCE1(d.id);
+    expect(p.materiel).toHaveLength(12);
+    expect(new Set(p.feuilles.map((f) => f.seance)).size).toBe(12);
+    for (const f of p.feuilles) for (const g of [1, 2, 3]) {
+      const h = f.fabriquer(g).html;
+      expect(h, f.titre).not.toMatch(/NaN|undefined|−\d+ (jetons|billes|élèves|images)/);
+      for (const e of enoncesDuHtml(h)) for (const m of e.matchAll(/\d+/g)) expect(Number(m[0]), `${f.titre} : ${e}`).toBeLessThan(100);
+    }
+  });
+
+  it("reprend les problèmes de référence du CP, jusqu'à 100, puis ce qui change et ce qu'il y avait au début", () => {
+    expect(htmlCE1(d.id, 0)).toContain("Léo a 37 billes rouges et 25 billes bleues. Combien Léo a-t-il de billes en tout ?");
+    expect(htmlCE1(d.id, 0)).toContain("37 + 25 = 62");
+    expect(htmlCE1(d.id, 0)).toContain("Il y a 64 élèves en récréation. 28 élèves jouent sous le préau.");
+    expect(htmlCE1(d.id, 2)).toContain("Il y a 45 personnes dans le bus. 18 personnes descendent.");
+    expect(enoncesDuHtml(htmlCE1(d.id, 7)).join(" ")).toContain("J'en ai distribué 26 et il m'en reste encore 47.");
+    expect(htmlCE1(d.id, 7)).toContain("26 + 47 = 73");
+    // Le schéma en barres à compléter quand on le montre, la place pour dessiner ensuite ; la ligne « Calcul » au CE1.
+    expect(htmlCE1(d.id, 0)).not.toContain("pb-cadre");
+    expect(htmlCE1(d.id, 4)).toContain("pb-cadre");
+    expect(htmlCE1(d.id, 4)).toMatch(/<div>Calcul : <span class="pb-ligne">/);
+    // Les coffres des brigands et les oiseaux restent à la séquence du livret, en période 3.
+    for (let s = 0; s < 12; s++) expect(htmlCE1(d.id, s)).not.toMatch(/brigands|oiseaux/);
+  });
+
+  it("vient en période 1, d'après le livret ; la compétence parties-tout du CE1 la propose en périodes 1 et 2, le livret ensuite", () => {
+    expect(repereDeLaDemarche(d.id, "CE1")?.periode).toBe(1);
+    expect(repereDeLaDemarche(d.id, "CE1")?.raison).toMatch(/En début d'année de CE1, la résolution de problèmes additifs du type parties-tout/);
+    const comp = "resoudre des problemes additifs en une etape de type parties-tout.";
+    expect([1, 2, 3, 4].map((p) => demarcheDuLivretDeProblemes("ce1", comp, p))).toEqual(["parties-tout-100-ce1", "parties-tout-100-ce1", "parties-tout-ce1", "parties-tout-ce1"]);
+    const s = sequencesToutesFaites().filter((x) => x.demarche.id === d.id);
+    expect(s.map((x) => `${x.classe} ${x.domaine.nom}`)).toEqual(["CE1 Les problèmes"]);
+    expect(estLaSeanceDesMots(avecLaSeanceDesMots(d).seances[0])).toBe(true);
+  });
+
+  it("le rituel du CE1 : douze problèmes par semaine, les sortes de la période mêlées", () => {
+    const r = demarcheDe("problemes-a-dire-ce1")!;
+    expect(r.seances).toHaveLength(8);
+    expect(planCE1(r.id).feuilles.map((f) => [f.seance, f.titre])).toEqual([[0, "Problèmes à dire — semaine 1, période 1"], [4, "Problèmes à dire — semaine 2, période 1"]]);
+    for (const periode of [1, 2, 3, 4, 5]) for (const g of [1, 2, 3]) {
+      const douze = problemesADireCE1(periode, g);
+      expect(douze, `période ${periode}`).toHaveLength(12);
+      for (const p of douze) expect(p.reponse, p.enonce).toBeGreaterThan(0);
+      const formes = new Set(douze.map((p) => p.schema.forme));
+      if (periode >= 3) expect(formes.has("parts-egales"), `période ${periode}`).toBe(true);
+    }
+    expect(PROBLEMES_A_DIRE_CE1[1].comparaisons).toBe(0);
+    expect(PROBLEMES_A_DIRE_CE1[2].comparaisons).toBeGreaterThan(0);
+    expect(PROBLEMES_A_DIRE_CE1[3].multiplicatifs).toBeGreaterThan(0);
+    expect(PROBLEMES_A_DIRE_CE1[4].deuxEtapes).toBeGreaterThan(0);
+    // Pas de comparaison ni de multiplication dans les problèmes dits de la rentrée.
+    expect(problemesADireCE1(1, 4).every((p) => p.schema.forme === "parties")).toBe(true);
+    expect(repereDeLaDemarche(r.id, "CE1")?.raison).toMatch(/au moins dix problèmes par semaine/);
+    const cible = { competenceTitre: "Résoudre des problèmes additifs en une étape de type parties-tout.", niveau: "CE1",
+      domaineTitre: "Mathématiques", sousDomaineTitre: "La résolution de problèmes", competenceGeneraleTitre: null };
+    expect(demarchesPour(cible, "", 1).map((x) => x.id)).toEqual(expect.arrayContaining(["parties-tout-100-ce1", "problemes-a-dire-ce1"]));
   });
 });
 

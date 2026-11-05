@@ -105,7 +105,7 @@ const ACTIONS: Entree[] = [
   ["choisir", "choisir", "choisit"], ["coller", "coller", "colle"], ["commencer", "commencer", "commence"],
   ["composer", "", "composer"], ["contenir", "contenir", "contient"], ["cueillir", "cueillir", "cueilli cueillies"],
   ["cuire", "cuire", "cuire"], ["descendre", "descendre", "descendent descendues descendus"], ["déguiser", "déguiser", "déguiser"],
-  ["distribuer", "distribuer", "distribue"], ["donner", "donner", "donne donné"], ["durer", "durer", "dure durent dure-t-il"],
+  ["distribuer", "distribuer", "distribue distribué"], ["donner", "donner", "donne donné"], ["durer", "durer", "dure durent dure-t-il"],
   ["emprunter", "emprunter", "empruntent"], ["enlever", "retirer", "enlevé enlevés enlevées enlève"], ["entrer", "entrer", "entrés"],
   ["s'envoler", "battre des ailes", "envole envolent envolés"], ["finir", "finir", "fini finit"], ["gagner", "gagner", "gagne"],
   ["habiller", "habiller", "habiller"], ["installer", "installer", "installe"], ["jouer", "jouer", "jouent"],
@@ -266,7 +266,7 @@ export function enoncesDuHtml(html: string): string[] {
  * au moins. Un test le vérifie sur toutes les démarches.
  */
 export const DEMARCHES_A_PROBLEMES = new Set([
-  "problemes", "arbre-a-calcul-cp", "chercher-le-tout-cp", "problemes-a-dire-cp", "parties-tout-cp", "parties-tout-ce1", "deux-etapes-ce2",
+  "problemes", "arbre-a-calcul-cp", "chercher-le-tout-cp", "problemes-a-dire-cp", "parties-tout-100-ce1", "problemes-a-dire-ce1", "parties-tout-cp", "parties-tout-ce1", "deux-etapes-ce2",
   "deux-etapes-cp", "multiplicatifs-cp", "comparaison-ce1", "deux-etapes-ce1", "multiplicatifs-ce1", "mixtes-ce1",
   "parties-tout-comparaison-ce2", "multiplicatifs-ce2", "mixtes-ce2", "comparaison-multiplicative-ce2", "produits-cartesiens-ce2",
   "sens-addition-soustraction-cp", "sens-multiplication-cp", "multiplication-ce1", "division-ce2",

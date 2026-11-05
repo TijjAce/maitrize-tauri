@@ -16,7 +16,7 @@ const CLASSES: ClasseC2[] = ["CP", "CE1", "CE2"];
 const OUTILS = new Set(`de a y dans le la a-t-il et des un en sont à que les au lui sur avec ont-ils avait ont fait une elle du grand bord est pour
   son deux autour font ils va-t-il on avait-il sous vers se a-t-elle celle aux peuvent leur tout c sa est-il tous doit petite ses peut-on est-elle
   calcul chez puis encore être prêt cours faire toutes passé peut-elle trois est-ce qui plus longtemps ou sept peut-il ce huit vingt six quatre
-  cher possible il sans ai ai-je quelques-unes quelques-uns grande doit-elle avoir aura aura-t-il auront pourront`.split(/\s+/));
+  cher possible il sans ai ai-je ma quelques-unes quelques-uns grande doit-elle avoir aura aura-t-il auront pourront`.split(/\s+/));
 
 /** Les énoncés du problème du jour de maternelle : chaque sorte de problème, à chaque âge, dans chacune de ses situations. */
 function enoncesDuProblemeDuJour(): string[] {

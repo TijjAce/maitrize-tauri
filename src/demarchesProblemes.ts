@@ -24,6 +24,11 @@
 // cubes de deux couleurs qui deviennent le schéma en barres (« tu feras ça
 // après », l'enseignant, 5 novembre 2026). Et un rituel : trois problèmes à
 // dire chaque jour, pour les « au moins dix problèmes par semaine » du programme.
+// Puis « fais pareil pour le CE1 » : le livret du CE1 veut les parties-tout
+// sous cent « entretenus » en début d'année, avant sa séquence de période 3 ;
+// Maitrize en fait une séquence — les problèmes de référence du CP repris
+// jusqu'à cent, ce qu'on a ajouté ou enlevé, ce qu'il y avait au début — et le
+// rituel du CE1, aux sortes de problèmes de chaque période.
 
 import type { Demarche, PhaseCadre, SeanceCadre } from "./demarches";
 
@@ -439,14 +444,26 @@ const CHERCHER_LE_TOUT_CP: Demarche = {
 
 /**
  * Une séance du rituel : trois problèmes dits, la réponse sur l'ardoise ; `numeros` : ceux du jour, sur la feuille de la
- * semaine. Le premier jour dit tout ; les suivants renvoient à lui.
+ * semaine ; `references` : les problèmes de référence de la classe. Le premier jour dit tout ; les suivants renvoient à lui.
  */
-const jourDuRituel = (n: number, numeros: string, debut = "", fin = ""): SeanceCadre => seance(`Problèmes à dire (${n})`,
+const jourDuRituel = (n: number, numeros: string, references: string, debut = "", fin = ""): SeanceCadre => seance(`Problèmes à dire (${n})`,
   "À la fin de cette séance, les élèves sauront résoudre de tête des problèmes courts, dits à l'oral, et dire à quel problème de référence chacun ressemble.",
   10, [n === 1
-    ? ph("Trois problèmes à dire", "10 min", `${debut}Les problèmes ${numeros} de la feuille de la semaine : chaque énoncé est dit deux fois, lentement ; un élève le redit avec ses mots ; une minute pour chercher, de tête ou sur ses doigts ; la réponse s'écrit sur l'ardoise, qu'on lève. Un élève dit comment il a trouvé, et à quel problème de référence celui-ci ressemble — la boîte, les billes de Léo, la cour — ; la phrase réponse se dit à l'oral.${fin}`,
+    ? ph("Trois problèmes à dire", "10 min", `${debut}Les problèmes ${numeros} de la feuille de la semaine : chaque énoncé est dit deux fois, lentement ; un élève le redit avec ses mots ; une minute pour chercher, de tête ou sur ses doigts ; la réponse s'écrit sur l'ardoise, qu'on lève. Un élève dit comment il a trouvé, et à quel problème de référence celui-ci ressemble — ${references} — ; la phrase réponse se dit à l'oral.${fin}`,
       "Un rythme vif. Regarde les ardoises sans corriger une à une : fais expliquer une réponse juste et une réponse fausse.")
     : ph("Trois problèmes à dire", "10 min", `${debut}Les problèmes ${numeros} de la feuille de la semaine, comme au premier jour : dits deux fois, une minute pour chercher, la réponse sur l'ardoise, le problème de référence auquel il ressemble, la phrase réponse à l'oral.${fin}`)]);
+
+/** Les huit jours d'un rituel : deux semaines de quatre jours, une feuille par semaine. */
+const huitJours = (references: string): SeanceCadre[] => [
+  jourDuRituel(1, "1 à 3", references, "Le rituel est présenté : chaque jour, trois problèmes à dire, l'ardoise prête. "),
+  jourDuRituel(2, "4 à 6", references),
+  jourDuRituel(3, "7 à 9", references),
+  jourDuRituel(4, "10 à 12", references),
+  jourDuRituel(5, "1 à 3", references, "Une nouvelle feuille, la semaine 2. "),
+  jourDuRituel(6, "4 à 6", references),
+  jourDuRituel(7, "7 à 9", references),
+  jourDuRituel(8, "10 à 12", references, "", " Le bilan : combien de problèmes chacun a réussis ; le rituel reprend à la période suivante, avec d'autres problèmes."),
+];
 
 const PROBLEMES_A_DIRE_CP: Demarche = {
   id: "problemes-a-dire-cp",
@@ -456,19 +473,101 @@ const PROBLEMES_A_DIRE_CP: Demarche = {
   visee: { intitule: /probl[eè]mes additifs en une [eé]tape du type parties-tout/i, niveaux: ["CP"] },
   source: `Programme de mathématiques du cycle 2 (2024) : au moins dix problèmes par semaine, dont des problèmes à l'énoncé bref, dits à l'oral, la réponse sur l'ardoise ; ${GUIDE_CP}, les sortes de problèmes de chaque période. Le rituel est proposé par Maitrize.`,
   resume: "Un rituel de dix minutes, chaque jour : trois problèmes courts dits à l'oral, la réponse sur l'ardoise, et l'analogie avec un problème de référence. Avec les autres problèmes de la semaine, il fait les dix que demande le programme. Ses problèmes suivent le guide du CP, période par période : le tout et la quantité finale avec de petits nombres en période 1, une partie en période 2, puis ce qu'on a ajouté ou enlevé, et ce qu'il y avait au début. Deux semaines ; il se reprend à chaque période.",
+  seances: huitJours("la boîte, les billes de Léo, la cour"),
+};
+
+// ── CE1, période 1 : les parties-tout jusqu'à cent (Maitrize, d'après le livret et le programme) ──
+
+const LIVRET_CE1 = "Éduscol, livret d'accompagnement du programme de mathématiques du CE1 (2025)";
+
+const PARTIES_TOUT_100_CE1: Demarche = {
+  id: "parties-tout-100-ce1",
+  nom: "Problèmes parties-tout jusqu'à 100 (CE1)",
+  famille: "Mathématiques",
+  source: `${LIVRET_CE1} : « En début d'année de CE1, la résolution de problèmes additifs du type parties-tout en une ou plusieurs étapes portant sur des nombres inférieurs à 100 est entretenue. » ; programme de mathématiques du cycle 2 (2024), CE1 : le schéma en barre quand il est utile, les transformations, l'exemple des images ; ${GUIDE_CP}, pour les problèmes de référence du CP. Le livret n'a pas de séquence pour ce début d'année : ses séances sont proposées par Maitrize, sur la trame des livrets.`,
+  resume: "Le début du CE1, avant la séquence du livret qui installe le schéma en barres en période 3 : on reprend les problèmes de référence du CP — les billes de Léo, la cour, le bus — avec des nombres jusqu'à cent, et l'on va plus loin : ce qu'on a ajouté ou enlevé, ce qu'il y avait au début. Le schéma en barres sert quand il aide ; on calcule de tête, en ligne ou avec le matériel multibase. Douze séances, longues et courtes.",
   seances: [
-    jourDuRituel(1, "1 à 3", "Le rituel est présenté : chaque jour, trois problèmes à dire, l'ardoise prête. "),
-    jourDuRituel(2, "4 à 6"),
-    jourDuRituel(3, "7 à 9"),
-    jourDuRituel(4, "10 à 12"),
-    jourDuRituel(5, "1 à 3", "Une nouvelle feuille, la semaine 2. "),
-    jourDuRituel(6, "4 à 6"),
-    jourDuRituel(7, "7 à 9"),
-    jourDuRituel(8, "10 à 12", "", " Le bilan : combien de problèmes chacun a réussis ; le rituel reprend à la période suivante, avec d'autres problèmes."),
+    seance("Les problèmes de référence du CP, jusqu'à 100",
+      "À la fin de cette séance, les élèves sauront chercher le tout ou une partie avec des nombres jusqu'à cent, en reconnaissant les problèmes de référence du CP et en s'aidant, s'il le faut, d'un schéma en barres.",
+      45, [
+        ph(T1, "15 min", "La séquence est annoncée. On ressort les affiches du CP : les billes de Léo — chercher le tout —, la cour de récréation — chercher une partie ; on les relit ensemble. Puis le même problème, avec de plus grands nombres : « Léo a 37 billes rouges et 25 billes bleues. Combien Léo a-t-il de billes en tout ? » Redit par un élève avec ses mots ; chacun cherche.",
+          "Fais dire ce qu'on connaît et ce qu'on cherche avant tout calcul."),
+        ph(T2, "20 min", "La mise en commun : le schéma en barres — deux parties, 37 et 25, et le tout cherché ; 37 + 25 = 62, de tête ou avec le matériel multibase. Puis la cour : « Il y a 64 élèves en récréation. 28 élèves jouent sous le préau… » — le même schéma, une partie cherchée : 64 − 28 = 36. Dans le cahier d'entraînement, des schémas à compléter.",
+          "Le schéma s'utilise quand il aide : certains trouvent sans lui ; tous doivent savoir dire où est le tout."),
+        ph(T3, "10 min", "Les affiches du CP sont complétées : les mêmes problèmes, de plus grands nombres. Dans le cahier de leçons : chercher le tout, c'est une addition ; chercher une partie, une soustraction."),
+      ]),
+    seance("Entraînement court (1) : le tout ou une partie ?",
+      "À la fin de cette séance, les élèves sauront dire, avant de calculer, s'ils cherchent le tout ou une partie, avec des nombres jusqu'à cent.",
+      15, [ph("Trois problèmes à l'ardoise", "15 min", `${ARDOISE} Ici : le tout ou une partie — les billes de Léo, la cour, le stade —, jusqu'à cent.`)]),
+    seance("Ajouter, enlever : ce qu'il y a à la fin",
+      "À la fin de cette séance, les élèves sauront trouver ce qu'il y a à la fin après un ajout ou un retrait, en le reconnaissant comme un problème parties-tout.",
+      40, [
+        ph(T1, "15 min", "« Il y a 45 personnes dans le bus. 18 personnes descendent. Combien de personnes y a-t-il dans le bus maintenant ? » Redit par un élève ; chacun cherche seul."),
+        ph(T2, "15 min", "La mise en commun : comme la boîte du CP, ce qu'il y avait au début est le tout ; ceux qui descendent, une partie ; ceux qui restent, l'autre partie : 45 − 18 = 27. Le même schéma en barres. Puis un ajout : ceux qui montent s'ajoutent au début, on cherche le tout. Des problèmes semblables dans le cahier d'entraînement.",
+          "Ne laisse pas le verbe décider seul du calcul : fais dire ce qu'on cherche."),
+        ph(T3, "10 min", "La trace écrite : un ajout ou un retrait se résout comme un problème parties-tout."),
+      ]),
+    seance("Entraînement court (2) : ajouter, enlever",
+      "À la fin de cette séance, les élèves sauront trouver de tête ce qu'il y a à la fin après un ajout ou un retrait.",
+      15, [ph("Trois problèmes à l'ardoise", "15 min", `${ARDOISE} Ici : des ajouts et des retraits — le bus, les paniers, la boîte.`)]),
+    seance("Ce qu'on a ajouté ou enlevé",
+      "À la fin de cette séance, les élèves sauront chercher ce qu'on a ajouté ou enlevé quand on connaît le début et la fin.",
+      40, [
+        ph(T1, "15 min", "« Il y avait 38 personnes dans le bus. Des personnes sont montées. Maintenant, il y a 52 personnes dans le bus. Combien de personnes sont montées ? » On cherche seul, puis on compare les façons de faire."),
+        ph(T2, "15 min", "La mise en commun : il en est monté, et pourtant on fait une soustraction — 52 − 38 = 14 —, ou l'on cherche ce qui manque pour aller de 38 à 52. Le schéma : le tout est ce qu'il y a à la fin. On peut aussi dessiner un déplacement sur une droite : on avance quand la quantité augmente.",
+          "« Montées » n'impose pas l'addition : c'est ce qu'on cherche qui décide."),
+        ph(T3, "10 min", "La trace écrite : chercher ce qu'on a ajouté ou enlevé, c'est chercher une partie."),
+      ]),
+    seance("Entraînement individuel (1)",
+      "À la fin de cette séance, les élèves sauront résoudre seuls des problèmes parties-tout jusqu'à cent : le tout, une partie, ce qu'il y a à la fin, ce qu'on a ajouté ou enlevé.",
+      30, [ph("Problèmes dans le cahier", "30 min", "Une liste de problèmes, seul, dans le cahier d'entraînement : le tout, une partie, ce qu'il y a à la fin, ce qu'on a ajouté ou enlevé ; des nombres jusqu'à cent.",
+        "Différencie par le nombre de problèmes ; le matériel multibase pour calculer, pour qui en a besoin.")]),
+    seance("Évaluation intermédiaire et remédiation",
+      "À la fin de cette séance, les élèves sauront dire s'ils résolvent seuls ces problèmes, ou s'ils ont besoin de s'entraîner encore.",
+      20, [
+        ph("Trois problèmes, seul", "10 min", "Le cahier de leçons fermé, les affiches cachées : trois problèmes semblables à ceux des séances précédentes."),
+        ph("Relevé et remédiation", "10 min", "Un relevé par élève : comprendre, modéliser, calculer, répondre. Remédiation en petit groupe ou en APC : jouer l'histoire avec du matériel, puis la représenter."),
+      ]),
+    seance("Ce qu'il y avait au début : les images",
+      "À la fin de cette séance, les élèves sauront chercher ce qu'il y avait au début quand on connaît ce qui a changé et ce qu'il y a à la fin.",
+      40, [
+        ph(T1, "15 min", "« Dans ma boîte, il y avait des images. J'en ai distribué 26 et il m'en reste encore 47. Combien y avait-il d'images dans ma boîte avant que j'en distribue ? » — l'exemple du programme, avec des nombres jusqu'à cent. Redit, cherché seul."),
+        ph(T2, "15 min", "La mise en commun : on cherche le début, et le début est le tout : 26 + 47 = 73 — une addition, alors qu'on a distribué. Le schéma en barres le montre ; le déplacement sur une droite aussi, à condition de se rappeler que la droite ne suit pas l'ordre des évènements.",
+          "Fais vérifier : 73 images, j'en distribue 26 — en reste-t-il bien 47 ?"),
+        ph(T3, "10 min", "La trace écrite : quand on cherche ce qu'il y avait au début, le début est le tout."),
+      ]),
+    seance("Entraînement court (3) : ce qu'on cherche vraiment",
+      "À la fin de cette séance, les élèves sauront choisir le calcul d'après ce qu'on cherche, même quand le mot de l'énoncé fait penser à l'autre opération.",
+      15, [ph("Trois problèmes à l'ardoise", "15 min", `${ARDOISE} Ici : des énoncés où le mot trompe — il en est monté, mais on soustrait ; on en a distribué, mais on additionne.`)]),
+    seance("Entraînement court (4) : c'est comme…",
+      "À la fin de cette séance, les élèves sauront dire, avant de calculer, à quel problème de référence ressemble un problème nouveau.",
+      15, [ph("Trois problèmes à l'ardoise", "15 min", `${ARDOISE} Ici : des problèmes mêlés ; avant de calculer, on dit à quelle affiche il ressemble.`)]),
+    seance("Entraînement individuel (2) : tout mêlé",
+      "À la fin de cette séance, les élèves sauront résoudre seuls des problèmes parties-tout mêlés, jusqu'à cent.",
+      30, [ph("Problèmes dans le cahier", "30 min", "Une liste de problèmes mêlés, seul, dans le cahier d'entraînement : le tout, une partie, ce qui change, ce qu'il y avait au début.",
+        "Différencie par le nombre de problèmes et l'accompagnement.")]),
+    seance("Évaluation",
+      "À la fin de cette séance, les élèves sauront résoudre seuls des problèmes parties-tout jusqu'à cent, quoi qu'on y cherche.",
+      20, [
+        ph("Problèmes, seul", "15 min", "Des problèmes semblables à ceux de toute la séquence."),
+        ph(T4, "5 min", "Ensuite, toute l'année, au moins dix problèmes par semaine : le rituel « Problèmes à dire, chaque jour » en donne trois par jour. Les problèmes en deux étapes viennent ensuite ; en période 3, la séquence du livret installe le schéma en barres jusqu'à mille."),
+      ]),
   ],
 };
 
-export const DEMARCHES_PROBLEMES: Demarche[] = [CHERCHER_LE_TOUT_CP, PROBLEMES_A_DIRE_CP, PARTIES_TOUT_CP, PARTIES_TOUT_CE1, DEUX_ETAPES_CE2, FRACTIONS_CE1, LONGUEURS_CE2];
+const PROBLEMES_A_DIRE_CE1: Demarche = {
+  id: "problemes-a-dire-ce1",
+  nom: "Problèmes à dire, chaque jour (CE1)",
+  famille: "Mathématiques",
+  visee: { intitule: /probl[eè]mes additifs en une [eé]tape de type parties-tout/i, niveaux: ["CE1"] },
+  source: "Programme de mathématiques du cycle 2 (2024), CE1 : au moins dix problèmes par semaine, dont des problèmes à l'énoncé bref, dits à l'oral, la réponse sur l'ardoise ; les sortes de problèmes du programme et de ses repères, période par période. Le rituel est proposé par Maitrize.",
+  resume: "Un rituel de dix minutes, chaque jour : trois problèmes courts dits à l'oral, la réponse sur l'ardoise, et l'analogie avec un problème de référence. Avec les autres problèmes de la semaine, il fait les dix que demande le programme. Ses problèmes suivent la période : les parties-tout et ce qui change sous cent dès la rentrée, puis la comparaison, les premiers problèmes multiplicatifs avec les tables apprises, les partages et deux étapes à la suite. Deux semaines ; il se reprend à chaque période.",
+  seances: huitJours("les billes de Léo, la cour, le bus, les images"),
+};
+
+export const DEMARCHES_PROBLEMES: Demarche[] = [
+  CHERCHER_LE_TOUT_CP, PROBLEMES_A_DIRE_CP, PARTIES_TOUT_100_CE1, PROBLEMES_A_DIRE_CE1, PARTIES_TOUT_CP, PARTIES_TOUT_CE1, DEUX_ETAPES_CE2, FRACTIONS_CE1, LONGUEURS_CE2,
+];
 
 /** La classe de chaque démarche des livrets. */
 export const CLASSE_DES_DEMARCHES_PROBLEMES: Record<string, "CP" | "CE1" | "CE2"> = {
@@ -482,7 +581,8 @@ export const CLASSE_DES_DEMARCHES_PROBLEMES: Record<string, "CP" | "CE1" | "CE2"
 export function demarcheDuLivretDeProblemes(classe: string, competence: string, periode = 0): string | null {
   // Au CP, la séquence du livret vient en fin de période 3 ou en période 4 ; avant, celle du début d'année.
   if (classe === "cp" && /problemes additifs en une etape du type parties-tout/.test(competence)) return periode === 1 || periode === 2 ? "chercher-le-tout-cp" : "parties-tout-cp";
-  if (classe === "ce1" && /problemes additifs en une etape de type parties-tout/.test(competence)) return "parties-tout-ce1";
+  // Au CE1, la séquence du livret vient en période 3 ou 4 ; avant, les parties-tout jusqu'à cent.
+  if (classe === "ce1" && /problemes additifs en une etape de type parties-tout/.test(competence)) return periode === 1 || periode === 2 ? "parties-tout-100-ce1" : "parties-tout-ce1";
   if (classe === "ce2" && /problemes additifs en deux etapes/.test(competence)) return "deux-etapes-ce2";
   if (classe === "ce1" && /fractions 1\/2, 1\/3/.test(competence)) return "fractions-unitaires-ce1";
   if (classe === "ce2" && /unite de longueur en fractions/.test(competence)) return "fractions-longueurs-ce2";

@@ -196,6 +196,11 @@ const SINON_PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
     raison: citeLeGuide(GUIDE_MATHS_CP, "La résolution de problèmes arithmétiques : périodes 1 et 2 […] Problèmes de parties-tout avec recherche du tout (nombres inférieurs à 10 pour chacune des parties).") },
   "problemes-a-dire-cp": { niveau: "CP", periode: 1,
     raison: citeLeGuide(GUIDE_MATHS_CP, "La résolution de problèmes doit débuter dès le début de l'année de CP et reposer sur un travail régulier et structuré.") },
+  // Le début du CE1 : de même, la séquence que le livret laisse sans séances, et le rituel des dix problèmes par semaine.
+  "parties-tout-100-ce1": { niveau: "CE1", periode: 1,
+    raison: citeLeLivret("CE1", "En début d'année de CE1, la résolution de problèmes additifs du type parties-tout en une ou plusieurs étapes portant sur des nombres inférieurs à 100 est entretenue.") },
+  "problemes-a-dire-ce1": { niveau: "CE1", periode: 1,
+    raison: cite("CE1", "Les élèves doivent traiter au moins dix problèmes par semaine, une partie d'entre eux pouvant être des problèmes élémentaires, à l'énoncé bref, proposés oralement, la réponse étant simplement notée sur l'ardoise.") },
   "deux-etapes-ce1": { niveau: "CE1", periode: 1,
     raison: citeLeLivret("CE1", "En début d'année de CE1, la résolution de problèmes additifs du type parties-tout en une ou plusieurs étapes portant sur des nombres inférieurs à 100 est entretenue.") },
   "multiplicatifs-ce1": { niveau: "CE1", periode: 3,

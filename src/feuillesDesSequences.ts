@@ -21,7 +21,7 @@ import type { Images } from "./supportsVisuels";
 import { estUneDemarcheDeCalcul, planDuCalcul } from "./feuillesDuCalcul";
 import { estUneDemarcheDeProblemes, planDesProblemes } from "./problemesDesLivrets";
 import { estUneDemarcheProlongee, planDesProblemesProlonges } from "./problemesProlonges";
-import { estUneDemarcheDuDebutDuCP, planDuDebutDuCP } from "./problemesDebutCP";
+import { estUneDemarcheDuDebutDAnnee, planDuDebutDAnnee } from "./problemesDebutDAnnee";
 import { estUneDemarcheDeFractionsProlongee, planDesFractionsProlongees } from "./fractionsProlongees";
 import { estUneDemarcheDesOperations, planDesOperations } from "./demarchesOperations";
 import { estUneDemarcheDesGrandeurs, planDesGrandeurs } from "./demarchesGrandeurs";
@@ -178,8 +178,8 @@ export function planDesFeuilles(demarcheId: string, ctx: ContexteFeuilles): Plan
   // Les problèmes et les fractions des livrets (voir problemesDesLivrets.ts et fractionsDesLivrets.ts).
   if (estUneDemarcheDeProblemes(demarcheId)) return planDesProblemes(demarcheId);
   if (estUneDemarcheProlongee(demarcheId)) return planDesProblemesProlonges(demarcheId);
-  // Le début du CP : chercher le tout, et le rituel des problèmes à dire (voir problemesDebutCP.ts).
-  if (estUneDemarcheDuDebutDuCP(demarcheId)) return planDuDebutDuCP(demarcheId, ctx.periode);
+  // Le début d'année au CP et au CE1, et les rituels des problèmes à dire (voir problemesDebutDAnnee.ts).
+  if (estUneDemarcheDuDebutDAnnee(demarcheId)) return planDuDebutDAnnee(demarcheId, ctx.periode);
   if (estUneDemarcheDeFractionsProlongee(demarcheId)) return planDesFractionsProlongees(demarcheId);
   if (estUneDemarcheDesOperations(demarcheId)) return planDesOperations(demarcheId);
   if (estUneDemarcheDesGrandeurs(demarcheId)) return planDesGrandeurs(demarcheId);
