@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  ajouterPage, casesPerdues, changerTaille, ditDeLaCase, dupliquer, fairePageDAccueil, imagesDuClasseur, lireClasseur, nouveauClasseur,
-  nouvellePage, poserCase, redimensionner, supprimerPage, texteDeLaPhrase, type Case,
+  ajouterPage, ajouterPageSuivante, ajouterSectionApres, casesPerdues, changerSuite, changerTaille, deplacerSection, ditDeLaCase, dupliquer,
+  fairePageDAccueil, fairePageDesCategories, imagesDuClasseur, lireClasseur, nouveauClasseur, nouvellePage, numeroDePage, ordreDesPages,
+  pageVoisine, poserCase, redimensionner, sectionsDe, supprimerPage, texteDeLaPhrase, type Case, type Classeur,
 } from "./modele";
 
 const k = (mot: string, autre: Partial<Case> = {}): Case => ({ id: mot, mot, ...autre });
@@ -77,3 +78,86 @@ describe("le classeur de communication (demande de l'enseignant, 5 novembre 2026
     expect(d.pages[0].cases[2]?.image).toBe("photo-2");
   });
 });
+
+describe("les pages, comme dans un livre (« regarde bien le PODD », 5 novembre 2026)", () => {
+  /** Un classeur : accueil, « Manger » en deux pages, « Boire », « Catégories ». */
+  const livre = (): Classeur => {
+    let c = nouveauClasseur("Essai", 2, 2);
+    const manger = nouvellePage("Manger", 2, 2);
+    c = ajouterPage(c, manger);
+    c = ajouterPageSuivante(c, manger.id, nouvellePage("Manger (suite)", 2, 2));
+    c = ajouterPage(c, nouvellePage("Boire", 2, 2));
+    const cat = nouvellePage("Catégories", 2, 2);
+    return fairePageDesCategories(ajouterPage(c, cat), cat.id);
+  };
+  const noms = (c: Classeur) => ordreDesPages(c).map((p) => p.nom);
+
+  it("numérote les sections, et les pages d'une section par des lettres", () => {
+    const c = livre();
+    expect(noms(c)).toEqual(["Accueil", "Manger", "Manger (suite)", "Boire", "Catégories"]);
+    expect(sectionsDe(c).map((s) => s.pages.length)).toEqual([1, 2, 1, 1]);
+    expect(ordreDesPages(c).map((p) => numeroDePage(c, p.id))).toEqual(["1", "2a", "2b", "3", "4"]);
+  });
+
+  it("tourne les pages dans l'ordre du livre, sans aller au-delà de la première ni de la dernière", () => {
+    const c = livre();
+    const [accueil, , suite] = ordreDesPages(c);
+    expect(pageVoisine(c, accueil.id, 1)?.nom).toBe("Manger");
+    expect(pageVoisine(c, suite.id, 1)?.nom).toBe("Boire");
+    expect(pageVoisine(c, suite.id, -1)?.nom).toBe("Manger");
+    expect(pageVoisine(c, accueil.id, -1)).toBeUndefined();
+    expect(pageVoisine(c, ordreDesPages(c)[4].id, 1)).toBeUndefined();
+  });
+
+  it("ajoute une section après celle de la page, pas au milieu", () => {
+    const c = livre();
+    const manger = ordreDesPages(c)[1];
+    const d = ajouterSectionApres(c, manger.id, nouvellePage("Jouer", 2, 2));
+    expect(noms(d)).toEqual(["Accueil", "Manger", "Manger (suite)", "Jouer", "Boire", "Catégories"]);
+    expect(numeroDePage(d, ordreDesPages(d)[3].id)).toBe("3");
+  });
+
+  it("déplace une section entière ; celle de la page 1 reste en tête", () => {
+    const c = livre();
+    const boire = ordreDesPages(c)[3];
+    const d = deplacerSection(c, boire.id, -1);
+    expect(noms(d)).toEqual(["Accueil", "Boire", "Manger", "Manger (suite)", "Catégories"]);
+    expect(deplacerSection(d, boire.id, -1)).toBe(d);
+    expect(deplacerSection(c, c.accueil, 1)).toBe(c);
+  });
+
+  it("retirer la première page d'une section laisse à la suivante le début de ce qui reste", () => {
+    const c = livre();
+    const [, manger, suite] = ordreDesPages(c);
+    const d = supprimerPage(c, manger.id);
+    expect(d.pages.find((p) => p.id === suite.id)?.suite).toBeUndefined();
+    expect(sectionsDe(d).map((s) => s.pages.map((p) => p.nom))).toEqual([["Accueil"], ["Manger (suite)"], ["Boire"], ["Catégories"]]);
+    const sansCat = supprimerPage(c, c.categories!);
+    expect(sansCat.categories).toBeUndefined();
+  });
+
+  it("la page 1 passe en tête ; elle n'est jamais une suite", () => {
+    const c = livre();
+    const [, manger, suite] = ordreDesPages(c);
+    const d = fairePageDAccueil(c, manger.id);
+    expect(noms(d)).toEqual(["Manger", "Accueil", "Manger (suite)", "Boire", "Catégories"]);
+    expect(d.pages.find((p) => p.id === suite.id)?.suite).toBeUndefined();
+    expect(changerSuite(d, manger.id, true)).toBe(d);
+    expect(numeroDePage(changerSuite(d, suite.id, true), suite.id)).toBe("2b");
+  });
+
+  it("se relit avec ses sections et sa page des catégories", () => {
+    const c = livre();
+    const relu = lireClasseur(JSON.stringify(c))!;
+    expect(ordreDesPages(relu).map((p) => numeroDePage(relu, p.id))).toEqual(["1", "2a", "2b", "3", "4"]);
+    expect(relu.categories).toBe(c.categories);
+    expect(lireClasseur(JSON.stringify({ ...c, categories: "inconnue" }))!.categories).toBeUndefined();
+  });
+
+  it("garde le choix de ne pas tourner les pages en balayant (un élève qui pointe en glissant la main)", () => {
+    const c = nouveauClasseur("x", 1, 1);
+    expect(lireClasseur(JSON.stringify({ ...c, balayer: false }))!.balayer).toBe(false);
+    expect(lireClasseur(JSON.stringify(c))!.balayer).toBeUndefined();
+  });
+});
+

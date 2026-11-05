@@ -1,5 +1,5 @@
 import React from "react";
-import { COULEURS, nouvelId, type Case, type Classeur, type Page } from "./modele";
+import { COULEURS, nouvelId, numeroDePage, ordreDesPages, type Case, type Classeur, type Page } from "./modele";
 import { chercherPictos, garderImage, prendrePicto, vignetteArasaac, type PictoTrouve } from "./pont";
 import { COULEUR_DE_LA_NATURE } from "./recherche";
 import { Fenetre, annoncer } from "./Fenetre";
@@ -96,7 +96,7 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
     onPoser(k, lien === NOUVELLE_PAGE ? (m || "Nouvelle page") : undefined);
   };
 
-  const autresPages = classeur.pages.filter((p) => p.id !== page.id);
+  const autresPages = ordreDesPages(classeur).filter((p) => p.id !== page.id);
   return (
     <Fenetre titre={valeur ? "La case" : "Une nouvelle case"} onFermer={onFermer} large
       pied={<>
@@ -151,7 +151,7 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
           <label className="etiquette">Elle ouvre
             <select className="champ" value={lien} onChange={(e) => setLien(e.target.value)}>
               <option value="">Aucune page</option>
-              {autresPages.map((p) => <option key={p.id} value={p.id}>La page « {p.nom} »</option>)}
+              {autresPages.map((p) => <option key={p.id} value={p.id}>Page {numeroDePage(classeur, p.id)} · {p.nom}</option>)}
               <option value={NOUVELLE_PAGE}>＋ Une nouvelle page « {mot.trim() || "…"} »</option>
             </select>
           </label>

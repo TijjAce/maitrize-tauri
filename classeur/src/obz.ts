@@ -2,11 +2,14 @@
 //
 // Le même que celui de Maitrize (tla_obz.rs) : un manifeste, un tableau
 // `.obf` par page — ses boutons, sa grille, ses images —, les images dans
-// l'archive. L'accueil est la première page. Une case liée devient un bouton
-// qui ouvre l'autre tableau (`load_board`), une case cachée un bouton caché.
-// L'archive elle-même se fait et se défait en Rust (src-tauri/src/obz.rs).
+// l'archive. Les pages gardent l'ordre du classeur, la page 1 d'abord. Une
+// case liée devient un bouton qui ouvre l'autre tableau (`load_board`), une
+// case cachée un bouton caché. Ce que le format ne connaît pas — la suite
+// d'une section, la page des catégories — passe dans des champs `ext_…`,
+// que le format réserve aux extensions : les autres applications les
+// laissent de côté. L'archive se fait et se défait en Rust (src-tauri/src/obz.rs).
 
-import { COLONNES_MAX, LIGNES_MAX, nouvelId, type Case, type Classeur, type Page } from "./modele";
+import { COLONNES_MAX, LIGNES_MAX, nouvelId, ordreDesPages, type Case, type Classeur, type Page } from "./modele";
 
 export interface FichiersObz {
   /** Le manifeste et les tableaux, en texte. */
@@ -50,7 +53,7 @@ function licenceDe(imageId: string): Record<string, string> {
 
 /** Le classeur en fichiers d'archive : l'accueil d'abord, puis les autres pages dans leur ordre. */
 export function versObz(c: Classeur, images: Record<string, string>): FichiersObz {
-  const ordre = [...c.pages].sort((a, b) => (a.id === c.accueil ? -1 : b.id === c.accueil ? 1 : 0));
+  const ordre = ordreDesPages(c);
   const numero = new Map(ordre.map((p, i) => [p.id, i + 1]));
   const textes: Record<string, string> = {};
   const fichiersImages: Record<string, string> = {};
@@ -101,6 +104,8 @@ export function versObz(c: Classeur, images: Record<string, string>): FichiersOb
     textes[chemin] = JSON.stringify({
       format: FORMAT, id: `page${n}`, locale: "fr", name: p.nom, buttons: boutons,
       grid: { rows: p.lignes, columns: p.colonnes, order: grille }, images: imagesDuTableau, sounds: [], license: { type: "private" },
+      ...(p.suite && n > 1 ? { ext_maitrize_suite: true } : {}),
+      ...(c.categories === p.id ? { ext_maitrize_categories: true } : {}),
     }, null, 2);
   }
   textes["manifest.json"] = JSON.stringify({
@@ -116,6 +121,7 @@ interface BoutonObf {
 interface TableauObf {
   id?: unknown; name?: unknown; buttons?: BoutonObf[]; grid?: { rows?: unknown; columns?: unknown; order?: unknown[][] };
   images?: { id?: unknown; path?: unknown; data?: unknown; url?: unknown; symbol?: { set?: unknown; filename?: unknown } }[];
+  ext_maitrize_suite?: unknown; ext_maitrize_categories?: unknown;
 }
 
 const texte = (v: unknown) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
@@ -192,10 +198,15 @@ export function depuisObz(f: FichiersObz, nom: string, maintenant = new Date().t
       }
       return mot || k.image ? k : null;
     });
-    return { id: pageId, nom: texte(t.name).trim() || chemin.replace(/^boards\//, "").replace(/\.obf$/i, ""), lignes, colonnes, cases };
+    const page: Page = { id: pageId, nom: texte(t.name).trim() || chemin.replace(/^boards\//, "").replace(/\.obf$/i, ""), lignes, colonnes, cases };
+    if (t.ext_maitrize_suite === true) page.suite = true;
+    return page;
   });
+  if (pages[0]) delete pages[0].suite;
+  const categories = tableaux.find((x) => x.t.ext_maitrize_categories === true)?.pageId;
   const classeur: Classeur = {
-    id: nouvelId(), nom: nom.trim() || pages[0].nom || "Classeur importé", accueil: pages[0].id, pages, creeLe: maintenant, modifieLe: maintenant,
+    id: nouvelId(), nom: nom.trim() || pages[0].nom || "Classeur importé", accueil: pages[0].id, ...(categories ? { categories } : {}),
+    pages, creeLe: maintenant, modifieLe: maintenant,
   };
   return { classeur, images };
 }

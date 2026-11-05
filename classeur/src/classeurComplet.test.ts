@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { MODELE_COMPLET, classeurComplet, pictosDuModele, poserLesPictos } from "./classeurComplet";
-import { pageDe } from "./modele";
+import { MODELE_COMPLET, aPoser, classeurComplet, pictosDuModele, poserLesPictos } from "./classeurComplet";
+import { nouveauClasseur } from "./modele";
+import { numeroDePage, ordreDesPages, pageDe, pageVoisine, sectionsDe } from "./modele";
 import { depuisObz, versObz } from "./obz";
 
 // Les pictos livrés avec l'application, par leur numéro.
@@ -22,21 +23,53 @@ describe("le classeur complet", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("part des intentions, et chaque page s'atteint depuis l'accueil", () => {
-    const accueil = pageDe(c, c.accueil)!;
+  it("est rangé comme un PODD : la page 1, puis les débuts de phrase, puis les catégories, et des sections à tourner", () => {
+    const ordre = ordreDesPages(c);
+    expect(ordre.slice(0, 3).map((p) => p.nom)).toEqual(["L'essentiel", "Je veux dire…", "Catégories"]);
+    expect(c.categories).toBe(ordre[2].id);
+    // La page 1 mène aux débuts de phrase ; ceux-ci disent l'intention et ouvrent chacun leur page.
+    const versDire = pageDe(c, c.accueil)!.cases.find((k) => k?.lien === ordre[1].id);
+    expect(versDire?.mot).toBe("j'ai quelque chose à dire");
     for (const mot of ["je veux", "je me sens", "j'ai mal", "j'ai une question", "ça ne va pas"]) {
-      const k = accueil.cases.find((x) => x?.mot === mot);
-      expect(k?.lien, mot).toBeTruthy();
-      expect(pageDe(c, k!.lien)).toBeTruthy();
+      const k = ordre[1].cases.find((x) => x?.mot === mot);
+      expect(pageDe(c, k?.lien), mot).toBeTruthy();
     }
+    // Des sections de plusieurs pages, numérotées 5a, 5b…
+    const longues = sectionsDe(c).filter((s) => s.pages.length > 1);
+    expect(longues.length).toBeGreaterThanOrEqual(5);
+    expect(numeroDePage(c, longues[0].pages[1].id)).toMatch(/^\d+b$/);
+    // Toutes les pages ont la même grille, comme les pages d'un livre.
+    expect(new Set(c.pages.map((p) => `${p.lignes}×${p.colonnes}`))).toEqual(new Set(["4×5"]));
+  });
+
+  it("devine la suite : « j'ai mal » ouvre le corps, « j'ai faim » le repas, « qui ? » les gens", () => {
+    const lienDe = (mot: string) => pageDe(c, c.pages.flatMap((p) => p.cases).find((k) => k?.mot === mot)?.lien)?.nom;
+    expect(lienDe("j'ai mal")).toBe("J'ai mal");
+    expect(lienDe("j'ai faim")).toBe("Manger");
+    expect(lienDe("j'ai soif")).toBe("Boire");
+    expect(lienDe("qui ?")).toBe("Les gens");
+    expect(lienDe("parce que")).toBe("Catégories");
+  });
+
+  it("chaque page s'atteint depuis la page 1, par un lien ou en tournant la page", () => {
     const vues = new Set([c.accueil]);
     const aVoir = [c.accueil];
     while (aVoir.length) {
-      for (const k of pageDe(c, aVoir.pop())!.cases) {
-        if (k?.lien && !vues.has(k.lien)) { vues.add(k.lien); aVoir.push(k.lien); }
-      }
+      const id = aVoir.pop()!;
+      const suivantes = pageDe(c, id)!.cases.flatMap((k) => (k?.lien ? [k.lien] : []));
+      const tournee = pageVoisine(c, id, 1);
+      if (tournee?.suite) suivantes.push(tournee.id);
+      for (const s of suivantes) if (!vues.has(s)) { vues.add(s); aVoir.push(s); }
     }
     expect([...vues].sort()).toEqual(c.pages.map((p) => p.id).sort());
+  });
+
+  it("les catégories mènent à toutes les sections", () => {
+    const cat = pageDe(c, c.categories)!;
+    const menees = new Set(cat.cases.flatMap((k) => (k?.lien ? [k.lien] : [])));
+    const premieres = sectionsDe(c).slice(3).map((s) => s.pages[0]);
+    const sansLien = premieres.filter((p) => !menees.has(p.id) && p.nom !== "Je veux" && p.nom !== "Ça ne va pas").map((p) => p.nom);
+    expect(sansLien).toEqual([]);
   });
 
   it("a un picto à chaque case, livré avec l'application, et rien de plus", () => {
@@ -76,3 +109,22 @@ describe("les pictos livrés", () => {
     expect(gardees).toEqual({ "arasaac-1": "data:image/png;base64,1", "arasaac-3": "data:image/png;base64,3" });
   });
 });
+
+describe("au lancement", () => {
+  const ancien = () => {
+    const c = classeurComplet("", "2026-11-05T09:00:00.000Z", { ...MODELE_COMPLET, pages: MODELE_COMPLET.pages.slice(0, 13) });
+    return c;
+  };
+  it("pose le classeur complet sur un appareil sans classeur, et rien quand il y en a", () => {
+    expect(aPoser([])).toEqual({ poser: true, remplacer: [] });
+    expect(aPoser([nouveauClasseur("Le mien")])).toEqual({ poser: false, remplacer: [] });
+    expect(aPoser([classeurComplet()])).toEqual({ poser: false, remplacer: [] });
+  });
+  it("remplace l'ancien classeur complet que personne n'a modifié, jamais celui qu'on a changé", () => {
+    const intact = ancien();
+    expect(aPoser([intact, nouveauClasseur("Le mien")])).toEqual({ poser: true, remplacer: [intact.id] });
+    const change = { ...ancien(), modifieLe: "2026-11-05T10:00:00.000Z" };
+    expect(aPoser([change])).toEqual({ poser: false, remplacer: [] });
+  });
+});
+

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ajouterPage, nouveauClasseur, nouvellePage, poserCase } from "./modele";
+import { ajouterPage, ajouterPageSuivante, fairePageDesCategories, nouveauClasseur, nouvellePage, numeroDePage, ordreDesPages, poserCase } from "./modele";
 import { depuisObz, enHex, enRgb, versObz } from "./obz";
 
 const PNG = "iVBORw0KGgo=";
@@ -79,4 +79,20 @@ describe("le format ouvert des tableaux, comme Maitrize l'écrit", () => {
     expect(a.cases[0]?.image).toBe("arasaac-1");
     expect(v.cases[1]?.image).toBe("arasaac-1");
   });
+
+  it("garde les sections et la page des catégories, que les autres applications laissent de côté", () => {
+    let c = nouveauClasseur("Livre", 1, 2);
+    const manger = nouvellePage("Manger", 1, 2);
+    const cat = nouvellePage("Catégories", 1, 2);
+    c = ajouterPageSuivante(ajouterPage(c, manger), manger.id, nouvellePage("Manger (suite)", 1, 2));
+    c = fairePageDesCategories(ajouterPage(c, cat), cat.id);
+    c = poserCase(c, c.accueil, 0, { id: "a", mot: "manger", lien: manger.id });
+    const f = versObz(c, {});
+    expect(JSON.parse(f.textes["boards/page3.obf"]).ext_maitrize_suite).toBe(true);
+    expect(JSON.parse(f.textes["boards/page2.obf"]).ext_maitrize_suite).toBeUndefined();
+    const { classeur: retour } = depuisObz(f, "Retour");
+    expect(ordreDesPages(retour).map((p) => `${numeroDePage(retour, p.id)} ${p.nom}`)).toEqual(["1 Accueil", "2a Manger", "2b Manger (suite)", "3 Catégories"]);
+    expect(retour.pages.find((p) => p.id === retour.categories)?.nom).toBe("Catégories");
+  });
 });
+

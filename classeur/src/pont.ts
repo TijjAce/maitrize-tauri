@@ -46,10 +46,6 @@ export async function supprimerClasseur(id: string): Promise<void> {
   else memoire.oublier(CLE_ESSAI + id);
 }
 
-/** Ce qui ne se fait qu'une fois par appareil (poser le classeur complet au premier lancement). */
-export const dejaFait = (quoi: string): boolean => !!memoire.lire(`classeur:fait:${quoi}`);
-export const marquerFait = (quoi: string): void => memoire.ecrire(`classeur:fait:${quoi}`, new Date().toISOString());
-
 // ── Les images ─────────────────────────────────────────────────────────────
 
 const imagesDEssai = new Map<string, string>();

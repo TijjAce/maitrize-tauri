@@ -1,10 +1,12 @@
 // ── Le classeur de communication ──────────────────────────────────────────
 //
-// Des pages liées, sur les principes du PODD de Gayle Porter : une page
-// d'accueil, des cases qui disent un mot, et des cases qui ouvrent une autre
-// page — « je veux », puis ce qu'on veut. Le PODD lui-même est protégé : ses
-// pages ne sont pas reproduites ici ; l'enseignant fait les siennes, ou les
-// reprend de Maitrize (format ouvert .obz).
+// Des pages liées, sur les principes du PODD de Gayle Porter : une page 1,
+// des cases qui disent un mot, et des cases qui ouvrent une autre page — « je
+// veux », puis ce qu'on veut. Les pages se suivent comme dans un livre et se
+// rangent en sections numérotées (« 5a », « 5b ») que l'on parcourt en
+// tournant la page ; une page d'index, les catégories, mène à toutes. Le PODD
+// lui-même est protégé : ses pages ne sont pas reproduites ici ; l'enseignant
+// fait les siennes, ou les reprend de Maitrize (format ouvert .obz).
 //
 // Tout ce qui suit est sans effet de bord : un changement rend un nouveau
 // classeur, que l'écran garde (et peut annuler).
@@ -32,15 +34,21 @@ export interface Page {
   colonnes: number;
   /** De gauche à droite, de haut en bas : `lignes × colonnes` places, vides ou non. */
   cases: (Case | null)[];
+  /** La suite de la page d'avant : la même section (« 5b » après « 5a »), où l'on arrive en tournant la page. */
+  suite?: boolean;
 }
 
 export interface Classeur {
   id: string;
   nom: string;
   accueil: string;
+  /** La page des catégories : l'index d'où l'on va partout (le bouton « Catégories » de chaque page y mène). */
+  categories?: string;
   pages: Page[];
   /** La voix de l'élève : une voix de l'appareil, et son débit (1 = normal). */
   voix?: { id?: string; debit?: number };
+  /** Faux : balayer la grille ne tourne pas les pages (un élève qui pointe en glissant la main) ; ◀ ▶ restent. */
+  balayer?: boolean;
   creeLe: string;
   modifieLe: string;
 }
@@ -112,16 +120,110 @@ export const renommerPage = (c: Classeur, pageId: string, nom: string): Classeur
 export const changerTaille = (c: Classeur, pageId: string, lignes: number, colonnes: number): Classeur =>
   avecPage(c, pageId, (p) => redimensionner(p, lignes, colonnes));
 
-export const fairePageDAccueil = (c: Classeur, pageId: string): Classeur =>
-  pageDe(c, pageId) ? touche(c, c.pages, { accueil: pageId }) : c;
+/** Retire une page de sa place : si elle ouvrait sa section, la page qui la suivait ouvre ce qu'il en reste. */
+function sansLaPage(ordre: Page[], pageId: string): Page[] {
+  const i = ordre.findIndex((p) => p.id === pageId);
+  if (i < 0) return ordre;
+  return ordre.flatMap((p, j) => {
+    if (j === i) return [];
+    if (j === i + 1 && p.suite && !ordre[i].suite) return [{ ...p, suite: undefined }];
+    return [p];
+  });
+}
+
+/** La page devient la page 1 : elle passe en tête du classeur. */
+export function fairePageDAccueil(c: Classeur, pageId: string): Classeur {
+  const p = pageDe(c, pageId);
+  if (!p) return c;
+  return touche(c, [{ ...p, suite: undefined }, ...sansLaPage(ordreDesPages(c), pageId)], { accueil: pageId });
+}
+
+/** La page devient l'index des catégories (une seule par classeur). */
+export const fairePageDesCategories = (c: Classeur, pageId: string): Classeur =>
+  pageDe(c, pageId) ? touche(c, c.pages, { categories: pageId }) : c;
 
 /** Retire une page, et les liens qui y menaient ; l'accueil passe à la première qui reste. La dernière page reste. */
 export function supprimerPage(c: Classeur, pageId: string): Classeur {
   if (c.pages.length <= 1 || !pageDe(c, pageId)) return c;
-  const pages = c.pages.filter((p) => p.id !== pageId).map((p) => ({
+  const pages = sansLaPage(ordreDesPages(c), pageId).map((p) => ({
     ...p, cases: p.cases.map((k) => (k?.lien === pageId ? { ...k, lien: undefined } : k)),
   }));
-  return touche(c, pages, { accueil: c.accueil === pageId ? pages[0].id : c.accueil });
+  return touche(c, pages, {
+    accueil: c.accueil === pageId ? pages[0].id : c.accueil,
+    categories: c.categories === pageId ? undefined : c.categories,
+  });
+}
+
+// ── L'ordre des pages et les sections ──────────────────────────────────────
+
+/** Les pages dans l'ordre du classeur, comme dans un livre : la page 1 (l'accueil) d'abord, les autres à la suite. */
+export function ordreDesPages(c: Classeur): Page[] {
+  const accueil = pageDe(c, c.accueil);
+  return accueil ? [accueil, ...c.pages.filter((p) => p.id !== accueil.id)] : c.pages;
+}
+
+export interface Section { numero: number; pages: Page[] }
+
+/** Les sections : chaque page qui n'est pas la suite de la précédente en ouvre une ; la page 1 ouvre la première. */
+export function sectionsDe(c: Classeur): Section[] {
+  const sections: Section[] = [];
+  ordreDesPages(c).forEach((p, i) => {
+    if (i === 0 || !p.suite) sections.push({ numero: sections.length + 1, pages: [p] });
+    else sections[sections.length - 1].pages.push(p);
+  });
+  return sections;
+}
+
+export const sectionDe = (c: Classeur, pageId: string): Section | undefined => sectionsDe(c).find((s) => s.pages.some((p) => p.id === pageId));
+
+/** Le numéro d'une page : « 5 », ou « 5a », « 5b »… quand sa section en a plusieurs. */
+export function numeroDePage(c: Classeur, pageId: string): string {
+  const s = sectionDe(c, pageId);
+  if (!s) return "";
+  const i = s.pages.findIndex((p) => p.id === pageId);
+  return s.pages.length > 1 ? `${s.numero}${String.fromCharCode(97 + Math.min(i, 25))}` : String(s.numero);
+}
+
+/** La page d'après (1) ou d'avant (−1) : tourner la page, dans l'ordre du classeur. */
+export function pageVoisine(c: Classeur, pageId: string, sens: 1 | -1): Page | undefined {
+  const ordre = ordreDesPages(c);
+  const i = ordre.findIndex((p) => p.id === pageId);
+  return i < 0 ? undefined : ordre[i + sens];
+}
+
+/** Une nouvelle page juste après une autre, dans sa section : la page d'après, en tournant la page. */
+export function ajouterPageSuivante(c: Classeur, apresId: string, page: Page): Classeur {
+  const ordre = ordreDesPages(c);
+  const i = ordre.findIndex((p) => p.id === apresId);
+  if (i < 0) return ajouterPage(c, page);
+  return touche(c, [...ordre.slice(0, i + 1), { ...page, suite: true }, ...ordre.slice(i + 1)]);
+}
+
+/** Une nouvelle section, juste après celle de la page. */
+export function ajouterSectionApres(c: Classeur, pageId: string, page: Page): Classeur {
+  const ordre = ordreDesPages(c);
+  const pages = sectionDe(c, pageId)?.pages;
+  const derniere = pages?.[pages.length - 1]?.id;
+  const i = ordre.findIndex((p) => p.id === derniere);
+  if (i < 0) return ajouterPage(c, page);
+  return touche(c, [...ordre.slice(0, i + 1), { ...page, suite: undefined }, ...ordre.slice(i + 1)]);
+}
+
+/** La page est-elle la suite de la page d'avant ? (La page 1 ne l'est jamais.) */
+export function changerSuite(c: Classeur, pageId: string, suite: boolean): Classeur {
+  if (pageId === c.accueil) return c;
+  return avecPage(c, pageId, (p) => ({ ...p, suite: suite || undefined }));
+}
+
+/** Déplace toute la section de la page d'un cran (−1 : plus tôt, 1 : plus tard) ; la section de la page 1 reste en tête. */
+export function deplacerSection(c: Classeur, pageId: string, sens: 1 | -1): Classeur {
+  const sections = sectionsDe(c);
+  const i = sections.findIndex((s) => s.pages.some((p) => p.id === pageId));
+  const j = i + sens;
+  if (i <= 0 || j <= 0 || j >= sections.length) return c;
+  const rangees = [...sections];
+  [rangees[i], rangees[j]] = [rangees[j], rangees[i]];
+  return touche(c, rangees.flatMap((s) => s.pages));
 }
 
 /** Les images dont le classeur se sert. */
@@ -129,7 +231,8 @@ export const imagesDuClasseur = (c: Classeur): string[] =>
   [...new Set(c.pages.flatMap((p) => p.cases.flatMap((k) => (k?.image ? [k.image] : []))))];
 
 export function dupliquer(c: Classeur, nom: string, maintenant = new Date().toISOString()): Classeur {
-  return { ...structuredClone(c), id: nouvelId(), nom, creeLe: maintenant, modifieLe: maintenant };
+  const copie = JSON.parse(JSON.stringify(c)) as Classeur; // structuredClone n'arrive qu'avec iOS 15.4
+  return { ...copie, id: nouvelId(), nom, creeLe: maintenant, modifieLe: maintenant };
 }
 
 /** Relit un classeur gardé : ce qui manque ou déborde est remis d'aplomb ; rien s'il est illisible. */
@@ -146,13 +249,14 @@ export function lireClasseur(brut: unknown): Classeur | null {
     (Array.isArray(p.cases) ? p.cases : []).slice(0, lignes * colonnes).forEach((k, i) => {
       if (k && typeof k === "object" && typeof k.mot === "string") cases[i] = { ...k, id: typeof k.id === "string" ? k.id : nouvelId() };
     });
-    return { id: p.id, nom: typeof p.nom === "string" ? p.nom : "Page", lignes, colonnes, cases };
+    return { id: p.id, nom: typeof p.nom === "string" ? p.nom : "Page", lignes, colonnes, cases, ...(p.suite === true ? { suite: true } : {}) };
   });
   if (!pages.length) return null;
   return {
     id: o.id, nom: typeof o.nom === "string" && o.nom.trim() ? o.nom : "Classeur",
     accueil: pages.some((p) => p.id === o.accueil) ? (o.accueil as string) : pages[0].id,
-    pages, ...(o.voix && typeof o.voix === "object" ? { voix: o.voix } : {}),
+    ...(typeof o.categories === "string" && pages.some((p) => p.id === o.categories) ? { categories: o.categories } : {}),
+    pages, ...(o.voix && typeof o.voix === "object" ? { voix: o.voix } : {}), ...(o.balayer === false ? { balayer: false } : {}),
     creeLe: typeof o.creeLe === "string" ? o.creeLe : "", modifieLe: typeof o.modifieLe === "string" ? o.modifieLe : "",
   };
 }
