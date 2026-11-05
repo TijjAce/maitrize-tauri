@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { ficheEcrite, lireFiches, type MonPicto } from "./mesPictos";
 import {
-  ESPACES_DE_LA_CLASSE, GENRES_MONTRES, cleDeLElement, espacesMontres, estUnSupport, photoDeLElement, photosLiees, supportsDeLaSequence, TOUS_LES_NIVEAUX,
+  ESPACES_DE_LA_CLASSE, GENRES_MONTRES, MENU_DE_L_ENSEIGNANT, cleDeLElement, espacesMontres, estUnSupport, menuDeLElement, photoDeLElement, photosLiees,
+  supportsDeLaSequence, TOUS_LES_NIVEAUX,
 } from "./supportsDeTravail";
 import { lireFabrication, seRefaitDansFabriquer } from "./modifierFeuille";
 import { NIVEAUX_FICHES, iconeDeLaRecette, pageDuSupport, recetteDe, recettesDesSupports, recettesPour } from "./fichesAutonomie";
@@ -86,8 +87,19 @@ describe("une photo qui montre un élément du plan de travail (demande de l'ens
 });
 
 describe("une photo qui montre un outil pour l'enseignant ou un espace de la classe (demande de l'enseignant, 4 novembre 2026)", () => {
-  it("propose les outils pour l'enseignant après ceux de l'élève, ni les jeux ni les évaluations", () => {
-    expect(GENRES_MONTRES).toEqual(["materiel", "outil", "enseignant", "affichage"]);
+  it("propose dans le premier menu le matériel, les outils pour l'élève, les affichages — ni les jeux ni les évaluations", () => {
+    expect(GENRES_MONTRES).toEqual(["materiel", "outil", "affichage"]);
+  });
+
+  it("met les outils pour l'enseignant et les espaces dans un menu à eux, que la clé de la photo désigne (5 novembre 2026)", () => {
+    // « Un champ exprès pour matériel pour l'enseignant et espace de classe » : le premier menu ne les a plus.
+    expect(GENRES_MONTRES).not.toContain("enseignant");
+    expect(MENU_DE_L_ENSEIGNANT).toBe("Le matériel de l'enseignant ou l'espace de la classe");
+    expect(menuDeLElement(cleDeLElement({ genre: "enseignant", source: "o4" }))).toBe("enseignant");
+    expect(menuDeLElement(cleDeLElement({ genre: "espace", source: "e1" }))).toBe("enseignant");
+    for (const genre of GENRES_MONTRES) expect(menuDeLElement(cleDeLElement({ genre, source: "x" })), genre).toBe("eleve");
+    expect(menuDeLElement(undefined)).toBeNull();
+    expect(menuDeLElement("")).toBeNull();
   });
 
   it("propose les espaces de la classe dans leur groupe, par ordre alphabétique, sans ceux qui n'ont pas de nom", () => {

@@ -1,13 +1,15 @@
 import React from "react";
-import { api, MATIERES, NIVEAUX_SCOLAIRES, type Espace, type Jeu, type MaterielItem, type OutilClasse, type Sequence } from "../api";
+import { api, MATIERES, NIVEAUX_SCOLAIRES, nouvelEspace, nouvelOutil, type Espace, type Jeu, type MaterielItem, type OutilClasse, type Sequence } from "../api";
 import { EVT_MES_PICTOS, changerMonPicto, lireMesPictos, type MonPicto } from "../mesPictos";
-import { ESPACES_DE_LA_CLASSE, GENRES_MONTRES, TOUS_LES_NIVEAUX, cleDeLElement, espacesMontres, supportsDeLaSequence } from "../supportsDeTravail";
+import {
+  ESPACES_DE_LA_CLASSE, GENRES_MONTRES, MENU_DE_L_ENSEIGNANT, TOUS_LES_NIVEAUX, cleDeLElement, espacesMontres, menuDeLElement, supportsDeLaSequence,
+} from "../supportsDeTravail";
 import { elementsDuBureau, genreDeSupport } from "../supportsDeSeance";
 import { lirePdfs } from "../materielSeance";
 import { etiquetteDeMatiere } from "../pictosMatieres";
 import { usePictoImage } from "./ChoixPicto";
 import { useLudotheque } from "./ReglesDesJeux";
-import { toast } from "./Toaster";
+import { toast, toastAnnulable } from "./Toaster";
 
 // ── Réglages › Personnalisation › Mes photos, supports de travail ─────────
 //
@@ -17,28 +19,47 @@ import { toast } from "./Toaster";
 // l'affichage du plan de travail ou l'espace de la classe qu'elle montre, la
 // séquence où elle sert. Tout s'enregistre aussitôt, et passe à l'autre
 // ordinateur avec la photo.
+//
+// « Rajoute ça, un champ exprès pour matériel pour l'enseignant et espace de
+// classe » (l'enseignant, 5 novembre 2026, sur le menu « Le matériel, l'outil,
+// l'affichage ou l'espace ») : sa classe n'avait encore ni outil pour
+// l'enseignant ni espace, et le menu ne les montrait donc jamais. Ils ont leur
+// menu, sous le premier ; il crée aussi l'outil ou l'espace d'après la photo,
+// à son nom, et la photo lui sert aussitôt d'image.
 
 type Champs = Partial<Pick<MonPicto, "mot" | "matiere" | "niveau" | "jeuId" | "elementId" | "sequenceId">>;
 
 /**
- * Ce qu'une photo peut montrer, groupe par groupe : le matériel, les outils
- * pour l'élève et pour l'enseignant, les affichages, les espaces de la classe.
+ * Ce qu'une photo peut montrer, groupe par groupe, menu par menu : le
+ * matériel, les outils pour l'élève, les affichages ; puis, à part, les outils
+ * pour l'enseignant et les espaces de la classe.
  */
 type ElementsMontres = { genre: string; nom: string; elements: { cle: string; titre: string }[] }[];
+type MenusMontres = Record<"eleve" | "enseignant", ElementsMontres>;
+
+/** Ce que le menu de l'enseignant crée d'après la photo, quand on le choisit. */
+const NOUVEAUX = [
+  { valeur: "+enseignant", nom: "＋ Nouvel outil pour l'enseignant" },
+  { valeur: "+espace", nom: "＋ Nouvel espace de la classe" },
+] as const;
+type Nouveau = "enseignant" | "espace";
 
 export function SupportsDeTravail() {
   const [photos, setPhotos] = React.useState<MonPicto[] | null>(null);
   const [jeux, setJeux] = React.useState<Jeu[]>([]);
   const [sequences, setSequences] = React.useState<Sequence[]>([]);
   const [bureau, setBureau] = React.useState<{ outils: OutilClasse[]; materiel: MaterielItem[]; espaces: Espace[] }>({ outils: [], materiel: [], espaces: [] });
-  const montres = React.useMemo((): ElementsMontres => [
-    ...GENRES_MONTRES.map((genre) => ({
+  const montres = React.useMemo((): MenusMontres => {
+    const groupe = (genre: (typeof GENRES_MONTRES)[number] | "enseignant") => ({
       genre, nom: genreDeSupport(genre).pluriel,
       elements: elementsDuBureau(genre, { ...bureau, jeux: [] }, (m) => lirePdfs(m.pdfsJson).length > 0)
         .map((e) => ({ cle: cleDeLElement(e.renvoi), titre: e.titre })),
-    })),
-    { genre: "espace", nom: ESPACES_DE_LA_CLASSE, elements: espacesMontres(bureau.espaces) },
-  ], [bureau]);
+    });
+    return {
+      eleve: GENRES_MONTRES.map(groupe),
+      enseignant: [groupe("enseignant"), { genre: "espace", nom: ESPACES_DE_LA_CLASSE, elements: espacesMontres(bureau.espaces) }],
+    };
+  }, [bureau]);
   React.useEffect(() => {
     const lire = () => lireMesPictos().then((l) => setPhotos(l.filter((p) => p.origine === "photo"))).catch(() => setPhotos([]));
     void lire();
@@ -59,6 +80,33 @@ export function SupportsDeTravail() {
     try { await changerMonPicto(p, champs); } catch (e) { toast(`Photo non enregistrée : ${e}`, { icone: "⚠️" }); }
   };
 
+  /**
+   * Un outil pour l'enseignant ou un espace de la classe, créé d'après la photo — à son nom — et qu'elle montre
+   * aussitôt. Le bandeau « Annuler » (et ⌘Z) le retire et rend à la photo ce qu'elle montrait.
+   */
+  const creer = async (p: MonPicto, genre: Nouveau) => {
+    const titre = p.mot.trim() || "Photo";
+    const avant = p.elementId ?? "";
+    try {
+      const id = genre === "espace"
+        ? (await api.espaceSave({ ...nouvelEspace(), titre })).id
+        : (await api.outilClasseSave({ ...nouvelOutil("enseignant"), titre })).id;
+      const recharger = () => Promise.all([api.outilsClasseList(), api.espacesList()])
+        .then(([outils, espaces]) => setBureau((b) => ({ ...b, outils, espaces }))).catch(() => {});
+      await recharger();
+      await changer(p, { elementId: cleDeLElement({ genre, source: id }) });
+      toastAnnulable(`« ${titre} » ajouté au plan de travail, ${genre === "espace" ? "dans les espaces de la classe" : "dans les outils pour l'enseignant"}.`, async () => {
+        await (genre === "espace" ? api.espaceDelete(id) : api.outilClasseDelete(id));
+        // La photo telle qu'elle est maintenant : un niveau changé entre-temps reste ; un autre choix fait depuis aussi.
+        const actuelle = (await lireMesPictos().catch((): MonPicto[] => [])).find((x) => x.id === p.id) ?? p;
+        if (actuelle.elementId === cleDeLElement({ genre, source: id })) await changer(actuelle, { elementId: avant });
+        await recharger();
+      }, genre === "espace" ? "🪑" : "🧑‍🏫");
+    } catch (e) {
+      toast(`Rien d'ajouté au plan de travail : ${e}`, { icone: "⚠️" });
+    }
+  };
+
   return (
     <>
       <p style={{ color: "var(--text-2)", marginTop: 0, fontSize: 13, lineHeight: 1.55 }}>
@@ -74,20 +122,19 @@ export function SupportsDeTravail() {
         </p>
       )}
       {photos.map((p) => (
-        <LigneDeSupport key={p.id} photo={p} jeux={jeux} montres={montres} sequences={sequences} onChanger={(champs) => { void changer(p, champs); }} />
+        <LigneDeSupport key={p.id} photo={p} jeux={jeux} montres={montres} sequences={sequences} onChanger={(champs) => { void changer(p, champs); }}
+          onCreer={(genre) => { void creer(p, genre); }} />
       ))}
     </>
   );
 }
 
 /** Une photo : son image, son nom, et ce qui en fait un support de travail. */
-function LigneDeSupport({ photo, jeux, montres, sequences, onChanger }: {
-  photo: MonPicto; jeux: Jeu[]; montres: ElementsMontres; sequences: Sequence[]; onChanger: (champs: Champs) => void;
+function LigneDeSupport({ photo, jeux, montres, sequences, onChanger, onCreer }: {
+  photo: MonPicto; jeux: Jeu[]; montres: MenusMontres; sequences: Sequence[]; onChanger: (champs: Champs) => void; onCreer: (genre: Nouveau) => void;
 }) {
   const src = usePictoImage(photo.id, true);
   const complet = !!photo.niveau;
-  // L'élément qu'elle montrait n'est plus sur le plan de travail : on le dit, plutôt que de montrer « Aucun ».
-  const perdu = !!photo.elementId && !montres.some((g) => g.elements.some((e) => e.cle === photo.elementId));
   return (
     <div className="sdt-ligne">
       <div className="sdt-image">{src ? <img src={src} alt="" /> : null}</div>
@@ -121,20 +168,11 @@ function LigneDeSupport({ photo, jeux, montres, sequences, onChanger }: {
               </select>
             </label>
             {/* Juste sous « Les règles du jeu » : le matériel, l'outil ou l'affichage du plan de travail qu'elle montre ; elle lui sert d'image (demande de l'enseignant, 2026-11-01).
-                Un outil pour l'enseignant ou un espace de la classe aussi (demande de l'enseignant, 4 novembre 2026). */}
-            <label className="sdt-champ">
-              <span>Le matériel, l'outil, l'affichage ou l'espace</span>
-              <select className="select" value={photo.elementId ?? ""} aria-label={`Le matériel, l'outil, l'affichage ou l'espace que montre « ${photo.mot} »`}
-                onChange={(e) => onChanger({ elementId: e.target.value })}>
-                <option value="">Aucun</option>
-                {perdu && <option value={photo.elementId}>N'est plus sur le plan de travail</option>}
-                {montres.filter((g) => g.elements.length).map((g) => (
-                  <optgroup key={g.genre} label={g.nom}>
-                    {g.elements.map((e) => <option key={e.cle} value={e.cle}>{e.titre}</option>)}
-                  </optgroup>
-                ))}
-              </select>
-            </label>
+                Puis, dans leur menu à eux, un outil pour l'enseignant ou un espace de la classe (demandes de l'enseignant, 4 et 5 novembre 2026). */}
+            <MenuDeLaPhoto photo={photo} menu="eleve" titre="Le matériel, l'outil ou l'affichage" groupes={montres.eleve}
+              onChoisir={(v) => onChanger({ elementId: v })} />
+            <MenuDeLaPhoto photo={photo} menu="enseignant" titre={MENU_DE_L_ENSEIGNANT} groupes={montres.enseignant} nouveaux={NOUVEAUX}
+              onChoisir={(v) => { const n = NOUVEAUX.find((x) => x.valeur === v); if (n) onCreer(n.valeur.slice(1) as Nouveau); else onChanger({ elementId: v }); }} />
           </div>
           <label className="sdt-champ long">
             <span>La séquence</span>
@@ -147,6 +185,38 @@ function LigneDeSupport({ photo, jeux, montres, sequences, onChanger }: {
         {!complet && <span className="meta sdt-a-completer">Un niveau, et « En retard » la propose.</span>}
       </div>
     </div>
+  );
+}
+
+/**
+ * Un menu de ce que la photo montre : « Aucun », ses groupes, et ce qu'il crée d'après elle. Il ne montre que ce
+ * qui est à lui — l'autre menu garde le reste ; ce qu'elle montrait et qui n'est plus sur le plan de travail, il le
+ * dit, plutôt que « Aucun ».
+ */
+function MenuDeLaPhoto({ photo, menu, titre, groupes, nouveaux = [], onChoisir }: {
+  photo: MonPicto; menu: "eleve" | "enseignant"; titre: string; groupes: ElementsMontres;
+  nouveaux?: readonly { valeur: string; nom: string }[]; onChoisir: (valeur: string) => void;
+}) {
+  const sienne = photo.elementId && menuDeLElement(photo.elementId) === menu ? photo.elementId : "";
+  const perdu = !!sienne && !groupes.some((g) => g.elements.some((e) => e.cle === sienne));
+  return (
+    <label className="sdt-champ">
+      <span>{titre}</span>
+      <select className="select" value={sienne} aria-label={`${titre} que montre « ${photo.mot} »`} onChange={(e) => onChoisir(e.target.value)}>
+        <option value="">Aucun</option>
+        {perdu && <option value={sienne}>N'est plus sur le plan de travail</option>}
+        {groupes.filter((g) => g.elements.length).map((g) => (
+          <optgroup key={g.genre} label={g.nom}>
+            {g.elements.map((e) => <option key={e.cle} value={e.cle}>{e.titre}</option>)}
+          </optgroup>
+        ))}
+        {nouveaux.length > 0 && (
+          <optgroup label="Ajouter au plan de travail">
+            {nouveaux.map((n) => <option key={n.valeur} value={n.valeur}>{n.nom}</option>)}
+          </optgroup>
+        )}
+      </select>
+    </label>
   );
 }
 

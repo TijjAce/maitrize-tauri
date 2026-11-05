@@ -17,7 +17,10 @@
 // pour l'enseignant ou un espace de la classe aussi — ses classeurs,
 // l'armoire… : « il faudrait également ajouter, espace de classe et outils
 // pour l'enseignant » (l'enseignant, 4 novembre 2026). Sur le bureau du plan
-// de travail, elle sert d'image à ce qu'elle montre.
+// de travail, elle sert d'image à ce qu'elle montre. Puis : « un champ exprès
+// pour matériel pour l'enseignant et espace de classe » (5 novembre 2026) —
+// ils ont leur menu à eux, sous le premier, qui crée aussi l'outil ou
+// l'espace d'après la photo quand la classe n'en a pas encore.
 //
 // Un niveau suffit — « tous les niveaux » compris — ; la matière ne fait que
 // s'écrire au-dessus de la photo sur les tablettes. L'enseignant voulait voir
@@ -45,11 +48,22 @@ export const photoDuJeu = (photos: PhotoDeJeu[], jeuId: string): number | undefi
   photos.find((p) => p.origine === "photo" && p.jeuId === jeuId)?.id;
 
 /**
- * Ce qu'une photo peut montrer du plan de travail, dans l'ordre de son menu :
- * le matériel, les outils pour l'élève et pour l'enseignant, les affichages ;
- * puis les espaces de la classe (voir espacesMontres).
+ * Ce qu'une photo peut montrer du plan de travail, dans l'ordre de son premier
+ * menu : le matériel, les outils pour l'élève, les affichages. Les outils pour
+ * l'enseignant et les espaces de la classe ont le leur (voir MENU_DE_L_ENSEIGNANT).
  */
-export const GENRES_MONTRES = ["materiel", "outil", "enseignant", "affichage"] as const;
+export const GENRES_MONTRES = ["materiel", "outil", "affichage"] as const;
+
+/** Le second menu d'une photo : les outils pour l'enseignant, puis les espaces de la classe (voir espacesMontres). */
+export const MENU_DE_L_ENSEIGNANT = "Le matériel de l'enseignant ou l'espace de la classe";
+
+/**
+ * Le menu où se lit ce qu'une photo montre, d'après sa clé : celui de l'enseignant pour un outil pour
+ * l'enseignant ou un espace, le premier pour le reste. Une photo ne montre qu'une chose : choisir dans
+ * l'un vide l'autre.
+ */
+export const menuDeLElement = (cle: string | undefined): "eleve" | "enseignant" | null =>
+  !cle ? null : /^(enseignant|espace):/.test(cle) ? "enseignant" : "eleve";
 
 /** Un élément du plan de travail tel qu'une photo le garde : « outil:<id> », « espace:<id> ». */
 export const cleDeLElement = (r: { genre: string; source: string }) => `${r.genre}:${r.source}`;
