@@ -297,8 +297,9 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
         </div>
       )}
 
-      {categoriesProposees.length > 0 && (
-        <div className="categories-proposees" aria-label="Catégories proposées">
+      {/* La bande garde sa place, même vide : « quand il n'y a pas de propositions, que les cases ne s'agrandissent pas ». */}
+      {!enModif && c.suggestions !== false && (
+        <div className="categories-proposees" aria-label="Catégories proposées" aria-hidden={categoriesProposees.length === 0 || undefined}>
           {categoriesProposees.map((e) => (
             <button key={e.page} className="categorie-proposee" style={{ background: couleurDeSection(e.section) }} onClick={() => aller(e.page)}>
               {e.image && images[e.image] && <img src={images[e.image]} alt="" />}

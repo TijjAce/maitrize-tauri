@@ -58,8 +58,9 @@ a { color: var(--accent); }
   padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
 }
 .barre-haut, .barre-pages { flex: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Une hauteur fixe : le premier mot dit ne grandit pas la barre, et la grille ne bouge pas. */
 .phrase {
-  flex: 1; min-width: 120px; min-height: 60px; display: flex; align-items: center; gap: 6px; overflow-x: auto; padding: 6px 10px;
+  flex: 1; min-width: 120px; height: 68px; display: flex; align-items: center; gap: 6px; overflow-x: auto; overflow-y: hidden; padding: 6px 10px;
   background: #fff; border: 2px solid #d7d0bd; border-radius: var(--rayon); cursor: pointer;
 }
 .mot-dit { display: inline-flex; flex-direction: column; align-items: center; font-size: 15px; font-weight: 600; flex: none; }
@@ -71,14 +72,19 @@ a { color: var(--accent); }
 
 /* Les catégories proposées après une case : une bande à part, au-dessus de la grille, qui défile si elle déborde.
    Chaque catégorie a son picto, sur la couleur de sa section ; la toucher ouvre sa page. */
-.categories-proposees { flex: none; display: flex; gap: 8px; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 2px; }
+.categories-proposees {
+  flex: none; display: flex; gap: 8px; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 2px;
+  box-sizing: border-box; height: clamp(88px, 11vh, 114px);
+}
 .categorie-proposee {
-  flex: none; width: clamp(96px, 10vw, 120px); height: clamp(86px, 11vh, 112px); display: flex; flex-direction: column; align-items: center;
+  flex: none; width: clamp(96px, 10vw, 120px); height: 100%; display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 3px; padding: 5px; border: 2px solid rgba(0, 0, 0, .08); border-radius: var(--rayon);
   font-size: clamp(12px, 1.3vw, 15px); font-weight: 800; color: var(--encre); line-height: 1.05;
 }
 .categorie-proposee img { flex: 1; min-height: 0; width: 100%; object-fit: contain; pointer-events: none; background: #fff; border-radius: 8px; }
 .categorie-proposee span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* « Les recommandations doivent apparaître un peu grisées, sur la bande, mais pas en dessous » : la grille garde ses couleurs. */
+.categories-proposees .categorie-proposee { filter: saturate(.3); opacity: .75; }
 .categorie-proposee:active { transform: scale(.96); }
 .categorie-proposee.apercu { width: 140px; height: 140px; font-size: 16px; }
 .categorie-proposee.apercu .sans-image { flex: 1; display: flex; align-items: center; color: var(--discret, #6d6a63); font-weight: 600; }
@@ -189,7 +195,9 @@ a { color: var(--accent); }
   .barre-haut { flex-wrap: nowrap; gap: 6px; }
   .barre-haut .bouton { min-width: 40px; padding: 0 8px; }
   .barre-haut .bouton.gros { min-width: 40px; font-size: 19px; }
-  .phrase { min-width: 0; min-height: 52px; padding: 4px 6px; }
+  .phrase { min-width: 0; height: 60px; padding: 4px 6px; }
+  .mot-dit { font-size: 13px; }
+  .mot-dit img { width: 30px; height: 30px; }
   .corps { gap: 6px; }
   .grille { gap: 5px; }
   .case { padding: 3px 2px; border-width: 2px; border-radius: 10px; gap: 2px; }
@@ -208,13 +216,15 @@ a { color: var(--accent); }
   .bouton.tourne { min-width: 58px; min-height: 48px; }
   .barre-bas { gap: 6px; }
   .page-ici .nom-page { font-size: 15px; }
-  .categorie-proposee { width: 84px; height: 84px; font-size: 11.5px; }
+  .categories-proposees { height: 86px; }
+  .categorie-proposee { width: 84px; font-size: 11.5px; }
 }
 
 /* Couché, l'iPhone a de la largeur et peu de hauteur : l'image à côté du mot, des barres plus basses. */
 @media (max-height: 500px) and (orientation: landscape) {
   .ecran { gap: 5px; padding-top: max(5px, env(safe-area-inset-top)); padding-bottom: max(5px, env(safe-area-inset-bottom)); }
-  .phrase { min-height: 42px; padding: 2px 8px; }
+  .phrase { height: 46px; padding: 2px 8px; }
+  .mot-dit { font-size: 12px; }
   .mot-dit img { width: 24px; height: 24px; }
   .barre-haut .bouton, .barre-haut .bouton.gros { min-height: 40px; }
   .grille { gap: 5px; }
@@ -228,7 +238,8 @@ a { color: var(--accent); }
   .bouton.tourne { min-height: 40px; }
   .page-ici { min-height: 40px; }
   .crayon { min-height: 40px; }
-  .categorie-proposee { flex-direction: row; width: 132px; height: 46px; font-size: 11.5px; }
+  .categories-proposees { height: 48px; }
+  .categorie-proposee { flex-direction: row; width: 132px; font-size: 11.5px; }
   .categorie-proposee img { flex: none; width: 36px; height: 36px; }
 }
 
