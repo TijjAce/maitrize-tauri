@@ -1,7 +1,7 @@
 import React from "react";
 import {
   LIGNES_MAX, COLONNES_MAX, ajouterPageSuivante, ajouterSectionApres, casesPerdues, changerImageDePage, changerSuite, changerTaille, deplacerSection,
-  ditDeLaCase, fairePageDAccueil, fairePageDesCategories, imagesDuClasseur, nouvellePage, numeroDePage, pageDe, pageVoisine,
+  ditEnTouchant, fairePageDAccueil, fairePageDesCategories, imagesDuClasseur, nouvellePage, numeroDePage, pageDe, pageVoisine,
   pictoDeLaPage, poserCase, renommerPage, sectionDe, sectionsDe, supprimerPage, texteDeLaPhrase, type Case, type Classeur, type MotDit,
 } from "./modele";
 import { dire, garderClasseur, lireImages, voixDisponibles, type VoixDisponible } from "./pont";
@@ -139,9 +139,12 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
   };
   const tourner = (sens: 1 | -1) => aller(pageVoisine(c, page.id, sens)?.id, sens === 1 ? "droite" : "gauche");
   const toucher = (k: Case) => {
-    const dit = ditDeLaCase(k);
-    void dire(dit, c.voix);
-    if (dit) setPhrase((p) => [...p, { mot: k.mot || dit, dire: dit, image: k.image, caseId: k.id }]);
+    // Une case muette (une catégorie) ouvre sa page sans rien dire.
+    const dit = ditEnTouchant(k);
+    if (dit) {
+      void dire(dit, c.voix);
+      setPhrase((p) => [...p, { mot: k.mot || dit, dire: dit, image: k.image, caseId: k.id }]);
+    }
     if (k.lien) aller(k.lien);
   };
   const direLaPhrase = () => { void dire(texteDeLaPhrase(phrase), c.voix); };

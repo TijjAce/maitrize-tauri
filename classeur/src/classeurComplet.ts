@@ -19,6 +19,12 @@ import { dansLApplication, garderClasseur, garderImage, lirePictoLivre, supprime
 
 export interface CaseModele {
   mot: string; fond?: string; bord?: string; arasaac?: number; dire?: string; lien?: string;
+  /** Elle ouvre sa page sans rien dire (une catégorie). */
+  muette?: boolean;
+  /** Ce qu'elle disait dans les modèles d'avant ("" : son mot) : une case qui le dit encore prend la forme d'aujourd'hui. */
+  direAvant?: string[];
+  /** Ce qu'elle était avant d'être renommée (« le corps » → « j'ai mal ») : une case restée ainsi la devient. */
+  avant?: { mot: string; dire?: string; arasaac?: number; fond?: string; bord?: string }[];
   poids?: number;
   /** `cases` : « clé de page:rang », les pictos choisis pour cette suite. */
   suites?: { page: string; poids: number; cases?: string[] }[];
@@ -46,6 +52,7 @@ export function classeurComplet(nom = "", maintenant = new Date().toISOString(),
     p.cases.slice(0, cases.length).forEach((k, i) => {
       const c: Case = { id: idsCases.get(`${p.cle}:${i}`)!, mot: k.mot };
       if (k.dire) c.dire = k.dire;
+      if (k.muette) c.muette = true;
       if (k.arasaac) c.image = `arasaac-${k.arasaac}`;
       if (k.fond) c.fond = k.fond;
       if (k.bord) c.bord = k.bord;
@@ -72,6 +79,10 @@ export function classeurComplet(nom = "", maintenant = new Date().toISOString(),
 export const pictosDuModele = (m: ModeleDeClasseur = MODELE_COMPLET): number[] =>
   [...new Set(m.pages.flatMap((p) => p.cases.flatMap((k) => (k.arasaac ? [k.arasaac] : []))))];
 
+/** Les pictos des cases renommées : un classeur retouché les reçoit à la mise à jour. */
+export const pictosDesCasesRenommees = (m: ModeleDeClasseur = MODELE_COMPLET): number[] =>
+  [...new Set(m.pages.flatMap((p) => p.cases.flatMap((k) => (k.avant?.length && k.arasaac ? [k.arasaac] : []))))];
+
 /** Recopie les pictos livrés parmi les images de l'appareil, quelques-uns à la fois. Rend le nombre recopié. */
 export async function poserLesPictos(
   numeros: number[], garder: (id: string, donnees: string) => Promise<void>, lire: (n: number) => Promise<string | null> = lirePictoLivre,
@@ -96,10 +107,13 @@ export async function creerLeClasseurComplet(nom = ""): Promise<Classeur> {
   return c;
 }
 
-/** Le classeur suit-il le modèle d'aujourd'hui : mêmes pages, dans le même ordre, avec les mêmes mots ? */
+/** Une case telle que le modèle la livre : son mot, ce qu'elle dit, muette ou non. */
+const empreinte = (k: { mot: string; dire?: string; muette?: boolean }) => `${k.mot}=${k.dire ?? ""}${k.muette ? "~" : ""}`;
+
+/** Le classeur suit-il le modèle d'aujourd'hui : mêmes pages, dans le même ordre, avec les mêmes cases, qui disent la même chose ? */
 const suitLeModele = (c: Classeur, m: ModeleDeClasseur) =>
   c.pages.length === m.pages.length && ordreDesPages(c).every((p, i) => p.nom === m.pages[i].nom
-    && p.cases.filter(Boolean).map((k) => k!.mot).join("|") === m.pages[i].cases.map((k) => k.mot).join("|"));
+    && p.cases.filter(Boolean).map((k) => empreinte(k!)).join("|") === m.pages[i].cases.map(empreinte).join("|"));
 
 /**
  * Ce qu'il faut faire au lancement : poser le classeur complet quand l'appareil n'a aucun classeur ; remplacer un
@@ -112,10 +126,12 @@ export function aPoser(deja: Classeur[], m: ModeleDeClasseur = MODELE_COMPLET): 
 }
 
 /**
- * Un classeur complet aux poids d'une autre version (ou sans poids) reçoit ceux d'aujourd'hui, sans rien changer
- * d'autre : chaque page retrouve celle du modèle à son nom (la deuxième « Manger » avec la deuxième), chaque case son
- * mot. Les cases que l'enseignant a ajoutées gardent les leurs. Rien s'il porte déjà cette version, ou si rien ne
- * correspond. Sa date de modification ne bouge pas.
+ * Un classeur complet aux poids d'une autre version (ou sans poids) reçoit ceux d'aujourd'hui : chaque page retrouve
+ * celle du modèle à son nom (la deuxième « Manger » avec la deuxième), chaque case son mot. Les cases que l'enseignant
+ * a ajoutées gardent les leurs. Ce qui se dit suit aussi, là où la case dit encore la forme d'un modèle d'avant
+ * (« ballon » → « au ballon ») ; une catégorie devient muette si l'enseignant ne l'a jamais fait parler ; une case
+ * renommée prend son nouveau nom (« le corps » → « j'ai mal »). Ce qu'il a écrit ou choisi lui-même ne bouge pas.
+ * Rien s'il porte déjà cette version, ou si rien ne correspond. Sa date de modification ne bouge pas.
  */
 export function ajouterLesPoids(c: Classeur, m: ModeleDeClasseur = MODELE_COMPLET): Classeur | null {
   if (!m.versionDesPoids || c.versionDesPoids === m.versionDesPoids) return null;
@@ -140,14 +156,39 @@ export function ajouterLesPoids(c: Classeur, m: ModeleDeClasseur = MODELE_COMPLE
     const pm = m.pages.find((x) => pageDuModele.get(x.cle)?.id === p.id);
     if (!pm) return p;
     const cases = p.cases.map((k) => {
-      const km = k && pm.cases.find((x) => x.mot === k.mot);
-      if (!k || !km) return k;
+      if (!k) return k;
+      let km = pm.cases.find((x) => x.mot === k.mot);
+      let n: Case = k;
+      if (!km) {
+        // Une case renommée depuis (« le corps » → « j'ai mal ») : son nouveau mot, et son picto, sa couleur, ce qu'elle
+        // dit, là où ils sont encore ceux d'avant. Pas si la page a déjà une case à ce nom.
+        const r = pm.cases.find((x) => x.avant?.some((a) => a.mot === k.mot) && !p.cases.some((y) => y?.mot === x.mot));
+        const a = r?.avant?.find((x) => x.mot === k.mot);
+        if (!r || !a) return k;
+        km = r;
+        n = { ...k, mot: r.mot };
+        if ((k.dire ?? "") === (a.dire ?? "")) {
+          if (r.dire) n.dire = r.dire;
+          else delete n.dire;
+        }
+        if (r.arasaac && a.arasaac && k.image === `arasaac-${a.arasaac}`) n.image = `arasaac-${r.arasaac}`;
+        if (k.fond === a.fond && k.bord === a.bord) {
+          if (r.fond) n.fond = r.fond;
+          if (r.bord) n.bord = r.bord;
+        }
+      }
+      if ((km.dire ?? "") !== (n.dire ?? "") && km.direAvant?.includes(n.dire ?? "")) {
+        n = { ...n };
+        if (km.dire) n.dire = km.dire;
+        else delete n.dire;
+      }
+      if (km.muette && n.lien && n.muette === undefined) n = { ...n, muette: true };
+      if (typeof km.poids === "number") n = { ...n, poids: km.poids };
+      // Les suites choisies par l'enseignant restent les siennes.
       const suites = suitesDe(km, (cle) => pageDuModele.get(cle)?.id, caseDuModele);
-      if (typeof km.poids !== "number" && !suites.length) return k;
-      change = true;
-      // Les suites choisies par l'enseignant restent les siennes ; seul le poids du picto suit.
-      if (k.suitesPerso) return { ...k, ...(typeof km.poids === "number" ? { poids: km.poids } : {}) };
-      return { ...k, ...(typeof km.poids === "number" ? { poids: km.poids } : {}), ...(suites.length ? { suites } : {}) };
+      if (suites.length && !k.suitesPerso) n = { ...n, suites };
+      if (n !== k) change = true;
+      return n;
     });
     return { ...p, cases };
   });
@@ -169,7 +210,12 @@ export function poserAuPremierLancement(deja: Classeur[]): Promise<boolean> {
     for (const c of deja) {
       if (remplacer.includes(c.id) || c.nom !== MODELE_COMPLET.nom) continue;
       const avecPoids = ajouterLesPoids(c);
-      if (avecPoids) { await garderClasseur(avecPoids); change = true; }
+      if (avecPoids) {
+        // Les pictos des cases renommées rejoignent les images de l'appareil.
+        if (dansLApplication()) await poserLesPictos(pictosDesCasesRenommees(), garderImage);
+        await garderClasseur(avecPoids);
+        change = true;
+      }
     }
     return change;
   })();

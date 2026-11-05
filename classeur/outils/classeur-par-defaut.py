@@ -43,7 +43,9 @@ import unicodedata
 # Une case : (mot, picto : un mot à chercher ou un numéro, nature, dire, page ouverte).
 # Natures : personne, verbe, nom, adjectif, social, question, petit mot.
 # Une case d'une page où l'on arrive par un lien complète ce qui s'est dit avant : « je me sens » + « content »,
-# « j'ai mal » + « à la tête », « on va » + « à la piscine ».
+# « j'ai mal » + « à la tête », « on va » + « à la piscine », « jouer » + « au ballon », « manger » + « du pain ».
+# Ce qui se dit porte donc l'article ou la préposition qui va avec le verbe de la page (« Continue d'améliorer la
+# pertinence, fais toi-même les phrases et regarde si elles ont du sens », 5 novembre 2026) ; le mot écrit reste court.
 
 def page(cle, nom, cases, suite=False, lignes=4, colonnes=5):
     return {"cle": cle, "nom": nom, "lignes": lignes, "colonnes": colonnes, "suite": suite, "cases": cases}
@@ -103,7 +105,7 @@ PAGES = [
         ("aller", "aller", "verbe", None, "lieux"),
         ("manger", "manger", "verbe", None, "manger"),
         ("boire", "boire", "verbe", None, "boire"),
-        ("le corps", "corps", "nom", None, "mal"),
+        ("j'ai mal", "douleur", "verbe", None, "mal"),
         ("je me sens", "sentiment", "verbe", None, "sens"),
         ("c'est…", 11713, "adjectif", "c'est", "decrire"),
         ("les couleurs", "couleurs", "adjectif", None, "couleurs"),
@@ -144,7 +146,7 @@ PAGES = [
     # 5 — Ça ne va pas : se plaindre, demander ; « j'ai mal », « j'ai faim »… mènent à la page qui précise.
     page("probleme", "Ça ne va pas", [
         ("j'ai mal", "douleur", "verbe", None, "mal"),
-        ("je suis malade", "malade", "adjectif", None, "mal"),
+        ("je suis malade", "malade", "adjectif", None, None),
         ("j'ai faim", "faim", "verbe", None, "manger"),
         ("j'ai soif", "soif", "verbe", None, "boire"),
         ("je suis fatigué", "fatigué", "adjectif", None, None),
@@ -261,17 +263,17 @@ PAGES = [
         ("toi", "toi", "personne", None, None),
         ("maman", "maman", "personne", None, None),
         ("papa", "papa", "personne", None, None),
-        ("frère", "frère", "personne", None, None),
-        ("sœur", "sœur", "personne", None, None),
+        ("frère", "frère", "personne", "mon frère", None),
+        ("sœur", "sœur", "personne", "ma sœur", None),
         ("mamie", "grand-mère", "personne", None, None),
         ("papi", "grand-père", "personne", None, None),
-        ("bébé", "bébé", "personne", None, None),
-        ("copain", "ami", "personne", None, None),
-        ("copine", "amie", "personne", None, None),
+        ("bébé", "bébé", "personne", "le bébé", None),
+        ("copain", "ami", "personne", "mon copain", None),
+        ("copine", "amie", "personne", "ma copine", None),
         ("maîtresse", "maîtresse", "personne", None, None),
         ("maître", "maître", "personne", None, None),
         ("AESH", 2476, "personne", None, None),
-        ("docteur", "médecin", "personne", None, None),
+        ("docteur", "médecin", "personne", "le docteur", None),
         ("les autres", "groupe", "personne", None, None),
         ("quelqu'un", "personne", "personne", None, None),
         ("tout le monde", "tous", "personne", None, None),
@@ -310,8 +312,8 @@ PAGES = [
         ("courir", "courir", "verbe", None, None),
         ("marcher", "marcher", "verbe", None, None),
         ("sauter", "sauter", "verbe", None, None),
-        ("s'asseoir", 35033, "verbe", None, None),
-        ("se lever", 34367, "verbe", None, None),
+        ("s'asseoir", 35033, "verbe", "m'asseoir", None),
+        ("se lever", 34367, "verbe", "me lever", None),
         ("dormir", "dormir", "verbe", None, None),
         ("laver", "laver", "verbe", None, None),
         ("chercher", "chercher", "verbe", None, None),
@@ -325,29 +327,29 @@ PAGES = [
     ], suite=True),
     # 11 — Jouer.
     page("jouer", "Jouer", [
-        ("un jouet", 32568, "nom", None, None),
-        ("ballon", "ballon", "nom", None, None),
-        ("puzzle", "puzzle", "nom", None, None),
-        ("poupée", "poupée", "nom", None, None),
-        ("voiture", "voiture", "nom", None, None),
-        ("cubes", "cubes", "nom", None, None),
-        ("jeu de société", 32580, "nom", None, None),
-        ("toboggan", "toboggan", "nom", None, None),
-        ("balançoire", "balançoire", "nom", None, None),
-        ("trampoline", "trampoline", "nom", None, None),
-        ("vélo", "vélo", "nom", None, None),
-        ("pâte à modeler", "pâte à modeler", "nom", None, None),
-        ("peinture", "peindre", "nom", None, None),
-        ("dessiner", 8088, "verbe", None, None),
-        ("musique", "musique", "nom", None, None),
-        ("livre", "livre", "nom", None, None),
-        ("tablette", "tablette", "nom", None, None),
-        ("bulles", "bulles", "nom", None, None),
-        ("cache-cache", "cache-cache", "nom", None, None),
-        ("train", "train", "nom", None, None),
+        ("un jouet", 32568, "nom", "avec un jouet", None),
+        ("ballon", "ballon", "nom", "au ballon", None),
+        ("puzzle", "puzzle", "nom", "au puzzle", None),
+        ("poupée", "poupée", "nom", "à la poupée", None),
+        ("voiture", "voiture", "nom", "aux voitures", None),
+        ("cubes", "cubes", "nom", "aux cubes", None),
+        ("jeu de société", 32580, "nom", "à un jeu de société", None),
+        ("toboggan", "toboggan", "nom", "au toboggan", None),
+        ("balançoire", "balançoire", "nom", "à la balançoire", None),
+        ("trampoline", "trampoline", "nom", "au trampoline", None),
+        ("vélo", "vélo", "nom", "au vélo", None),
+        ("pâte à modeler", "pâte à modeler", "nom", "à la pâte à modeler", None),
+        ("peinture", "peindre", "nom", "à la peinture", None),
+        ("memory", 39085, "nom", "au memory", None),
+        ("musique", "musique", "nom", "de la musique", None),
+        ("loto", 11295, "nom", "au loto", None),
+        ("tablette", "tablette", "nom", "à la tablette", None),
+        ("bulles", "bulles", "nom", "aux bulles", None),
+        ("cache-cache", "cache-cache", "nom", "à cache-cache", None),
+        ("train", "train", "nom", "au train", None),
     ]),
     page("jouer-2", "Jouer", [
-        ("avec moi", 7064, "social", "joue avec moi", None),
+        ("avec toi", 7064, "social", None, None),
         ("à moi", 7158, "social", "c'est à moi", None),
         ("à toi", 2608, "social", "c'est à toi", None),
         ("encore", "encore", "petit mot", None, None),
@@ -357,15 +359,15 @@ PAGES = [
         ("lancer", "lancer", "verbe", None, None),
         ("attraper", "attraper", "verbe", None, None),
         ("construire", "construire", "verbe", None, None),
-        ("se cacher", "se cacher", "verbe", None, None),
-        ("déguisement", "déguisement", "nom", None, None),
+        ("se cacher", "se cacher", "verbe", "me cacher", None),
+        ("déguisement", "déguisement", "nom", "avec les déguisements", None),
         ("chanter", "chanter", "verbe", None, None),
         ("danser", "danser", "verbe", None, None),
         ("histoire", "conte", "nom", "une histoire", None),
-        ("sable", "sable", "nom", None, None),
-        ("eau", "eau", "nom", "jouer avec l'eau", None),
-        ("dehors", "dehors", "nom", "jouer dehors", None),
-        ("dînette", "dînette", "nom", None, None),
+        ("sable", "sable", "nom", "dans le sable", None),
+        ("eau", "eau", "nom", "avec l'eau", None),
+        ("dehors", "dehors", "nom", None, None),
+        ("dînette", "dînette", "nom", "à la dînette", None),
         ("faire semblant", 33990, "verbe", None, None),
     ], suite=True),
     # 12 — Aller : les lieux ; chacun complète « on va », « je veux aller ».
@@ -415,63 +417,63 @@ PAGES = [
     ], suite=True),
     # 13 — Manger.
     page("manger", "Manger", [
-        ("j'ai faim", "faim", "verbe", None, None),
-        ("pain", "pain", "nom", None, None),
-        ("pomme", "pomme", "nom", None, None),
-        ("banane", "banane", "nom", None, None),
-        ("orange", "orange", "nom", None, None),
-        ("yaourt", "yaourt", "nom", None, None),
-        ("fromage", "fromage", "nom", None, None),
-        ("pâtes", "pâtes", "nom", None, None),
-        ("riz", "riz", "nom", None, None),
-        ("frites", "frites", "nom", None, None),
-        ("pizza", "pizza", "nom", None, None),
-        ("soupe", "soupe", "nom", None, None),
-        ("légumes", "légumes", "nom", None, None),
-        ("viande", "viande", "nom", None, None),
-        ("poisson", "poisson", "nom", None, None),
+        ("plus faim", 38801, "verbe", "je n'ai plus faim", None),
+        ("pain", "pain", "nom", "du pain", None),
+        ("pomme", "pomme", "nom", "une pomme", None),
+        ("banane", "banane", "nom", "une banane", None),
+        ("orange", "orange", "nom", "une orange", None),
+        ("yaourt", "yaourt", "nom", "un yaourt", None),
+        ("fromage", "fromage", "nom", "du fromage", None),
+        ("pâtes", "pâtes", "nom", "des pâtes", None),
+        ("riz", "riz", "nom", "du riz", None),
+        ("frites", "frites", "nom", "des frites", None),
+        ("pizza", "pizza", "nom", "de la pizza", None),
+        ("soupe", "soupe", "nom", "de la soupe", None),
+        ("légumes", "légumes", "nom", "des légumes", None),
+        ("viande", "viande", "nom", "de la viande", None),
+        ("poisson", "poisson", "nom", "du poisson", None),
         ("c'est bon", "bon", "adjectif", None, None),
         ("pas bon", 32338, "adjectif", "ce n'est pas bon", None),
         ("encore", "encore", "petit mot", None, None),
         ("fini", "fini", "petit mot", "j'ai fini", None),
-        ("à boire", "boire", "verbe", None, "boire"),
+        ("boire", "boire", "verbe", None, "boire"),
     ]),
     page("manger-2", "Manger", [
-        ("œuf", "œuf", "nom", None, None),
-        ("gâteau", "gâteau", "nom", None, None),
-        ("biscuit", "biscuit", "nom", None, None),
-        ("compote", 34012, "nom", None, None),
-        ("chocolat", "chocolat", "nom", None, None),
-        ("céréales", "céréales", "nom", None, None),
-        ("glace", "glace", "nom", None, None),
-        ("bonbon", "bonbon", "nom", None, None),
-        ("sandwich", "sandwich", "nom", None, None),
-        ("chips", "chips", "nom", None, None),
-        ("carottes", "carotte", "nom", None, None),
-        ("tomate", "tomate", "nom", None, None),
-        ("haricots verts", "haricots verts", "nom", None, None),
-        ("poulet", "poulet", "nom", None, None),
-        ("jambon", "jambon", "nom", None, None),
-        ("cuillère", "cuillère", "nom", None, None),
-        ("fourchette", "fourchette", "nom", None, None),
-        ("couteau", "couteau", "nom", None, None),
-        ("assiette", "assiette", "nom", None, None),
-        ("bol", "bol", "nom", None, None),
+        ("œuf", "œuf", "nom", "un œuf", None),
+        ("gâteau", "gâteau", "nom", "du gâteau", None),
+        ("biscuit", "biscuit", "nom", "un biscuit", None),
+        ("compote", 34012, "nom", "de la compote", None),
+        ("chocolat", "chocolat", "nom", "du chocolat", None),
+        ("céréales", "céréales", "nom", "des céréales", None),
+        ("glace", "glace", "nom", "une glace", None),
+        ("bonbon", "bonbon", "nom", "un bonbon", None),
+        ("sandwich", "sandwich", "nom", "un sandwich", None),
+        ("chips", "chips", "nom", "des chips", None),
+        ("carottes", "carotte", "nom", "des carottes", None),
+        ("tomate", "tomate", "nom", "une tomate", None),
+        ("haricots verts", "haricots verts", "nom", "des haricots verts", None),
+        ("poulet", "poulet", "nom", "du poulet", None),
+        ("jambon", "jambon", "nom", "du jambon", None),
+        ("cuillère", "cuillère", "nom", "avec une cuillère", None),
+        ("fourchette", "fourchette", "nom", "avec une fourchette", None),
+        ("couteau", "couteau", "nom", "avec un couteau", None),
+        ("assiette", "assiette", "nom", "dans une assiette", None),
+        ("bol", "bol", "nom", "dans un bol", None),
     ], suite=True),
     # 14 — Boire.
     page("boire", "Boire", [
         ("j'ai soif", "soif", "verbe", None, None),
         ("eau", "eau", "nom", "de l'eau", None),
         ("lait", "lait", "nom", "du lait", None),
-        ("jus d'orange", "jus d'orange", "nom", None, None),
-        ("jus de pomme", "jus de pomme", "nom", None, None),
-        ("chocolat chaud", "chocolat chaud", "nom", None, None),
-        ("sirop", "sirop", "nom", None, None),
-        ("verre", "verre", "nom", None, None),
-        ("gourde", "gourde", "nom", None, None),
-        ("paille", 6164, "nom", None, None),
-        ("bouteille", "bouteille", "nom", None, None),
-        ("tasse", "tasse", "nom", None, None),
+        ("jus d'orange", "jus d'orange", "nom", "du jus d'orange", None),
+        ("jus de pomme", "jus de pomme", "nom", "du jus de pomme", None),
+        ("chocolat chaud", "chocolat chaud", "nom", "du chocolat chaud", None),
+        ("sirop", "sirop", "nom", "du sirop", None),
+        ("verre", "verre", "nom", "dans un verre", None),
+        ("gourde", "gourde", "nom", "à la gourde", None),
+        ("paille", 6164, "nom", "avec une paille", None),
+        ("bouteille", "bouteille", "nom", "à la bouteille", None),
+        ("tasse", "tasse", "nom", "dans une tasse", None),
         ("chaud", "chaud", "adjectif", None, None),
         ("froid", "froid", "adjectif", None, None),
         ("c'est bon", "bon", "adjectif", None, None),
@@ -518,8 +520,8 @@ PAGES = [
         ("gris", "gris", "adjectif", None, None),
         ("rond", "rond", "adjectif", None, None),
         ("carré", "carré", "adjectif", None, None),
-        ("triangle", 4763, "nom", None, None),
-        ("rectangle", 4731, "nom", None, None),
+        ("triangle", 4763, "nom", "un triangle", None),
+        ("rectangle", 4731, "nom", "un rectangle", None),
         ("long", "long", "adjectif", None, None),
         ("court", "court", "adjectif", None, None),
         ("doux", "doux", "adjectif", None, None),
@@ -536,14 +538,14 @@ PAGES = [
         ("découper", "découper", "verbe", None, None),
         ("coller", "coller", "verbe", None, None),
         ("chanter", "chanter", "verbe", None, None),
-        ("sport", "sport", "nom", None, None),
-        ("ordinateur", "ordinateur", "nom", None, None),
+        ("sport", "sport", "nom", "le sport", None),
+        ("ordinateur", "ordinateur", "nom", "l'ordinateur", None),
         ("ranger", "ranger", "verbe", None, None),
-        ("regroupement", 39679, "nom", None, None),
-        ("récréation", "récréation", "nom", None, None),
-        ("cantine", "cantine", "nom", None, None),
-        ("sieste", "sieste", "nom", None, None),
-        ("atelier", 32176, "nom", None, None),
+        ("regroupement", 39679, "nom", "le regroupement", None),
+        ("récréation", "récréation", "nom", "la récréation", None),
+        ("cantine", "cantine", "nom", "la cantine", None),
+        ("sieste", "sieste", "nom", "la sieste", None),
+        ("atelier", 32176, "nom", "l'atelier", None),
         ("travailler", "travailler", "verbe", None, None),
         ("j'ai fini", "fini", "petit mot", None, None),
         ("c'est mon tour", 7158, "social", None, None),
@@ -551,66 +553,66 @@ PAGES = [
     ]),
     page("classe-2", "En classe", [
         ("quelque chose", 11318, "nom", None, None),
-        ("crayon", "crayon", "nom", None, None),
-        ("feutre", "feutre", "nom", None, None),
-        ("ciseaux", "ciseaux", "nom", None, None),
-        ("colle", "colle", "nom", None, None),
-        ("cahier", "cahier", "nom", None, None),
-        ("livre", "livre", "nom", None, None),
-        ("feuille", 8349, "nom", None, None),
-        ("gomme", "gomme", "nom", None, None),
-        ("règle", "règle", "nom", None, None),
-        ("cartable", "sac à dos", "nom", None, None),
-        ("tableau", 2526, "nom", None, None),
-        ("table", "table", "nom", None, None),
-        ("chaise", "chaise", "nom", None, None),
-        ("porte", "porte", "nom", None, None),
-        ("fenêtre", "fenêtre", "nom", None, None),
-        ("se laver les mains", 8975, "verbe", None, None),
-        ("s'asseoir", 35033, "verbe", None, None),
-        ("se mettre en rang", 39146, "verbe", None, None),
+        ("crayon", "crayon", "nom", "un crayon", None),
+        ("feutre", "feutre", "nom", "un feutre", None),
+        ("ciseaux", "ciseaux", "nom", "les ciseaux", None),
+        ("colle", "colle", "nom", "la colle", None),
+        ("cahier", "cahier", "nom", "mon cahier", None),
+        ("livre", "livre", "nom", "un livre", None),
+        ("feuille", 8349, "nom", "une feuille", None),
+        ("gomme", "gomme", "nom", "une gomme", None),
+        ("règle", "règle", "nom", "une règle", None),
+        ("cartable", "sac à dos", "nom", "mon cartable", None),
+        ("tableau", 2526, "nom", "le tableau", None),
+        ("table", "table", "nom", "la table", None),
+        ("chaise", "chaise", "nom", "la chaise", None),
+        ("porte", "porte", "nom", "la porte", None),
+        ("fenêtre", "fenêtre", "nom", "la fenêtre", None),
+        ("se laver les mains", 8975, "verbe", "me laver les mains", None),
+        ("s'asseoir", 35033, "verbe", "m'asseoir", None),
+        ("se mettre en rang", 39146, "verbe", "me mettre en rang", None),
         ("silence", "silence", "social", None, None),
     ], suite=True),
     # 17 — Les animaux.
     page("animaux", "Les animaux", [
         ("un animal", 6901, "nom", None, None),
-        ("chien", "chien", "nom", None, None),
-        ("chat", "chat", "nom", None, None),
-        ("oiseau", "oiseau", "nom", None, None),
-        ("poisson", "poisson", "nom", None, None),
-        ("cheval", "cheval", "nom", None, None),
-        ("vache", "vache", "nom", None, None),
-        ("cochon", "cochon", "nom", None, None),
-        ("mouton", "mouton", "nom", None, None),
-        ("poule", "poule", "nom", None, None),
-        ("canard", "canard", "nom", None, None),
-        ("lapin", "lapin", "nom", None, None),
-        ("souris", "souris", "nom", None, None),
-        ("lion", "lion", "nom", None, None),
-        ("éléphant", "éléphant", "nom", None, None),
-        ("ours", "ours", "nom", None, None),
-        ("serpent", "serpent", "nom", None, None),
-        ("papillon", "papillon", "nom", None, None),
+        ("chien", "chien", "nom", "le chien", None),
+        ("chat", "chat", "nom", "le chat", None),
+        ("oiseau", "oiseau", "nom", "l'oiseau", None),
+        ("poisson", "poisson", "nom", "le poisson", None),
+        ("cheval", "cheval", "nom", "le cheval", None),
+        ("vache", "vache", "nom", "la vache", None),
+        ("cochon", "cochon", "nom", "le cochon", None),
+        ("mouton", "mouton", "nom", "le mouton", None),
+        ("poule", "poule", "nom", "la poule", None),
+        ("canard", "canard", "nom", "le canard", None),
+        ("lapin", "lapin", "nom", "le lapin", None),
+        ("souris", "souris", "nom", "la souris", None),
+        ("lion", "lion", "nom", "le lion", None),
+        ("éléphant", "éléphant", "nom", "l'éléphant", None),
+        ("ours", "ours", "nom", "l'ours", None),
+        ("serpent", "serpent", "nom", "le serpent", None),
+        ("papillon", "papillon", "nom", "le papillon", None),
         ("caresser", 35471, "verbe", None, None),
         ("donner à manger", "nourrir", "verbe", None, None),
     ]),
     # 18 — S'habiller.
     page("habits", "S'habiller", [
         ("un vêtement", 34395, "nom", None, None),
-        ("manteau", "manteau", "nom", None, None),
-        ("bonnet", "bonnet", "nom", None, None),
-        ("écharpe", "écharpe", "nom", None, None),
-        ("gants", "gants", "nom", None, None),
-        ("chaussures", "chaussures", "nom", None, None),
-        ("chaussettes", "chaussettes", "nom", None, None),
-        ("pantalon", "pantalon", "nom", None, None),
-        ("t-shirt", "t-shirt", "nom", None, None),
-        ("pull", "pull", "nom", None, None),
-        ("robe", "robe", "nom", None, None),
-        ("jupe", "jupe", "nom", None, None),
-        ("pyjama", "pyjama", "nom", None, None),
-        ("couche", "couche", "nom", None, None),
-        ("lunettes", "lunettes", "nom", None, None),
+        ("manteau", "manteau", "nom", "mon manteau", None),
+        ("bonnet", "bonnet", "nom", "mon bonnet", None),
+        ("écharpe", "écharpe", "nom", "mon écharpe", None),
+        ("gants", "gants", "nom", "mes gants", None),
+        ("chaussures", "chaussures", "nom", "mes chaussures", None),
+        ("chaussettes", "chaussettes", "nom", "mes chaussettes", None),
+        ("pantalon", "pantalon", "nom", "mon pantalon", None),
+        ("t-shirt", "t-shirt", "nom", "mon t-shirt", None),
+        ("pull", "pull", "nom", "mon pull", None),
+        ("robe", "robe", "nom", "ma robe", None),
+        ("jupe", "jupe", "nom", "ma jupe", None),
+        ("pyjama", "pyjama", "nom", "mon pyjama", None),
+        ("couche", "couche", "nom", "ma couche", None),
+        ("lunettes", "lunettes", "nom", "mes lunettes", None),
         ("mettre", 2781, "verbe", None, None),
         ("enlever", 27049, "verbe", None, None),
         ("attacher", 17026, "verbe", None, None),
@@ -618,6 +620,27 @@ PAGES = [
         ("trop grand", "grand", "adjectif", "c'est trop grand", None),
     ]),
 ]
+
+# Les cases qui ouvrent leur page sans rien dire : une catégorie qu'un nom désigne (« les gens », « les animaux »), et
+# « faire », qui mène aux actions. « J'aime » + « les gens » + « maman » disait « j'aime les gens maman » ; il dit
+# « j'aime maman ». Les verbes qui ouvrent leur page parlent, eux : « j'aime » + « jouer » + « au ballon ».
+MUETTES = {
+    ("dire", "faire"), ("dire", "en classe"), ("veux", "faire"),
+    ("categories", "les gens"), ("categories", "faire"), ("categories", "les couleurs"), ("categories", "en classe"),
+    ("categories", "les animaux"), ("categories", "s'habiller"), ("categories", "questions"),
+}
+
+# Les cases renommées : un classeur complet que l'enseignant a retouché les reçoit à la place des anciennes — leur mot,
+# et leur picto, leur couleur, ce qu'elles disent, là où il ne les a pas changés. Pour chacune, ce qu'elle était :
+# (mot, ce qu'il disait, picto, nature). On n'en retire pas : un classeur d'une version ancienne peut encore arriver.
+RENOMMEES = {
+    ("categories", "j'ai mal"): [("le corps", "", 2728, "nom")],
+    ("manger", "plus faim"): [("j'ai faim", "", 35559, "verbe")],
+    ("manger", "boire"): [("à boire", "", 2276, "verbe")],
+    ("jouer", "memory"): [("dessiner", "", 8088, "verbe")],
+    ("jouer", "loto"): [("livre", "", 2450, "nom")],
+    ("jouer-2", "avec toi"): [("avec moi", "joue avec moi", 7064, "social")],
+}
 
 # ── Les ensembles par thème : les poids, calculés ici, une fois pour toutes ──
 #
@@ -667,8 +690,7 @@ SUITES = {
     "fermer": [("classe-2", 60), ("jouer", 40)],
     "chercher": OBJETS,
     "trouver": OBJETS,
-    "regarder": [("jouer", 40), ("animaux", 30), ("classe-2", 30)],
-    "écouter": [("jouer", 100)],
+    "regarder": [("animaux", 50), ("classe-2", 50)],
     "aider": [("gens", 100)],
     "dessiner": [("animaux", 40), ("couleurs", 30), ("gens", 30)],
     "caresser": [("animaux", 100)],
@@ -678,13 +700,10 @@ SUITES = {
     "attacher": [("habits", 100)],
     # Les questions.
     "qui ?": [("gens", 100)],
-    "c'est qui ?": [("gens", 100)],
-    "c'est à qui ?": [("gens", 100)],
     "où ?": [("lieux", 100)],
-    "on va où ?": [("lieux", 100)],
     "on fait quoi ?": [("actions", 50), ("jouer", 50)],
     "tu veux ?": [("jouer", 40), ("manger", 30), ("boire", 30)],
-    "je peux ?": [("jouer", 40), ("actions", 30), ("lieux", 30)],
+    "je peux ?": [("jouer", 50), ("actions", 50)],
     # Ce qui ne va pas : la suite qui précise.
     "j'ai faim": [("manger", 100)],
     "j'ai soif": [("boire", 100)],
@@ -716,7 +735,7 @@ SUITES.update({
     "attends": [("gens", 100)],
     "à moi": [("jouer", 60), ("classe-2", 40)],
     "à toi": [("jouer", 60), ("classe-2", 40)],
-    "avec moi": [("jouer", 100)],
+    "avec toi": [("jouer", 100)],
     "bonjour": [("gens", 100)],
     "au revoir": [("gens", 100)],
     "merci": [("gens", 100)],
@@ -797,7 +816,7 @@ SUITES_PAR_PAGE = {
     "jouer": ([("gens", 40), ("decrire", 30), ("couleurs", 30)], set()),
     "lieux": (LIEUX, {"ici", "là-bas", "à pied", "toilettes", "voiture", "bus"}),
     "lieux-2": (LIEUX, {"en haut", "en bas", "devant", "derrière", "loin"}),
-    "manger": ([("boire", 50), ("decrire", 50)], {"c'est bon", "pas bon", "encore", "fini", "j'ai faim"}),
+    "manger": ([("boire", 50), ("decrire", 50)], {"c'est bon", "pas bon", "encore", "fini", "plus faim"}),
     "manger-2": ([("boire", 50), ("decrire", 50)], {"cuillère", "fourchette", "couteau", "assiette", "bol"}),
     "boire": ([("decrire", 60), ("manger", 40)], {"chaud", "froid", "c'est bon", "un peu", "beaucoup", "encore", "fini", "c'est renversé",
                                                   "verre", "gourde", "paille", "bouteille", "tasse", "j'ai soif"}),
@@ -823,13 +842,13 @@ CHOIX = {
     # « Quand je clique sur regarde, il me faudrait des pictos génériques, par exemple pour animaux » : le générique en tête.
     ("regarde", "gens"): ["quelqu'un", "moi", "maman", "papa"],
     ("regarde", "animaux"): ["un animal", "chien", "chat", "oiseau"],
-    ("regarde", "jouer"): ["un jouet", "ballon", "voiture", "livre"],
+    ("regarde", "jouer"): ["un jouet", "ballon", "voiture", "puzzle"],
     ("regarde", "classe-2"): ["quelque chose", "cahier", "livre", "feuille"],
     ("regarde", "lieux"): ["là-bas", "ici", "dehors", "maison"],
     # Montrer, raconter, avoir peur, perdre : un générique d'abord, quand on ne trouve pas le bon mot.
     ("je te montre", "classe-2"): ["quelque chose", "cahier", "livre", "feuille"],
     ("je te montre", "animaux"): ["un animal", "chien", "chat", "oiseau"],
-    ("je te montre", "jouer"): ["un jouet", "ballon", "voiture", "livre"],
+    ("je te montre", "jouer"): ["un jouet", "ballon", "voiture", "puzzle"],
     ("je te raconte", "gens"): ["quelqu'un", "maman", "papa", "copain"],
     # Pour demander, un jouet précis vaut mieux que « un jouet ».
     ("je veux", "jouer"): ["voiture", "ballon", "jeu de société", "poupée"],
@@ -845,7 +864,7 @@ CHOIX = {
     ("mettre", "habits"): ["manteau", "chaussures", "bonnet", "pull"],
     ("dormir", "lieux-2"): ["chambre", "maison", "salon", "chez un copain"],
     ("lire", "classe-2"): ["livre", "cahier", "tableau", "feuille"],
-    ("lire", "jouer"): ["livre", "histoire", "tablette"],
+    ("lire", "jouer"): ["histoire", "tablette"],
     ("écrire", "classe-2"): ["crayon", "feutre", "cahier", "tableau"],
     ("découper", "classe-2"): ["ciseaux", "feuille", "colle", "cahier"],
     ("coller", "classe-2"): ["colle", "feuille", "cahier", "ciseaux"],
@@ -982,7 +1001,7 @@ def main(banque, sortie, chemin_lexique=None):
         meilleur = max(trouves, key=lambda t: (t[1] == 0, t[2] == NATURE_ARASAAC[nature], t[0].get("downloads") or 0))
         return meilleur[0]["_id"], (meilleur[0]["keywords"][0].get("keyword") or "")
 
-    pages, manquants, choisis = [], [], {}
+    pages, manquants, choisis, muettes, renommees = [], [], {}, set(), set()
     for pg in PAGES:
         cle, nom, lignes, colonnes, cases = pg["cle"], pg["nom"], pg["lignes"], pg["colonnes"], pg["cases"]
         assert len(cases) <= lignes * colonnes, nom
@@ -1002,6 +1021,19 @@ def main(banque, sortie, chemin_lexique=None):
                 c["dire"] = dire
             if lien:
                 c["lien"] = lien
+            if (cle, mot) in RENOMMEES:
+                c["avant"] = []
+                for vieux, vieux_dire, vieux_picto, vieille_nature in RENOMMEES[(cle, mot)]:
+                    assert vieux not in {x[0] for x in cases}, f"{nom} › {vieux} : encore sur la page"
+                    a = {"mot": vieux, "arasaac": vieux_picto, "fond": COULEURS[vieille_nature][0], "bord": COULEURS[vieille_nature][1]}
+                    if vieux_dire:
+                        a["dire"] = vieux_dire
+                    c["avant"].append(a)
+                renommees.add((cle, mot))
+            if (cle, mot) in MUETTES:
+                assert lien, f"{nom} › {mot} : une case muette ouvre une page"
+                c["muette"] = True
+                muettes.add((cle, mot))
             regle, de_la_page = SUITES_SUR_LA_PAGE.get((cle, mot)) or SUITES.get(mot), False
             if regle is None and not lien and cle in SUITES_PAR_PAGE and mot not in SUITES_PAR_PAGE[cle][1]:
                 regle, de_la_page = SUITES_PAR_PAGE[cle][0], True
@@ -1024,6 +1056,8 @@ def main(banque, sortie, chemin_lexique=None):
         pages.append(sortie_page)
     cles = {p["cle"] for p in pages}
     assert len(cles) == len(pages), "deux pages ont la même clé"
+    assert muettes == MUETTES, f"des cases muettes introuvables : {MUETTES - muettes}"
+    assert renommees == set(RENOMMEES), f"des cases renommées introuvables : {set(RENOMMEES) - renommees}"
     assert not pages[0].get("suite"), "la page 1 ouvre la première section"
     for p in pages:
         for c in p["cases"]:
@@ -1097,11 +1131,30 @@ def main(banque, sortie, chemin_lexique=None):
     for p in pages:
         for c in p["cases"]:
             del c["_nature"], c["_frequence"]
+    # Ce que chaque case disait dans les modèles d'avant : un classeur complet que l'enseignant a retouché reçoit la
+    # nouvelle forme là où la case dit encore une ancienne (« ballon » → « au ballon ») ; ce qu'il a écrit lui-même
+    # ne bouge pas. "" : la case disait son mot.
+    fichier = os.path.join(sortie, "src", "donnees", "classeur-par-defaut.json")
+    avant = {}
+    if os.path.exists(fichier):
+        with open(fichier, encoding="utf-8") as f:
+            for p in json.load(f)["pages"]:
+                for c in p["cases"]:
+                    avant[(p["cle"], c["mot"])] = c
+    for p in pages:
+        for c in p["cases"]:
+            vieille = avant.get((p["cle"], c["mot"]))
+            if not vieille:
+                continue
+            formes = set(vieille.get("direAvant", [])) | {vieille.get("dire", "")}
+            formes.discard(c.get("dire", ""))
+            if formes:
+                c["direAvant"] = sorted(formes)
     os.makedirs(os.path.join(sortie, "src", "donnees"), exist_ok=True)
-    with open(os.path.join(sortie, "src", "donnees", "classeur-par-defaut.json"), "w", encoding="utf-8") as f:
+    with open(fichier, "w", encoding="utf-8") as f:
         modele = {"nom": "Classeur complet", "accueil": "accueil", "categories": "categories", "pages": pages}
         # La version des poids : un classeur complet déjà posé reçoit ceux-ci au lancement quand elle change.
-        modele["versionDesPoids"] = "2026-11-05-lexique383-generiques5" if lex else "2026-11-05-ordre"
+        modele["versionDesPoids"] = "2026-11-05-lexique383-phrases7" if lex else "2026-11-05-ordre"
         if lex:
             modele["sources"] = ["Fréquences : Lexique 3.83 (B. New, C. Pallier, lexique.org), CC BY-SA 4.0"]
         json.dump(modele, f, ensure_ascii=False, indent=1)

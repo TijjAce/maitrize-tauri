@@ -207,7 +207,7 @@
         "jouer:0",
         "jouer:1",
         "jouer:4",
-        "jouer:15"
+        "jouer:2"
        ]
       },
       {
@@ -474,6 +474,7 @@
      "bord": "#2e9b3e",
      "arasaac": 11749,
      "lien": "actions",
+     "muette": true,
      "suites": [
       {
        "page": "actions",
@@ -681,7 +682,7 @@
         "jouer:0",
         "jouer:1",
         "jouer:4",
-        "jouer:15"
+        "jouer:2"
        ]
       },
       {
@@ -816,6 +817,7 @@
      "bord": "#e07b12",
      "arasaac": 5913,
      "lien": "classe",
+     "muette": true,
      "suites": [
       {
        "page": "classe",
@@ -864,6 +866,7 @@
      "bord": "#e3b800",
      "arasaac": 34557,
      "lien": "gens",
+     "muette": true,
      "poids": 0.127
     },
     {
@@ -872,6 +875,7 @@
      "bord": "#2e9b3e",
      "arasaac": 11749,
      "lien": "actions",
+     "muette": true,
      "suites": [
       {
        "page": "actions",
@@ -959,12 +963,26 @@
      "poids": 0.337
     },
     {
-     "mot": "le corps",
-     "fond": "#fce6ca",
-     "bord": "#e07b12",
-     "arasaac": 2728,
+     "mot": "j'ai mal",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2367,
      "lien": "mal",
-     "poids": 0.096
+     "avant": [
+      {
+       "mot": "le corps",
+       "arasaac": 2728,
+       "fond": "#fce6ca",
+       "bord": "#e07b12"
+      }
+     ],
+     "suites": [
+      {
+       "page": "mal",
+       "poids": 1.0
+      }
+     ],
+     "poids": 0.335
     },
     {
      "mot": "je me sens",
@@ -1011,6 +1029,7 @@
      "bord": "#2f6fd0",
      "arasaac": 5968,
      "lien": "couleurs",
+     "muette": true,
      "poids": 0.08
     },
     {
@@ -1019,6 +1038,7 @@
      "bord": "#e07b12",
      "arasaac": 5913,
      "lien": "classe",
+     "muette": true,
      "suites": [
       {
        "page": "classe",
@@ -1033,6 +1053,7 @@
      "bord": "#e07b12",
      "arasaac": 6901,
      "lien": "animaux",
+     "muette": true,
      "poids": 0.076
     },
     {
@@ -1041,6 +1062,7 @@
      "bord": "#2e9b3e",
      "arasaac": 6627,
      "lien": "habits",
+     "muette": true,
      "suites": [
       {
        "page": "habits",
@@ -1055,6 +1077,7 @@
      "bord": "#8a4fd8",
      "arasaac": 7217,
      "lien": "questions",
+     "muette": true,
      "poids": 0.086
     },
     {
@@ -1254,6 +1277,7 @@
      "bord": "#2e9b3e",
      "arasaac": 11749,
      "lien": "actions",
+     "muette": true,
      "suites": [
       {
        "page": "actions",
@@ -1376,16 +1400,12 @@
      "arasaac": 2474,
      "suites": [
       {
-       "page": "jouer",
-       "poids": 0.4
-      },
-      {
        "page": "animaux",
-       "poids": 0.3
+       "poids": 0.5
       },
       {
        "page": "classe-2",
-       "poids": 0.3
+       "poids": 0.5
       }
      ],
      "poids": 0.651
@@ -1395,12 +1415,6 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2381,
-     "suites": [
-      {
-       "page": "jouer",
-       "poids": 1.0
-      }
-     ],
      "poids": 0.589
     },
     {
@@ -1506,14 +1520,13 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 28742,
-     "lien": "mal",
      "suites": [
       {
        "page": "mal",
        "poids": 1.0
       }
      ],
-     "poids": 0.432
+     "poids": 0.864
     },
     {
      "mot": "j'ai faim",
@@ -3016,12 +3029,6 @@
      "fond": "#e9ddf6",
      "bord": "#8a4fd8",
      "arasaac": 32743,
-     "suites": [
-      {
-       "page": "gens",
-       "poids": 1.0
-      }
-     ],
      "poids": 0.746
     },
     {
@@ -3032,15 +3039,11 @@
      "suites": [
       {
        "page": "jouer",
-       "poids": 0.4
+       "poids": 0.5
       },
       {
        "page": "actions",
-       "poids": 0.3
-      },
-      {
-       "page": "lieux",
-       "poids": 0.3
+       "poids": 0.5
       }
      ],
      "poids": 0.734
@@ -3127,12 +3130,6 @@
      "fond": "#e9ddf6",
      "bord": "#8a4fd8",
      "arasaac": 9853,
-     "suites": [
-      {
-       "page": "gens",
-       "poids": 1.0
-      }
-     ],
      "poids": 0.68
     },
     {
@@ -3140,12 +3137,6 @@
      "fond": "#e9ddf6",
      "bord": "#8a4fd8",
      "arasaac": 7764,
-     "suites": [
-      {
-       "page": "lieux",
-       "poids": 1.0
-      }
-     ],
      "poids": 0.622
     },
     {
@@ -3253,6 +3244,7 @@
      "fond": "#fff2b8",
      "bord": "#e3b800",
      "arasaac": 2423,
+     "dire": "mon frère",
      "suites": [
       {
        "page": "actions",
@@ -3267,13 +3259,17 @@
        "poids": 0.2
       }
      ],
-     "poids": 0.733
+     "poids": 0.733,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "sœur",
      "fond": "#fff2b8",
      "bord": "#e3b800",
      "arasaac": 2422,
+     "dire": "ma sœur",
      "suites": [
       {
        "page": "actions",
@@ -3288,7 +3284,10 @@
        "poids": 0.2
       }
      ],
-     "poids": 0.668
+     "poids": 0.668,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "mamie",
@@ -3337,6 +3336,7 @@
      "fond": "#fff2b8",
      "bord": "#e3b800",
      "arasaac": 2275,
+     "dire": "le bébé",
      "suites": [
       {
        "page": "actions",
@@ -3351,13 +3351,17 @@
        "poids": 0.2
       }
      ],
-     "poids": 0.617
+     "poids": 0.617,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "copain",
      "fond": "#fff2b8",
      "bord": "#e3b800",
      "arasaac": 8487,
+     "dire": "mon copain",
      "suites": [
       {
        "page": "actions",
@@ -3372,13 +3376,17 @@
        "poids": 0.2
       }
      ],
-     "poids": 0.592
+     "poids": 0.592,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "copine",
      "fond": "#fff2b8",
      "bord": "#e3b800",
      "arasaac": 8486,
+     "dire": "ma copine",
      "suites": [
       {
        "page": "actions",
@@ -3393,7 +3401,10 @@
        "poids": 0.2
       }
      ],
-     "poids": 0.579
+     "poids": 0.579,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "maîtresse",
@@ -3463,6 +3474,7 @@
      "fond": "#fff2b8",
      "bord": "#e3b800",
      "arasaac": 2467,
+     "dire": "le docteur",
      "suites": [
       {
        "page": "actions",
@@ -3477,7 +3489,10 @@
        "poids": 0.2
       }
      ],
-     "poids": 0.56
+     "poids": 0.56,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "les autres",
@@ -3936,16 +3951,12 @@
      "arasaac": 2474,
      "suites": [
       {
-       "page": "jouer",
-       "poids": 0.4
-      },
-      {
        "page": "animaux",
-       "poids": 0.3
+       "poids": 0.5
       },
       {
        "page": "classe-2",
-       "poids": 0.3
+       "poids": 0.5
       }
      ],
      "poids": 0.597
@@ -3955,12 +3966,6 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2381,
-     "suites": [
-      {
-       "page": "jouer",
-       "poids": 1.0
-      }
-     ],
      "poids": 0.539
     },
     {
@@ -4169,6 +4174,7 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 35033,
+     "dire": "m'asseoir",
      "suites": [
       {
        "page": "classe-2",
@@ -4179,14 +4185,21 @@
        ]
       }
      ],
-     "poids": 0.535
+     "poids": 0.535,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "se lever",
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 34367,
-     "poids": 0.488
+     "dire": "me lever",
+     "poids": 0.488,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "dormir",
@@ -4394,6 +4407,7 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 32568,
+     "dire": "avec un jouet",
      "suites": [
       {
        "page": "gens",
@@ -4426,13 +4440,17 @@
        ]
       }
      ],
-     "poids": 0.77
+     "poids": 0.77,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "ballon",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2269,
+     "dire": "au ballon",
      "suites": [
       {
        "page": "gens",
@@ -4465,13 +4483,17 @@
        ]
       }
      ],
-     "poids": 0.753
+     "poids": 0.753,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "puzzle",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2540,
+     "dire": "au puzzle",
      "suites": [
       {
        "page": "gens",
@@ -4504,13 +4526,17 @@
        ]
       }
      ],
-     "poids": 0.576
+     "poids": 0.576,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "poupée",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2482,
+     "dire": "à la poupée",
      "suites": [
       {
        "page": "gens",
@@ -4543,13 +4569,17 @@
        ]
       }
      ],
-     "poids": 0.68
+     "poids": 0.68,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "voiture",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2339,
+     "dire": "aux voitures",
      "suites": [
       {
        "page": "gens",
@@ -4582,13 +4612,17 @@
        ]
       }
      ],
-     "poids": 0.879
+     "poids": 0.879,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "cubes",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 8308,
+     "dire": "aux cubes",
      "suites": [
       {
        "page": "gens",
@@ -4621,13 +4655,17 @@
        ]
       }
      ],
-     "poids": 0.467
+     "poids": 0.467,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "jeu de société",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 32580,
+     "dire": "à un jeu de société",
      "suites": [
       {
        "page": "gens",
@@ -4660,13 +4698,17 @@
        ]
       }
      ],
-     "poids": 0.695
+     "poids": 0.695,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "toboggan",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 4759,
+     "dire": "au toboggan",
      "suites": [
       {
        "page": "gens",
@@ -4699,13 +4741,17 @@
        ]
       }
      ],
-     "poids": 0.372
+     "poids": 0.372,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "balançoire",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 4608,
+     "dire": "à la balançoire",
      "suites": [
       {
        "page": "gens",
@@ -4738,13 +4784,17 @@
        ]
       }
      ],
-     "poids": 0.399
+     "poids": 0.399,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "trampoline",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 23891,
+     "dire": "au trampoline",
      "suites": [
       {
        "page": "gens",
@@ -4777,13 +4827,17 @@
        ]
       }
      ],
-     "poids": 0.355
+     "poids": 0.355,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "vélo",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2277,
+     "dire": "au vélo",
      "suites": [
       {
        "page": "gens",
@@ -4816,13 +4870,17 @@
        ]
       }
      ],
-     "poids": 0.575
+     "poids": 0.575,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "pâte à modeler",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2529,
+     "dire": "à la pâte à modeler",
      "suites": [
       {
        "page": "gens",
@@ -4855,13 +4913,17 @@
        ]
       }
      ],
-     "poids": 0.367
+     "poids": 0.367,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "peinture",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2348,
+     "dire": "à la peinture",
      "suites": [
       {
        "page": "gens",
@@ -4894,17 +4956,45 @@
        ]
       }
      ],
-     "poids": 0.537
+     "poids": 0.537,
+     "direAvant": [
+      ""
+     ]
     },
     {
-     "mot": "dessiner",
-     "fond": "#d9f0d4",
-     "bord": "#2e9b3e",
-     "arasaac": 8088,
+     "mot": "memory",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 39085,
+     "dire": "au memory",
+     "avant": [
+      {
+       "mot": "dessiner",
+       "arasaac": 8088,
+       "fond": "#d9f0d4",
+       "bord": "#2e9b3e"
+      }
+     ],
      "suites": [
       {
-       "page": "animaux",
-       "poids": 0.4
+       "page": "gens",
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
@@ -4915,25 +5005,16 @@
         "couleurs:3",
         "couleurs:2"
        ]
-      },
-      {
-       "page": "gens",
-       "poids": 0.3,
-       "cases": [
-        "gens:0",
-        "gens:2",
-        "gens:3",
-        "gens:9"
-       ]
       }
      ],
-     "poids": 0.158
+     "poids": 0.245
     },
     {
      "mot": "musique",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 24795,
+     "dire": "de la musique",
      "suites": [
       {
        "page": "gens",
@@ -4966,13 +5047,25 @@
        ]
       }
      ],
-     "poids": 0.66
+     "poids": 0.66,
+     "direAvant": [
+      ""
+     ]
     },
     {
-     "mot": "livre",
+     "mot": "loto",
      "fond": "#fce6ca",
      "bord": "#e07b12",
-     "arasaac": 2450,
+     "arasaac": 11295,
+     "dire": "au loto",
+     "avant": [
+      {
+       "mot": "livre",
+       "arasaac": 2450,
+       "fond": "#fce6ca",
+       "bord": "#e07b12"
+      }
+     ],
      "suites": [
       {
        "page": "gens",
@@ -5005,13 +5098,14 @@
        ]
       }
      ],
-     "poids": 0.664
+     "poids": 0.396
     },
     {
      "mot": "tablette",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 28099,
+     "dire": "à la tablette",
      "suites": [
       {
        "page": "gens",
@@ -5044,13 +5138,17 @@
        ]
       }
      ],
-     "poids": 0.327
+     "poids": 0.327,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "bulles",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 6945,
+     "dire": "aux bulles",
      "suites": [
       {
        "page": "gens",
@@ -5083,13 +5181,17 @@
        ]
       }
      ],
-     "poids": 0.394
+     "poids": 0.394,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "cache-cache",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 21845,
+     "dire": "à cache-cache",
      "suites": [
       {
        "page": "gens",
@@ -5122,13 +5224,17 @@
        ]
       }
      ],
-     "poids": 0.327
+     "poids": 0.327,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "train",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2603,
+     "dire": "au train",
      "suites": [
       {
        "page": "gens",
@@ -5161,7 +5267,10 @@
        ]
       }
      ],
-     "poids": 0.656
+     "poids": 0.656,
+     "direAvant": [
+      ""
+     ]
     }
    ]
   },
@@ -5172,11 +5281,19 @@
    "colonnes": 5,
    "cases": [
     {
-     "mot": "avec moi",
+     "mot": "avec toi",
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 7064,
-     "dire": "joue avec moi",
+     "avant": [
+      {
+       "mot": "avec moi",
+       "arasaac": 7064,
+       "fond": "#fadeeb",
+       "bord": "#d6408f",
+       "dire": "joue avec moi"
+      }
+     ],
      "suites": [
       {
        "page": "jouer",
@@ -5342,14 +5459,22 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 4642,
-     "poids": 0.569
+     "dire": "me cacher",
+     "poids": 0.569,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "déguisement",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 5985,
-     "poids": 0.086
+     "dire": "avec les déguisements",
+     "poids": 0.086,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "chanter",
@@ -5398,30 +5523,43 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 4565,
-     "poids": 0.117
+     "dire": "dans le sable",
+     "poids": 0.117,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "eau",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2248,
-     "dire": "jouer avec l'eau",
-     "poids": 0.175
+     "dire": "avec l'eau",
+     "poids": 0.175,
+     "direAvant": [
+      "jouer avec l'eau"
+     ]
     },
     {
      "mot": "dehors",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 5475,
-     "dire": "jouer dehors",
-     "poids": 0.107
+     "poids": 0.107,
+     "direAvant": [
+      "jouer dehors"
+     ]
     },
     {
      "mot": "dînette",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 25966,
-     "poids": 0.048
+     "dire": "à la dînette",
+     "poids": 0.048,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "faire semblant",
@@ -6537,14 +6675,17 @@
    "colonnes": 5,
    "cases": [
     {
-     "mot": "j'ai faim",
+     "mot": "plus faim",
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
-     "arasaac": 35559,
-     "suites": [
+     "arasaac": 38801,
+     "dire": "je n'ai plus faim",
+     "avant": [
       {
-       "page": "manger",
-       "poids": 1.0
+       "mot": "j'ai faim",
+       "arasaac": 35559,
+       "fond": "#d9f0d4",
+       "bord": "#2e9b3e"
       }
      ],
      "poids": 0.3
@@ -6554,6 +6695,7 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2494,
+     "dire": "du pain",
      "suites": [
       {
        "page": "boire",
@@ -6570,13 +6712,17 @@
        ]
       }
      ],
-     "poids": 0.942
+     "poids": 0.942,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "pomme",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2462,
+     "dire": "une pomme",
      "suites": [
       {
        "page": "boire",
@@ -6593,13 +6739,17 @@
        ]
       }
      ],
-     "poids": 0.858
+     "poids": 0.858,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "banane",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2530,
+     "dire": "une banane",
      "suites": [
       {
        "page": "boire",
@@ -6616,13 +6766,17 @@
        ]
       }
      ],
-     "poids": 0.686
+     "poids": 0.686,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "orange",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2483,
+     "dire": "une orange",
      "suites": [
       {
        "page": "boire",
@@ -6639,13 +6793,17 @@
        ]
       }
      ],
-     "poids": 0.702
+     "poids": 0.702,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "yaourt",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2618,
+     "dire": "un yaourt",
      "suites": [
       {
        "page": "boire",
@@ -6662,13 +6820,17 @@
        ]
       }
      ],
-     "poids": 0.53
+     "poids": 0.53,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "fromage",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2541,
+     "dire": "du fromage",
      "suites": [
       {
        "page": "boire",
@@ -6685,13 +6847,17 @@
        ]
       }
      ],
-     "poids": 0.716
+     "poids": 0.716,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "pâtes",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 8652,
+     "dire": "des pâtes",
      "suites": [
       {
        "page": "boire",
@@ -6708,13 +6874,17 @@
        ]
       }
      ],
-     "poids": 0.645
+     "poids": 0.645,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "riz",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 6911,
+     "dire": "du riz",
      "suites": [
       {
        "page": "boire",
@@ -6731,13 +6901,17 @@
        ]
       }
      ],
-     "poids": 0.641
+     "poids": 0.641,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "frites",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2505,
+     "dire": "des frites",
      "suites": [
       {
        "page": "boire",
@@ -6754,13 +6928,17 @@
        ]
       }
      ],
-     "poids": 0.555
+     "poids": 0.555,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "pizza",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2527,
+     "dire": "de la pizza",
      "suites": [
       {
        "page": "boire",
@@ -6777,13 +6955,17 @@
        ]
       }
      ],
-     "poids": 0.638
+     "poids": 0.638,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "soupe",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2573,
+     "dire": "de la soupe",
      "suites": [
       {
        "page": "boire",
@@ -6800,13 +6982,17 @@
        ]
       }
      ],
-     "poids": 0.663
+     "poids": 0.663,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "légumes",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 6244,
+     "dire": "des légumes",
      "suites": [
       {
        "page": "boire",
@@ -6823,13 +7009,17 @@
        ]
       }
      ],
-     "poids": 0.57
+     "poids": 0.57,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "viande",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2316,
+     "dire": "de la viande",
      "suites": [
       {
        "page": "boire",
@@ -6846,13 +7036,17 @@
        ]
       }
      ],
-     "poids": 0.677
+     "poids": 0.677,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "poisson",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2520,
+     "dire": "du poisson",
      "suites": [
       {
        "page": "boire",
@@ -6869,7 +7063,10 @@
        ]
       }
      ],
-     "poids": 0.736
+     "poids": 0.736,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "c'est bon",
@@ -6936,11 +7133,25 @@
      "poids": 0.176
     },
     {
-     "mot": "à boire",
+     "mot": "boire",
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2276,
      "lien": "boire",
+     "avant": [
+      {
+       "mot": "à boire",
+       "arasaac": 2276,
+       "fond": "#d9f0d4",
+       "bord": "#2e9b3e"
+      }
+     ],
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.105
     }
    ]
@@ -6956,6 +7167,7 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2427,
+     "dire": "un œuf",
      "suites": [
       {
        "page": "boire",
@@ -6972,13 +7184,17 @@
        ]
       }
      ],
-     "poids": 0.631
+     "poids": 0.631,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "gâteau",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2502,
+     "dire": "du gâteau",
      "suites": [
       {
        "page": "boire",
@@ -6995,13 +7211,17 @@
        ]
       }
      ],
-     "poids": 0.664
+     "poids": 0.664,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "biscuit",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 8312,
+     "dire": "un biscuit",
      "suites": [
       {
        "page": "boire",
@@ -7018,13 +7238,17 @@
        ]
       }
      ],
-     "poids": 0.492
+     "poids": 0.492,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "compote",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 34012,
+     "dire": "de la compote",
      "suites": [
       {
        "page": "boire",
@@ -7041,13 +7265,17 @@
        ]
       }
      ],
-     "poids": 0.341
+     "poids": 0.341,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "chocolat",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2334,
+     "dire": "du chocolat",
      "suites": [
       {
        "page": "boire",
@@ -7064,13 +7292,17 @@
        ]
       }
      ],
-     "poids": 0.582
+     "poids": 0.582,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "céréales",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2328,
+     "dire": "des céréales",
      "suites": [
       {
        "page": "boire",
@@ -7087,13 +7319,17 @@
        ]
       }
      ],
-     "poids": 0.372
+     "poids": 0.372,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "glace",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2420,
+     "dire": "une glace",
      "suites": [
       {
        "page": "boire",
@@ -7110,13 +7346,17 @@
        ]
       }
      ],
-     "poids": 0.662
+     "poids": 0.662,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "bonbon",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2686,
+     "dire": "un bonbon",
      "suites": [
       {
        "page": "boire",
@@ -7133,13 +7373,17 @@
        ]
       }
      ],
-     "poids": 0.537
+     "poids": 0.537,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "sandwich",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2281,
+     "dire": "un sandwich",
      "suites": [
       {
        "page": "boire",
@@ -7156,13 +7400,17 @@
        ]
       }
      ],
-     "poids": 0.154
+     "poids": 0.154,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "chips",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 5400,
+     "dire": "des chips",
      "suites": [
       {
        "page": "boire",
@@ -7179,13 +7427,17 @@
        ]
       }
      ],
-     "poids": 0.393
+     "poids": 0.393,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "carottes",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2619,
+     "dire": "des carottes",
      "suites": [
       {
        "page": "boire",
@@ -7202,13 +7454,17 @@
        ]
       }
      ],
-     "poids": 0.395
+     "poids": 0.395,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "tomate",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2594,
+     "dire": "une tomate",
      "suites": [
       {
        "page": "boire",
@@ -7225,13 +7481,17 @@
        ]
       }
      ],
-     "poids": 0.509
+     "poids": 0.509,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "haricots verts",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 8354,
+     "dire": "des haricots verts",
      "suites": [
       {
        "page": "boire",
@@ -7248,13 +7508,17 @@
        ]
       }
      ],
-     "poids": 0.412
+     "poids": 0.412,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "poulet",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 4952,
+     "dire": "du poulet",
      "suites": [
       {
        "page": "boire",
@@ -7271,13 +7535,17 @@
        ]
       }
      ],
-     "poids": 0.581
+     "poids": 0.581,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "jambon",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2433,
+     "dire": "du jambon",
      "suites": [
       {
        "page": "boire",
@@ -7294,42 +7562,65 @@
        ]
       }
      ],
-     "poids": 0.412
+     "poids": 0.412,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "cuillère",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2362,
-     "poids": 0.383
+     "dire": "avec une cuillère",
+     "poids": 0.383,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "fourchette",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2588,
-     "poids": 0.357
+     "dire": "avec une fourchette",
+     "poids": 0.357,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "couteau",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 3237,
-     "poids": 0.61
+     "dire": "avec un couteau",
+     "poids": 0.61,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "assiette",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2532,
-     "poids": 0.492
+     "dire": "dans une assiette",
+     "poids": 0.492,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "bol",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 3257,
-     "poids": 0.468
+     "dire": "dans un bol",
+     "poids": 0.468,
+     "direAvant": [
+      ""
+     ]
     }
    ],
    "suite": true
@@ -7406,6 +7697,7 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2624,
+     "dire": "du jus d'orange",
      "suites": [
       {
        "page": "decrire",
@@ -7422,13 +7714,17 @@
        "poids": 0.4
       }
      ],
-     "poids": 0.652
+     "poids": 0.652,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "jus de pomme",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 11403,
+     "dire": "du jus de pomme",
      "suites": [
       {
        "page": "decrire",
@@ -7445,13 +7741,17 @@
        "poids": 0.4
       }
      ],
-     "poids": 0.654
+     "poids": 0.654,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "chocolat chaud",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 21326,
+     "dire": "du chocolat chaud",
      "suites": [
       {
        "page": "decrire",
@@ -7468,13 +7768,17 @@
        "poids": 0.4
       }
      ],
-     "poids": 0.66
+     "poids": 0.66,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "sirop",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2962,
+     "dire": "du sirop",
      "suites": [
       {
        "page": "decrire",
@@ -7491,42 +7795,65 @@
        "poids": 0.4
       }
      ],
-     "poids": 0.505
+     "poids": 0.505,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "verre",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2356,
-     "poids": 0.773
+     "dire": "dans un verre",
+     "poids": 0.773,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "gourde",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 4587,
-     "poids": 0.423
+     "dire": "à la gourde",
+     "poids": 0.423,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "paille",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 6164,
-     "poids": 0.495
+     "dire": "avec une paille",
+     "poids": 0.495,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "bouteille",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2288,
-     "poids": 0.633
+     "dire": "à la bouteille",
+     "poids": 0.633,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "tasse",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2582,
-     "poids": 0.539
+     "dire": "dans une tasse",
+     "poids": 0.539,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "chaud",
@@ -7871,14 +8198,22 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 4763,
-     "poids": 0.086
+     "dire": "un triangle",
+     "poids": 0.086,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "rectangle",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 4731,
-     "poids": 0.051
+     "dire": "un rectangle",
+     "poids": 0.051,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "long",
@@ -7944,7 +8279,6 @@
        "page": "jouer",
        "poids": 0.4,
        "cases": [
-        "jouer:15",
         "jouer-2:14",
         "jouer:16"
        ]
@@ -8110,14 +8444,22 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 7010,
-     "poids": 0.175
+     "dire": "le sport",
+     "poids": 0.175,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "ordinateur",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2487,
-     "poids": 0.176
+     "dire": "l'ordinateur",
+     "poids": 0.176,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "ranger",
@@ -8147,35 +8489,55 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 39679,
-     "poids": 0.092
+     "dire": "le regroupement",
+     "poids": 0.092,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "récréation",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 6204,
-     "poids": 0.109
+     "dire": "la récréation",
+     "poids": 0.109,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "cantine",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 9824,
-     "poids": 0.114
+     "dire": "la cantine",
+     "poids": 0.114,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "sieste",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 28425,
-     "poids": 0.128
+     "dire": "la sieste",
+     "poids": 0.128,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "atelier",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 32176,
-     "poids": 0.138
+     "dire": "l'atelier",
+     "poids": 0.138,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "travailler",
@@ -8265,6 +8627,7 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2440,
+     "dire": "un crayon",
      "suites": [
       {
        "page": "couleurs",
@@ -8287,13 +8650,17 @@
        ]
       }
      ],
-     "poids": 0.369
+     "poids": 0.369,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "feutre",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 3246,
+     "dire": "un feutre",
      "suites": [
       {
        "page": "couleurs",
@@ -8316,13 +8683,17 @@
        ]
       }
      ],
-     "poids": 0.247
+     "poids": 0.247,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "ciseaux",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2591,
+     "dire": "les ciseaux",
      "suites": [
       {
        "page": "couleurs",
@@ -8345,13 +8716,17 @@
        ]
       }
      ],
-     "poids": 0.344
+     "poids": 0.344,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "colle",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2510,
+     "dire": "la colle",
      "suites": [
       {
        "page": "couleurs",
@@ -8374,13 +8749,17 @@
        ]
       }
      ],
-     "poids": 0.334
+     "poids": 0.334,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "cahier",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2359,
+     "dire": "mon cahier",
      "suites": [
       {
        "page": "couleurs",
@@ -8403,13 +8782,17 @@
        ]
       }
      ],
-     "poids": 0.32
+     "poids": 0.32,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "livre",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2450,
+     "dire": "un livre",
      "suites": [
       {
        "page": "couleurs",
@@ -8432,13 +8815,17 @@
        ]
       }
      ],
-     "poids": 0.552
+     "poids": 0.552,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "feuille",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 8349,
+     "dire": "une feuille",
      "suites": [
       {
        "page": "couleurs",
@@ -8461,13 +8848,17 @@
        ]
       }
      ],
-     "poids": 0.411
+     "poids": 0.411,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "gomme",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2409,
+     "dire": "une gomme",
      "suites": [
       {
        "page": "couleurs",
@@ -8490,13 +8881,17 @@
        ]
       }
      ],
-     "poids": 0.27
+     "poids": 0.27,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "règle",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2815,
+     "dire": "une règle",
      "suites": [
       {
        "page": "couleurs",
@@ -8519,13 +8914,17 @@
        ]
       }
      ],
-     "poids": 0.474
+     "poids": 0.474,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "cartable",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2475,
+     "dire": "mon cartable",
      "suites": [
       {
        "page": "couleurs",
@@ -8548,13 +8947,17 @@
        ]
       }
      ],
-     "poids": 0.217
+     "poids": 0.217,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "tableau",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2526,
+     "dire": "le tableau",
      "suites": [
       {
        "page": "couleurs",
@@ -8577,13 +8980,17 @@
        ]
       }
      ],
-     "poids": 0.434
+     "poids": 0.434,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "table",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 3129,
+     "dire": "la table",
      "suites": [
       {
        "page": "couleurs",
@@ -8606,13 +9013,17 @@
        ]
       }
      ],
-     "poids": 0.493
+     "poids": 0.493,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "chaise",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 3155,
+     "dire": "la chaise",
      "suites": [
       {
        "page": "couleurs",
@@ -8635,13 +9046,17 @@
        ]
       }
      ],
-     "poids": 0.411
+     "poids": 0.411,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "porte",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 3244,
+     "dire": "la porte",
      "suites": [
       {
        "page": "couleurs",
@@ -8664,13 +9079,17 @@
        ]
       }
      ],
-     "poids": 0.563
+     "poids": 0.563,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "fenêtre",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2611,
+     "dire": "la fenêtre",
      "suites": [
       {
        "page": "couleurs",
@@ -8693,20 +9112,28 @@
        ]
       }
      ],
-     "poids": 0.464
+     "poids": 0.464,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "se laver les mains",
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 8975,
-     "poids": 0.134
+     "dire": "me laver les mains",
+     "poids": 0.134,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "s'asseoir",
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 35033,
+     "dire": "m'asseoir",
      "suites": [
       {
        "page": "classe-2",
@@ -8717,14 +9144,21 @@
        ]
       }
      ],
-     "poids": 0.166
+     "poids": 0.166,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "se mettre en rang",
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 39146,
-     "poids": 0.112
+     "dire": "me mettre en rang",
+     "poids": 0.112,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "silence",
@@ -8786,6 +9220,7 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2517,
+     "dire": "le chien",
      "suites": [
       {
        "page": "decrire",
@@ -8818,13 +9253,17 @@
        ]
       }
      ],
-     "poids": 0.963
+     "poids": 0.963,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "chat",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2406,
+     "dire": "le chat",
      "suites": [
       {
        "page": "decrire",
@@ -8857,13 +9296,17 @@
        ]
       }
      ],
-     "poids": 0.851
+     "poids": 0.851,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "oiseau",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2490,
+     "dire": "l'oiseau",
      "suites": [
       {
        "page": "decrire",
@@ -8896,13 +9339,17 @@
        ]
       }
      ],
-     "poids": 0.806
+     "poids": 0.806,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "poisson",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2520,
+     "dire": "le poisson",
      "suites": [
       {
        "page": "decrire",
@@ -8935,13 +9382,17 @@
        ]
       }
      ],
-     "poids": 0.786
+     "poids": 0.786,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "cheval",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2294,
+     "dire": "le cheval",
      "suites": [
       {
        "page": "decrire",
@@ -8974,13 +9425,17 @@
        ]
       }
      ],
-     "poids": 0.807
+     "poids": 0.807,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "vache",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2609,
+     "dire": "la vache",
      "suites": [
       {
        "page": "decrire",
@@ -9013,13 +9468,17 @@
        ]
       }
      ],
-     "poids": 0.697
+     "poids": 0.697,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "cochon",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2327,
+     "dire": "le cochon",
      "suites": [
       {
        "page": "decrire",
@@ -9052,13 +9511,17 @@
        ]
       }
      ],
-     "poids": 0.641
+     "poids": 0.641,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "mouton",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2489,
+     "dire": "le mouton",
      "suites": [
       {
        "page": "decrire",
@@ -9091,13 +9554,17 @@
        ]
       }
      ],
-     "poids": 0.562
+     "poids": 0.562,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "poule",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2403,
+     "dire": "la poule",
      "suites": [
       {
        "page": "decrire",
@@ -9130,13 +9597,17 @@
        ]
       }
      ],
-     "poids": 0.626
+     "poids": 0.626,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "canard",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2563,
+     "dire": "le canard",
      "suites": [
       {
        "page": "decrire",
@@ -9169,13 +9640,17 @@
        ]
       }
      ],
-     "poids": 0.574
+     "poids": 0.574,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "lapin",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2351,
+     "dire": "le lapin",
      "suites": [
       {
        "page": "decrire",
@@ -9208,13 +9683,17 @@
        ]
       }
      ],
-     "poids": 0.607
+     "poids": 0.607,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "souris",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2546,
+     "dire": "la souris",
      "suites": [
       {
        "page": "decrire",
@@ -9247,13 +9726,17 @@
        ]
       }
      ],
-     "poids": 0.544
+     "poids": 0.544,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "lion",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2449,
+     "dire": "le lion",
      "suites": [
       {
        "page": "decrire",
@@ -9286,13 +9769,17 @@
        ]
       }
      ],
-     "poids": 0.53
+     "poids": 0.53,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "éléphant",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2372,
+     "dire": "l'éléphant",
      "suites": [
       {
        "page": "decrire",
@@ -9325,13 +9812,17 @@
        ]
       }
      ],
-     "poids": 0.494
+     "poids": 0.494,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "ours",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2488,
+     "dire": "l'ours",
      "suites": [
       {
        "page": "decrire",
@@ -9364,13 +9855,17 @@
        ]
       }
      ],
-     "poids": 0.527
+     "poids": 0.527,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "serpent",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2568,
+     "dire": "le serpent",
      "suites": [
       {
        "page": "decrire",
@@ -9403,13 +9898,17 @@
        ]
       }
      ],
-     "poids": 0.543
+     "poids": 0.543,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "papillon",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2465,
+     "dire": "le papillon",
      "suites": [
       {
        "page": "decrire",
@@ -9442,7 +9941,10 @@
        ]
       }
      ],
-     "poids": 0.451
+     "poids": 0.451,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "caresser",
@@ -9522,6 +10024,7 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2242,
+     "dire": "mon manteau",
      "suites": [
       {
        "page": "couleurs",
@@ -9554,13 +10057,17 @@
        ]
       }
      ],
-     "poids": 0.88
+     "poids": 0.88,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "bonnet",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2412,
+     "dire": "mon bonnet",
      "suites": [
       {
        "page": "couleurs",
@@ -9593,13 +10100,17 @@
        ]
       }
      ],
-     "poids": 0.683
+     "poids": 0.683,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "écharpe",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2290,
+     "dire": "mon écharpe",
      "suites": [
       {
        "page": "couleurs",
@@ -9632,13 +10143,17 @@
        ]
       }
      ],
-     "poids": 0.607
+     "poids": 0.607,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "gants",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2415,
+     "dire": "mes gants",
      "suites": [
       {
        "page": "couleurs",
@@ -9671,13 +10186,17 @@
        ]
       }
      ],
-     "poids": 0.745
+     "poids": 0.745,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "chaussures",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2622,
+     "dire": "mes chaussures",
      "suites": [
       {
        "page": "couleurs",
@@ -9710,13 +10229,17 @@
        ]
       }
      ],
-     "poids": 0.842
+     "poids": 0.842,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "chaussettes",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2298,
+     "dire": "mes chaussettes",
      "suites": [
       {
        "page": "couleurs",
@@ -9749,13 +10272,17 @@
        ]
       }
      ],
-     "poids": 0.659
+     "poids": 0.659,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "pantalon",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2565,
+     "dire": "mon pantalon",
      "suites": [
       {
        "page": "couleurs",
@@ -9788,13 +10315,17 @@
        ]
       }
      ],
-     "poids": 0.731
+     "poids": 0.731,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "t-shirt",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2310,
+     "dire": "mon t-shirt",
      "suites": [
       {
        "page": "couleurs",
@@ -9827,13 +10358,17 @@
        ]
       }
      ],
-     "poids": 0.583
+     "poids": 0.583,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "pull",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 39029,
+     "dire": "mon pull",
      "suites": [
       {
        "page": "couleurs",
@@ -9866,13 +10401,17 @@
        ]
       }
      ],
-     "poids": 0.591
+     "poids": 0.591,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "robe",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2613,
+     "dire": "ma robe",
      "suites": [
       {
        "page": "couleurs",
@@ -9905,13 +10444,17 @@
        ]
       }
      ],
-     "poids": 0.778
+     "poids": 0.778,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "jupe",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2391,
+     "dire": "ma jupe",
      "suites": [
       {
        "page": "couleurs",
@@ -9944,13 +10487,17 @@
        ]
       }
      ],
-     "poids": 0.561
+     "poids": 0.561,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "pyjama",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2522,
+     "dire": "mon pyjama",
      "suites": [
       {
        "page": "couleurs",
@@ -9983,21 +10530,32 @@
        ]
       }
      ],
-     "poids": 0.503
+     "poids": 0.503,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "couche",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2863,
-     "poids": 0.587
+     "dire": "ma couche",
+     "poids": 0.587,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "lunettes",
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 3329,
-     "poids": 0.633
+     "dire": "mes lunettes",
+     "poids": 0.633,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "mettre",
@@ -10077,7 +10635,7 @@
    ]
   }
  ],
- "versionDesPoids": "2026-11-05-lexique383-generiques5",
+ "versionDesPoids": "2026-11-05-lexique383-phrases7",
  "sources": [
   "Fréquences : Lexique 3.83 (B. New, C. Pallier, lexique.org), CC BY-SA 4.0"
  ]

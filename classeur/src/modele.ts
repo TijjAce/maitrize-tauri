@@ -23,6 +23,11 @@ export interface Case {
   bord?: string;
   /** La page qu'elle ouvre. */
   lien?: string;
+  /**
+   * Elle ouvre sa page sans rien dire : rien ne s'ajoute à la phrase. Pour une catégorie qu'un nom désigne — « j'aime »,
+   * « les gens », « maman » se dit « j'aime maman ». Faux : l'enseignant l'a fait parler (une mise à jour n'y touche plus).
+   */
+  muette?: boolean;
   /** Cachée à l'élève : la place reste, vide. */
   masquee?: boolean;
   /** Son poids dans son thème (0 à 1), calculé à l'avance : les plus lourdes sont proposées d'abord. */
@@ -95,6 +100,9 @@ export const pageDe = (c: Classeur, id: string | undefined): Page | undefined =>
 
 /** Ce que dit une case : sa phrase à dire, sinon son mot. */
 export const ditDeLaCase = (k: Pick<Case, "mot" | "dire">): string => (k.dire?.trim() || k.mot.trim());
+
+/** Ce que toucher la case ajoute à la phrase : rien quand elle est muette et ouvre une page (« les gens »). */
+export const ditEnTouchant = (k: Pick<Case, "mot" | "dire" | "lien" | "muette">): string => (k.muette && k.lien ? "" : ditDeLaCase(k));
 
 const touche = (c: Classeur, pages: Page[], autre: Partial<Classeur> = {}): Classeur =>
   ({ ...c, ...autre, pages, modifieLe: new Date().toISOString() });

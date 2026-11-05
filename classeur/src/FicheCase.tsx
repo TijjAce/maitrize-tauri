@@ -28,6 +28,7 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
   const [couleur, setCouleur] = React.useState<{ fond?: string; bord?: string }>({ fond: valeur?.fond, bord: valeur?.bord });
   const [lien, setLien] = React.useState(valeur?.lien ?? "");
   const [masquee, setMasquee] = React.useState(!!valeur?.masquee);
+  const [muette, setMuette] = React.useState(!!valeur?.muette);
   const [occupe, setOccupe] = React.useState(false);
   // Les catégories proposées ensuite, dans l'ordre. Intactes tant qu'on n'y touche pas.
   const [categories, setCategories] = React.useState<string[]>(() => categoriesDeLaCase(valeur?.suites));
@@ -64,6 +65,9 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
     if (couleur.fond) k.fond = couleur.fond;
     if (couleur.bord) k.bord = couleur.bord;
     if (lien && lien !== NOUVELLE_PAGE) k.lien = lien;
+    // Muette : seulement si elle ouvre une page. Décochée après l'avoir été, elle le reste (une mise à jour n'y touche plus).
+    if (lien && muette) k.muette = true;
+    else if (lien && valeur?.muette !== undefined) k.muette = false;
     if (masquee) k.masquee = true;
     onPoser(k, lien === NOUVELLE_PAGE ? (m || "Nouvelle page") : undefined);
   };
@@ -109,6 +113,11 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
               <option value={NOUVELLE_PAGE}>＋ Une nouvelle page « {mot.trim() || "…"} »</option>
             </select>
           </label>
+          {lien && (
+            <label className="coche">
+              <input type="checkbox" checked={muette} onChange={(e) => setMuette(e.target.checked)} /> Ouvre la page sans rien dire
+            </label>
+          )}
           <label className="coche">
             <input type="checkbox" checked={masquee} onChange={(e) => setMasquee(e.target.checked)} /> Cachée à l'élève (la place reste)
           </label>

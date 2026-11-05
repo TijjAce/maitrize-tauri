@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { MODELE_COMPLET, aPoser, ajouterLesPoids, classeurComplet, pictosDuModele, poserLesPictos } from "./classeurComplet";
+import { MODELE_COMPLET, aPoser, ajouterLesPoids, classeurComplet, pictosDesCasesRenommees, pictosDuModele, poserLesPictos } from "./classeurComplet";
 import { categoriesApres } from "./ensembles";
-import { nouveauClasseur } from "./modele";
-import { numeroDePage, ordreDesPages, pageDe, pageVoisine, sectionsDe } from "./modele";
+import { nouveauClasseur, type Case, type Classeur } from "./modele";
+import { ditEnTouchant, numeroDePage, ordreDesPages, pageDe, pageVoisine, sectionDe, sectionsDe } from "./modele";
 import { depuisObz, versObz } from "./obz";
 
 // Les pictos livrés avec l'application, par leur numéro.
@@ -84,6 +84,57 @@ describe("le classeur complet", () => {
     for (const p of MODELE_COMPLET.pages) for (const k of p.cases) if (k.dire) expect(k.dire, k.mot).not.toBe(k.mot);
   });
 
+  // « Fais toi-même les phrases et regarde si elles ont du sens » (l'enseignant, 5 novembre 2026).
+  /** La phrase que l'on fait en touchant ces mots, depuis « Je veux dire… » : chaque lien ouvre sa page, que l'on peut tourner. */
+  const phrase = (...mots: string[]) => {
+    let page = ordreDesPages(c)[1].id;
+    const dits: string[] = [];
+    for (const mot of mots) {
+      const s = sectionDe(c, page)!;
+      const k = s.pages.slice(s.pages.findIndex((p) => p.id === page)).flatMap((p) => p.cases).find((x) => x?.mot === mot);
+      if (!k) throw new Error(`« ${mot} » n'est pas sur la page « ${pageDe(c, page)?.nom} »`);
+      const dit = ditEnTouchant(k);
+      if (dit) dits.push(dit);
+      if (k.lien) page = k.lien;
+    }
+    return dits.join(" ");
+  };
+
+  it("fait des phrases qui ont du sens : le verbe, puis ce qui le complète, avec son article", () => {
+    expect(phrase("je veux", "jouer", "ballon")).toBe("je veux jouer au ballon");
+    expect(phrase("je veux", "manger", "pâtes")).toBe("je veux manger des pâtes");
+    expect(phrase("je veux", "boire", "jus de pomme")).toBe("je veux boire du jus de pomme");
+    expect(phrase("je veux", "aller", "piscine")).toBe("je veux aller à la piscine");
+    expect(phrase("on joue", "poupée")).toBe("on joue à la poupée");
+    expect(phrase("ça ne va pas", "j'ai mal", "ventre")).toBe("quelque chose ne va pas j'ai mal au ventre");
+    expect(phrase("je te raconte", "j'ai mal", "tête")).toBe("je te raconte quelque chose j'ai mal à la tête");
+    // « je suis malade » ne mène plus au corps (« je suis malade à la tête ») : la bande propose « j'ai mal ».
+    const malade = c.pages.flatMap((p) => p.cases).find((k) => k?.mot === "je suis malade")!;
+    expect(malade.lien).toBeUndefined();
+    const probleme = c.pages.find((p) => p.nom === "Ça ne va pas")!.id;
+    expect(categoriesApres(c, malade, probleme).map((x) => x.nom)).toEqual(["j'ai mal"]);
+  });
+
+  it("ouvre une catégorie qu'un nom désigne sans rien dire : « j'aime maman », pas « j'aime les gens maman »", () => {
+    expect(phrase("j'aime", "les gens", "maman")).toBe("j'aime maman");
+    expect(phrase("j'aime", "les animaux", "chien")).toBe("j'aime le chien");
+    expect(phrase("je n'aime pas", "en classe", "écrire")).toBe("je n'aime pas écrire");
+    expect(phrase("je veux", "faire", "dormir")).toBe("je veux dormir");
+    expect(phrase("j'aime", "s'habiller", "pull")).toBe("j'aime mon pull");
+    // Les verbes qui ouvrent leur page parlent.
+    expect(phrase("je n'aime pas", "manger", "soupe")).toBe("je n'aime pas manger de la soupe");
+    expect(phrase("j'aime", "jouer", "cache-cache")).toBe("j'aime jouer à cache-cache");
+  });
+
+  it("après « jouer », « manger », « boire », chaque chose dit son article ou sa préposition", () => {
+    const article = /^(?:(?:le|la|les|un|une|des|du|de|au|aux|à|avec|dans|mon|ma|mes|quelque) |l'|d')/;
+    const nom = "#fce6ca";
+    const pages = c.pages.filter((p) => ["Manger", "Boire", "Les animaux", "S'habiller"].includes(p.nom)
+      || (p.nom === "Jouer" && !p.suite) || (p.nom === "En classe" && p.suite));
+    expect(pages.length).toBe(7);
+    for (const p of pages) for (const k of p.cases) if (k && k.fond === nom) expect(ditEnTouchant(k), `${p.nom} › ${k.mot}`).toMatch(article);
+  });
+
   it("se crée neuf à chaque fois : deux classeurs complets ne partagent aucun identifiant", () => {
     const autre = classeurComplet("Pour la classe");
     expect(autre.nom).toBe("Pour la classe");
@@ -106,6 +157,10 @@ describe("le classeur complet", () => {
       : [])));
     expect(suites(retour)).toEqual(suites(c));
     expect(retour.pages.flatMap((p) => p.cases.map((k) => k?.poids ?? null))).toEqual(c.pages.flatMap((p) => p.cases.map((k) => k?.poids ?? null)));
+    // Ce qui se dit, et les catégories muettes, aussi.
+    const dits = (x: typeof c) => x.pages.flatMap((p) => p.cases.flatMap((k) => (k ? [`${k.mot}=${ditEnTouchant(k)}`] : [])));
+    expect(dits(retour)).toEqual(dits(c));
+    expect(retour.pages.flatMap((p) => p.cases.filter((k) => k?.muette)).length).toBe(10);
   });
 });
 
@@ -135,6 +190,16 @@ describe("au lancement", () => {
     });
     expect(aPoser([ancien])).toEqual({ poser: true, remplacer: [ancien.id] });
     expect(aPoser([classeurComplet()])).toEqual({ poser: false, remplacer: [] });
+  });
+
+  it("remplace aussi un classeur complet intact dont une case disait autre chose, ou parlait au lieu d'être muette", () => {
+    const avec = (f: (cle: string, k: (typeof MODELE_COMPLET.pages)[number]["cases"][number]) => object) => classeurComplet("", "2026-11-05T09:00:00.000Z", {
+      ...MODELE_COMPLET, pages: MODELE_COMPLET.pages.map((p) => ({ ...p, cases: p.cases.map((k) => ({ ...k, ...f(p.cle, k) })) })),
+    });
+    const ballon = avec((cle, k) => (cle === "jouer" && k.mot === "ballon" ? { dire: undefined } : {}));
+    expect(aPoser([ballon])).toEqual({ poser: true, remplacer: [ballon.id] });
+    const gens = avec((cle, k) => (cle === "categories" && k.mot === "les gens" ? { muette: undefined } : {}));
+    expect(aPoser([gens])).toEqual({ poser: true, remplacer: [gens.id] });
   });
 
   it("remplace l'ancien classeur complet que personne n'a modifié, jamais celui qu'on a changé", () => {
@@ -175,6 +240,37 @@ describe("un classeur complet d'avant les poids", () => {
     const regarde = repris.pages.flatMap((p) => p.cases).find((k) => k?.mot === "regarde")!;
     expect(regarde.suites).toEqual([{ page: gens, poids: 1 }]);
     expect(regarde.suitesPerso).toBe(true);
+  });
+
+  it("reçoit ce qui se dit aujourd'hui là où une case dit encore une forme d'avant, jamais par-dessus ce que l'enseignant a écrit", () => {
+    const neuf = classeurComplet();
+    const change = (nom: string, suite: boolean, mot: string, f: (k: Case) => Case) => (c: Classeur): Classeur => ({
+      ...c, pages: c.pages.map((p) => (p.nom === nom && !!p.suite === suite ? { ...p, cases: p.cases.map((k) => (k?.mot === mot ? f(k) : k)) } : p)),
+    });
+    const sans = (k: Case, champ: "dire" | "muette") => { const x = { ...k }; delete x[champ]; return x; };
+    let ancien: Classeur = { ...neuf, versionDesPoids: "2026-11-05-lexique383-generiques5" };
+    ancien = change("Jouer", false, "ballon", (k) => sans(k, "dire"))(ancien); // il disait son mot
+    ancien = change("Jouer", true, "dehors", (k) => ({ ...k, dire: "jouer dehors" }))(ancien); // il disait plus
+    ancien = change("Manger", false, "pomme", (k) => ({ ...k, dire: "ma pomme à moi" }))(ancien); // l'enseignant l'a écrit
+    ancien = change("Catégories", false, "les gens", (k) => sans(k, "muette"))(ancien); // pas encore muette
+    ancien = change("Catégories", false, "les animaux", (k) => ({ ...k, muette: false }))(ancien); // l'enseignant la fait parler
+    // Deux cases d'avant leur nouveau nom : l'une telle que livrée, l'autre avec la photo de l'enseignant.
+    ancien = change("Catégories", false, "j'ai mal", (k) => ({ ...k, mot: "le corps", image: "arasaac-2728", fond: "#fce6ca", bord: "#e07b12" }))(ancien);
+    ancien = change("Manger", false, "boire", (k) => ({ ...k, mot: "à boire", image: "photo-de-la-classe" }))(ancien);
+    const repris = ajouterLesPoids(ancien)!;
+    const caseDe = (nom: string, suite: boolean, mot: string) =>
+      repris.pages.find((p) => p.nom === nom && !!p.suite === suite)!.cases.find((k) => k?.mot === mot)!;
+    expect(caseDe("Jouer", false, "ballon").dire).toBe("au ballon");
+    expect(caseDe("Jouer", true, "dehors").dire).toBeUndefined();
+    expect(caseDe("Manger", false, "pomme").dire).toBe("ma pomme à moi");
+    expect(caseDe("Catégories", false, "les gens").muette).toBe(true);
+    expect(caseDe("Catégories", false, "les animaux").muette).toBe(false);
+    const mal = caseDe("Catégories", false, "j'ai mal");
+    const livree = neuf.pages.find((p) => p.nom === "Catégories")!.cases.find((k) => k?.mot === "j'ai mal")!;
+    expect({ image: mal.image, fond: mal.fond, bord: mal.bord, lien: mal.lien }).toEqual({ image: livree.image, fond: livree.fond, bord: livree.bord, lien: livree.lien });
+    expect(caseDe("Manger", false, "boire").image).toBe("photo-de-la-classe");
+    expect(pictosDesCasesRenommees()).toEqual(expect.arrayContaining([38801, 39085, 11295]));
+    expect(repris.modifieLe).toBe(ancien.modifieLe);
   });
 
   it("ne touche pas un classeur qui a déjà les poids d'aujourd'hui ; remplace ceux d'une autre version", () => {

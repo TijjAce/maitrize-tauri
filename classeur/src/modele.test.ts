@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  ajouterPage, ajouterPageSuivante, ajouterSectionApres, casesPerdues, changerSuite, changerTaille, deplacerSection, ditDeLaCase, dupliquer,
+  ajouterPage, ajouterPageSuivante, ajouterSectionApres, casesPerdues, changerSuite, changerTaille, deplacerSection, ditDeLaCase, ditEnTouchant, dupliquer,
   fairePageDAccueil, fairePageDesCategories, imagesDuClasseur, lireClasseur, nouveauClasseur, nouvellePage, numeroDePage, ordreDesPages,
   pageVoisine, poserCase, redimensionner, sectionsDe, supprimerPage, texteDeLaPhrase, type Case, type Classeur,
 } from "./modele";
@@ -55,6 +55,13 @@ describe("le classeur de communication (demande de l'enseignant, 5 novembre 2026
     expect(ditDeLaCase({ mot: "mal", dire: "J'ai mal" })).toBe("J'ai mal");
     expect(ditDeLaCase({ mot: " encore ", dire: "  " })).toBe("encore");
     expect(texteDeLaPhrase([{ mot: "je veux", dire: "je veux" }, { mot: "eau", dire: "de l'eau" }])).toBe("je veux de l'eau");
+  });
+
+  it("une case muette ouvre sa page sans rien ajouter à la phrase ; sans page à ouvrir, elle parle", () => {
+    expect(ditEnTouchant(k("les gens", { lien: "gens", muette: true }))).toBe("");
+    expect(ditEnTouchant(k("jouer", { lien: "jouer" }))).toBe("jouer");
+    expect(ditEnTouchant(k("les gens", { lien: "gens", muette: false }))).toBe("les gens");
+    expect(ditEnTouchant(k("maman", { muette: true }))).toBe("maman");
   });
 
   it("relit un classeur gardé en remettant d'aplomb ce qui déborde, et refuse l'illisible", () => {
