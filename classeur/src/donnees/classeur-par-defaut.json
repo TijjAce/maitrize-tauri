@@ -1,0 +1,1750 @@
+{
+ "nom": "Classeur complet",
+ "accueil": "accueil",
+ "pages": [
+  {
+   "cle": "accueil",
+   "nom": "Accueil",
+   "lignes": 5,
+   "colonnes": 6,
+   "cases": [
+    {
+     "mot": "je veux",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 5441,
+     "lien": "veux"
+    },
+    {
+     "mot": "j'aime",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2418
+    },
+    {
+     "mot": "je n'aime pas",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 6155
+    },
+    {
+     "mot": "je me sens",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 12359,
+     "lien": "sens"
+    },
+    {
+     "mot": "j'ai mal",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2367,
+     "lien": "mal"
+    },
+    {
+     "mot": "j'ai une question",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 7217,
+     "lien": "questions"
+    },
+    {
+     "mot": "oui",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 5583
+    },
+    {
+     "mot": "non",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 5525
+    },
+    {
+     "mot": "encore",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 37163
+    },
+    {
+     "mot": "fini",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5358,
+     "dire": "c'est fini"
+    },
+    {
+     "mot": "stop",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 38251
+    },
+    {
+     "mot": "aide",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 4570,
+     "dire": "aide-moi"
+    },
+    {
+     "mot": "manger",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2349,
+     "lien": "manger"
+    },
+    {
+     "mot": "boire",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2276,
+     "lien": "boire"
+    },
+    {
+     "mot": "jouer",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2439,
+     "lien": "jouer"
+    },
+    {
+     "mot": "aller",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2432,
+     "lien": "lieux"
+    },
+    {
+     "mot": "les gens",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 34557,
+     "lien": "gens"
+    },
+    {
+     "mot": "toilettes",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2430,
+     "dire": "je veux aller aux toilettes"
+    },
+    {
+     "mot": "bonjour",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 6009
+    },
+    {
+     "mot": "au revoir",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 5896
+    },
+    {
+     "mot": "merci",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 8128
+    },
+    {
+     "mot": "s'il te plaît",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 38907
+    },
+    {
+     "mot": "je ne sais pas",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 7180
+    },
+    {
+     "mot": "attends",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 8109
+    },
+    {
+     "mot": "ça ne va pas",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 25315,
+     "dire": "quelque chose ne va pas",
+     "lien": "probleme"
+    },
+    {
+     "mot": "c'est…",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 11713,
+     "dire": "c'est",
+     "lien": "decrire"
+    },
+    {
+     "mot": "en classe",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 5913,
+     "lien": "classe"
+    },
+    {
+     "mot": "dehors",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 5475
+    },
+    {
+     "mot": "maison",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2317
+    },
+    {
+     "mot": "fatigué",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2314,
+     "dire": "je suis fatigué"
+    }
+   ]
+  },
+  {
+   "cle": "veux",
+   "nom": "Je veux",
+   "lignes": 4,
+   "colonnes": 6,
+   "cases": [
+    {
+     "mot": "manger",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2349,
+     "lien": "manger"
+    },
+    {
+     "mot": "boire",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2276,
+     "lien": "boire"
+    },
+    {
+     "mot": "jouer",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2439,
+     "lien": "jouer"
+    },
+    {
+     "mot": "aller",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2432,
+     "lien": "lieux"
+    },
+    {
+     "mot": "un câlin",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 4550
+    },
+    {
+     "mot": "de l'aide",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 4570
+    },
+    {
+     "mot": "une pause",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 38213
+    },
+    {
+     "mot": "les toilettes",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2430,
+     "dire": "aller aux toilettes"
+    },
+    {
+     "mot": "dormir",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2369
+    },
+    {
+     "mot": "sortir",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2806
+    },
+    {
+     "mot": "regarder",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2474
+    },
+    {
+     "mot": "écouter",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2381
+    },
+    {
+     "mot": "de la musique",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 24795
+    },
+    {
+     "mot": "dessiner",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 8088
+    },
+    {
+     "mot": "lire un livre",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 7141
+    },
+    {
+     "mot": "la tablette",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 28099
+    },
+    {
+     "mot": "être tranquille",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 31310
+    },
+    {
+     "mot": "arrêter",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 7195
+    },
+    {
+     "mot": "encore",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 37163
+    },
+    {
+     "mot": "autre chose",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 17054
+    },
+    {
+     "mot": "pas ça",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5525
+    },
+    {
+     "mot": "parler",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 3345
+    },
+    {
+     "mot": "un bisou",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 11527
+    },
+    {
+     "mot": "rentrer",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 29714,
+     "dire": "rentrer à la maison"
+    }
+   ]
+  },
+  {
+   "cle": "manger",
+   "nom": "Manger",
+   "lignes": 4,
+   "colonnes": 6,
+   "cases": [
+    {
+     "mot": "j'ai faim",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 35559
+    },
+    {
+     "mot": "pain",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2494
+    },
+    {
+     "mot": "pomme",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2462
+    },
+    {
+     "mot": "banane",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2530
+    },
+    {
+     "mot": "orange",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2483
+    },
+    {
+     "mot": "yaourt",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2618
+    },
+    {
+     "mot": "fromage",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2541
+    },
+    {
+     "mot": "pâtes",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 8652
+    },
+    {
+     "mot": "riz",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 6911
+    },
+    {
+     "mot": "frites",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2505
+    },
+    {
+     "mot": "pizza",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2527
+    },
+    {
+     "mot": "soupe",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2573
+    },
+    {
+     "mot": "légumes",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 6244
+    },
+    {
+     "mot": "viande",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2316
+    },
+    {
+     "mot": "poisson",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2520
+    },
+    {
+     "mot": "œuf",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2427
+    },
+    {
+     "mot": "gâteau",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2502
+    },
+    {
+     "mot": "biscuit",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 8312
+    },
+    {
+     "mot": "compote",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 34012
+    },
+    {
+     "mot": "chocolat",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2334
+    },
+    {
+     "mot": "céréales",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2328
+    },
+    {
+     "mot": "glace",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2420
+    },
+    {
+     "mot": "c'est bon",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 32340
+    },
+    {
+     "mot": "fini",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5358,
+     "dire": "j'ai fini"
+    }
+   ]
+  },
+  {
+   "cle": "boire",
+   "nom": "Boire",
+   "lignes": 3,
+   "colonnes": 6,
+   "cases": [
+    {
+     "mot": "j'ai soif",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 7273
+    },
+    {
+     "mot": "eau",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2248,
+     "dire": "de l'eau"
+    },
+    {
+     "mot": "lait",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2445,
+     "dire": "du lait"
+    },
+    {
+     "mot": "jus d'orange",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2624
+    },
+    {
+     "mot": "jus de pomme",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 11403
+    },
+    {
+     "mot": "chocolat chaud",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 21326
+    },
+    {
+     "mot": "sirop",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2962
+    },
+    {
+     "mot": "verre",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2356
+    },
+    {
+     "mot": "gourde",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 4587
+    },
+    {
+     "mot": "paille",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 6164
+    },
+    {
+     "mot": "encore",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 37163
+    },
+    {
+     "mot": "fini",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5358,
+     "dire": "j'ai fini"
+    }
+   ]
+  },
+  {
+   "cle": "jouer",
+   "nom": "Jouer",
+   "lignes": 4,
+   "colonnes": 6,
+   "cases": [
+    {
+     "mot": "ballon",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2269
+    },
+    {
+     "mot": "puzzle",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2540
+    },
+    {
+     "mot": "poupée",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2482
+    },
+    {
+     "mot": "voiture",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2339
+    },
+    {
+     "mot": "cubes",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 8308
+    },
+    {
+     "mot": "jeu de société",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 32580
+    },
+    {
+     "mot": "toboggan",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 4759
+    },
+    {
+     "mot": "balançoire",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 4608
+    },
+    {
+     "mot": "trampoline",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 23891
+    },
+    {
+     "mot": "vélo",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2277
+    },
+    {
+     "mot": "pâte à modeler",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2529
+    },
+    {
+     "mot": "peinture",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2348
+    },
+    {
+     "mot": "dessiner",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 8088
+    },
+    {
+     "mot": "musique",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 24795
+    },
+    {
+     "mot": "livre",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2450
+    },
+    {
+     "mot": "tablette",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 28099
+    },
+    {
+     "mot": "bulles",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 6945
+    },
+    {
+     "mot": "cache-cache",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 21845
+    },
+    {
+     "mot": "dînette",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 25966
+    },
+    {
+     "mot": "train",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2603
+    },
+    {
+     "mot": "déguisement",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 5985
+    },
+    {
+     "mot": "chanter",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2315
+    },
+    {
+     "mot": "danser",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 6052
+    },
+    {
+     "mot": "avec moi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 7064,
+     "dire": "joue avec moi"
+    }
+   ]
+  },
+  {
+   "cle": "lieux",
+   "nom": "Aller",
+   "lignes": 4,
+   "colonnes": 6,
+   "cases": [
+    {
+     "mot": "toilettes",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2430,
+     "dire": "aux toilettes"
+    },
+    {
+     "mot": "cour",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 8681,
+     "dire": "dans la cour"
+    },
+    {
+     "mot": "classe",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 5913,
+     "dire": "en classe"
+    },
+    {
+     "mot": "cantine",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 9824,
+     "dire": "à la cantine"
+    },
+    {
+     "mot": "maison",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2317,
+     "dire": "à la maison"
+    },
+    {
+     "mot": "dehors",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 5475
+    },
+    {
+     "mot": "parc",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2859,
+     "dire": "au parc"
+    },
+    {
+     "mot": "piscine",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 3142,
+     "dire": "à la piscine"
+    },
+    {
+     "mot": "gymnase",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 6005,
+     "dire": "au gymnase"
+    },
+    {
+     "mot": "bibliothèque",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 3065,
+     "dire": "à la bibliothèque"
+    },
+    {
+     "mot": "infirmerie",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 9918,
+     "dire": "à l'infirmerie"
+    },
+    {
+     "mot": "jardin",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2434,
+     "dire": "au jardin"
+    },
+    {
+     "mot": "voiture",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2339,
+     "dire": "en voiture"
+    },
+    {
+     "mot": "bus",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 38090,
+     "dire": "en bus"
+    },
+    {
+     "mot": "magasin",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 9116,
+     "dire": "au magasin"
+    },
+    {
+     "mot": "salle de bain",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 33954,
+     "dire": "à la salle de bain"
+    },
+    {
+     "mot": "chambre",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 33068,
+     "dire": "dans ma chambre"
+    },
+    {
+     "mot": "école",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 3082,
+     "dire": "à l'école"
+    },
+    {
+     "mot": "médecin",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2467,
+     "dire": "chez le médecin"
+    },
+    {
+     "mot": "promenade",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 8649,
+     "dire": "en promenade"
+    },
+    {
+     "mot": "ici",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5382
+    },
+    {
+     "mot": "là-bas",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5375
+    }
+   ]
+  },
+  {
+   "cle": "gens",
+   "nom": "Les gens",
+   "lignes": 3,
+   "colonnes": 6,
+   "cases": [
+    {
+     "mot": "moi",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 2617
+    },
+    {
+     "mot": "toi",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 2608
+    },
+    {
+     "mot": "maman",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 2458
+    },
+    {
+     "mot": "papa",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 2497
+    },
+    {
+     "mot": "frère",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 2423
+    },
+    {
+     "mot": "sœur",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 2422
+    },
+    {
+     "mot": "maîtresse",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 2456
+    },
+    {
+     "mot": "maître",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 2457
+    },
+    {
+     "mot": "copain",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 8487
+    },
+    {
+     "mot": "copine",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 8486
+    },
+    {
+     "mot": "mamie",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 2243
+    },
+    {
+     "mot": "papi",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 2244
+    },
+    {
+     "mot": "AESH",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 2476
+    },
+    {
+     "mot": "docteur",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 2467
+    },
+    {
+     "mot": "bébé",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 2275
+    },
+    {
+     "mot": "les autres",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 7116
+    },
+    {
+     "mot": "quelqu'un",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 34557
+    },
+    {
+     "mot": "tout le monde",
+     "fond": "#fff2b8",
+     "bord": "#e3b800",
+     "arasaac": 36081
+    }
+   ]
+  },
+  {
+   "cle": "sens",
+   "nom": "Je me sens",
+   "lignes": 3,
+   "colonnes": 6,
+   "cases": [
+    {
+     "mot": "content",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 3245
+    },
+    {
+     "mot": "triste",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2606
+    },
+    {
+     "mot": "en colère",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 28671
+    },
+    {
+     "mot": "fatigué",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2314
+    },
+    {
+     "mot": "effrayé",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2261
+    },
+    {
+     "mot": "malade",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 28742
+    },
+    {
+     "mot": "calme",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 31310
+    },
+    {
+     "mot": "surpris",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2574
+    },
+    {
+     "mot": "fier",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 31408
+    },
+    {
+     "mot": "énervé",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2374
+    },
+    {
+     "mot": "inquiet",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 26985
+    },
+    {
+     "mot": "timide",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 8707
+    },
+    {
+     "mot": "seul",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 7253
+    },
+    {
+     "mot": "jaloux",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 36911
+    },
+    {
+     "mot": "perdu",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 36295
+    },
+    {
+     "mot": "bizarre",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 32390
+    },
+    {
+     "mot": "bien",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 5397
+    },
+    {
+     "mot": "pas bien",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 5504
+    }
+   ]
+  },
+  {
+   "cle": "mal",
+   "nom": "J'ai mal",
+   "lignes": 3,
+   "colonnes": 6,
+   "cases": [
+    {
+     "mot": "tête",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2673,
+     "dire": "j'ai mal à la tête"
+    },
+    {
+     "mot": "ventre",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2786,
+     "dire": "j'ai mal au ventre"
+    },
+    {
+     "mot": "dents",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2737,
+     "dire": "j'ai mal aux dents"
+    },
+    {
+     "mot": "oreille",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2871,
+     "dire": "j'ai mal à l'oreille"
+    },
+    {
+     "mot": "gorge",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 3332,
+     "dire": "j'ai mal à la gorge"
+    },
+    {
+     "mot": "nez",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2887,
+     "dire": "j'ai mal au nez"
+    },
+    {
+     "mot": "bras",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2669,
+     "dire": "j'ai mal au bras"
+    },
+    {
+     "mot": "main",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2928,
+     "dire": "j'ai mal à la main"
+    },
+    {
+     "mot": "jambe",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 8666,
+     "dire": "j'ai mal à la jambe"
+    },
+    {
+     "mot": "pied",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2841,
+     "dire": "j'ai mal au pied"
+    },
+    {
+     "mot": "dos",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2748,
+     "dire": "j'ai mal au dos"
+    },
+    {
+     "mot": "œil",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 6573,
+     "dire": "j'ai mal à l'œil"
+    },
+    {
+     "mot": "ici",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5382,
+     "dire": "j'ai mal ici"
+    },
+    {
+     "mot": "partout",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 2728,
+     "dire": "j'ai mal partout"
+    },
+    {
+     "mot": "un peu",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5546
+    },
+    {
+     "mot": "très",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 25708,
+     "dire": "très mal"
+    },
+    {
+     "mot": "ça pique",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 5539
+    },
+    {
+     "mot": "ça gratte",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 11356
+    }
+   ]
+  },
+  {
+   "cle": "questions",
+   "nom": "Questions",
+   "lignes": 2,
+   "colonnes": 6,
+   "cases": [
+    {
+     "mot": "qui ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 9853
+    },
+    {
+     "mot": "quoi ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 22620
+    },
+    {
+     "mot": "où ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 7764
+    },
+    {
+     "mot": "quand ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 24053
+    },
+    {
+     "mot": "pourquoi ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 24763
+    },
+    {
+     "mot": "comment ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 22619
+    },
+    {
+     "mot": "combien ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 7073
+    },
+    {
+     "mot": "c'est quoi ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 10366
+    },
+    {
+     "mot": "on fait quoi ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 11749
+    },
+    {
+     "mot": "c'est quand ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 24053
+    },
+    {
+     "mot": "c'est à qui ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 32743
+    },
+    {
+     "mot": "je peux ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 11750
+    }
+   ]
+  },
+  {
+   "cle": "probleme",
+   "nom": "Ça ne va pas",
+   "lignes": 4,
+   "colonnes": 6,
+   "cases": [
+    {
+     "mot": "c'est cassé",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4736
+    },
+    {
+     "mot": "j'ai perdu",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 6175
+    },
+    {
+     "mot": "je suis tombé",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 29674
+    },
+    {
+     "mot": "on m'a fait mal",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2367
+    },
+    {
+     "mot": "je ne comprends pas",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 7180
+    },
+    {
+     "mot": "c'est trop dur",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4629
+    },
+    {
+     "mot": "trop de bruit",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 7157,
+     "dire": "il y a trop de bruit"
+    },
+    {
+     "mot": "je veux arrêter",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 7195
+    },
+    {
+     "mot": "laisse-moi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 7076,
+     "dire": "laisse-moi tranquille"
+    },
+    {
+     "mot": "aide-moi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 4570
+    },
+    {
+     "mot": "je me suis trompé",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 6992
+    },
+    {
+     "mot": "on m'embête",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 28459
+    },
+    {
+     "mot": "il triche",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 31414
+    },
+    {
+     "mot": "j'ai peur",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 10261
+    },
+    {
+     "mot": "je suis malade",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 28742
+    },
+    {
+     "mot": "appelle quelqu'un",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 36137
+    },
+    {
+     "mot": "j'ai mal",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2367,
+     "lien": "mal"
+    },
+    {
+     "mot": "une pause",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 38213,
+     "dire": "j'ai besoin d'une pause"
+    },
+    {
+     "mot": "j'ai chaud",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2300
+    },
+    {
+     "mot": "j'ai froid",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2401
+    },
+    {
+     "mot": "j'ai faim",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 35559
+    },
+    {
+     "mot": "j'ai soif",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 7273
+    },
+    {
+     "mot": "je m'ennuie",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 35553
+    },
+    {
+     "mot": "je veux rentrer",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 29714,
+     "dire": "je veux rentrer à la maison"
+    }
+   ]
+  },
+  {
+   "cle": "decrire",
+   "nom": "C'est…",
+   "lignes": 3,
+   "colonnes": 6,
+   "cases": [
+    {
+     "mot": "grand",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4557
+    },
+    {
+     "mot": "petit",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4571
+    },
+    {
+     "mot": "chaud",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2300
+    },
+    {
+     "mot": "froid",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4652
+    },
+    {
+     "mot": "beau",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4660
+    },
+    {
+     "mot": "bon",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 32340
+    },
+    {
+     "mot": "pas bon",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 32338
+    },
+    {
+     "mot": "propre",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4680
+    },
+    {
+     "mot": "sale",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4750
+    },
+    {
+     "mot": "cassé",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4736
+    },
+    {
+     "mot": "facile",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4645
+    },
+    {
+     "mot": "difficile",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4629
+    },
+    {
+     "mot": "rouge",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2808
+    },
+    {
+     "mot": "bleu",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 3355
+    },
+    {
+     "mot": "vert",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4887
+    },
+    {
+     "mot": "jaune",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2648
+    },
+    {
+     "mot": "noir",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2886
+    },
+    {
+     "mot": "blanc",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2662
+    }
+   ]
+  },
+  {
+   "cle": "classe",
+   "nom": "En classe",
+   "lignes": 3,
+   "colonnes": 6,
+   "cases": [
+    {
+     "mot": "lire",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 7141
+    },
+    {
+     "mot": "écrire",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2380
+    },
+    {
+     "mot": "compter",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2714
+    },
+    {
+     "mot": "dessiner",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 8088
+    },
+    {
+     "mot": "peindre",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2348
+    },
+    {
+     "mot": "découper",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2547
+    },
+    {
+     "mot": "coller",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2511
+    },
+    {
+     "mot": "chanter",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2315
+    },
+    {
+     "mot": "sport",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 7010
+    },
+    {
+     "mot": "ordinateur",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2487
+    },
+    {
+     "mot": "ranger",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2872
+    },
+    {
+     "mot": "regroupement",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 39679
+    },
+    {
+     "mot": "récréation",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 6204
+    },
+    {
+     "mot": "cantine",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 9824
+    },
+    {
+     "mot": "sieste",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 28425
+    },
+    {
+     "mot": "atelier",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 32176
+    },
+    {
+     "mot": "travailler",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2599
+    },
+    {
+     "mot": "j'ai fini",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5358
+    }
+   ]
+  }
+ ]
+}

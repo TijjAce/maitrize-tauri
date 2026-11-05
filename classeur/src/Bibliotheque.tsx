@@ -1,4 +1,5 @@
 import React from "react";
+import { MODELE_COMPLET, creerLeClasseurComplet } from "./classeurComplet";
 import { dupliquer, imagesDuClasseur, nouveauClasseur, type Classeur } from "./modele";
 import { depuisObz, versObz } from "./obz";
 import { enregistrerObz, garderClasseur, garderImage, lireImages, ouvrirObz, supprimerClasseur } from "./pont";
@@ -6,9 +7,10 @@ import { Fenetre, annoncer, confirmer, saisir } from "./Fenetre";
 
 // ── Mes classeurs ─────────────────────────────────────────────────────────
 //
-// Ceux de cet appareil. On en crée un, on reprend celui de Maitrize (un
-// fichier .obz reçu par AirDrop ou rangé dans Fichiers), on en renvoie un à
-// Maitrize : il se pose dans les Documents de l'application, que l'app
+// Ceux de cet appareil. On en crée un — complet (le classeur livré avec
+// l'application, le choix d'office) ou vide —, on reprend celui de Maitrize
+// (un fichier .obz reçu par AirDrop ou rangé dans Fichiers), on en renvoie un
+// à Maitrize : il se pose dans les Documents de l'application, que l'app
 // Fichiers montre.
 
 const date = (iso: string) => {
@@ -29,15 +31,26 @@ export function Bibliotheque({ classeurs, onOuvrir, onRecharger }: {
 }) {
   const [occupe, setOccupe] = React.useState(false);
   const [credits, setCredits] = React.useState(false);
+  const [nouveau, setNouveau] = React.useState(false);
   const fichier = React.useRef<HTMLInputElement>(null);
 
-  const creer = async () => {
-    const nom = await saisir("Le nom du classeur", "", "Créer");
-    if (!nom) return;
-    const c = nouveauClasseur(nom);
-    await garderClasseur(c);
-    await onRecharger();
-    onOuvrir(c);
+  const creer = async (nom: string, complet: boolean) => {
+    setNouveau(false);
+    setOccupe(true);
+    try {
+      let c: Classeur;
+      if (complet) c = await creerLeClasseurComplet(nom);
+      else {
+        c = nouveauClasseur(nom);
+        await garderClasseur(c);
+      }
+      await onRecharger();
+      onOuvrir(c);
+    } catch (e) {
+      annoncer(`Le classeur n'a pas pu être créé : ${String((e as Error)?.message ?? e)}`);
+    } finally {
+      setOccupe(false);
+    }
   };
 
   const importer = async (f: File | undefined) => {
@@ -95,7 +108,7 @@ export function Bibliotheque({ classeurs, onOuvrir, onRecharger }: {
         <h1>Mes classeurs</h1>
         <span className="espace" />
         <button className="bouton" disabled={occupe} onClick={() => fichier.current?.click()}>Reprendre un classeur (.obz)</button>
-        <button className="bouton principal" disabled={occupe} onClick={() => { void creer(); }}>＋ Nouveau classeur</button>
+        <button className="bouton principal" disabled={occupe} onClick={() => setNouveau(true)}>＋ Nouveau classeur</button>
         <button className="bouton discret" aria-label="Crédits" onClick={() => setCredits(true)}>ⓘ</button>
         <input ref={fichier} type="file" accept=".obz,application/zip,application/octet-stream" hidden
           onChange={(e) => { void importer(e.target.files?.[0]); e.target.value = ""; }} />
@@ -122,6 +135,8 @@ export function Bibliotheque({ classeurs, onOuvrir, onRecharger }: {
           </div>
         )}
 
+      {nouveau && <FenetreNouveau onCreer={(nom, complet) => { void creer(nom, complet); }} onFermer={() => setNouveau(false)} />}
+
       {credits && (
         <Fenetre titre="Crédits" onFermer={() => setCredits(false)}>
           <p>Les pictogrammes sont de Sergio Palao, pour <a href="https://arasaac.org" target="_blank" rel="noreferrer">ARASAAC</a>,
@@ -132,5 +147,36 @@ export function Bibliotheque({ classeurs, onOuvrir, onRecharger }: {
         </Fenetre>
       )}
     </div>
+  );
+}
+
+const CASES_DU_MODELE = MODELE_COMPLET.pages.reduce((n, p) => n + p.cases.length, 0);
+
+/** Un nouveau classeur : son nom, et ses pages — complètes d'office, ou une seule, vide. */
+function FenetreNouveau({ onCreer, onFermer }: { onCreer: (nom: string, complet: boolean) => void; onFermer: () => void }) {
+  const [nom, setNom] = React.useState("");
+  const [complet, setComplet] = React.useState(true);
+  const valider = () => onCreer(nom.trim(), complet);
+  return (
+    <Fenetre titre="Nouveau classeur" onFermer={onFermer}
+      pied={<>
+        <button className="bouton" onClick={onFermer}>Annuler</button>
+        <button className="bouton principal" onClick={valider}>Créer</button>
+      </>}>
+      <div className="nouveau">
+        <input className="champ" aria-label="Nom du classeur" placeholder={complet ? MODELE_COMPLET.nom : "Mon classeur"} value={nom}
+          onChange={(e) => setNom(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") valider(); }} />
+        <div className="choix-modele" role="radiogroup" aria-label="Pages du classeur">
+          <button role="radio" aria-checked={complet} className={`choix${complet ? " choisi" : ""}`} onClick={() => setComplet(true)}>
+            <strong>Complet</strong>
+            <span className="discret">{MODELE_COMPLET.pages.length} pages · {CASES_DU_MODELE} cases</span>
+          </button>
+          <button role="radio" aria-checked={!complet} className={`choix${!complet ? " choisi" : ""}`} onClick={() => setComplet(false)}>
+            <strong>Vide</strong>
+            <span className="discret">1 page</span>
+          </button>
+        </div>
+      </div>
+    </Fenetre>
   );
 }

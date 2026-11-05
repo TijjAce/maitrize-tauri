@@ -12,8 +12,9 @@
 set -e
 cd "$(dirname "$0")"
 
-if [ -f "$HOME/.cargo/env" ]; then
-  . "$HOME/.cargo/env"
+# Le Rust de rustup, qui a les cibles iOS, devant celui de Homebrew (sans elles : « can't find crate for `std` »).
+if [ -d "$HOME/.cargo/bin" ]; then
+  export PATH="$HOME/.cargo/bin:$PATH"
 fi
 # La ligne de commande de Tauri du classeur (npm install), épinglée sur celle du compagnon : Xcode la rappelle par npm.
 [ -x node_modules/.bin/tauri ] || npm install --no-audit --no-fund

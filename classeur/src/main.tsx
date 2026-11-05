@@ -2,7 +2,8 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { Bibliotheque } from "./Bibliotheque";
 import { Ecran } from "./Ecran";
-import { Annonces, Questions } from "./Fenetre";
+import { poserAuPremierLancement } from "./classeurComplet";
+import { Annonces, Questions, annoncer } from "./Fenetre";
 import type { Classeur } from "./modele";
 import { listerClasseurs } from "./pont";
 import "./styles.css";
@@ -11,7 +12,21 @@ function Application() {
   const [classeurs, setClasseurs] = React.useState<Classeur[] | null>(null);
   const [ouvert, setOuvert] = React.useState<Classeur | null>(null);
   const recharger = React.useCallback(async () => { setClasseurs(await listerClasseurs()); }, []);
-  React.useEffect(() => { void recharger(); }, [recharger]);
+  React.useEffect(() => {
+    // Au premier lancement, la liste attend le classeur complet (quelques secondes, le temps de recopier ses pictos).
+    void (async () => {
+      const deja = await listerClasseurs();
+      try {
+        if (await poserAuPremierLancement(deja)) {
+          await recharger();
+          return;
+        }
+      } catch (e) {
+        annoncer(`Le classeur complet n'a pas pu être posé : ${String((e as Error)?.message ?? e)}`);
+      }
+      setClasseurs(deja);
+    })();
+  }, [recharger]);
   return (
     <>
       {ouvert

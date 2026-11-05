@@ -36,10 +36,13 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
 
   const page = pageDe(c, pageId) ?? pageDe(c, c.accueil) ?? c.pages[0];
 
-  // Les images du classeur, lues une fois.
+  // Les images du classeur, demandées une fois chacune (une image introuvable ne se redemande pas en boucle).
+  const demandees = React.useRef(new Set<string>());
   React.useEffect(() => {
-    const manquantes = imagesDuClasseur(c).filter((id) => !(id in images));
-    if (manquantes.length) void lireImages(manquantes).then((lues) => setImages((i) => ({ ...i, ...lues })));
+    const manquantes = imagesDuClasseur(c).filter((id) => !(id in images) && !demandees.current.has(id));
+    if (!manquantes.length) return;
+    manquantes.forEach((id) => demandees.current.add(id));
+    void lireImages(manquantes).then((lues) => { if (Object.keys(lues).length) setImages((i) => ({ ...i, ...lues })); });
   }, [c, images]);
 
   // Tout se garde à mesure, un peu après le dernier geste.

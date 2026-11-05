@@ -10,6 +10,9 @@ import { chercherDans, indexArasaac } from "./recherche";
 
 const enTauri = (): boolean => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
+/** Dans l'application (iPad, iPhone), et non dans un navigateur d'essai. */
+export const dansLApplication = enTauri;
+
 async function appeler<T>(commande: string, args?: Record<string, unknown>): Promise<T> {
   const { invoke } = await import("@tauri-apps/api/core");
   return invoke<T>(commande, args);
@@ -43,6 +46,10 @@ export async function supprimerClasseur(id: string): Promise<void> {
   else memoire.oublier(CLE_ESSAI + id);
 }
 
+/** Ce qui ne se fait qu'une fois par appareil (poser le classeur complet au premier lancement). */
+export const dejaFait = (quoi: string): boolean => !!memoire.lire(`classeur:fait:${quoi}`);
+export const marquerFait = (quoi: string): void => memoire.ecrire(`classeur:fait:${quoi}`, new Date().toISOString());
+
 // ── Les images ─────────────────────────────────────────────────────────────
 
 const imagesDEssai = new Map<string, string>();
@@ -50,11 +57,20 @@ const imagesDEssai = new Map<string, string>();
 /** Les images demandées, en adresses `data:`. */
 export async function lireImages(ids: string[]): Promise<Record<string, string>> {
   if (!ids.length) return {};
-  if (enTauri()) return appeler<Record<string, string>>("images_lire", { ids });
-  return Object.fromEntries(ids.flatMap((id) => {
-    const v = imagesDEssai.get(id) ?? memoire.lire(`classeur:image:${id}`);
-    return v ? [[id, v]] : [];
-  }));
+  const lues: Record<string, string> = enTauri()
+    ? await appeler<Record<string, string>>("images_lire", { ids })
+    : Object.fromEntries(ids.flatMap((id) => {
+      const v = imagesDEssai.get(id) ?? memoire.lire(`classeur:image:${id}`);
+      return v ? [[id, v]] : [];
+    }));
+  // Un picto d'ARASAAC qui manque sur l'appareil, mais que l'application emporte (le classeur complet), s'y relit.
+  for (const id of ids) {
+    const n = id.match(/^arasaac-(\d+)$/)?.[1];
+    if (lues[id] || !n) continue;
+    const livre = await lirePictoLivre(Number(n));
+    if (livre) lues[id] = livre;
+  }
+  return lues;
 }
 
 /** Garde une image (une photo, une image importée) sous son identifiant. */
@@ -65,6 +81,28 @@ export async function garderImage(id: string, donnees: string): Promise<void> {
 }
 
 // ── ARASAAC ────────────────────────────────────────────────────────────────
+
+/** L'adresse d'un picto livré avec l'application. */
+export const pictoLivre = (n: number): string => `./pictos/${n}.png`;
+
+/** Un picto livré, en adresse `data:` ; rien s'il n'est pas dans l'application. */
+export async function lirePictoLivre(n: number): Promise<string | null> {
+  try {
+    const r = await fetch(pictoLivre(n));
+    if (!r.ok) return null;
+    const blob = await r.blob();
+    if (!blob.type.startsWith("image/")) return null;
+    return await new Promise<string>((ok, ko) => {
+      const lecteur = new FileReader();
+      lecteur.onload = () => ok(String(lecteur.result));
+      lecteur.onerror = () => ko(lecteur.error);
+      lecteur.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 
 export interface PictoTrouve { id: number; mot: string; nature?: number }
 
