@@ -142,8 +142,8 @@
        "page": "habits",
        "poids": 0.3,
        "cases": [
-        "habits:0",
-        "habits:4",
+        "habits:1",
+        "habits:5",
         "habits:17",
         "habits:16"
        ]
@@ -182,29 +182,53 @@
      "suites": [
       {
        "page": "animaux",
-       "poids": 0.25
+       "poids": 0.25,
+       "cases": [
+        "animaux:0",
+        "animaux:1",
+        "animaux:2",
+        "animaux:3"
+       ]
       },
       {
        "page": "gens",
        "poids": 0.25,
        "cases": [
+        "gens:16",
         "gens:0",
         "gens:2",
-        "gens:3",
-        "gens:11"
+        "gens:3"
        ]
       },
       {
        "page": "jouer",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "jouer:0",
+        "jouer:1",
+        "jouer:4",
+        "jouer:15"
+       ]
       },
       {
        "page": "lieux",
-       "poids": 0.15
+       "poids": 0.15,
+       "cases": [
+        "lieux:19",
+        "lieux:18",
+        "lieux:5",
+        "lieux:4"
+       ]
       },
       {
        "page": "classe-2",
-       "poids": 0.15
+       "poids": 0.15,
+       "cases": [
+        "classe-2:0",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:7"
+       ]
       }
      ],
      "poids": 0.214
@@ -341,10 +365,10 @@
        "page": "classe-2",
        "poids": 0.4,
        "cases": [
-        "classe-2:0",
-        "classe-2:4",
+        "classe-2:1",
         "classe-2:5",
-        "classe-2:9"
+        "classe-2:6",
+        "classe-2:10"
        ]
       }
      ],
@@ -365,10 +389,10 @@
        "page": "classe-2",
        "poids": 0.4,
        "cases": [
-        "classe-2:0",
-        "classe-2:4",
+        "classe-2:1",
         "classe-2:5",
-        "classe-2:9"
+        "classe-2:6",
+        "classe-2:10"
        ]
       }
      ],
@@ -395,7 +419,13 @@
       },
       {
        "page": "jouer",
-       "poids": 0.25
+       "poids": 0.25,
+       "cases": [
+        "jouer:4",
+        "jouer:1",
+        "jouer:6",
+        "jouer:3"
+       ]
       },
       {
        "page": "boire",
@@ -583,9 +613,9 @@
        "page": "gens",
        "poids": 0.3,
        "cases": [
+        "gens:16",
         "gens:2",
         "gens:3",
-        "gens:11",
         "gens:9"
        ]
       },
@@ -638,19 +668,31 @@
        "page": "classe-2",
        "poids": 0.3,
        "cases": [
-        "classe-2:4",
         "classe-2:5",
         "classe-2:6",
-        "classe-2:0"
+        "classe-2:7",
+        "classe-2:1"
        ]
       },
       {
        "page": "jouer",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "jouer:0",
+        "jouer:1",
+        "jouer:4",
+        "jouer:15"
+       ]
       },
       {
        "page": "animaux",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "animaux:0",
+        "animaux:1",
+        "animaux:2",
+        "animaux:3"
+       ]
       },
       {
        "page": "gens",
@@ -1267,8 +1309,8 @@
        "page": "habits",
        "poids": 0.25,
        "cases": [
-        "habits:0",
-        "habits:4",
+        "habits:1",
+        "habits:5",
         "habits:17",
         "habits:16"
        ]
@@ -1531,9 +1573,9 @@
        "poids": 1.0,
        "cases": [
         "habits:16",
-        "habits:8",
-        "habits:0",
-        "habits:11"
+        "habits:9",
+        "habits:1",
+        "habits:8"
        ]
       }
      ],
@@ -1549,10 +1591,10 @@
        "page": "habits",
        "poids": 1.0,
        "cases": [
-        "habits:0",
         "habits:1",
         "habits:2",
-        "habits:3"
+        "habits:3",
+        "habits:4"
        ]
       }
      ],
@@ -1579,9 +1621,9 @@
        "poids": 0.3,
        "cases": [
         "animaux:0",
+        "animaux:1",
         "animaux:16",
-        "animaux:12",
-        "animaux:15"
+        "animaux:13"
        ]
       },
       {
@@ -1633,8 +1675,8 @@
        "page": "habits",
        "poids": 0.3,
        "cases": [
-        "habits:0",
-        "habits:4",
+        "habits:1",
+        "habits:5",
         "habits:17",
         "habits:16"
        ]
@@ -1785,10 +1827,10 @@
        "page": "classe-2",
        "poids": 0.5,
        "cases": [
-        "classe-2:0",
-        "classe-2:8",
-        "classe-2:12",
-        "classe-2:11"
+        "classe-2:1",
+        "classe-2:9",
+        "classe-2:13",
+        "classe-2:12"
        ]
       }
      ],
@@ -1805,7 +1847,7 @@
        "poids": 0.4,
        "cases": [
         "classe-2:0",
-        "classe-2:2",
+        "classe-2:1",
         "classe-2:3",
         "classe-2:4"
        ]
@@ -1911,7 +1953,7 @@
        "poids": 0.5,
        "cases": [
         "classe-2:0",
-        "classe-2:2",
+        "classe-2:1",
         "classe-2:3",
         "classe-2:4"
        ]
@@ -1952,10 +1994,10 @@
        "page": "classe-2",
        "poids": 0.4,
        "cases": [
-        "classe-2:0",
-        "classe-2:4",
+        "classe-2:1",
         "classe-2:5",
-        "classe-2:9"
+        "classe-2:6",
+        "classe-2:10"
        ]
       }
      ],
@@ -2039,10 +2081,10 @@
        "page": "habits",
        "poids": 1.0,
        "cases": [
+        "habits:7",
         "habits:6",
-        "habits:5",
         "habits:13",
-        "habits:4"
+        "habits:5"
        ]
       }
      ],
@@ -2091,10 +2133,10 @@
        "page": "habits",
        "poids": 0.5,
        "cases": [
-        "habits:4",
+        "habits:5",
         "habits:14",
-        "habits:8",
-        "habits:6"
+        "habits:9",
+        "habits:7"
        ]
       },
       {
@@ -3051,8 +3093,8 @@
        "page": "habits",
        "poids": 0.4,
        "cases": [
-        "habits:0",
-        "habits:4",
+        "habits:1",
+        "habits:5",
         "habits:17",
         "habits:16"
        ]
@@ -3725,7 +3767,7 @@
        "poids": 0.4,
        "cases": [
         "classe-2:0",
-        "classe-2:2",
+        "classe-2:1",
         "classe-2:3",
         "classe-2:4"
        ]
@@ -3761,10 +3803,10 @@
        "page": "classe-2",
        "poids": 0.3,
        "cases": [
-        "classe-2:0",
-        "classe-2:2",
+        "classe-2:1",
         "classe-2:3",
-        "classe-2:4"
+        "classe-2:4",
+        "classe-2:5"
        ]
       },
       {
@@ -3784,20 +3826,20 @@
        "page": "habits",
        "poids": 0.5,
        "cases": [
-        "habits:0",
-        "habits:4",
         "habits:1",
-        "habits:8"
+        "habits:5",
+        "habits:2",
+        "habits:9"
        ]
       },
       {
        "page": "classe-2",
        "poids": 0.3,
        "cases": [
-        "classe-2:9",
-        "classe-2:11",
+        "classe-2:10",
         "classe-2:12",
-        "classe-2:4"
+        "classe-2:13",
+        "classe-2:5"
        ]
       },
       {
@@ -3851,10 +3893,10 @@
        "page": "classe-2",
        "poids": 0.6,
        "cases": [
-        "classe-2:13",
         "classe-2:14",
-        "classe-2:4",
-        "classe-2:9"
+        "classe-2:15",
+        "classe-2:5",
+        "classe-2:10"
        ]
       },
       {
@@ -3874,10 +3916,10 @@
        "page": "classe-2",
        "poids": 0.6,
        "cases": [
-        "classe-2:13",
         "classe-2:14",
-        "classe-2:4",
-        "classe-2:9"
+        "classe-2:15",
+        "classe-2:5",
+        "classe-2:10"
        ]
       },
       {
@@ -3952,10 +3994,10 @@
        "page": "classe-2",
        "poids": 0.4,
        "cases": [
-        "classe-2:11",
         "classe-2:12",
-        "classe-2:9",
-        "classe-2:4"
+        "classe-2:13",
+        "classe-2:10",
+        "classe-2:5"
        ]
       },
       {
@@ -3985,10 +4027,10 @@
        "page": "classe-2",
        "poids": 0.4,
        "cases": [
-        "classe-2:11",
         "classe-2:12",
-        "classe-2:9",
-        "classe-2:4"
+        "classe-2:13",
+        "classe-2:10",
+        "classe-2:5"
        ]
       },
       {
@@ -4018,10 +4060,10 @@
        "page": "classe-2",
        "poids": 0.4,
        "cases": [
-        "classe-2:11",
         "classe-2:12",
-        "classe-2:9",
-        "classe-2:4"
+        "classe-2:13",
+        "classe-2:10",
+        "classe-2:5"
        ]
       },
       {
@@ -4132,8 +4174,8 @@
        "page": "classe-2",
        "poids": 1.0,
        "cases": [
-        "classe-2:12",
-        "classe-2:11"
+        "classe-2:13",
+        "classe-2:12"
        ]
       }
      ],
@@ -4183,7 +4225,7 @@
        "poids": 0.4,
        "cases": [
         "classe-2:0",
-        "classe-2:2",
+        "classe-2:1",
         "classe-2:3",
         "classe-2:4"
        ]
@@ -4210,7 +4252,7 @@
        "poids": 0.4,
        "cases": [
         "classe-2:0",
-        "classe-2:2",
+        "classe-2:1",
         "classe-2:3",
         "classe-2:4"
        ]
@@ -4240,10 +4282,10 @@
        "page": "classe-2",
        "poids": 0.5,
        "cases": [
-        "classe-2:0",
-        "classe-2:8",
-        "classe-2:12",
-        "classe-2:11"
+        "classe-2:1",
+        "classe-2:9",
+        "classe-2:13",
+        "classe-2:12"
        ]
       }
      ],
@@ -4348,6 +4390,45 @@
    "colonnes": 5,
    "cases": [
     {
+     "mot": "un jouet",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 32568,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
+      }
+     ],
+     "poids": 0.77
+    },
+    {
      "mot": "ballon",
      "fond": "#fce6ca",
      "bord": "#e07b12",
@@ -4384,7 +4465,7 @@
        ]
       }
      ],
-     "poids": 0.791
+     "poids": 0.753
     },
     {
      "mot": "puzzle",
@@ -4423,7 +4504,7 @@
        ]
       }
      ],
-     "poids": 0.608
+     "poids": 0.576
     },
     {
      "mot": "poupée",
@@ -4462,7 +4543,7 @@
        ]
       }
      ],
-     "poids": 0.707
+     "poids": 0.68
     },
     {
      "mot": "voiture",
@@ -4501,7 +4582,7 @@
        ]
       }
      ],
-     "poids": 0.903
+     "poids": 0.879
     },
     {
      "mot": "cubes",
@@ -4540,7 +4621,7 @@
        ]
       }
      ],
-     "poids": 0.489
+     "poids": 0.467
     },
     {
      "mot": "jeu de société",
@@ -4579,7 +4660,7 @@
        ]
       }
      ],
-     "poids": 0.715
+     "poids": 0.695
     },
     {
      "mot": "toboggan",
@@ -4618,7 +4699,7 @@
        ]
       }
      ],
-     "poids": 0.389
+     "poids": 0.372
     },
     {
      "mot": "balançoire",
@@ -4657,7 +4738,7 @@
        ]
       }
      ],
-     "poids": 0.415
+     "poids": 0.399
     },
     {
      "mot": "trampoline",
@@ -4696,7 +4777,7 @@
        ]
       }
      ],
-     "poids": 0.369
+     "poids": 0.355
     },
     {
      "mot": "vélo",
@@ -4735,7 +4816,7 @@
        ]
       }
      ],
-     "poids": 0.587
+     "poids": 0.575
     },
     {
      "mot": "pâte à modeler",
@@ -4774,7 +4855,7 @@
        ]
       }
      ],
-     "poids": 0.379
+     "poids": 0.367
     },
     {
      "mot": "peinture",
@@ -4813,7 +4894,7 @@
        ]
       }
      ],
-     "poids": 0.548
+     "poids": 0.537
     },
     {
      "mot": "dessiner",
@@ -4846,7 +4927,7 @@
        ]
       }
      ],
-     "poids": 0.161
+     "poids": 0.158
     },
     {
      "mot": "musique",
@@ -4885,7 +4966,7 @@
        ]
       }
      ],
-     "poids": 0.669
+     "poids": 0.66
     },
     {
      "mot": "livre",
@@ -4924,7 +5005,7 @@
        ]
       }
      ],
-     "poids": 0.672
+     "poids": 0.664
     },
     {
      "mot": "tablette",
@@ -4963,7 +5044,7 @@
        ]
       }
      ],
-     "poids": 0.335
+     "poids": 0.327
     },
     {
      "mot": "bulles",
@@ -5002,7 +5083,7 @@
        ]
       }
      ],
-     "poids": 0.401
+     "poids": 0.394
     },
     {
      "mot": "cache-cache",
@@ -5041,46 +5122,7 @@
        ]
       }
      ],
-     "poids": 0.334
-    },
-    {
-     "mot": "dînette",
-     "fond": "#fce6ca",
-     "bord": "#e07b12",
-     "arasaac": 25966,
-     "suites": [
-      {
-       "page": "gens",
-       "poids": 0.4,
-       "cases": [
-        "gens:9",
-        "gens:10",
-        "gens:0",
-        "gens:1"
-       ]
-      },
-      {
-       "page": "decrire",
-       "poids": 0.3,
-       "cases": [
-        "decrire:0",
-        "decrire:1",
-        "decrire:9",
-        "decrire:4"
-       ]
-      },
-      {
-       "page": "couleurs",
-       "poids": 0.3,
-       "cases": [
-        "couleurs:0",
-        "couleurs:1",
-        "couleurs:3",
-        "couleurs:2"
-       ]
-      }
-     ],
-     "poids": 0.243
+     "poids": 0.327
     },
     {
      "mot": "train",
@@ -5158,10 +5200,10 @@
        "page": "classe-2",
        "poids": 0.4,
        "cases": [
-        "classe-2:0",
-        "classe-2:4",
+        "classe-2:1",
         "classe-2:5",
-        "classe-2:9"
+        "classe-2:6",
+        "classe-2:10"
        ]
       }
      ],
@@ -5182,10 +5224,10 @@
        "page": "classe-2",
        "poids": 0.4,
        "cases": [
-        "classe-2:0",
-        "classe-2:4",
+        "classe-2:1",
         "classe-2:5",
-        "classe-2:9"
+        "classe-2:6",
+        "classe-2:10"
        ]
       }
      ],
@@ -5252,7 +5294,13 @@
      "suites": [
       {
        "page": "jouer",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "jouer:1",
+        "jouer:0",
+        "jouer:5",
+        "jouer:4"
+       ]
       }
      ],
      "poids": 0.502
@@ -5265,7 +5313,13 @@
      "suites": [
       {
        "page": "jouer",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "jouer:1",
+        "jouer:0",
+        "jouer:5",
+        "jouer:4"
+       ]
       }
      ],
      "poids": 0.53
@@ -5363,12 +5417,11 @@
      "poids": 0.107
     },
     {
-     "mot": "animaux",
+     "mot": "dînette",
      "fond": "#fce6ca",
      "bord": "#e07b12",
-     "arasaac": 6901,
-     "lien": "animaux",
-     "poids": 0.071
+     "arasaac": 25966,
+     "poids": 0.048
     },
     {
      "mot": "faire semblant",
@@ -7881,19 +7934,19 @@
        "page": "classe-2",
        "poids": 0.6,
        "cases": [
+        "classe-2:6",
         "classe-2:5",
-        "classe-2:4",
-        "classe-2:10",
-        "classe-2:6"
+        "classe-2:11",
+        "classe-2:7"
        ]
       },
       {
        "page": "jouer",
        "poids": 0.4,
        "cases": [
-        "jouer:14",
+        "jouer:15",
         "jouer-2:14",
-        "jouer:15"
+        "jouer:16"
        ]
       }
      ],
@@ -7909,10 +7962,10 @@
        "page": "classe-2",
        "poids": 1.0,
        "cases": [
-        "classe-2:0",
         "classe-2:1",
-        "classe-2:4",
-        "classe-2:10"
+        "classe-2:2",
+        "classe-2:5",
+        "classe-2:11"
        ]
       }
      ],
@@ -7928,10 +7981,10 @@
        "page": "classe-2",
        "poids": 1.0,
        "cases": [
-        "classe-2:4",
-        "classe-2:0",
-        "classe-2:6",
-        "classe-2:10"
+        "classe-2:5",
+        "classe-2:1",
+        "classe-2:7",
+        "classe-2:11"
        ]
       }
      ],
@@ -7990,8 +8043,8 @@
        "page": "classe-2",
        "poids": 0.4,
        "cases": [
-        "classe-2:6",
-        "classe-2:10"
+        "classe-2:7",
+        "classe-2:11"
        ]
       }
      ],
@@ -8007,10 +8060,10 @@
        "page": "classe-2",
        "poids": 1.0,
        "cases": [
-        "classe-2:2",
-        "classe-2:6",
         "classe-2:3",
-        "classe-2:4"
+        "classe-2:7",
+        "classe-2:4",
+        "classe-2:5"
        ]
       }
      ],
@@ -8026,10 +8079,10 @@
        "page": "classe-2",
        "poids": 1.0,
        "cases": [
-        "classe-2:3",
-        "classe-2:6",
         "classe-2:4",
-        "classe-2:2"
+        "classe-2:7",
+        "classe-2:5",
+        "classe-2:3"
        ]
       }
      ],
@@ -8076,10 +8129,10 @@
        "page": "classe-2",
        "poids": 0.6,
        "cases": [
-        "classe-2:0",
-        "classe-2:4",
-        "classe-2:2",
-        "classe-2:9"
+        "classe-2:1",
+        "classe-2:5",
+        "classe-2:3",
+        "classe-2:10"
        ]
       },
       {
@@ -8134,10 +8187,10 @@
        "page": "classe-2",
        "poids": 1.0,
        "cases": [
-        "classe-2:4",
-        "classe-2:0",
-        "classe-2:6",
-        "classe-2:10"
+        "classe-2:5",
+        "classe-2:1",
+        "classe-2:7",
+        "classe-2:11"
        ]
       }
      ],
@@ -8179,6 +8232,35 @@
    "colonnes": 5,
    "cases": [
     {
+     "mot": "quelque chose",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 11318,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
+      },
+      {
+       "page": "actions",
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
+      }
+     ],
+     "poids": 0.692
+    },
+    {
      "mot": "crayon",
      "fond": "#fce6ca",
      "bord": "#e07b12",
@@ -8205,7 +8287,7 @@
        ]
       }
      ],
-     "poids": 0.406
+     "poids": 0.369
     },
     {
      "mot": "feutre",
@@ -8234,7 +8316,7 @@
        ]
       }
      ],
-     "poids": 0.264
+     "poids": 0.247
     },
     {
      "mot": "ciseaux",
@@ -8263,7 +8345,7 @@
        ]
       }
      ],
-     "poids": 0.377
+     "poids": 0.344
     },
     {
      "mot": "colle",
@@ -8292,7 +8374,7 @@
        ]
       }
      ],
-     "poids": 0.366
+     "poids": 0.334
     },
     {
      "mot": "cahier",
@@ -8321,7 +8403,7 @@
        ]
       }
      ],
-     "poids": 0.35
+     "poids": 0.32
     },
     {
      "mot": "livre",
@@ -8350,7 +8432,7 @@
        ]
       }
      ],
-     "poids": 0.622
+     "poids": 0.552
     },
     {
      "mot": "feuille",
@@ -8379,7 +8461,7 @@
        ]
       }
      ],
-     "poids": 0.458
+     "poids": 0.411
     },
     {
      "mot": "gomme",
@@ -8408,7 +8490,7 @@
        ]
       }
      ],
-     "poids": 0.293
+     "poids": 0.27
     },
     {
      "mot": "règle",
@@ -8437,7 +8519,7 @@
        ]
       }
      ],
-     "poids": 0.532
+     "poids": 0.474
     },
     {
      "mot": "cartable",
@@ -8466,7 +8548,7 @@
        ]
       }
      ],
-     "poids": 0.232
+     "poids": 0.217
     },
     {
      "mot": "tableau",
@@ -8495,7 +8577,7 @@
        ]
       }
      ],
-     "poids": 0.485
+     "poids": 0.434
     },
     {
      "mot": "table",
@@ -8524,7 +8606,7 @@
        ]
       }
      ],
-     "poids": 0.555
+     "poids": 0.493
     },
     {
      "mot": "chaise",
@@ -8553,7 +8635,7 @@
        ]
       }
      ],
-     "poids": 0.46
+     "poids": 0.411
     },
     {
      "mot": "porte",
@@ -8582,7 +8664,7 @@
        ]
       }
      ],
-     "poids": 0.637
+     "poids": 0.563
     },
     {
      "mot": "fenêtre",
@@ -8611,22 +8693,14 @@
        ]
       }
      ],
-     "poids": 0.523
+     "poids": 0.464
     },
     {
      "mot": "se laver les mains",
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 8975,
-     "poids": 0.151
-    },
-    {
-     "mot": "le manteau",
-     "fond": "#fce6ca",
-     "bord": "#e07b12",
-     "arasaac": 2242,
-     "dire": "mettre le manteau",
-     "poids": 0.448
+     "poids": 0.134
     },
     {
      "mot": "s'asseoir",
@@ -8638,26 +8712,26 @@
        "page": "classe-2",
        "poids": 1.0,
        "cases": [
-        "classe-2:12",
-        "classe-2:11"
+        "classe-2:13",
+        "classe-2:12"
        ]
       }
      ],
-     "poids": 0.187
+     "poids": 0.166
     },
     {
      "mot": "se mettre en rang",
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 39146,
-     "poids": 0.124
+     "poids": 0.112
     },
     {
      "mot": "silence",
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 5936,
-     "poids": 0.157
+     "poids": 0.14
     }
    ],
    "suite": true
@@ -8668,6 +8742,45 @@
    "lignes": 4,
    "colonnes": 5,
    "cases": [
+    {
+     "mot": "un animal",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 6901,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
+      },
+      {
+       "page": "actions",
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
+      }
+     ],
+     "poids": 0.906
+    },
     {
      "mot": "chien",
      "fond": "#fce6ca",
@@ -8705,7 +8818,7 @@
        ]
       }
      ],
-     "poids": 1.0
+     "poids": 0.963
     },
     {
      "mot": "chat",
@@ -8744,7 +8857,7 @@
        ]
       }
      ],
-     "poids": 0.883
+     "poids": 0.851
     },
     {
      "mot": "oiseau",
@@ -8783,7 +8896,7 @@
        ]
       }
      ],
-     "poids": 0.834
+     "poids": 0.806
     },
     {
      "mot": "poisson",
@@ -8822,7 +8935,7 @@
        ]
       }
      ],
-     "poids": 0.811
+     "poids": 0.786
     },
     {
      "mot": "cheval",
@@ -8861,7 +8974,7 @@
        ]
       }
      ],
-     "poids": 0.828
+     "poids": 0.807
     },
     {
      "mot": "vache",
@@ -8900,7 +9013,7 @@
        ]
       }
      ],
-     "poids": 0.716
+     "poids": 0.697
     },
     {
      "mot": "cochon",
@@ -8939,7 +9052,7 @@
        ]
       }
      ],
-     "poids": 0.658
+     "poids": 0.641
     },
     {
      "mot": "mouton",
@@ -8978,7 +9091,7 @@
        ]
       }
      ],
-     "poids": 0.578
+     "poids": 0.562
     },
     {
      "mot": "poule",
@@ -9017,7 +9130,7 @@
        ]
       }
      ],
-     "poids": 0.64
+     "poids": 0.626
     },
     {
      "mot": "canard",
@@ -9056,7 +9169,7 @@
        ]
       }
      ],
-     "poids": 0.587
+     "poids": 0.574
     },
     {
      "mot": "lapin",
@@ -9095,7 +9208,7 @@
        ]
       }
      ],
-     "poids": 0.619
+     "poids": 0.607
     },
     {
      "mot": "souris",
@@ -9134,7 +9247,7 @@
        ]
       }
      ],
-     "poids": 0.555
+     "poids": 0.544
     },
     {
      "mot": "lion",
@@ -9173,7 +9286,7 @@
        ]
       }
      ],
-     "poids": 0.54
+     "poids": 0.53
     },
     {
      "mot": "éléphant",
@@ -9212,46 +9325,7 @@
        ]
       }
      ],
-     "poids": 0.503
-    },
-    {
-     "mot": "singe",
-     "fond": "#fce6ca",
-     "bord": "#e07b12",
-     "arasaac": 2477,
-     "suites": [
-      {
-       "page": "decrire",
-       "poids": 0.4,
-       "cases": [
-        "decrire:0",
-        "decrire:1",
-        "decrire:13",
-        "decrire:14"
-       ]
-      },
-      {
-       "page": "actions",
-       "poids": 0.3,
-       "cases": [
-        "actions:5",
-        "actions-2:10",
-        "actions-2:5",
-        "actions-2:7"
-       ]
-      },
-      {
-       "page": "couleurs",
-       "poids": 0.3,
-       "cases": [
-        "couleurs:4",
-        "couleurs:5",
-        "couleurs:9",
-        "couleurs:10"
-       ]
-      }
-     ],
-     "poids": 0.568
+     "poids": 0.494
     },
     {
      "mot": "ours",
@@ -9405,6 +9479,45 @@
    "colonnes": 5,
    "cases": [
     {
+     "mot": "un vêtement",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 34395,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
+      },
+      {
+       "page": "actions",
+       "poids": 0.3,
+       "cases": [
+        "actions:12",
+        "actions:10",
+        "actions:15",
+        "actions:16"
+       ]
+      },
+      {
+       "page": "decrire",
+       "poids": 0.2,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:8",
+        "decrire:19"
+       ]
+      }
+     ],
+     "poids": 0.965
+    },
+    {
      "mot": "manteau",
      "fond": "#fce6ca",
      "bord": "#e07b12",
@@ -9441,7 +9554,7 @@
        ]
       }
      ],
-     "poids": 0.917
+     "poids": 0.88
     },
     {
      "mot": "bonnet",
@@ -9480,7 +9593,7 @@
        ]
       }
      ],
-     "poids": 0.714
+     "poids": 0.683
     },
     {
      "mot": "écharpe",
@@ -9519,7 +9632,7 @@
        ]
       }
      ],
-     "poids": 0.635
+     "poids": 0.607
     },
     {
      "mot": "gants",
@@ -9558,7 +9671,7 @@
        ]
       }
      ],
-     "poids": 0.77
+     "poids": 0.745
     },
     {
      "mot": "chaussures",
@@ -9597,7 +9710,7 @@
        ]
       }
      ],
-     "poids": 0.864
+     "poids": 0.842
     },
     {
      "mot": "chaussettes",
@@ -9636,7 +9749,7 @@
        ]
       }
      ],
-     "poids": 0.679
+     "poids": 0.659
     },
     {
      "mot": "pantalon",
@@ -9675,7 +9788,7 @@
        ]
       }
      ],
-     "poids": 0.748
+     "poids": 0.731
     },
     {
      "mot": "t-shirt",
@@ -9714,7 +9827,7 @@
        ]
       }
      ],
-     "poids": 0.599
+     "poids": 0.583
     },
     {
      "mot": "pull",
@@ -9753,7 +9866,7 @@
        ]
       }
      ],
-     "poids": 0.605
+     "poids": 0.591
     },
     {
      "mot": "robe",
@@ -9792,7 +9905,7 @@
        ]
       }
      ],
-     "poids": 0.791
+     "poids": 0.778
     },
     {
      "mot": "jupe",
@@ -9831,46 +9944,7 @@
        ]
       }
      ],
-     "poids": 0.573
-    },
-    {
-     "mot": "short",
-     "fond": "#fce6ca",
-     "bord": "#e07b12",
-     "arasaac": 13638,
-     "suites": [
-      {
-       "page": "couleurs",
-       "poids": 0.5,
-       "cases": [
-        "couleurs:0",
-        "couleurs:1",
-        "couleurs:3",
-        "couleurs:2"
-       ]
-      },
-      {
-       "page": "actions",
-       "poids": 0.3,
-       "cases": [
-        "actions:12",
-        "actions:10",
-        "actions:15",
-        "actions:16"
-       ]
-      },
-      {
-       "page": "decrire",
-       "poids": 0.2,
-       "cases": [
-        "decrire:0",
-        "decrire:1",
-        "decrire:8",
-        "decrire:19"
-       ]
-      }
-     ],
-     "poids": 0.456
+     "poids": 0.561
     },
     {
      "mot": "pyjama",
@@ -9935,20 +10009,20 @@
        "page": "habits",
        "poids": 0.5,
        "cases": [
-        "habits:0",
-        "habits:4",
         "habits:1",
-        "habits:8"
+        "habits:5",
+        "habits:2",
+        "habits:9"
        ]
       },
       {
        "page": "classe-2",
        "poids": 0.3,
        "cases": [
-        "classe-2:9",
-        "classe-2:11",
+        "classe-2:10",
         "classe-2:12",
-        "classe-2:4"
+        "classe-2:13",
+        "classe-2:5"
        ]
       },
       {
@@ -10003,7 +10077,7 @@
    ]
   }
  ],
- "versionDesPoids": "2026-11-05-lexique383-choix4",
+ "versionDesPoids": "2026-11-05-lexique383-generiques5",
  "sources": [
   "Fréquences : Lexique 3.83 (B. New, C. Pallier, lexique.org), CC BY-SA 4.0"
  ]

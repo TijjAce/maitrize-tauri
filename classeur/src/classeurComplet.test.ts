@@ -128,6 +128,15 @@ describe("au lancement", () => {
     expect(aPoser([nouveauClasseur("Le mien")])).toEqual({ poser: false, remplacer: [] });
     expect(aPoser([classeurComplet()])).toEqual({ poser: false, remplacer: [] });
   });
+  it("remplace aussi un classeur complet intact dont les pages ont changé de mots (« un animal », « un jouet »…)", () => {
+    const ancien = classeurComplet("", "2026-11-05T09:00:00.000Z", {
+      ...MODELE_COMPLET,
+      pages: MODELE_COMPLET.pages.map((p) => (p.cle === "animaux" ? { ...p, cases: p.cases.filter((k) => k.mot !== "un animal") } : p)),
+    });
+    expect(aPoser([ancien])).toEqual({ poser: true, remplacer: [ancien.id] });
+    expect(aPoser([classeurComplet()])).toEqual({ poser: false, remplacer: [] });
+  });
+
   it("remplace l'ancien classeur complet que personne n'a modifié, jamais celui qu'on a changé", () => {
     const intact = ancien();
     expect(aPoser([intact, nouveauClasseur("Le mien")])).toEqual({ poser: true, remplacer: [intact.id] });

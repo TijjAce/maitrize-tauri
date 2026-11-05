@@ -33,6 +33,12 @@ describe("les ensembles de pictos par thème, aux poids calculés à l'avance", 
     expect(ensemblesApres(c, caseDe("Je veux dire…", "c'est…"), page("Je veux dire…").id).map((x) => x.nom)).toEqual(["C'est…", "Couleurs et formes"]);
   });
 
+  it("après « regarde », chaque ensemble commence par son picto générique (« il me faudrait des pictos génériques, par exemple pour animaux »)", () => {
+    expect(noms(ensemblesApres(c, caseDe("L'essentiel", "regarde"), c.accueil, 3))).toEqual([
+      "Les animaux : un animal, chien, chat, oiseau", "Les gens : quelqu'un, moi, maman, papa", "Jouer : un jouet, ballon, voiture, livre",
+    ]);
+  });
+
   it("« regarde » propose ce qu'on montre : les animaux, les gens, les jeux (« j'ai pas forcément ce qui pourrait suivre »)", () => {
     expect(ensemblesApres(c, caseDe("L'essentiel", "regarde"), c.accueil).map((x) => x.nom)).toEqual(["Les animaux", "Les gens", "Jouer"]);
     expect(ensemblesApres(c, caseDe("Ça ne va pas", "j'ai froid"), page("Ça ne va pas").id).map((x) => x.nom)).toEqual(["S'habiller"]);
@@ -41,7 +47,7 @@ describe("les ensembles de pictos par thème, aux poids calculés à l'avance", 
   it("sur la deuxième page d'une section, propose la première (« lancer » → les jouets de la page Jouer)", () => {
     const deuxieme = ordreDesPages(c).filter((p) => p.nom === "Jouer")[1];
     const lancer = deuxieme.cases.find((k) => k?.mot === "lancer")!;
-    expect(noms(ensemblesApres(c, lancer, deuxieme.id))).toEqual(["Jouer : voiture, ballon, jeu de société, poupée"]);
+    expect(noms(ensemblesApres(c, lancer, deuxieme.id))).toEqual(["Jouer : ballon, un jouet, cubes, voiture"]);
   });
 
   it("montre les pictos choisis pour ce qui précède : « bonjour » → maman, papa… ; « j'ai froid » → manteau, bonnet…", () => {
@@ -70,7 +76,7 @@ describe("les ensembles de pictos par thème, aux poids calculés à l'avance", 
   it("selon le geste ou le sentiment, d'autres pictos du même thème", () => {
     const faire = page("Faire");
     expect(noms(ensemblesApres(c, caseDe("Faire", "ouvrir"), faire.id))[0]).toBe("En classe : porte, fenêtre, cahier, cartable");
-    expect(noms(ensemblesApres(c, caseDe("Faire", "prendre"), faire.id))[0]).toBe("En classe : crayon, ciseaux, colle, cahier");
+    expect(noms(ensemblesApres(c, caseDe("Faire", "prendre"), faire.id))[0]).toBe("En classe : quelque chose, crayon, ciseaux, colle");
     expect(noms(ensemblesApres(c, caseDe("Je veux dire…", "j'aime"), page("Je veux dire…").id))[0]).toBe("Manger : gâteau, chocolat, frites, pizza");
     expect(noms(ensemblesApres(c, caseDe("Je veux dire…", "je n'aime pas"), page("Je veux dire…").id))[0]).toBe("Manger : légumes, soupe, poisson, viande");
     // Un sentiment agréable n'appelle pas « ça ne va pas » ; un sentiment pénible, si.

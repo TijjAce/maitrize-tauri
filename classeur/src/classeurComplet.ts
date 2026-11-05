@@ -96,9 +96,10 @@ export async function creerLeClasseurComplet(nom = ""): Promise<Classeur> {
   return c;
 }
 
-/** Le classeur suit-il le modèle d'aujourd'hui (mêmes pages, dans le même ordre) ? */
+/** Le classeur suit-il le modèle d'aujourd'hui : mêmes pages, dans le même ordre, avec les mêmes mots ? */
 const suitLeModele = (c: Classeur, m: ModeleDeClasseur) =>
-  c.pages.length === m.pages.length && ordreDesPages(c).every((p, i) => p.nom === m.pages[i].nom);
+  c.pages.length === m.pages.length && ordreDesPages(c).every((p, i) => p.nom === m.pages[i].nom
+    && p.cases.filter(Boolean).map((k) => k!.mot).join("|") === m.pages[i].cases.map((k) => k.mot).join("|"));
 
 /**
  * Ce qu'il faut faire au lancement : poser le classeur complet quand l'appareil n'a aucun classeur ; remplacer un

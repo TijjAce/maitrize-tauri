@@ -325,6 +325,7 @@ PAGES = [
     ], suite=True),
     # 11 — Jouer.
     page("jouer", "Jouer", [
+        ("un jouet", 32568, "nom", None, None),
         ("ballon", "ballon", "nom", None, None),
         ("puzzle", "puzzle", "nom", None, None),
         ("poupée", "poupée", "nom", None, None),
@@ -343,7 +344,6 @@ PAGES = [
         ("tablette", "tablette", "nom", None, None),
         ("bulles", "bulles", "nom", None, None),
         ("cache-cache", "cache-cache", "nom", None, None),
-        ("dînette", "dînette", "nom", None, None),
         ("train", "train", "nom", None, None),
     ]),
     page("jouer-2", "Jouer", [
@@ -365,7 +365,7 @@ PAGES = [
         ("sable", "sable", "nom", None, None),
         ("eau", "eau", "nom", "jouer avec l'eau", None),
         ("dehors", "dehors", "nom", "jouer dehors", None),
-        ("animaux", "animaux", "nom", None, "animaux"),
+        ("dînette", "dînette", "nom", None, None),
         ("faire semblant", 33990, "verbe", None, None),
     ], suite=True),
     # 12 — Aller : les lieux ; chacun complète « on va », « je veux aller ».
@@ -550,6 +550,7 @@ PAGES = [
         ("je ne comprends pas", 27363, "social", None, None),
     ]),
     page("classe-2", "En classe", [
+        ("quelque chose", 11318, "nom", None, None),
         ("crayon", "crayon", "nom", None, None),
         ("feutre", "feutre", "nom", None, None),
         ("ciseaux", "ciseaux", "nom", None, None),
@@ -566,13 +567,13 @@ PAGES = [
         ("porte", "porte", "nom", None, None),
         ("fenêtre", "fenêtre", "nom", None, None),
         ("se laver les mains", 8975, "verbe", None, None),
-        ("le manteau", "manteau", "nom", "mettre le manteau", None),
         ("s'asseoir", 35033, "verbe", None, None),
         ("se mettre en rang", 39146, "verbe", None, None),
         ("silence", "silence", "social", None, None),
     ], suite=True),
     # 17 — Les animaux.
     page("animaux", "Les animaux", [
+        ("un animal", 6901, "nom", None, None),
         ("chien", "chien", "nom", None, None),
         ("chat", "chat", "nom", None, None),
         ("oiseau", "oiseau", "nom", None, None),
@@ -587,7 +588,6 @@ PAGES = [
         ("souris", "souris", "nom", None, None),
         ("lion", "lion", "nom", None, None),
         ("éléphant", "éléphant", "nom", None, None),
-        ("singe", "singe", "nom", None, None),
         ("ours", "ours", "nom", None, None),
         ("serpent", "serpent", "nom", None, None),
         ("papillon", "papillon", "nom", None, None),
@@ -596,6 +596,7 @@ PAGES = [
     ]),
     # 18 — S'habiller.
     page("habits", "S'habiller", [
+        ("un vêtement", 34395, "nom", None, None),
         ("manteau", "manteau", "nom", None, None),
         ("bonnet", "bonnet", "nom", None, None),
         ("écharpe", "écharpe", "nom", None, None),
@@ -607,7 +608,6 @@ PAGES = [
         ("pull", "pull", "nom", None, None),
         ("robe", "robe", "nom", None, None),
         ("jupe", "jupe", "nom", None, None),
-        ("short", "short", "nom", None, None),
         ("pyjama", "pyjama", "nom", None, None),
         ("couche", "couche", "nom", None, None),
         ("lunettes", "lunettes", "nom", None, None),
@@ -801,7 +801,7 @@ SUITES_PAR_PAGE = {
     "manger-2": ([("boire", 50), ("decrire", 50)], {"cuillère", "fourchette", "couteau", "assiette", "bol"}),
     "boire": ([("decrire", 60), ("manger", 40)], {"chaud", "froid", "c'est bon", "un peu", "beaucoup", "encore", "fini", "c'est renversé",
                                                   "verre", "gourde", "paille", "bouteille", "tasse", "j'ai soif"}),
-    "classe-2": ([("couleurs", 50), ("actions", 50)], {"se laver les mains", "le manteau", "s'asseoir", "se mettre en rang", "silence"}),
+    "classe-2": ([("couleurs", 50), ("actions", 50)], {"se laver les mains", "s'asseoir", "se mettre en rang", "silence"}),
     "animaux": ([("decrire", 40), ("actions", 30), ("couleurs", 30)], set()),
     "habits": ([("couleurs", 50), ("actions", 30), ("decrire", 20)], {"trop petit", "trop grand", "couche", "lunettes"}),
 }
@@ -815,18 +815,31 @@ GENS_NOMMES = ["maman", "papa", "maîtresse", "copain"]
 AUTRES_ENFANTS = ["copain", "copine", "les autres", "quelqu'un"]
 POUR_AIDER = {"actions": ["mettre", "ouvrir", "fermer", "prendre"], "habits": ["manteau", "chaussures", "attacher", "enlever"]}
 CHOIX = {
-    **{(m, "gens"): GENS_NOMMES for m in ("bonjour", "au revoir", "merci", "pardon", "parler", "je te raconte")},
+    **{(m, "gens"): GENS_NOMMES for m in ("bonjour", "au revoir", "merci", "pardon", "parler")},
     **{(m, "gens"): AUTRES_ENFANTS for m in ("on m'embête", "il m'a poussé", "il m'a tapé", "il triche", "il crie", "on m'a fait mal")},
     **{(m, t): v for m in ("aide-moi", "de l'aide", "tu m'aides ?") for t, v in POUR_AIDER.items()},
     **{(m, "classe-2"): ["crayon", "cahier", "livre", "cartable"] for m in ("à moi", "à toi", "c'est à moi")},
     ("un câlin", "gens"): ["maman", "papa", "mamie", "papi"],
-    ("regarde", "gens"): ["moi", "maman", "papa", "maîtresse"],
+    # « Quand je clique sur regarde, il me faudrait des pictos génériques, par exemple pour animaux » : le générique en tête.
+    ("regarde", "gens"): ["quelqu'un", "moi", "maman", "papa"],
+    ("regarde", "animaux"): ["un animal", "chien", "chat", "oiseau"],
+    ("regarde", "jouer"): ["un jouet", "ballon", "voiture", "livre"],
+    ("regarde", "classe-2"): ["quelque chose", "cahier", "livre", "feuille"],
+    ("regarde", "lieux"): ["là-bas", "ici", "dehors", "maison"],
+    # Montrer, raconter, avoir peur, perdre : un générique d'abord, quand on ne trouve pas le bon mot.
+    ("je te montre", "classe-2"): ["quelque chose", "cahier", "livre", "feuille"],
+    ("je te montre", "animaux"): ["un animal", "chien", "chat", "oiseau"],
+    ("je te montre", "jouer"): ["un jouet", "ballon", "voiture", "livre"],
+    ("je te raconte", "gens"): ["quelqu'un", "maman", "papa", "copain"],
+    # Pour demander, un jouet précis vaut mieux que « un jouet ».
+    ("je veux", "jouer"): ["voiture", "ballon", "jeu de société", "poupée"],
+    **{(m, "jouer"): ["ballon", "un jouet", "cubes", "voiture"] for m in ("lancer", "attraper")},
     ("attends", "gens"): ["moi", "maman", "papa", "maîtresse"],
     ("je veux quelqu'un", "gens"): ["maman", "papa", "maîtresse", "AESH"],
     ("rire", "gens"): ["copain", "copine", "maman", "papa"],
     ("donner", "gens"): ["moi", "toi", "maman", "copain"],
     ("j'ai froid", "habits"): ["manteau", "bonnet", "écharpe", "gants"],
-    ("j'ai chaud", "habits"): ["enlever", "pull", "manteau", "short"],
+    ("j'ai chaud", "habits"): ["enlever", "pull", "manteau", "t-shirt"],
     ("je suis mouillé", "habits"): ["pantalon", "chaussettes", "couche", "chaussures"],
     ("ça me gêne", "habits"): ["chaussures", "lunettes", "pull", "pantalon"],
     ("mettre", "habits"): ["manteau", "chaussures", "bonnet", "pull"],
@@ -841,9 +854,9 @@ CHOIX = {
     ("dessiner", "couleurs"): COULEURS_VIVES,
     ("dessiner", "gens"): ["moi", "maman", "papa", "copain"],
     ("c'est…", "couleurs"): COULEURS_VIVES,
-    ("j'ai peur", "animaux"): ["chien", "serpent", "lion", "ours"],
+    ("j'ai peur", "animaux"): ["un animal", "chien", "serpent", "lion"],
     # Les objets de la classe, selon le geste.
-    **{(m, "classe-2"): ["crayon", "ciseaux", "colle", "cahier"] for m in ("prendre", "chercher", "trouver", "j'ai perdu", "il m'a pris")},
+    **{(m, "classe-2"): ["quelque chose", "crayon", "ciseaux", "colle"] for m in ("prendre", "chercher", "trouver", "j'ai perdu", "il m'a pris")},
     **{(m, "classe-2"): ["porte", "fenêtre", "cahier", "cartable"] for m in ("ouvrir", "fermer")},
     **{(m, "classe-2"): ["table", "chaise", "cartable", "cahier"] for m in ("dans", "sur", "sous")},
     **{(m, "lieux-2"): ["chambre", "cuisine", "salon", "salle de bain"] for m in ("dans", "sur", "sous")},
@@ -1088,7 +1101,7 @@ def main(banque, sortie, chemin_lexique=None):
     with open(os.path.join(sortie, "src", "donnees", "classeur-par-defaut.json"), "w", encoding="utf-8") as f:
         modele = {"nom": "Classeur complet", "accueil": "accueil", "categories": "categories", "pages": pages}
         # La version des poids : un classeur complet déjà posé reçoit ceux-ci au lancement quand elle change.
-        modele["versionDesPoids"] = "2026-11-05-lexique383-choix4" if lex else "2026-11-05-ordre"
+        modele["versionDesPoids"] = "2026-11-05-lexique383-generiques5" if lex else "2026-11-05-ordre"
         if lex:
             modele["sources"] = ["Fréquences : Lexique 3.83 (B. New, C. Pallier, lexique.org), CC BY-SA 4.0"]
         json.dump(modele, f, ensure_ascii=False, indent=1)
