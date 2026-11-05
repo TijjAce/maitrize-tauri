@@ -136,7 +136,10 @@ describe("au lancement", () => {
 describe("un classeur complet d'avant les poids", () => {
   it("les reçoit à l'identique, sans que rien d'autre ne change", () => {
     const neuf = classeurComplet("", "2026-11-05T08:00:00.000Z");
-    const sansPoids = { ...neuf, pages: neuf.pages.map((p) => ({ ...p, cases: p.cases.map((k) => (k ? { ...k, poids: undefined, suites: undefined } : k)) })) };
+    const sansPoids = {
+      ...neuf, versionDesPoids: undefined,
+      pages: neuf.pages.map((p) => ({ ...p, cases: p.cases.map((k) => (k ? { ...k, poids: undefined, suites: undefined } : k)) })),
+    };
     const repris = ajouterLesPoids(sansPoids)!;
     expect(repris.modifieLe).toBe(sansPoids.modifieLe);
     const jeVeux = (c: typeof neuf) => c.pages.flatMap((p) => p.cases).find((k) => k?.mot === "je veux" && k.lien)!;
@@ -145,8 +148,14 @@ describe("un classeur complet d'avant les poids", () => {
       .toEqual(ensemblesApres(neuf, jeVeux(neuf), page(neuf, "Je veux")).map((e) => e.nom));
     expect(repris.pages.map((p) => p.cases.map((k) => k?.mot ?? null))).toEqual(neuf.pages.map((p) => p.cases.map((k) => k?.mot ?? null)));
   });
-  it("ne touche pas un classeur qui a déjà ses poids", () => {
-    expect(ajouterLesPoids(classeurComplet())).toBeNull();
+  it("ne touche pas un classeur qui a déjà les poids d'aujourd'hui ; remplace ceux d'une autre version", () => {
+    const neuf = classeurComplet();
+    expect(neuf.versionDesPoids).toBe(MODELE_COMPLET.versionDesPoids);
+    expect(ajouterLesPoids(neuf)).toBeNull();
+    const ancien = { ...neuf, versionDesPoids: "2026-11-05-ordre", pages: neuf.pages.map((p) => ({ ...p, cases: p.cases.map((k) => (k ? { ...k, poids: 0.123 } : k)) })) };
+    const repris = ajouterLesPoids(ancien)!;
+    expect(repris.versionDesPoids).toBe(MODELE_COMPLET.versionDesPoids);
+    expect(repris.pages.map((p) => p.cases.map((k) => k?.poids ?? null))).toEqual(neuf.pages.map((p) => p.cases.map((k) => k?.poids ?? null)));
   });
 });
 

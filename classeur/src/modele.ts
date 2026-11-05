@@ -55,6 +55,8 @@ export interface Classeur {
   balayer?: boolean;
   /** Faux : pas de bande d'ensembles par thème au-dessus de la grille. */
   suggestions?: boolean;
+  /** La version des poids calculés à l'avance qu'il porte (celle du classeur complet livré). */
+  versionDesPoids?: string;
   creeLe: string;
   modifieLe: string;
 }
@@ -269,6 +271,7 @@ export function lireClasseur(brut: unknown): Classeur | null {
     ...(typeof o.categories === "string" && pages.some((p) => p.id === o.categories) ? { categories: o.categories } : {}),
     pages, ...(o.voix && typeof o.voix === "object" ? { voix: o.voix } : {}), ...(o.balayer === false ? { balayer: false } : {}),
     ...(o.suggestions === false ? { suggestions: false } : {}),
+    ...(typeof o.versionDesPoids === "string" ? { versionDesPoids: o.versionDesPoids } : {}),
     creeLe: typeof o.creeLe === "string" ? o.creeLe : "", modifieLe: typeof o.modifieLe === "string" ? o.modifieLe : "",
   };
 }

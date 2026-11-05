@@ -13,14 +13,22 @@ Pour chaque case : le mot écrit, le mot qui cherche son picto dans la banque
 (ou son numéro, quand le premier trouvé n'est pas le bon), la nature (sa
 couleur), ce qui se dit s'il diffère, la page qu'elle ouvre.
 
-    python3 -I classeur/outils/classeur-par-defaut.py "<…>/ARASAAC" classeur
+    python3 -I classeur/outils/classeur-par-defaut.py "<…>/ARASAAC" classeur "<…>/Lexique383.tsv"
+
+Le troisième chemin, Lexique 3.83 (New & Pallier, lexique.org, CC BY-SA 4.0 ;
+~/Developer/maitrize/sources/lexique), donne la fréquence des mots en
+français parlé (sous-titres de films) : elle entre dans le poids des pictos
+des ensembles par thème. Sans lui, seul l'ordre des pages compte.
 
 écrit classeur/src/donnees/classeur-par-defaut.json et copie les images,
 réduites, dans classeur/public/pictos/ : le classeur marche dès le premier
 lancement, sans internet.
 """
+import csv
 import json
+import math
 import os
+import re
 import subprocess
 import sys
 import unicodedata
@@ -705,12 +713,52 @@ COULEURS = {
 NATURE_ARASAAC = {"personne": 2, "verbe": 3, "nom": 2, "adjectif": 4, "social": 5, "question": 6, "petit mot": 6}
 
 
+# ── Lexique 3.83 : la fréquence des mots en français parlé ──
+# freqlemfilms2 : occurrences du lemme par million de mots de sous-titres de films. On cherche le mot avec la
+# catégorie qui va avec sa nature (« porte » le nom, pas « porter » ; « couche » le nom, pas « coucher »).
+CATEGORIES = {
+    "nom": {"NOM"}, "verbe": {"VER"}, "adjectif": {"ADJ", "VER"}, "personne": {"NOM", "PRO:per", "PRO:ind"},
+    "question": {"PRO:int", "ADV:int", "ADV"}, "petit mot": {"ADV", "PRE", "ADJ", "PRO:ind", "CON", "ADJ:ind"},
+}
+MOTS_VIDES = set("je j' tu il elle on nous vous ils me m' te t' se s' le la les l' un une des de d' du au aux à a ai as est "
+                 "c' ce ça ne n' pas y en que qu' et ou pour".split())
+
+
+def lire_lexique(chemin):
+    lex = {}
+    with open(chemin, encoding="utf-8") as f:
+        for r in csv.DictReader(f, delimiter="\t"):
+            lex.setdefault(r["ortho"].lower(), []).append((r["cgram"], float(r["freqlemfilms2"] or 0)))
+    return lex
+
+
+def frequence(lex, mot, nature):
+    """La fréquence d'un picto : celle de son mot, ou du plus rare de ses mots pleins (« jus d'orange » : jus, orange)."""
+    if not lex:
+        return 0.0
+
+    def cherche(t, categories):
+        lignes = lex.get(t) or lex.get(t.replace("œ", "oe")) or []
+        bonnes = [f for c, f in lignes if not categories or c in categories]
+        pleines = [f for c, f in lignes if c != "AUX"]
+        return max(bonnes or pleines or [0.0])
+
+    m = mot.lower().replace("’", "'").replace("…", "").replace("?", "").replace("!", "").strip()
+    if m in lex or m.replace("œ", "oe") in lex:
+        return cherche(m, CATEGORIES.get(nature))
+    jetons = [t for t in re.split(r"\s+|(?<=')", m) if t and t not in MOTS_VIDES]
+    valeurs = [cherche(t, None) for t in jetons]
+    valeurs = [v for v in valeurs if v > 0]
+    return min(valeurs) if valeurs else 0.0
+
+
 def plier(s):
     s = unicodedata.normalize("NFD", s.lower().replace("’", "'"))
     return "".join(c for c in s if unicodedata.category(c) != "Mn").replace("œ", "oe").strip()
 
 
-def main(banque, sortie):
+def main(banque, sortie, chemin_lexique=None):
+    lex = lire_lexique(chemin_lexique) if chemin_lexique else None
     pictos = json.load(open(os.path.join(banque, "metadata.json"), encoding="utf-8"))
     images = os.path.join(banque, "images")
     par_mot, par_mot_exact = {}, {}
@@ -757,6 +805,7 @@ def main(banque, sortie):
                 total = sum(x for _, x in SUITES[mot])
                 c["suites"] = [{"page": cible, "poids": round(x / total, 3)} for cible, x in SUITES[mot]]
             c["_nature"] = nature
+            c["_frequence"] = frequence(lex, mot, nature)
             sortie_cases.append(c)
             print(f"{nom:14} {mot:22} → {pid} « {libelle} »")
         sortie_page = {"cle": cle, "nom": nom, "lignes": lignes, "colonnes": colonnes, "cases": sortie_cases}
@@ -773,8 +822,10 @@ def main(banque, sortie):
                 assert x["page"] in cles, (c["mot"], x)
     inconnus = sorted(set(SUITES) - {c["mot"] for p in pages for c in p["cases"]})
     assert not inconnus, f"des suites pour des mots absents : {inconnus}"
-    # Le poids d'un picto dans son thème : son rang dans la section (le plus courant d'abord), et la sorte de mot
-    # qui fait la section (les autres pèsent moins : un début de phrase, un petit mot, une case qui mène ailleurs).
+    # Le poids d'un picto dans son thème : sa fréquence en français parlé (Lexique, moitié) et son rang dans la
+    # section (le plus courant d'abord, comme dans le PODD, moitié) — les sous-titres de films parlent en adultes,
+    # l'ordre des pages garde la part de l'école ; et la sorte de mot qui fait la section (les autres pèsent
+    # moins : un début de phrase, un petit mot, une case qui mène ailleurs).
     sections = []
     for p in pages:
         if p.get("suite"):
@@ -782,18 +833,36 @@ def main(banque, sortie):
         else:
             sections.append([p])
     for section in sections:
-        cases = [c for p in section for c in p["cases"]]
-        natures = [c["_nature"] for c in cases]
-        dominante = max(set(natures), key=natures.count)
-        for rang, c in enumerate(cases):
-            facteur = (1.0 if c["_nature"] == dominante else 0.3) * (0.5 if c.get("lien") else 1.0)
-            c["poids"] = round(facteur / (1 + 0.08 * rang), 3)
+        rang = 0
+        for p in section:
+            # La sorte de mot qui fait la page (les activités d'« En classe », puis ses objets à la page suivante).
+            natures = [c["_nature"] for c in p["cases"]]
+            dominante = max(set(natures), key=natures.count)
+            plus_frequent = max([c["_frequence"] for c in p["cases"] if c["_nature"] == dominante] + [0.0])
+            for c in p["cases"]:
+                facteur = (1.0 if c["_nature"] == dominante else 0.3) * (0.5 if c.get("lien") else 1.0)
+                ordre = 1 / (1 + 0.08 * rang)
+                rang += 1
+                if lex and plus_frequent > 0:
+                    f = min(1.0, math.log10(1 + c["_frequence"]) / math.log10(1 + plus_frequent))
+                    c["poids"] = round(facteur * (0.5 * f + 0.5 * ordre), 3)
+                else:
+                    c["poids"] = round(facteur * ordre, 3)
+        for p in section:
+            reste = [c for q in section[section.index(p):] for c in q["cases"]]
+            meilleurs = sorted(reste, key=lambda c: -c["poids"])[:4]
+            print(f"  ensemble « {p['nom']} » ({p['cle']}) : {', '.join(c['mot'] for c in meilleurs)}")
     for p in pages:
         for c in p["cases"]:
-            del c["_nature"]
+            del c["_nature"], c["_frequence"]
     os.makedirs(os.path.join(sortie, "src", "donnees"), exist_ok=True)
     with open(os.path.join(sortie, "src", "donnees", "classeur-par-defaut.json"), "w", encoding="utf-8") as f:
-        json.dump({"nom": "Classeur complet", "accueil": "accueil", "categories": "categories", "pages": pages}, f, ensure_ascii=False, indent=1)
+        modele = {"nom": "Classeur complet", "accueil": "accueil", "categories": "categories", "pages": pages}
+        # La version des poids : un classeur complet déjà posé reçoit ceux-ci au lancement quand elle change.
+        modele["versionDesPoids"] = "2026-11-05-lexique383" if lex else "2026-11-05-ordre"
+        if lex:
+            modele["sources"] = ["Fréquences : Lexique 3.83 (B. New, C. Pallier, lexique.org), CC BY-SA 4.0"]
+        json.dump(modele, f, ensure_ascii=False, indent=1)
     dossier = os.path.join(sortie, "public", "pictos")
     os.makedirs(dossier, exist_ok=True)
     for vieux in os.listdir(dossier):
@@ -806,4 +875,4 @@ def main(banque, sortie):
     print(f"\n{sum(len(p['cases']) for p in pages)} cases, {len(pages)} pages, {len(choisis)} pictos, {avec_suites} cases avec des suites ; sans picto : {manquants or 'aucune'}")
 
 
-main(sys.argv[1], sys.argv[2])
+main(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)

@@ -26,8 +26,9 @@ export const ENSEMBLES_MAX = 3;
 export const PICTOS_PAR_ENSEMBLE = 4;
 
 /**
- * Les ensembles à proposer après une case : ses thèmes, du plus lourd au plus léger, chacun avec ses pictos les plus
- * lourds (la page du thème et la suite de sa section). Un thème déjà sous les yeux (la page ouverte) n'est pas proposé.
+ * Les ensembles à proposer après une case : ses thèmes, du plus lourd au plus léger, chacun avec les pictos les plus
+ * lourds de sa page (puis de la suite de sa section, s'il en manque). Un thème déjà sous les yeux (la page ouverte)
+ * n'est pas proposé. Le poids d'un picto mêle sa fréquence en français parlé (Lexique 3.83) et son rang sur la page.
  */
 export function ensemblesApres(
   c: Classeur, k: Case | null | undefined, pageOuverte: string, max = ENSEMBLES_MAX, parEnsemble = PICTOS_PAR_ENSEMBLE,
@@ -40,10 +41,10 @@ export function ensemblesApres(
     if (!p || !section || sortie.some((e) => e.page === p.id)) continue;
     const pages = section.pages.slice(section.pages.findIndex((x) => x.id === p.id));
     if (pages.some((x) => x.id === pageOuverte)) continue;
-    const cases = pages.flatMap((x) => x.cases)
-      .filter((x): x is Case => !!x && !x.masquee && x.id !== k.id && !!(x.mot.trim() || x.image))
-      .map((x, rang) => ({ x, rang }))
-      .sort((a, b) => (b.x.poids ?? 0) - (a.x.poids ?? 0) || a.rang - b.rang)
+    // La page du thème d'abord, ses pictos les plus lourds en tête ; la suite de la section seulement s'il en manque.
+    const cases = pages.flatMap((x, page) => x.cases.map((y, rang) => ({ x: y, page, rang })))
+      .filter((y): y is { x: Case; page: number; rang: number } => !!y.x && !y.x.masquee && y.x.id !== k.id && !!(y.x.mot.trim() || y.x.image))
+      .sort((a, b) => a.page - b.page || (b.x.poids ?? 0) - (a.x.poids ?? 0) || a.rang - b.rang)
       .slice(0, parEnsemble)
       .map(({ x }) => x);
     if (!cases.length) continue;

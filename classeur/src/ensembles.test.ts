@@ -12,10 +12,15 @@ describe("les ensembles de pictos par thème, aux poids calculés à l'avance", 
   it("après « je veux », propose Manger, Jouer, Boire, avec leurs pictos les plus courants — pas « j'ai faim »", () => {
     const e = ensemblesApres(c, caseDe("Je veux dire…", "je veux"), page("Je veux").id);
     expect(noms(e)).toEqual([
-      "Manger : pain, pomme, banane, orange",
-      "Jouer : ballon, puzzle, poupée, voiture",
-      "Boire : eau, lait, jus d'orange, jus de pomme",
+      "Manger : pain, pomme, poisson, fromage",
+      "Jouer : voiture, ballon, jeu de société, poupée",
+      "Boire : eau, lait, verre, chocolat chaud",
     ]);
+  });
+
+  it("propose les pictos de la page du thème avant ceux de la page suivante (« faire » → les activités de la classe)", () => {
+    const e = ensemblesApres(c, caseDe("Je veux dire…", "faire"), page("Je veux dire…").id);
+    expect(noms(e).find((x) => x.startsWith("En classe"))).toBe("En classe : lire, écrire, compter, chanter");
   });
 
   it("ne propose pas le thème de la page ouverte, et passe au suivant", () => {

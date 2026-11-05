@@ -143,6 +143,8 @@ export function Bibliotheque({ classeurs, onOuvrir, onRecharger }: {
             propriété du Gouvernement d'Aragon, sous licence Creative Commons BY-NC-SA.</p>
           <p>Les classeurs reprennent les principes du PODD (Pragmatic Organisation Dynamic Display) de Gayle Porter, sans en reproduire
             les pages.</p>
+          <p>Les poids des ensembles par thème s'appuient sur les fréquences de <a href="http://www.lexique.org" target="_blank" rel="noreferrer">Lexique 3.83</a> (B. New,
+            C. Pallier et coll.), sous licence Creative Commons BY-SA 4.0 ; ces poids sont partagés sous la même licence.</p>
           <p>Les classeurs, leurs images et leurs photos restent sur cet appareil.</p>
         </Fenetre>
       )}

@@ -22,7 +22,7 @@ export interface CaseModele {
   poids?: number; suites?: { page: string; poids: number }[];
 }
 export interface PageModele { cle: string; nom: string; lignes: number; colonnes: number; suite?: boolean; cases: CaseModele[] }
-export interface ModeleDeClasseur { nom: string; accueil: string; categories?: string; pages: PageModele[] }
+export interface ModeleDeClasseur { nom: string; accueil: string; categories?: string; versionDesPoids?: string; pages: PageModele[] }
 
 export const MODELE_COMPLET = modele as ModeleDeClasseur;
 
@@ -51,6 +51,7 @@ export function classeurComplet(nom = "", maintenant = new Date().toISOString(),
   const categories = m.categories ? ids.get(m.categories) : undefined;
   return {
     id: nouvelId(), nom: nom.trim() || m.nom, accueil: ids.get(m.accueil) ?? pages[0].id, ...(categories ? { categories } : {}),
+    ...(m.versionDesPoids ? { versionDesPoids: m.versionDesPoids } : {}),
     pages, creeLe: maintenant, modifieLe: maintenant,
   };
 }
@@ -98,12 +99,13 @@ export function aPoser(deja: Classeur[], m: ModeleDeClasseur = MODELE_COMPLET): 
 }
 
 /**
- * Un classeur complet créé avant les poids des ensembles par thème les reçoit, sans rien changer d'autre : chaque
- * page retrouve celle du modèle à son nom (la deuxième « Manger » avec la deuxième), chaque case son mot. Rien si
- * le classeur a déjà des poids, ou si rien ne correspond. Sa date de modification ne bouge pas.
+ * Un classeur complet aux poids d'une autre version (ou sans poids) reçoit ceux d'aujourd'hui, sans rien changer
+ * d'autre : chaque page retrouve celle du modèle à son nom (la deuxième « Manger » avec la deuxième), chaque case son
+ * mot. Les cases que l'enseignant a ajoutées gardent les leurs. Rien s'il porte déjà cette version, ou si rien ne
+ * correspond. Sa date de modification ne bouge pas.
  */
 export function ajouterLesPoids(c: Classeur, m: ModeleDeClasseur = MODELE_COMPLET): Classeur | null {
-  if (c.pages.some((p) => p.cases.some((k) => k && (k.suites?.length || typeof k.poids === "number")))) return null;
+  if (!m.versionDesPoids || c.versionDesPoids === m.versionDesPoids) return null;
   const parNom = new Map<string, Page[]>();
   for (const p of ordreDesPages(c)) parNom.set(p.nom, [...(parNom.get(p.nom) ?? []), p]);
   const vus = new Map<string, number>();
@@ -128,7 +130,7 @@ export function ajouterLesPoids(c: Classeur, m: ModeleDeClasseur = MODELE_COMPLE
     });
     return { ...p, cases };
   });
-  return change ? { ...c, pages } : null;
+  return change ? { ...c, pages, versionDesPoids: m.versionDesPoids } : null;
 }
 
 let enCours: Promise<boolean> | null = null;
