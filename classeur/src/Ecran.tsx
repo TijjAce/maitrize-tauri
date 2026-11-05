@@ -301,7 +301,8 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
       {!enModif && c.suggestions !== false && (
         <div className="categories-proposees" aria-label="Catégories proposées" aria-hidden={categoriesProposees.length === 0 || undefined}>
           {categoriesProposees.map((e) => (
-            <button key={e.page} className="categorie-proposee" style={{ background: couleurDeSection(e.section) }} onClick={() => aller(e.page)}>
+            <button key={e.caseId} className="categorie-proposee" style={{ background: couleurDeSection(e.section) }}
+              onClick={() => { const k = page.cases.find((x) => x?.id === e.caseId); if (k) toucher(k); else aller(e.page); }}>
               {e.image && images[e.image] && <img src={images[e.image]} alt="" />}
               <span>{e.nom}</span>
             </button>

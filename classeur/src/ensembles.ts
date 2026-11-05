@@ -12,13 +12,21 @@
 // l'enseignant les choisit lui-même dans la fiche d'une case. L'application ne
 // fait que les lire : pas d'IA dedans, rien n'apprend, rien ne part.
 //
+// Puis : « il faut quand même que le mot de la catégorie soit dans les mots
+// en dessous », « proposer seulement ce qui est en bas » (le même jour). La
+// bande ne propose que les catégories dont la case est dans la grille de la
+// page ouverte : elle la montre, un peu grisée, avec son picto et son mot, et
+// la toucher fait comme toucher cette case. L'élève apprend ainsi où elle est.
+//
 // Les pictos de la grille ne bougent jamais : la bande est à part, et l'élève
 // garde la mémoire des places.
 
 import { pageDe, pictoDeLaPage, sectionDe, type Case, type Classeur, type Suite } from "./modele";
 
 export interface CategorieProposee {
-  /** La page de la catégorie : la toucher y mène. */
+  /** La case de la grille, sur la page ouverte, qui mène à la catégorie : la toucher en haut fait comme elle. */
+  caseId: string;
+  /** La page où mène cette case. */
   page: string;
   nom: string;
   /** Le numéro de sa section (sa couleur). */
@@ -32,19 +40,24 @@ export interface CategorieProposee {
 export const CATEGORIES_MAX = 5;
 
 /**
- * Les catégories à proposer après une case : ses suites, de la plus lourde à la plus légère, une par section — la
- * deuxième page d'une section ne double pas la première. La page ouverte n'est pas proposée.
+ * Les catégories à proposer après une case : ses suites, de la plus lourde à la plus légère, une par section, et
+ * seulement celles qu'une case de la page ouverte ouvre — vers leur page, ou une autre page de leur section. Chacune
+ * reprend le mot et le picto de cette case (sinon le picto de la catégorie). La page ouverte n'est pas proposée.
  */
 export function categoriesApres(c: Classeur, k: Case | null | undefined, pageOuverte: string, max = CATEGORIES_MAX): CategorieProposee[] {
-  if (!k?.suites?.length) return [];
+  const ouverte = pageDe(c, pageOuverte);
+  if (!k?.suites?.length || !ouverte) return [];
+  const liens = ouverte.cases.filter((x): x is Case => !!x && !x.masquee && !!x.lien && x.lien !== pageOuverte && !!pageDe(c, x.lien));
   const sortie: CategorieProposee[] = [];
   const sections = new Set<number>();
   for (const s of [...k.suites].sort((a, b) => b.poids - a.poids)) {
     const p = pageDe(c, s.page);
     const section = p && sectionDe(c, p.id);
     if (!p || !section || p.id === pageOuverte || sections.has(section.numero)) continue;
+    const en = liens.find((x) => x.lien === p.id) ?? liens.find((x) => sectionDe(c, x.lien!)?.numero === section.numero);
+    if (!en) continue;
     sections.add(section.numero);
-    sortie.push({ page: p.id, nom: p.nom, section: section.numero, poids: s.poids, image: pictoDeLaPage(c, p.id) });
+    sortie.push({ caseId: en.id, page: en.lien!, nom: en.mot, section: section.numero, poids: s.poids, image: en.image ?? pictoDeLaPage(c, en.lien!) });
     if (sortie.length >= max) break;
   }
   return sortie;

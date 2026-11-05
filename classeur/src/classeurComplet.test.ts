@@ -160,7 +160,8 @@ describe("un classeur complet d'avant les poids", () => {
     expect(vu(categoriesApres(repris, jeVeux(repris), page(repris, "Je veux"))))
       .toEqual(vu(categoriesApres(neuf, jeVeux(neuf), page(neuf, "Je veux"))));
     const bonjour = (c: typeof neuf) => c.pages.flatMap((p) => p.cases).find((k) => k?.mot === "bonjour")!;
-    expect(vu(categoriesApres(repris, bonjour(repris), repris.accueil))).toEqual(["Les gens (arasaac-34557)"]);
+    expect(vu(categoriesApres(repris, jeVeux(repris), page(repris, "Je veux")))).toContain("jouer (arasaac-2439)");
+    expect(vu(categoriesApres(repris, bonjour(repris), repris.accueil))).toEqual(vu(categoriesApres(neuf, bonjour(neuf), neuf.accueil)));
     expect(repris.pages.map((p) => p.cases.map((k) => k?.mot ?? null))).toEqual(neuf.pages.map((p) => p.cases.map((k) => k?.mot ?? null)));
   });
   it("garde les suites que l'enseignant a choisies quand les poids livrés changent", () => {

@@ -4,23 +4,60 @@ import { CATEGORIES_MAX, categoriesApres, categoriesDeLaCase, suitesDeLaFiche } 
 import { changerImageDePage, lireClasseur, ordreDesPages, pictoDeLaPage, supprimerPage, type Case } from "./modele";
 import { depuisObz, versObz } from "./obz";
 
-describe("les catégories proposées en haut (« que des propositions de catégories avec des pictos représentatifs »)", () => {
+describe("les catégories proposées en haut (« proposer seulement ce qui est en bas »)", () => {
   const c = classeurComplet("", "2026-11-05T08:00:00.000Z");
   const page = (nom: string) => ordreDesPages(c).find((p) => p.nom === nom)!;
   const caseDe = (nomPage: string, mot: string): Case => page(nomPage).cases.find((k) => k?.mot === mot)!;
   const vu = (e: ReturnType<typeof categoriesApres>) => e.map((x) => `${x.nom} (${x.image ?? "sans picto"})`);
 
-  it("après « je veux » : Manger, Jouer, Boire, Aller — chacune avec le picto de sa case des catégories", () => {
+  it("après « je veux », sur sa page : manger, jouer, boire, aller, faire — les cases de la grille qui y mènent", () => {
     const e = categoriesApres(c, caseDe("Je veux dire…", "je veux"), page("Je veux").id);
-    expect(e.map((x) => x.nom).slice(0, 4)).toEqual(["Manger", "Jouer", "Boire", "Aller"]);
-    expect(vu(e).slice(0, 4)).toEqual(["Manger (arasaac-2349)", "Jouer (arasaac-2439)", "Boire (arasaac-2276)", "Aller (arasaac-2432)"]);
-    // La bande ne montre plus les pictos d'une catégorie : seulement la catégorie.
-    expect(Object.keys(e[0]).sort()).toEqual(["image", "nom", "page", "poids", "section"]);
+    expect(vu(e)).toEqual([
+      "manger (arasaac-2349)", "jouer (arasaac-2439)", "boire (arasaac-2276)", "aller (arasaac-2432)", "faire (arasaac-11749)",
+    ]);
+    // Chacune est une case de la page ouverte : son mot, son picto, la page qu'elle ouvre.
+    for (const x of e) {
+      const k = page("Je veux").cases.find((y) => y?.id === x.caseId)!;
+      expect([k.mot, k.image, k.lien]).toEqual([x.nom, x.image, x.page]);
+    }
   });
 
-  it("« Les gens » a son picto, celui de la page des catégories", () => {
-    expect(vu(categoriesApres(c, caseDe("L'essentiel", "bonjour"), c.accueil))).toEqual(["Les gens (arasaac-34557)"]);
-    expect(pictoDeLaPage(c, page("Les gens").id)).toBe("arasaac-34557");
+  it("rien quand la grille n'a pas de case qui y mène : « puzzle » sur Jouer, « bonjour » sur la page 1", () => {
+    expect(categoriesApres(c, caseDe("Jouer", "puzzle"), page("Jouer").id)).toEqual([]);
+    expect(categoriesApres(c, caseDe("L'essentiel", "bonjour"), c.accueil)).toEqual([]);
+  });
+
+  it("toujours une case de la page ouverte, visible, une catégorie par section, la page ouverte jamais ; cinq au plus", () => {
+    let proposent = 0;
+    for (const p of c.pages) for (const k of p.cases) {
+      const e = categoriesApres(c, k, p.id);
+      if (e.length) proposent++;
+      expect(e.length).toBeLessThanOrEqual(CATEGORIES_MAX);
+      expect(new Set(e.map((x) => x.section)).size).toBe(e.length);
+      for (const x of e) {
+        const en = p.cases.find((y) => y?.id === x.caseId);
+        expect(en && !en.masquee && en.lien === x.page, `${p.nom} · ${k?.mot} → ${x.nom}`).toBe(true);
+        expect(x.page).not.toBe(p.id);
+      }
+    }
+    expect(proposent).toBeGreaterThan(40);
+  });
+
+  it("une case cachée par l'enseignant n'est pas proposée", () => {
+    const jeVeux = page("Je veux");
+    const cache = { ...c, pages: c.pages.map((p) => (p.id === jeVeux.id ? { ...p, cases: p.cases.map((k) => (k?.mot === "manger" ? { ...k, masquee: true } : k)) } : p)) };
+    expect(categoriesApres(cache, caseDe("Je veux dire…", "je veux"), jeVeux.id).map((x) => x.nom)).not.toContain("manger");
+  });
+
+  it("une case qui finit la phrase ne propose rien", () => {
+    expect(categoriesApres(c, caseDe("J'ai mal", "tête"), page("J'ai mal").id)).toEqual([]);
+    expect(categoriesApres(c, null, c.accueil)).toEqual([]);
+  });
+
+  it("une catégorie retirée disparaît des propositions", () => {
+    const sansManger = supprimerPage(c, page("Manger").id);
+    const jeVeux = sansManger.pages.flatMap((p) => p.cases).find((k) => k?.id === caseDe("Je veux dire…", "je veux").id)!;
+    expect(categoriesApres(sansManger, jeVeux, page("Je veux").id).map((x) => x.nom)).not.toContain("manger");
   });
 
   it("toute catégorie qu'une case peut proposer a un picto", () => {
@@ -34,28 +71,7 @@ describe("les catégories proposées en haut (« que des propositions de catégo
     expect(pictoDeLaPage(c, page("Je veux").id)).toBe(jeVeux.image);
     const classe2 = ordreDesPages(c).filter((p) => p.nom === "En classe")[1];
     expect(pictoDeLaPage(c, classe2.id)).toBe(pictoDeLaPage(c, page("En classe").id));
-  });
-
-  it("une catégorie par section, la page ouverte jamais ; cinq au plus", () => {
-    for (const p of c.pages) for (const k of p.cases) {
-      const e = categoriesApres(c, k, p.id);
-      expect(e.length).toBeLessThanOrEqual(CATEGORIES_MAX);
-      expect(new Set(e.map((x) => x.section)).size).toBe(e.length);
-      expect(e.some((x) => x.page === p.id)).toBe(false);
-    }
-    const e = categoriesApres(c, caseDe("Je veux dire…", "je veux"), page("Manger").id);
-    expect(e.map((x) => x.nom)).not.toContain("Manger");
-  });
-
-  it("une case qui finit la phrase ne propose rien", () => {
-    expect(categoriesApres(c, caseDe("J'ai mal", "tête"), page("J'ai mal").id)).toEqual([]);
-    expect(categoriesApres(c, null, c.accueil)).toEqual([]);
-  });
-
-  it("une catégorie retirée disparaît des propositions", () => {
-    const sansManger = supprimerPage(c, page("Manger").id);
-    const jeVeux = sansManger.pages.flatMap((p) => p.cases).find((k) => k?.id === caseDe("Je veux dire…", "je veux").id)!;
-    expect(categoriesApres(sansManger, jeVeux, page("Je veux").id).map((x) => x.nom)).not.toContain("Manger");
+    expect(pictoDeLaPage(c, page("Les gens").id)).toBe("arasaac-34557");
   });
 });
 
