@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import {
-  BANDES_PAR_RANG_MAX, FEUILLE_BANDES_MM, LARGEUR_BANDE_MM, LARGEUR_MIN_BANDE_MM, SCRIPTS_DES_BANDES, STYLE_BANDES, STYLE_BANDES_DU_JOURNAL,
-  bandesDuJour, corpsDesBandes, creneauxEnBandes, estUnePause, heuresDeLaBande, largeurDesBandes, pasDeLaBande, rangsDesBandes,
+  BANDES_PAR_RANG_MAX, CARTE_MM, ECART_BANDES_MM, FEUILLE_BANDES_MM, LARGEUR_MAX_BANDE_MM, LARGEUR_MIN_BANDE_MM, MARGE_BANDE_MM, SCRIPTS_DES_BANDES,
+  STYLE_BANDES, STYLE_BANDES_DU_JOURNAL, bandesDuJour, corpsDesBandes, creneauxEnBandes, estUnePause, heuresDeLaBande, pasDeLaBande, rangsDesBandes,
 } from "./journeeEnBandes";
 import { pasDeLEleve } from "./journalTelephone";
 import { elevesDesParties } from "./prevuParEleve";
@@ -129,7 +129,7 @@ describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octob
     expect(bandes[0].cadres).toContain('<span class="dr-matiere">Mathématiques</span><span class="at-texte">Mon fichier de maths · p. 12–13</span>');
   });
 
-  it("met les bandes côte à côte, regroupées, d'une largeur fixe, sur une page à la suite du cahier journal", () => {
+  it("met les bandes côte à côte, regroupées, de la largeur de leurs cartes carrées, sur une page à la suite du cahier journal", () => {
     // Les bandes ne touchent pas à la page, qui est celle du cahier journal : leur feuille en commence une.
     expect(STYLE_BANDES).not.toMatch(/@page|\bbody\b/);
     expect(STYLE_BANDES).toMatch(/\.feuille-bandes \{[^}]*break-before: page;/);
@@ -137,33 +137,39 @@ describe("la journée sur une page, en bandes (demande de l'enseignant, 31 octob
     // La feuille tient dans les 188 × 275 mm que le journal laisse entre ses marges.
     expect(FEUILLE_BANDES_MM.largeur).toBeLessThanOrEqual(188);
     expect(FEUILLE_BANDES_MM.hauteur).toBeLessThanOrEqual(275);
-    // Toujours la même largeur, celle de la colonne des tablettes, tant qu'elles tiennent ; sinon elles se partagent la page.
-    expect(largeurDesBandes(3)).toBe(LARGEUR_BANDE_MM);
-    expect(largeurDesBandes(4)).toBe(LARGEUR_BANDE_MM);
-    expect(largeurDesBandes(5)).toBeCloseTo((186 - 4 * 3) / 5, 1);
     // « Ça fait tout écrasé » : jamais sous 30 mm — au-delà de cinq bandes, plusieurs rangs, égaux à une près (4 novembre 2026).
     expect(BANDES_PAR_RANG_MAX).toBe(5);
+    expect((BANDES_PAR_RANG_MAX + 1) * LARGEUR_MIN_BANDE_MM + BANDES_PAR_RANG_MAX * ECART_BANDES_MM).toBeGreaterThan(FEUILLE_BANDES_MM.largeur);
+    // « Essaye de garder les pictos carrés » (5 novembre 2026) : une bande a la largeur de ses cartes ; cinq à leur plus large tiennent.
+    expect(LARGEUR_MAX_BANDE_MM).toBeGreaterThanOrEqual(LARGEUR_MIN_BANDE_MM);
+    expect(BANDES_PAR_RANG_MAX * LARGEUR_MAX_BANDE_MM + (BANDES_PAR_RANG_MAX - 1) * ECART_BANDES_MM).toBeLessThanOrEqual(FEUILLE_BANDES_MM.largeur);
     expect(rangsDesBandes(5)).toEqual([5]);
     expect(rangsDesBandes(6)).toEqual([3, 3]);
     expect(rangsDesBandes(7)).toEqual([4, 3]);
     expect(rangsDesBandes(10)).toEqual([5, 5]);
     expect(rangsDesBandes(11)).toEqual([4, 4, 3]);
-    expect(largeurDesBandes(6)).toBe(LARGEUR_BANDE_MM);
-    expect(largeurDesBandes(10)).toBeCloseTo((186 - 4 * 3) / 5, 1);
     for (let n = 1; n <= 20; n++) {
-      expect(largeurDesBandes(n), `${n} bandes`).toBeGreaterThanOrEqual(LARGEUR_MIN_BANDE_MM);
+      expect(Math.max(...rangsDesBandes(n)), `${n} bandes`).toBeLessThanOrEqual(BANDES_PAR_RANG_MAX);
       expect(rangsDesBandes(n).reduce((a, b) => a + b, 0), `${n} bandes`).toBe(n);
     }
     const dix = corpsDesBandes("Jeudi", Array.from({ length: 10 }, (_, i) => ({ heures: `${i + 8}h00 – ${i + 9}h00`, matiere: "", cadres: "" })));
     expect(dix.match(/class="bandes-rang"/g)).toHaveLength(2);
-    expect(dix.match(/class="bande" style="width:34.8mm"/g)).toHaveLength(10);
-    // Les cartes de la colonne des tablettes : le picto au-dessus, toutes de la même taille.
-    expect(STYLE_BANDES).toMatch(/\.bande \.dr-etape \{ flex-direction: column;[^}]*height: 32mm;/);
+    // Plus de largeur écrite sur la bande : elle suit ses cartes, réduites ou non, sans descendre sous le minimum.
+    expect(dix.match(/<div class="bande">/g)).toHaveLength(10);
+    expect(STYLE_BANDES).toMatch(new RegExp(`\\.bande \\{ flex: none; min-width: ${LARGEUR_MIN_BANDE_MM}mm;`));
+    expect(STYLE_BANDES).toMatch(/\.bande-tete \{[^}]*width: 0; min-width: 100%;/);
+    expect(STYLE_BANDES).toMatch(/\.bande-heure \{[^}]*white-space: nowrap;/);
+    expect(STYLE_BANDES).toContain(`padding: 1mm ${MARGE_BANDE_MM}mm 2.5mm;`);
+    // Les cartes de la colonne des tablettes, carrées, toutes de la même taille : le picto au-dessus, carré lui aussi.
+    expect(STYLE_BANDES).toMatch(new RegExp(`\\.bande \\.dr-etape \\{ flex: none; flex-direction: column;[^}]*width: ${CARTE_MM}mm; max-width: none; height: ${CARTE_MM}mm;`));
+    expect(STYLE_BANDES).toMatch(/\.bande \.dr-etape img, \.bande \.dr-vide \{ width: 14mm; height: 14mm; \}/);
+    // Des mots entiers, sans tiret de césure.
+    expect(STYLE_BANDES).not.toMatch(/hyphens: auto/);
     const corps = corpsDesBandes("Lundi 2 novembre 2026", [
       { heures: "8h30 – 9h00", matiere: "Accueil", cadres: '<div class="at-etape dr-etape">Rituel</div>' },
       { heures: "9h00 – 10h30", matiere: "Mathématiques", cadres: '<div class="at-etape dr-etape">Compter</div>' },
     ]);
-    expect(corps.match(/class="bande" style="width:44mm"/g)).toHaveLength(2);
+    expect(corps.match(/<div class="bande">/g)).toHaveLength(2);
     expect(corps).toContain('<span class="bande-heure">9h00 – 10h30</span><span class="bande-matiere">Mathématiques</span>');
     expect(corps).toContain('<div class="dr"><div class="at-etape dr-etape">Compter</div></div>');
     expect(corps).toMatch(/<div class="bandes-alerte" hidden>/);

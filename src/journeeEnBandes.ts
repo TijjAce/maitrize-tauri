@@ -27,6 +27,13 @@
 // réduisent ensemble pour tenir. Et « réunion formation c'est pas un élève,
 // donc pas besoin de leur faire une bande » : un créneau de réunion ou de
 // formation n'en a plus.
+//
+// « Essaye de garder les pictos carrés » (5 novembre 2026) : une carte
+// prenait toute la largeur de sa bande, et la page, en la réduisant, n'en
+// raccourcissait que la hauteur — 40 mm sur 24. Les cartes sont carrées ; la
+// bande a leur largeur, et non plus une largeur à elle : réduites, elles
+// restent carrées, et leurs bandes, toujours de la même largeur entre elles,
+// se resserrent avec elles.
 
 import type { Creneau, Jeu, MaterielItem, Seance, Sequence } from "./api";
 import {
@@ -83,13 +90,20 @@ export function pasDeLaBande(
 /** La feuille, en millimètres : celle qui suit le cahier journal, en portrait, dans ses marges de 11 mm. */
 export const FEUILLE_BANDES_MM = { largeur: 186, hauteur: 262 };
 
-/** La largeur d'une bande, toujours la même — celle de la colonne des tablettes — tant que les bandes tiennent toutes ; sinon elles se partagent la page. */
-export const LARGEUR_BANDE_MM = 44;
+/**
+ * Le côté d'une carte, avant que la page ne la réduise : les cartes sont carrées, comme des pictos, et toutes de la
+ * même taille.
+ */
+export const CARTE_MM = 32;
+/** Ce que la bande laisse de chaque côté de ses cartes : elle a leur largeur, et pas plus. */
+export const MARGE_BANDE_MM = 1.3;
 export const ECART_BANDES_MM = 3;
-/** En dessous, une carte écrase son titre : les bandes passent sur plusieurs rangs. */
+/** Une bande ne descend pas sous 30 mm, où son heure tient sur une ligne et ses mots ne se coupent pas. */
 export const LARGEUR_MIN_BANDE_MM = 30;
-/** Les bandes d'un rang, au plus : cinq, à 34,8 mm. */
+/** Les bandes d'un rang, au plus : cinq — à leur plus large, cartes entières, elles font juste la page. */
 export const BANDES_PAR_RANG_MAX = Math.floor((FEUILLE_BANDES_MM.largeur + ECART_BANDES_MM) / (LARGEUR_MIN_BANDE_MM + ECART_BANDES_MM));
+/** La largeur d'une bande quand rien n'est réduit : ses cartes et ses marges. */
+export const LARGEUR_MAX_BANDE_MM = CARTE_MM + 2 * MARGE_BANDE_MM;
 
 /** Combien de bandes dans chaque rang : un seul rang tant qu'elles tiennent, sinon des rangs égaux, à une près — dix font deux rangs de cinq. */
 export function rangsDesBandes(combien: number): number[] {
@@ -97,13 +111,6 @@ export function rangsDesBandes(combien: number): number[] {
   const rangs = Math.ceil(combien / BANDES_PAR_RANG_MAX);
   const base = Math.floor(combien / rangs), enPlus = combien % rangs;
   return Array.from({ length: rangs }, (_, i) => base + (i < enPlus ? 1 : 0));
-}
-
-/** La largeur de toutes les bandes : celle de la colonne des tablettes, ou ce que laisse le rang le plus garni. */
-export function largeurDesBandes(combien: number): number {
-  const parRang = Math.max(1, ...rangsDesBandes(combien));
-  const partagee = (FEUILLE_BANDES_MM.largeur - ECART_BANDES_MM * Math.max(0, parRang - 1)) / parRang;
-  return Math.round(Math.min(LARGEUR_BANDE_MM, partagee) * 10) / 10;
 }
 
 /**
@@ -116,20 +123,24 @@ export const STYLE_BANDES = `
   .bandes-tete { flex: none; display: flex; align-items: baseline; gap: 12px; padding: 0 1mm 2mm; }
   .bandes-tete h1 { font-size: 18px; margin: 0; color: #23527c; }
   .bandes-tete span { color: #687087; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; }
-  /* Les bandes ensemble, au milieu de la page, chacune de la même largeur ; sur plusieurs rangs quand elles ne tiennent pas sur un. */
+  /* Les bandes ensemble, au milieu de la page ; sur plusieurs rangs quand elles ne tiennent pas sur un. */
   .bandes { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: ${ECART_BANDES_MM}mm; }
   .bandes-rang { flex: 1; min-height: 0; display: flex; justify-content: center; gap: ${ECART_BANDES_MM}mm; }
-  .bande { flex: none; min-width: 0; display: flex; flex-direction: column; background: #f2f2f7; border-radius: 3mm; overflow: hidden; }
-  .bande-tete { flex: none; padding: 2mm 2.2mm 1.6mm; text-align: center; }
-  .bande-heure { display: block; font-weight: 800; font-size: 12px; color: #23527c; font-variant-numeric: tabular-nums; }
+  /* Une bande a la largeur de ses cartes, réduites ou non, sans descendre sous le minimum : toutes la même, puisque les cartes ont la même. */
+  .bande { flex: none; min-width: ${LARGEUR_MIN_BANDE_MM}mm; display: flex; flex-direction: column; background: #f2f2f7; border-radius: 3mm; overflow: hidden; }
+  /* Son en-tête la suit sans l'élargir : un long nom passe à la ligne. */
+  .bande-tete { flex: none; box-sizing: border-box; width: 0; min-width: 100%; padding: 2mm 1.5mm 1.6mm; text-align: center; }
+  .bande-heure { display: block; font-weight: 800; font-size: 12px; color: #23527c; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .bande-matiere { display: block; font-size: 10px; color: #5a6072; overflow-wrap: anywhere; }
-  .bande-corps { flex: 1; min-height: 0; overflow: hidden; padding: 1mm 2mm 2.5mm; }
-  /* Les cartes de la colonne des tablettes : le picto au-dessus, la matière, puis le titre ; toutes de la même taille. */
-  .bande .dr-etape { flex-direction: column; justify-content: center; gap: 1.2mm; width: 100%; max-width: none; height: 32mm; padding: 2mm 1.6mm;
-    border: .6mm solid #3a3a3a; border-radius: 3mm; text-align: center; overflow: hidden; }
+  .bande-corps { flex: 1; min-height: 0; overflow: hidden; padding: 1mm ${MARGE_BANDE_MM}mm 2.5mm; }
+  /* Les cartes de la colonne des tablettes, carrées comme des pictos : le picto au-dessus, la matière, puis le titre ; toutes de la même taille. */
+  .bande .dr-etape { flex: none; flex-direction: column; justify-content: center; gap: 1.2mm; width: ${CARTE_MM}mm; max-width: none; height: ${CARTE_MM}mm;
+    padding: 1.6mm 1.2mm; border: .6mm solid #3a3a3a; border-radius: 3mm; text-align: center; overflow: hidden; }
   .bande .dr-etape img, .bande .dr-vide { width: 14mm; height: 14mm; }
-  .bande .dr-mots { align-items: center; gap: .4mm; min-width: 0; max-width: 100%; hyphens: auto; -webkit-hyphens: auto; overflow-wrap: anywhere; }
-  .bande .dr-matiere { font-size: 7.5px; letter-spacing: .04em; }
+  /* Un mot passe entier à la ligne, sans tiret : « mé-téo » se lit mal ; seul un mot plus long que la carte se coupe. */
+  .bande .dr-mots { align-items: center; gap: .4mm; min-width: 0; max-width: 100%; hyphens: manual; -webkit-hyphens: manual; overflow-wrap: anywhere; }
+  .bande .dr-matiere { font-size: 7.5px; letter-spacing: .04em; line-height: 1.15;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .bande .at-texte { font-size: 11px; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .bande .dr-fleche { width: 3.6mm; height: 5.6mm; margin: .6mm auto; }
   .bandes-vide { padding: 20px; color: #687087; }
@@ -188,8 +199,7 @@ export interface Bande { heures: string; matiere: string; cadres: string }
  * pictos). La feuille commence une page : celle qui suit le cahier journal.
  */
 export function corpsDesBandes(titre: string, bandes: Bande[], fin = ""): string {
-  const largeur = largeurDesBandes(bandes.length);
-  const colonne = (b: Bande) => `<div class="bande" style="width:${largeur}mm"><div class="bande-tete"><span class="bande-heure">${escapeHtml(b.heures)}</span>`
+  const colonne = (b: Bande) => `<div class="bande"><div class="bande-tete"><span class="bande-heure">${escapeHtml(b.heures)}</span>`
     + (b.matiere.trim() ? `<span class="bande-matiere">${escapeHtml(b.matiere.trim())}</span>` : "")
     + `</div><div class="bande-corps"><div class="bande-contenu"><div class="dr">${b.cadres}</div></div></div></div>`;
   let debut = 0;
