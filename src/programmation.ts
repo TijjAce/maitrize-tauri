@@ -191,6 +191,11 @@ const SINON_PAR_DEMARCHE: Record<string, ReperePeriode | ReperePeriode[]> = {
     raison: citeLeGuide(GUIDE_MATHS_CP, "La résolution de problèmes arithmétiques : périodes 3 à 5 […] Certains problèmes complexes pourront être proposés pour préparer le CE1 (en commençant par travailler avec des nombres inférieurs à 20), par exemple : […] problèmes de transformation mettant en jeu deux transformations successives avec recherche de l'état final (2 étapes)") },
   "multiplicatifs-cp": { niveau: "CP", periode: 4,
     raison: citeLeGuide(GUIDE_MATHS_CP, "Problèmes multiplicatifs (avec trois nombres en jeu inférieurs à 30 – périodes 4 et 5)") },
+  // Le début du CP : la séquence et le rituel de Maitrize, aux périodes que le guide donne à leurs problèmes.
+  "chercher-le-tout-cp": { niveau: "CP", periode: 1,
+    raison: citeLeGuide(GUIDE_MATHS_CP, "La résolution de problèmes arithmétiques : périodes 1 et 2 […] Problèmes de parties-tout avec recherche du tout (nombres inférieurs à 10 pour chacune des parties).") },
+  "problemes-a-dire-cp": { niveau: "CP", periode: 1,
+    raison: citeLeGuide(GUIDE_MATHS_CP, "La résolution de problèmes doit débuter dès le début de l'année de CP et reposer sur un travail régulier et structuré.") },
   "deux-etapes-ce1": { niveau: "CE1", periode: 1,
     raison: citeLeLivret("CE1", "En début d'année de CE1, la résolution de problèmes additifs du type parties-tout en une ou plusieurs étapes portant sur des nombres inférieurs à 100 est entretenue.") },
   "multiplicatifs-ce1": { niveau: "CE1", periode: 3,

@@ -611,7 +611,7 @@ export function retoucher(p: Probleme, r: Retouche, enonces: boolean): Probleme 
 
 export type TailleTexte = "normale" | "grande" | "tres-grande";
 export type Police = "arial" | "verdana" | "comic";
-export type ContenuSchema = "nombres" | "vide" | "sans";
+export type ContenuSchema = "nombres" | "vide" | "sans" | "aucun";
 export type MarqueInconnue = "?" | "vide" | "surlignee";
 export type Palette = "classe" | "noir" | "perso";
 export type Epaisseur = "fin" | "normal" | "epais";
@@ -639,7 +639,7 @@ export interface Presentation {
   calcul: boolean;
   reponse: boolean;
   // Le schéma
-  /** Avec un énoncé : nombres donnés, cases vides à compléter, ou cadre pour dessiner. */
+  /** Avec un énoncé : nombres donnés, cases vides à compléter, cadre pour dessiner, ou l'énoncé seul (des problèmes à dire). */
   schema: ContenuSchema;
   inconnue: MarqueInconnue;
   etiquettes: boolean;
@@ -686,7 +686,7 @@ const CHOIX: Partial<Record<keyof Presentation, readonly unknown[]>> = {
   colonnes: [1, 2],
   police: ["arial", "verdana", "comic"],
   tailleTexte: ["normale", "grande", "tres-grande"],
-  schema: ["nombres", "vide", "sans"],
+  schema: ["nombres", "vide", "sans", "aucun"],
   inconnue: ["?", "vide", "surlignee"],
   couleurs: ["classe", "noir", "perso"],
   epaisseur: ["fin", "normal", "epais"],
@@ -762,7 +762,8 @@ export const CATALOGUE_PRESENTATION: CommandePresentation[] = [
   {
     cle: "schema", libelle: "Dans le schéma", groupe: "Le schéma", visible: (p) => p.enonce,
     synonymes: "le modèle en barres, les barres, schématiser, laisser la place pour que l'élève fasse le schéma",
-    options: [["nombres", "Les nombres de l'énoncé"], ["vide", "Cases vides, l'élève les remplit"], ["sans", "Pas de schéma : une place pour que l'élève le dessine"]],
+    options: [["nombres", "Les nombres de l'énoncé"], ["vide", "Cases vides, l'élève les remplit"], ["sans", "Pas de schéma : une place pour que l'élève le dessine"],
+      ["aucun", "Rien : l'énoncé seul, à dire ou à projeter"]],
   },
   {
     cle: "images", libelle: "Dans les cases", groupe: "Le schéma", synonymes: "des images à compter, des objets dessinés, des collections",
@@ -1204,9 +1205,9 @@ export function blocProbleme(pb: Probleme, i: number, p: Presentation): string {
   const avecEnonce = p.enonce && !!pb.enonce;
   const numero = p.numeros ? `<div class="pb-numero">${i + 1}</div>` : "";
   const enonce = avecEnonce ? `<p class="pb-enonce">${escapeHtml(pb.enonce)}</p>` : "";
-  // Sans énoncé, les nombres ne peuvent venir que du schéma.
-  const schema = avecEnonce && p.schema === "sans"
-    ? `<div class="pb-cadre"></div>`
+  // Sans énoncé, les nombres ne peuvent venir que du schéma. L'énoncé seul : des problèmes à dire, la réponse sur l'ardoise.
+  const schema = avecEnonce && p.schema === "aucun" ? ""
+    : avecEnonce && p.schema === "sans" ? `<div class="pb-cadre"></div>`
     : `<div class="pb-schema">${schemaSvg(pb.schema, avecEnonce && p.schema === "vide" ? "vide" : "nombres", styleSchema(p))}</div>`;
   const lignes = [p.calcul && "Calcul", p.reponse && "Réponse"].filter(Boolean)
     .map((mot) => `<div>${mot} : <span class="pb-ligne"></span></div>`);

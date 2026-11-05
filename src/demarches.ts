@@ -2316,7 +2316,7 @@ function idSuggere(dom: string, sd: string, comp: string, ref: string, niveau = 
     // Les problèmes et les fractions : la séquence du livret de la classe quand il y en a une (voir demarchesProblemes.ts).
     // Et, à la demande de l'enseignant, les compétences sans séquence de livret prolongent celles des livrets.
     const livretDeProblemes = /^(cp|ce1|ce2)$/.test(niveau)
-      ? demarcheDuLivretDeProblemes(niveau, comp) ?? demarcheProlongeeDeProblemes(niveau, comp) ?? demarcheProlongeeDeFractions(niveau, comp) : null;
+      ? demarcheDuLivretDeProblemes(niveau, comp, periode) ?? demarcheProlongeeDeProblemes(niveau, comp) ?? demarcheProlongeeDeFractions(niveau, comp) : null;
     if (livretDeProblemes) return livretDeProblemes;
     // Les quatre opérations : des séquences bâties sur le programme et les guides (voir demarchesOperations.ts).
     const operations = /^(cp|ce1|ce2)$/.test(niveau) ? demarcheDesOperations(niveau, comp) : null;

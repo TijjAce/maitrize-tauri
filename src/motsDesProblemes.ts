@@ -59,7 +59,7 @@ const CHOSES: Entree[] = [
   ["la glace", "glace", "glaces"], ["le glacier", "glacier", "glacier"], ["la gomme", "gomme", "gomme"],
   ["le gâteau", "gâteau", "gâteau gâteaux"], ["l'heure", "heure", "heure heures h"], ["la demi-heure", "demi-heure", "demi-heure"],
   ["le quart d'heure", "quart d'heure", "@quarts? d'heure"], ["l'hirondelle", "hirondelle", "hirondelles"], ["l'huile", "huile", "huile"],
-  ["l'image", "autocollant", "images"], ["le jardin", "jardin", "jardin"], ["le jeu", "jeu", "jeu"],
+  ["l'image", "autocollant", "images"], ["le jardin", "jardin", "jardin"], ["le jeton", "jeton", "jeton jetons"], ["le jeu", "jeu", "jeu"],
   ["le jeu de société", "dé", "@jeux? de société"], ["le judo", "judo", "judo"], ["le jus", "jus", "jus"],
   ["la lecture", "lire", "lecture"], ["le litre", "litre", "litre litres"], ["le livre", "livre", "livre livres"],
   ["la longueur", "longueur", "longueur"], ["le légume", "légume", "légumes"], ["le magazine", "revue", "magazine"],
@@ -100,13 +100,13 @@ const CHOSES: Entree[] = [
 
 /** Ce qui se passe dans les énoncés, à l'infinitif. */
 const ACTIONS: Entree[] = [
-  ["acheter", "acheter", "acheté achète"], ["ajouter", "mettre", "ajoute ajoutent ajouté ajoutées"], ["apporter", "apporter", "apporte"],
+  ["acheter", "acheter", "acheté achète"], ["ajouter", "mettre", "ajoute ajoutent ajouté ajoutés ajoutées"], ["apporter", "apporter", "apporte"],
   ["arriver", "arriver", "arrive arrivent arriver arrivé arrivés arrive-t-il arrive-t-elle"], ["attendre", "attendre", "attendre"], ["bêcher", "bêcher", "bêcher"],
   ["choisir", "choisir", "choisit"], ["coller", "coller", "colle"], ["commencer", "commencer", "commence"],
   ["composer", "", "composer"], ["contenir", "contenir", "contient"], ["cueillir", "cueillir", "cueilli cueillies"],
   ["cuire", "cuire", "cuire"], ["descendre", "descendre", "descendent descendues descendus"], ["déguiser", "déguiser", "déguiser"],
   ["distribuer", "distribuer", "distribue"], ["donner", "donner", "donne donné"], ["durer", "durer", "dure durent dure-t-il"],
-  ["emprunter", "emprunter", "empruntent"], ["enlever", "retirer", "enlevé enlevées enlève"], ["entrer", "entrer", "entrés"],
+  ["emprunter", "emprunter", "empruntent"], ["enlever", "retirer", "enlevé enlevés enlevées enlève"], ["entrer", "entrer", "entrés"],
   ["s'envoler", "battre des ailes", "envole envolent envolés"], ["finir", "finir", "fini finit"], ["gagner", "gagner", "gagne"],
   ["habiller", "habiller", "habiller"], ["installer", "installer", "installe"], ["jouer", "jouer", "jouent"],
   ["livrer", "livrer", "livrée"], ["mesurer", "mesurer", "mesure mesurent"], ["mettre", "mettre", "met mets mettre mis mises"],
@@ -266,7 +266,7 @@ export function enoncesDuHtml(html: string): string[] {
  * au moins. Un test le vérifie sur toutes les démarches.
  */
 export const DEMARCHES_A_PROBLEMES = new Set([
-  "problemes", "arbre-a-calcul-cp", "parties-tout-cp", "parties-tout-ce1", "deux-etapes-ce2",
+  "problemes", "arbre-a-calcul-cp", "chercher-le-tout-cp", "problemes-a-dire-cp", "parties-tout-cp", "parties-tout-ce1", "deux-etapes-ce2",
   "deux-etapes-cp", "multiplicatifs-cp", "comparaison-ce1", "deux-etapes-ce1", "multiplicatifs-ce1", "mixtes-ce1",
   "parties-tout-comparaison-ce2", "multiplicatifs-ce2", "mixtes-ce2", "comparaison-multiplicative-ce2", "produits-cartesiens-ce2",
   "sens-addition-soustraction-cp", "sens-multiplication-cp", "multiplication-ce1", "division-ce2",
