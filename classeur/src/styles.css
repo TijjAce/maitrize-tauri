@@ -172,6 +172,20 @@ a { color: var(--accent); }
 .choix.choisi { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-doux); }
 .coche input { width: 24px; height: 24px; }
 .coche.petite { font-size: 14px; gap: 6px; }
+/* La fiche d'une case : ce qu'on propose ensuite — un thème par ligne, ses pictos à cocher (quatre au plus, numérotés). */
+.suite-fiche { display: grid; gap: 6px; padding: 8px; border: 1px solid #e3dccb; border-radius: 12px; background: #fffdf8; }
+.suite-pictos { display: grid; grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); gap: 6px; max-height: 196px; overflow: auto; }
+.suite-picto {
+  position: relative; height: 70px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  padding: 3px; border: 2px solid; border-radius: 10px; font-size: 11px; font-weight: 700; opacity: .55;
+}
+.suite-picto img { flex: 1; min-height: 0; width: 100%; object-fit: contain; pointer-events: none; }
+.suite-picto span:not(.rang) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.suite-picto.choisi { opacity: 1; outline: 3px solid var(--accent); outline-offset: 1px; }
+.suite-picto .rang {
+  position: absolute; top: 2px; left: 2px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--accent); color: #fff;
+  font-size: 11px; display: flex; align-items: center; justify-content: center;
+}
 .coche.petite input { width: 20px; height: 20px; }
 
 .annonces { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: grid; gap: 8px; z-index: 20; width: min(640px, 92vw); }

@@ -86,6 +86,7 @@ export function versObz(c: Classeur, images: Record<string, string>): FichiersOb
         return n ? [{ id: `page${n}`, poids: s.poids, ...(cases.length ? { cases } : {}) }] : [];
       });
       if (suites.length) b.ext_maitrize_suites = suites;
+      if (k.suitesPerso) b.ext_maitrize_suites_perso = true;
       const cible = k.lien ? numero.get(k.lien) : undefined;
       if (cible) b.load_board = { id: `page${cible}`, path: `boards/page${cible}.obf` };
       const donnee = k.image ? images[k.image] : undefined;
@@ -127,7 +128,7 @@ export function versObz(c: Classeur, images: Record<string, string>): FichiersOb
 interface BoutonObf {
   id?: unknown; label?: unknown; vocalization?: unknown; image_id?: unknown; background_color?: unknown; border_color?: unknown;
   hidden?: unknown; load_board?: { id?: unknown; path?: unknown };
-  ext_maitrize_poids?: unknown; ext_maitrize_suites?: unknown;
+  ext_maitrize_poids?: unknown; ext_maitrize_suites?: unknown; ext_maitrize_suites_perso?: unknown;
 }
 interface TableauObf {
   id?: unknown; name?: unknown; buttons?: BoutonObf[]; grid?: { rows?: unknown; columns?: unknown; order?: unknown[][] };
@@ -196,6 +197,7 @@ export function depuisObz(f: FichiersObz, nom: string, maintenant = new Date().t
         });
         if (suites.length) k.suites = suites;
       }
+      if (b.ext_maitrize_suites_perso === true) k.suitesPerso = true;
       if (texte(b.id)) caseDuBouton.set(texte(b.id), k.id);
       const vers = b.load_board;
       if (vers) {

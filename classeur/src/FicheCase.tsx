@@ -3,11 +3,14 @@ import { COULEURS, nouvelId, numeroDePage, ordreDesPages, type Case, type Classe
 import { chercherPictos, garderImage, prendrePicto, vignetteArasaac, type PictoTrouve } from "./pont";
 import { COULEUR_DE_LA_NATURE } from "./recherche";
 import { Fenetre, annoncer } from "./Fenetre";
+import { ENSEMBLES_MAX, PICTOS_PAR_ENSEMBLE, casesDuTheme, lignesDeSuites, suitesDeLaFiche, type LigneDeSuite } from "./ensembles";
 
 // ── La fiche d'une case, en mode modifier ────────────────────────────────
 //
 // Le mot, ce qui se dit, l'image — un picto d'ARASAAC ou une photo —, la
-// couleur, la page qu'elle ouvre (ou une nouvelle, à son nom), cachée ou non.
+// couleur, la page qu'elle ouvre (ou une nouvelle, à son nom), cachée ou non ;
+// et ce qu'on propose ensuite, dans la bande au-dessus de la grille : jusqu'à
+// trois thèmes, chacun avec ses pictos, que l'enseignant choisit lui-même.
 
 export const NOUVELLE_PAGE = "__nouvelle__";
 
@@ -46,6 +49,15 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
   const [trouves, setTrouves] = React.useState<PictoTrouve[] | null>(null);
   const [occupe, setOccupe] = React.useState(false);
   const photo = React.useRef<HTMLInputElement>(null);
+  // Ce qu'on propose ensuite : les thèmes, dans l'ordre, et leurs pictos choisis. Intact tant qu'on n'y touche pas.
+  const [lignes, setLignes] = React.useState<LigneDeSuite[]>(() => lignesDeSuites(valeur?.suites));
+  const [suitesTouchees, setSuitesTouchees] = React.useState(false);
+  const changerLignes = (f: (l: LigneDeSuite[]) => LigneDeSuite[]) => { setLignes(f); setSuitesTouchees(true); };
+  const basculerPicto = (i: number, id: string) => changerLignes((l) => l.map((x, j) => {
+    if (j !== i) return x;
+    if (x.cases.includes(id)) return { ...x, cases: x.cases.filter((y) => y !== id) };
+    return x.cases.length >= PICTOS_PAR_ENSEMBLE ? x : { ...x, cases: [...x.cases, id] };
+  }));
 
   const chercher = async () => {
     if (!recherche.trim()) return;
@@ -87,9 +99,16 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
     const m = mot.trim();
     if (!m && !image) { onPoser(null); return; }
     const k: Case = { id: valeur?.id ?? nouvelId(), mot: m };
-    // Les poids calculés à l'avance restent à la case qu'on retouche.
+    // Les poids calculés à l'avance restent à la case qu'on retouche ; ses suites aussi, sauf si on les a changées.
     if (valeur?.poids !== undefined) k.poids = valeur.poids;
-    if (valeur?.suites?.length) k.suites = valeur.suites;
+    if (suitesTouchees) {
+      const suites = suitesDeLaFiche(lignes);
+      if (suites.length) k.suites = suites;
+      k.suitesPerso = true;
+    } else {
+      if (valeur?.suites?.length) k.suites = valeur.suites;
+      if (valeur?.suitesPerso) k.suitesPerso = true;
+    }
     if (dire.trim() && dire.trim() !== m) k.dire = dire.trim();
     if (image) k.image = image;
     if (couleur.fond) k.fond = couleur.fond;
@@ -161,6 +180,39 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
           <label className="coche">
             <input type="checkbox" checked={masquee} onChange={(e) => setMasquee(e.target.checked)} /> Cachée à l'élève (la place reste)
           </label>
+          <div className="etiquette">Ensuite, proposer
+            {lignes.map((l, i) => (
+              <div key={i} className="suite-fiche">
+                <div className="rangee">
+                  <select className="champ" value={l.page} aria-label={`Thème ${i + 1}`}
+                    onChange={(e) => changerLignes((x) => x.map((y, j) => (j === i ? { page: e.target.value, cases: [] } : y)))}>
+                    {autresPages.map((p) => <option key={p.id} value={p.id}>Page {numeroDePage(classeur, p.id)} · {p.nom}</option>)}
+                  </select>
+                  <button className="bouton discret" aria-label="Plus tôt" disabled={i === 0}
+                    onClick={() => changerLignes((x) => { const y = [...x]; [y[i - 1], y[i]] = [y[i], y[i - 1]]; return y; })}>↑</button>
+                  <button className="bouton discret" aria-label="Retirer ce thème" onClick={() => changerLignes((x) => x.filter((_, j) => j !== i))}>✕</button>
+                </div>
+                <div className="suite-pictos">
+                  {casesDuTheme(classeur, l.page).map((k) => {
+                    const rang = l.cases.indexOf(k.id);
+                    return (
+                      <button key={k.id} className={`suite-picto${rang >= 0 ? " choisi" : ""}`} aria-pressed={rang >= 0}
+                        style={{ background: k.fond ?? "#fff", borderColor: k.bord ?? "#8c8c96" }} onClick={() => basculerPicto(i, k.id)}>
+                        {k.image && images[k.image] && <img src={images[k.image]} alt="" />}
+                        <span>{k.mot}</span>
+                        {rang >= 0 && <span className="rang">{rang + 1}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            {lignes.length < ENSEMBLES_MAX && autresPages.length > 0 && (
+              <button className="bouton" onClick={() => changerLignes((x) => [...x, { page: autresPages.find((p) => !x.some((y) => y.page === p.id))?.id ?? autresPages[0].id, cases: [] }])}>
+                ＋ Un thème
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </Fenetre>

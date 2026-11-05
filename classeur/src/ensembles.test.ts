@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { classeurComplet } from "./classeurComplet";
-import { ensemblesApres } from "./ensembles";
+import { casesDuTheme, ensemblesApres, lignesDeSuites, suitesDeLaFiche } from "./ensembles";
 import { lireClasseur, ordreDesPages, supprimerPage, type Case } from "./modele";
 
 describe("les ensembles de pictos par thème, aux poids calculés à l'avance", () => {
@@ -99,3 +99,39 @@ describe("les ensembles de pictos par thème, aux poids calculés à l'avance", 
     expect(ensemblesApres(sansManger, jeVeux, page("Je veux").id).map((x) => x.nom)).toEqual(["Jouer", "Boire", "Aller"]);
   });
 });
+
+describe("les suites choisies par l'enseignant, dans la fiche d'une case", () => {
+  const c = classeurComplet("", "2026-11-05T08:00:00.000Z");
+  const page = (nom: string) => ordreDesPages(c).find((p) => p.nom === nom)!;
+  const id = (nomPage: string, mot: string) => casesDuTheme(c, page(nomPage).id).find((k) => k.mot === mot)!.id;
+
+  it("le rang fait le poids, la première d'abord ; un thème en double ne compte qu'une fois ; quatre pictos au plus", () => {
+    const suites = suitesDeLaFiche([
+      { page: page("Les animaux").id, cases: ["a", "b", "c", "d", "e"] },
+      { page: page("Les gens").id, cases: [] },
+      { page: page("Les animaux").id, cases: ["x"] },
+    ]);
+    expect(suites.map((s) => s.page)).toEqual([page("Les animaux").id, page("Les gens").id]);
+    expect(suites[0].poids).toBeGreaterThan(suites[1].poids);
+    expect(suites[0].cases).toEqual(["a", "b", "c", "d"]);
+    expect(suites[1].cases).toBeUndefined();
+    expect(suitesDeLaFiche([])).toEqual([]);
+  });
+
+  it("relit les suites d'une case dans l'ordre de leur poids, et les rend telles que la bande les montre", () => {
+    const k = c.pages.flatMap((p) => p.cases).find((x) => x?.mot === "regarde")!;
+    const lignes = lignesDeSuites(k.suites);
+    expect(lignes[0].page).toBe(page("Les animaux").id);
+    // L'enseignant met les gens d'abord, avec papi et mamie.
+    const choisi = { ...k, suites: suitesDeLaFiche([{ page: page("Les gens").id, cases: [id("Les gens", "papi"), id("Les gens", "mamie")] }, lignes[0]]), suitesPerso: true };
+    const e = ensemblesApres(c, choisi, c.accueil);
+    expect(e.map((x) => `${x.nom} : ${x.cases.map((y) => y.mot).join(", ")}`)[0]).toBe("Les gens : papi, mamie, moi, toi");
+  });
+
+  it("propose à choisir tous les pictos d'un thème, ses deux pages comprises", () => {
+    const mots = casesDuTheme(c, page("Manger").id).map((k) => k.mot);
+    expect(mots).toContain("pain");
+    expect(mots).toContain("gâteau");
+  });
+});
+

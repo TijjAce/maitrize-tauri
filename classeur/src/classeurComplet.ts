@@ -144,6 +144,8 @@ export function ajouterLesPoids(c: Classeur, m: ModeleDeClasseur = MODELE_COMPLE
       const suites = suitesDe(km, (cle) => pageDuModele.get(cle)?.id, caseDuModele);
       if (typeof km.poids !== "number" && !suites.length) return k;
       change = true;
+      // Les suites choisies par l'enseignant restent les siennes ; seul le poids du picto suit.
+      if (k.suitesPerso) return { ...k, ...(typeof km.poids === "number" ? { poids: km.poids } : {}) };
       return { ...k, ...(typeof km.poids === "number" ? { poids: km.poids } : {}), ...(suites.length ? { suites } : {}) };
     });
     return { ...p, cases };

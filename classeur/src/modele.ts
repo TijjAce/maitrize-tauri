@@ -29,6 +29,8 @@ export interface Case {
   poids?: number;
   /** Après elle, les thèmes à proposer (une page, son poids, et parfois ses pictos, choisis pour cette case), calculés à l'avance. */
   suites?: Suite[];
+  /** Les suites sont celles de l'enseignant (choisies dans la fiche) : une mise à jour des poids livrés ne les touche pas. */
+  suitesPerso?: boolean;
 }
 
 /** Un thème qui vient après une case : sa page, son poids ; les cases à montrer, quand elles ont été choisies. */

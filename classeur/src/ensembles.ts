@@ -10,7 +10,7 @@
 // Les pictos de la grille ne bougent jamais : la bande est à part, et l'élève
 // garde la mémoire des places.
 
-import { pageDe, sectionDe, type Case, type Classeur } from "./modele";
+import { pageDe, sectionDe, type Case, type Classeur, type Suite } from "./modele";
 
 export interface Ensemble {
   /** La page du thème : toucher le thème y mène. */
@@ -59,3 +59,30 @@ export function ensemblesApres(
   }
   return sortie;
 }
+
+// ── Les suites choisies par l'enseignant, dans la fiche d'une case ────────
+
+/** Une ligne de la fiche : un thème (une page), et les pictos choisis, dans l'ordre. */
+export interface LigneDeSuite { page: string; cases: string[] }
+
+/** Les lignes de la fiche, d'après les suites d'une case : la plus lourde d'abord. */
+export const lignesDeSuites = (suites: Suite[] | undefined): LigneDeSuite[] =>
+  [...(suites ?? [])].sort((a, b) => b.poids - a.poids).slice(0, ENSEMBLES_MAX).map((s) => ({ page: s.page, cases: [...(s.cases ?? [])] }));
+
+/** Les suites d'après les lignes de la fiche : le rang fait le poids (la première d'abord) ; quatre pictos au plus. */
+export function suitesDeLaFiche(lignes: LigneDeSuite[]): Suite[] {
+  const retenues = lignes.filter((l, i) => l.page && lignes.findIndex((x) => x.page === l.page) === i).slice(0, ENSEMBLES_MAX);
+  const parts = retenues.map((_, i) => retenues.length - i);
+  const total = parts.reduce((a, b) => a + b, 0);
+  return retenues.map((l, i) => ({
+    page: l.page, poids: Math.round((parts[i] / total) * 1000) / 1000,
+    ...(l.cases.length ? { cases: l.cases.slice(0, PICTOS_PAR_ENSEMBLE) } : {}),
+  }));
+}
+
+/** Les pictos d'un thème, à choisir dans la fiche : toute sa section. */
+export function casesDuTheme(c: Classeur, pageId: string): Case[] {
+  const section = sectionDe(c, pageId);
+  return (section?.pages ?? []).flatMap((p) => p.cases).filter((k): k is Case => !!k && !!(k.mot.trim() || k.image));
+}
+

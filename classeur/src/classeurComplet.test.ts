@@ -154,6 +154,19 @@ describe("un classeur complet d'avant les poids", () => {
     expect(vu(repris, ensemblesApres(repris, bonjour(repris), repris.accueil))).toEqual(["Les gens: maman, papa, maîtresse, copain"]);
     expect(repris.pages.map((p) => p.cases.map((k) => k?.mot ?? null))).toEqual(neuf.pages.map((p) => p.cases.map((k) => k?.mot ?? null)));
   });
+  it("garde les suites que l'enseignant a choisies quand les poids livrés changent", () => {
+    const neuf = classeurComplet();
+    const gens = neuf.pages.find((p) => p.nom === "Les gens")!.id;
+    const perso = {
+      ...neuf, versionDesPoids: "ancienne",
+      pages: neuf.pages.map((p) => ({ ...p, cases: p.cases.map((k) => (k?.mot === "regarde" ? { ...k, suites: [{ page: gens, poids: 1 }], suitesPerso: true } : k)) })),
+    };
+    const repris = ajouterLesPoids(perso)!;
+    const regarde = repris.pages.flatMap((p) => p.cases).find((k) => k?.mot === "regarde")!;
+    expect(regarde.suites).toEqual([{ page: gens, poids: 1 }]);
+    expect(regarde.suitesPerso).toBe(true);
+  });
+
   it("ne touche pas un classeur qui a déjà les poids d'aujourd'hui ; remplace ceux d'une autre version", () => {
     const neuf = classeurComplet();
     expect(neuf.versionDesPoids).toBe(MODELE_COMPLET.versionDesPoids);
