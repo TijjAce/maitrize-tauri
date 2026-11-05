@@ -69,7 +69,7 @@ const MOTS_VIDES = new Set([
 ]);
 
 /** Les niveaux qui disent un cycle, et le cycle qu'ils désignent. */
-const CYCLE_DU_NIVEAU: Record<string, number> = {
+export const CYCLE_DU_NIVEAU: Record<string, number> = {
   ps: 1, ms: 1, gs: 1, tps: 1, maternelle: 1,
   cp: 2, ce1: 2, ce2: 2, cm1: 3, cm2: 3, "6e": 3, sixieme: 3,
 };

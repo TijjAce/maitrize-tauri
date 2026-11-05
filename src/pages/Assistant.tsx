@@ -35,20 +35,16 @@ import { EVT_QUESTION_ASSISTANT, prendreQuestion } from "../questionAssistant";
 import { imagePourLAssistant } from "../components/MesImages";
 import { estImage, useFileDropZone } from "../dragdrop";
 import { IMAGES_PAR_DEMANDE, TITRE_D_UNE_IMAGE, imagesDeLaDemande } from "../imagesDeLAssistant";
+import { lireNiveaux } from "../classe";
+import { consigneDeLAssistant, extraitsPourLAssistant, programmesPourLaDemande } from "../consigneAssistant";
+import { blocDeMemoire, chargerMemoire, defaireChangements, direLesChangements, memoireCoupee, retenirDuMessage, souvenirsPourLaQuestion } from "../memoireAssistant";
+import { MemoireAssistant } from "../components/MemoireAssistant";
 
 // Extrait un objet JSON d'une réponse IA (tolère du texte autour).
 function extraireJson(rep: string): any {
   const s = rep.slice(rep.indexOf("{"), rep.lastIndexOf("}") + 1);
   return JSON.parse(s);
 }
-
-const SYSTEME: ChatMessage = {
-  role: "system",
-  content:
-    "Tu es l'assistant pédagogique de Maîtrize, une application pour les enseignants du primaire français (cycles 1, 2 et 3). " +
-    "Tu aides à concevoir des séquences et séances, à formuler des objectifs et compétences alignés sur les programmes officiels, " +
-    "à différencier, et à organiser la classe. Réponds en français, de façon concrète et structurée.",
-};
 
 const SUGGESTIONS = [
   "Propose-moi une séquence de 5 séances sur les fractions en CM1.",
@@ -68,6 +64,7 @@ export default function Assistant() {
   const [showGen, setShowGen] = React.useState(false);
   const [showModif, setShowModif] = React.useState(false);
   const [showPictos, setShowPictos] = React.useState(false);
+  const [showMemoire, setShowMemoire] = React.useState(false);
   const [showLivres, setShowLivres] = React.useState(false);
   const [contexteActif, setContexteActif] = React.useState(true);
   const [surLeWeb, setSurLeWeb] = React.useState(false);
@@ -497,17 +494,27 @@ export default function Assistant() {
       setMessages(final); setLoading(false); sauvegarderConv(final);
     };
     try {
-      // Contexte désactivé → on n'envoie AUCUN message système (rien d'autre que
-      // la conversation). Activé → rôle pédagogique + contexte non personnel.
-      // Sur un document, sa seule consigne : répondre d'après lui, en le citant.
+      // Contexte activé → le rôle et ses règles, le contexte non personnel de la classe, les attendus du programme qui
+      // parlent de la demande, ciblés sur son cycle (voir consigneAssistant.ts). La mémoire a son propre interrupteur
+      // (memoireAssistant.ts). Sans rien de tout cela, AUCUN message système : rien d'autre que la conversation.
+      // Sur un document, sa seule consigne : répondre d'après lui, en le citant — ni rôle, ni mémoire.
       let prefixe: ChatMessage[] = [];
+      let consigne: { role: boolean; contexte: string; programmes: string } = { role: false, contexte: "", programmes: "" };
+      let memoire = "";
       if (doc) prefixe = [{ role: "system", content: consigneDuDocument(doc.nom) }];
-      else if (contexteActif) {
-        const ctx = await construireContexteIA();
-        prefixe = [{ role: "system", content: `${SYSTEME.content}\n\nContexte de la classe (données non personnelles, aucune information nominative sur les élèves) :\n${ctx}` }];
+      else {
+        const [ctx, programmes, souvenirs] = await Promise.all([
+          contexteActif ? construireContexteIA() : Promise.resolve(""),
+          contexteActif
+            ? Promise.all([api.referentielsList(), api.settingGet("niveauClasse")])
+              .then(([refs, niveau]) => extraitsPourLAssistant(programmesPourLaDemande(refs, contenu, lireNiveaux(niveau))))
+              .catch(() => "")
+            : Promise.resolve(""),
+          memoireCoupee().then((coupee) => (coupee ? [] : chargerMemoire())).catch(() => []),
+        ]);
+        consigne = { role: contexteActif, contexte: ctx, programmes };
+        memoire = blocDeMemoire(souvenirsPourLaQuestion(souvenirs, contenu));
       }
-      // À voix haute : une réponse qui s'écoute (voir conversationVocale.ts).
-      if (options.oral) prefixe = [...prefixe, { role: "system", content: CONSIGNE_ORALE }];
       // Le document se lit ici — une fois : textesDesPdf.ts garde ses pages — ; ses passages qui parlent de la
       // question partent avec elle, après les deux derniers échanges.
       let aEnvoyer = suite;
@@ -527,11 +534,17 @@ export default function Assistant() {
       // La conversation part sans les noms connus — élèves, contacts de
       // l'établissement —, masquée d'un seul tenant, les passages du document
       // compris ; la réponse les retrouve à mesure qu'elle s'écrit.
-      const masque = pseudonymiserTout(aEnvoyer.map((m) => m.content), await nomsAMasquer(), { portee: "eleves", lieux: await lieuxAMasquer() });
+      // La mémoire part masquée avec elle, de la même table : la réponse retrouve les vrais mots des deux.
+      const masque = pseudonymiserTout([memoire, ...aEnvoyer.map((m) => m.content)], await nomsAMasquer(), { portee: "eleves", lieux: await lieuxAMasquer() });
+      const [memoireMasquee, ...textesMasques] = masque.textes;
+      const systeme = doc ? "" : consigneDeLAssistant({ ...consigne, memoire: memoireMasquee });
+      if (systeme) prefixe = [{ role: "system", content: systeme }];
+      // À voix haute : une réponse qui s'écoute (voir conversationVocale.ts).
+      if (options.oral) prefixe = [...prefixe, { role: "system", content: CONSIGNE_ORALE }];
       // La version retouchée d'une réponse reste ici : seul le texte part, avec les images les plus récentes.
       // Les images partent telles quelles : un prénom écrit dessus n'est pas masqué.
       const parMessage = imagesDeLaDemande(aEnvoyer);
-      const envoyes: ChatMessage[] = aEnvoyer.map((m, i) => ({ role: m.role, content: masque.textes[i] ?? m.content, images: parMessage[i] }));
+      const envoyes: ChatMessage[] = aEnvoyer.map((m, i) => ({ role: m.role, content: textesMasques[i] ?? m.content, images: parMessage[i] }));
       const rendre = (t: string) => restaurer(t, masque.table).texte;
       /**
        * La réponse sur le document, finie : chaque citation retrouvée dans le document, ou signalée, et le bilan.
@@ -572,6 +585,7 @@ export default function Assistant() {
         const final: ChatMessage[] = [...suite, { role: "assistant", content: apresLeDocument(ecrit) }];
         terminer(final);
         if (doc && neLeDitPas(ecrit)) setRechercheProposee({ indice: final.length - 1, question: contenu, titre: doc.nom });
+        if (!doc) void retenir(contenu);
       });
       const unErr = await listen<{ id: string; message: string }>("mistral://error", (ev) => {
         if (ev.payload.id !== reqId) return;
@@ -593,6 +607,18 @@ export default function Assistant() {
     }
   };
   envoyerRef.current = envoyer;
+
+  /**
+   * Ce que l'enseignant vient de dire et qui mérite d'être retenu, relu en arrière-plan après la réponse (voir
+   * memoireAssistant.ts) : un bandeau le dit, « Annuler » (ou ⌘Z) le défait. Un échec ne dit rien : la mémoire
+   * attendra le message suivant.
+   */
+  const retenir = async (dit: string) => {
+    try {
+      const changements = await retenirDuMessage(dit);
+      if (changements.length) toastAnnulable(direLesChangements(changements), () => defaireChangements(changements), "🧠");
+    } catch { /* rien de retenu cette fois */ }
+  };
   /** Envoyer : en pleine conversation, la question dite part comme après un silence. */
   const envoyerOuParler = () => { if (oralRef.current === "ecoute") void envoyerLaQuestion(); else void envoyer(); };
 
@@ -682,6 +708,9 @@ export default function Assistant() {
             ? "L'IA reçoit le contexte de la classe (niveau, nombre d'élèves, séquences, programmation). Aucune donnée personnelle d'élève n'est transmise."
             : "L'IA ne reçoit aucun contexte sur ta classe."}>
           🏫 Contexte&nbsp;: {contexteActif ? "activé" : "désactivé"}</button>
+        <button className="btn sm" onClick={() => setShowMemoire(true)}
+          title="Ce que l'Assistant retient de ce que vous lui dites : le voir, le corriger, l'oublier, ou couper la mémoire">
+          🧠 Mémoire</button>
         {!AGENTS_COUPES && <button className="btn sm" aria-pressed={surLeWeb} onClick={() => setSurLeWeb((v) => !v)}
           title={surLeWeb
             ? "La question part à un agent qui interroge le web et cite ses sources. Plus lent."
@@ -711,6 +740,7 @@ export default function Assistant() {
       {showGen && <GenerateurSequence model={model} onClose={() => setShowGen(false)} />}
       {showModif && <ModifierSequence model={model} onClose={() => setShowModif(false)} />}
       {showPictos && <TrouverUnPicto onClose={() => setShowPictos(false)} />}
+      {showMemoire && <MemoireAssistant onClose={() => setShowMemoire(false)} />}
       {showLivres && <TrouverUnLivre onClose={() => setShowLivres(false)} />}
       <div className="chat-scroll" ref={scrollRef} onScroll={surDefilement} onWheel={surMolette}>
         {messages.length === 0 && (
