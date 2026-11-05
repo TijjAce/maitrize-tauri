@@ -19,6 +19,11 @@
 // Enfin : « quand je prends la parole, la voix de synthèse se coupe et me
 // laisse parler » — on parle par-dessus la voix, elle se tait et l'écoute
 // reprend, les premiers mots compris (voir priseDeParole.ts).
+//
+// « Laisse quelques millisecondes de plus là pour la réponse de l'IA »
+// (l'enseignant, 5 novembre 2026, sur le 🗣) : la question partait pendant
+// qu'il cherchait ses mots. Trois dixièmes de plus partout — 1,1 s après
+// une phrase ponctuée, 1,6 s sinon —, entre ces délais et le 1,5 s du début.
 
 /** Ce qu'on ajoute à la consigne quand la conversation se fait à voix haute : une réponse qui s'écoute. */
 export const CONSIGNE_ORALE = "La conversation se fait à voix haute : l'enseignant t'entend, il ne te lit pas. Réponds comme à l'oral, "
@@ -26,21 +31,23 @@ export const CONSIGNE_ORALE = "La conversation se fait à voix haute : l'enseign
   + "une fiche —, propose-lui de le préparer par écrit.";
 
 /** Le silence qui clôt une question que Voxtral a ponctuée — « ? », « . » —, et celui d'une phrase en suspens. */
-export const SILENCE_APRES_LA_PHRASE_S = 0.8;
-export const SILENCE_EN_SUSPENS_S = 1.3;
+export const SILENCE_APRES_LA_PHRASE_S = 1.1;
+export const SILENCE_EN_SUSPENS_S = 1.6;
+/** À défaut de prise de son : plus aucun mot depuis tant de millisecondes, phrase ponctuée ou en suspens. */
+export const SANS_MOT_NOUVEAU_MS = { ponctuee: 1500, enSuspens: 2100 };
 const PAROLE_MIN_S = 0.4;
 
 /**
  * La question est-elle finie ? On a parlé, puis on s'est tu : peu de temps si
  * la phrase est ponctuée, un peu plus si elle reste en suspens. À défaut —
- * la prise de son n'a rien vu —, plus aucun mot depuis 1,2 s ou 1,8 s.
+ * la prise de son n'a rien vu —, plus aucun mot depuis 1,5 s ou 2,1 s.
  */
 export function questionFinie(a: { parole: number; silence: number }, texte: string, msDepuisLeDernierMot: number): boolean {
   const t = (texte ?? "").trim();
   if (!t) return false;
   const ponctuee = /[.?!…]$/.test(t);
   if (a.parole >= PAROLE_MIN_S && a.silence >= (ponctuee ? SILENCE_APRES_LA_PHRASE_S : SILENCE_EN_SUSPENS_S)) return true;
-  return msDepuisLeDernierMot >= (ponctuee ? 1200 : 1800);
+  return msDepuisLeDernierMot >= (ponctuee ? SANS_MOT_NOUVEAU_MS.ponctuee : SANS_MOT_NOUVEAU_MS.enSuspens);
 }
 
 /**

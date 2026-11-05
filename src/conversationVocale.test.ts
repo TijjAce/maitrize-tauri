@@ -1,19 +1,27 @@
 import { describe, it, expect } from "vitest";
-import { CONSIGNE_ORALE, lecteurAuFil, morceauxALire, pretALire, questionFinie, texteALire } from "./conversationVocale";
+import {
+  CONSIGNE_ORALE, SANS_MOT_NOUVEAU_MS, SILENCE_APRES_LA_PHRASE_S, SILENCE_EN_SUSPENS_S, lecteurAuFil, morceauxALire, pretALire, questionFinie, texteALire,
+} from "./conversationVocale";
 
 describe("parler avec l'Assistant à voix haute (demande de l'enseignant, 3 novembre 2026)", () => {
   it("envoie la question dès que la phrase est finie : vite si Voxtral l'a ponctuée, un peu plus tard sinon — même tout bas", () => {
     const parle = (silence: number) => ({ parole: 2, silence });
-    expect(questionFinie(parle(0.8), "Comment travailler la fluence ?", 500)).toBe(true);
-    expect(questionFinie(parle(0.8), "Comment travailler la", 500)).toBe(false);
-    expect(questionFinie(parle(1.3), "Comment travailler la", 500)).toBe(true);
+    expect(questionFinie(parle(SILENCE_APRES_LA_PHRASE_S), "Comment travailler la fluence ?", 500)).toBe(true);
+    expect(questionFinie(parle(SILENCE_APRES_LA_PHRASE_S), "Comment travailler la", 500)).toBe(false);
+    expect(questionFinie(parle(SILENCE_EN_SUSPENS_S), "Comment travailler la", 500)).toBe(true);
+    // « Laisse quelques millisecondes de plus » (5 novembre 2026) : 0,8 s de silence ne suffit plus, 1,1 s, si.
+    expect(SILENCE_APRES_LA_PHRASE_S).toBe(1.1);
+    expect(SILENCE_EN_SUSPENS_S).toBe(1.6);
+    expect(questionFinie(parle(0.8), "Comment travailler la fluence ?", 500)).toBe(false);
+    expect(questionFinie(parle(1.3), "Comment travailler la", 500)).toBe(false);
     // Rien de dit, ou à peine un souffle : rien ne part.
     expect(questionFinie(parle(5), "", 5000)).toBe(false);
     expect(questionFinie({ parole: 0.2, silence: 3 }, "Bon", 500)).toBe(false);
     // La prise de son n'a rien vu : plus aucun mot depuis un moment suffit.
-    expect(questionFinie({ parole: 0, silence: 0 }, "Comment faire ?", 1200)).toBe(true);
-    expect(questionFinie({ parole: 0, silence: 0 }, "Comment faire", 1200)).toBe(false);
-    expect(questionFinie({ parole: 0, silence: 0 }, "Comment faire", 1800)).toBe(true);
+    expect(questionFinie({ parole: 0, silence: 0 }, "Comment faire ?", SANS_MOT_NOUVEAU_MS.ponctuee)).toBe(true);
+    expect(questionFinie({ parole: 0, silence: 0 }, "Comment faire ?", 1200)).toBe(false);
+    expect(questionFinie({ parole: 0, silence: 0 }, "Comment faire", SANS_MOT_NOUVEAU_MS.ponctuee)).toBe(false);
+    expect(questionFinie({ parole: 0, silence: 0 }, "Comment faire", SANS_MOT_NOUVEAU_MS.enSuspens)).toBe(true);
   });
 
   it("lit la réponse pendant qu'elle s'écrit : la première phrase avant la fin, chaque morceau une fois, dans l'ordre", async () => {
