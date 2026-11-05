@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import cycle1 from "../src-tauri/referentiels/competences_cycle1.json";
 import cycle1_2025 from "../src-tauri/referentiels/competences_cycle1_2025.json";
 import cycle2 from "../src-tauri/referentiels/competences_cycle2.json";
 import cycle3 from "../src-tauri/referentiels/competences_cycle3.json";
@@ -9,7 +8,7 @@ import type { CompetenceSelectionnee } from "./components/CompetenceTree";
 
 type Referentiel = { domaines: { titre: string; sousDomaines: { titre: string }[] }[] };
 const REFERENTIELS: Record<string, Referentiel> = {
-  "competences_cycle1.json": cycle1, "competences_cycle1_2025.json": cycle1_2025, "competences_cycle2.json": cycle2, "competences_cycle3.json": cycle3,
+  "competences_cycle1_2025.json": cycle1_2025, "competences_cycle2.json": cycle2, "competences_cycle3.json": cycle3,
 };
 const FICHIERS = Object.keys(REFERENTIELS);
 const lire = (f: string) => REFERENTIELS[f];
@@ -25,13 +24,11 @@ describe("les référentiels embarqués", () => {
   });
 
   it("titrent le domaine 1 du cycle 1 comme le programme : l'oral, puis lire, puis écrire", () => {
-    for (const f of ["competences_cycle1.json", "competences_cycle1_2025.json"]) {
-      expect(lire(f).domaines[0].sousDomaines.map((sd) => sd.titre)).toEqual([
-        "Acquérir le langage oral",
-        "Passer de l'oral à l'écrit : se préparer à apprendre à lire",
-        "Passer de l'oral à l'écrit : se préparer à apprendre à écrire",
-      ]);
-    }
+    expect(lire("competences_cycle1_2025.json").domaines[0].sousDomaines.map((sd) => sd.titre)).toEqual([
+      "Acquérir le langage oral",
+      "Passer de l'oral à l'écrit : se préparer à apprendre à lire",
+      "Passer de l'oral à l'écrit : se préparer à apprendre à écrire",
+    ]);
   });
 });
 
