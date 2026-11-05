@@ -1,0 +1,15 @@
+[package]
+name = "tauri-plugin-parole"
+version = "0.1.0"
+description = "La voix de l'appareil pour le classeur : AVSpeechSynthesizer, même en mode silencieux"
+edition = "2021"
+# Exigé par tauri-plugin : c'est sous ce nom que Tauri retrouve le dossier iOS.
+links = "tauri-plugin-parole"
+
+[dependencies]
+tauri = { version = "=2.12.3", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

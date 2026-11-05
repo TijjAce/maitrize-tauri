@@ -1,0 +1,3 @@
+# Construit par Vite, et le cache de Vite.
+dist/
+node_modules/

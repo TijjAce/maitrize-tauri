@@ -40,3 +40,4 @@ src-tauri/embedded.provisionprofile
 # compagnon/src-tauri/, pas dans gen/.
 compagnon/src-tauri/target/
 compagnon/src-tauri/gen/
+classeur/src-tauri/gen/
