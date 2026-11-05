@@ -6,15 +6,21 @@ import { toast, toastAnnulable } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { enregistrerSurLeBureau, imprimerAtelier } from "../impressionAtelier";
 import { BoutonBureau } from "../components/BoutonBureau";
+import { AtelierContext } from "../components/AtelierContext";
+import { STYLE_FEUILLE as STYLE_CARTES } from "../cartesImprimables";
+import {
+  avecDesMotsEnPlus, motsDesEnonces, motsDesProblemesImprimable, motsDesThemes, nombreDeMots, type MotsDesProblemes,
+} from "../motsDesProblemes";
 import { useMemoire, useReglages } from "../components/useMemoire";
 import {
   genererPartieTout, genererMultiplicatifs, blocProbleme, blocCorrige, enteteFeuille, feuilleProblemes, classesFeuille,
   decouperEnPages, lirePrenoms, retoucheDe, retoucher, schemaSvg, styleSchema, normaliserPresentation, memePresentation,
   STYLE_FEUILLE, TYPES_MULTIPLICATIFS, PLAFONDS, PRESENTATION_COMPLETE, PRESENTATION_MODELE_SEUL, nombre, contextesChoisis, retoucherPresentation,
+  CATALOGUE_PRESENTATION, type CommandePresentation, type GroupePresentation,
   type Probleme, type Presentation, type Retouche, type InconnuePartieTout, type TypeMultiplicatif, type ContexteParties,
 } from "../problemesBarres";
 import {
-  REGLAGES_NEUTRES, accueilDesProblemes, demanderALAssistantDesProblemes,
+  REGLAGES_NEUTRES, accueilDesProblemes, changementsEnClair, demanderALAssistantDesProblemes,
   type EtatDeLAtelier, type ReglagesDeLAtelier, type ReponseProblemes, type SorteDeProblemes,
 } from "../assistantProblemes";
 import { useGraine } from "../modifierFeuille";
@@ -59,6 +65,58 @@ const imprimer = (atelier: string, problemes: Probleme[], titre: string, present
   void imprimerAtelier(atelier, titre.trim() || "Problèmes", feuilleProblemes(problemes, titre, presentation), STYLE_FEUILLE);
   toast(`La feuille s'ouvre dans le navigateur : imprimez-la ou enregistrez-la en PDF (${raccourci("P")}).`, { icone: "🖨", duree: 6000 });
 };
+
+// ── Les mots des énoncés, en images ────────────────────────────────────────
+//
+// « Si il y a des consignes, je puisse avoir le vocabulaire du problème en
+// image pour pouvoir l'avoir en amont » (l'enseignant, 5 novembre 2026) : la
+// feuille « Les mots des problèmes » des séquences (motsDesProblemes.ts),
+// faite des énoncés de cette feuille-ci. Elle se range avec les étiquettes
+// de mots, comme celle des séquences.
+
+const TITRE_DES_MOTS = "Les mots des problèmes";
+const SOUS_TITRE_DES_MOTS = "Les mots de ces problèmes, à découvrir avant de chercher : avec les objets, en photo ou en picto.";
+const ATELIER_DES_MOTS = "etiquettes";
+
+const feuilleDesMots = async (mots: MotsDesProblemes) => {
+  const f = await motsDesProblemesImprimable(mots, SOUS_TITRE_DES_MOTS);
+  return { html: f.html, style: STYLE_CARTES + f.style };
+};
+
+const imprimerLesMots = async (mots: MotsDesProblemes) => {
+  const f = await feuilleDesMots(mots);
+  await imprimerAtelier(ATELIER_DES_MOTS, TITRE_DES_MOTS, f.html, f.style);
+  toast(`Les mots s'ouvrent dans le navigateur : imprimez-les ou enregistrez-les en PDF (${raccourci("P")}).`, { icone: "🖼", duree: 6000 });
+};
+
+const lesMotsSurLeBureau = async (mots: MotsDesProblemes) => {
+  const f = await feuilleDesMots(mots);
+  return enregistrerSurLeBureau(ATELIER_DES_MOTS, TITRE_DES_MOTS, f.html, f.style);
+};
+
+/** La feuille des mots, telle qu'elle s'imprimera, et ses deux boutons. */
+function LesMotsEnImages({ mots, onFermer }: { mots: MotsDesProblemes; onFermer: () => void }) {
+  const [feuille, setFeuille] = React.useState<{ html: string; style: string } | null>(null);
+  React.useEffect(() => {
+    let vivant = true;
+    feuilleDesMots(mots).then((f) => { if (vivant) setFeuille(f); })
+      .catch((e) => { toast("Les mots ne se montrent pas : " + texteErreur(e), { icone: "⚠️" }); onFermer(); });
+    return () => { vivant = false; };
+  }, [mots]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <Modal titre={TITRE_DES_MOTS} onClose={onFermer} large footer={<>
+      <button className="btn" onClick={onFermer}>Fermer</button>
+      <AtelierContext.Provider value={ATELIER_DES_MOTS}>
+        <BoutonBureau className="btn" disabled={!feuille} onEnregistrer={() => lesMotsSurLeBureau(mots)} />
+      </AtelierContext.Provider>
+      <button className="btn primary" disabled={!feuille} onClick={() => { void imprimerLesMots(mots); }}>🖨 Imprimer</button>
+    </>}>
+      {feuille
+        ? <div className="pb-mots-apercu"><style>{feuille.style}</style><div dangerouslySetInnerHTML={{ __html: feuille.html }} /></div>
+        : <p style={{ color: "var(--text-2)" }}>Les images se chargent…</p>}
+    </Modal>
+  );
+}
 
 // ── Partie-tout ────────────────────────────────────────────────────────────
 
@@ -247,6 +305,11 @@ function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, set
   }, []);
   const [aLaMain, setALaMain] = React.useState(false);
   const reglagesVisibles = cle === false || aLaMain;
+  // Les mots des énoncés, ceux des thèmes écrits avec l'assistant compris ; aucun sans énoncé.
+  const enonces = React.useMemo(() => (p.enonce ? problemes.map((pb) => pb.enonce).filter(Boolean) : []), [problemes, p.enonce]);
+  const themesEcrits = pilote.reglages.themesPerso;
+  const mots = React.useMemo(() => avecDesMotsEnPlus(motsDesEnonces(enonces), motsDesThemes(themesEcrits, enonces)), [enonces, themesEcrits]);
+  const [motsOuverts, setMotsOuverts] = React.useState(false);
 
   /** Ce que l'assistant a compris : les réglages de l'onglet, puis la présentation, l'aperçu, l'impression. */
   const appliquer = (r: ReponseProblemes) => {
@@ -257,18 +320,27 @@ function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, set
     if (suite && !memePresentation(suite, p)) setPresentation(suite);
     if (r.enregistrerPresentation) enregistrees.enregistrer(r.enregistrerPresentation, suite ?? p);
     if (r.voirCorrige !== undefined) setCorrige(r.voirCorrige);
-    // L'impression et le bureau partent après le rendu de la feuille changée.
-    if (r.imprimer || r.surLeBureau) {
+    // L'impression, le bureau et les mots partent après le rendu de la feuille changée.
+    if (r.imprimer || r.surLeBureau || r.motsEnImages) {
       window.setTimeout(() => {
         const etat = etatRef.current;
         if (r.imprimer) imprimer(atelier, etat.problemes, etat.titre, etat.presentation);
         if (r.surLeBureau) void bureau(atelier, etat.problemes, etat.titre, etat.presentation);
+        if (r.motsEnImages) {
+          if (!nombreDeMots(etat.mots)) toast("La feuille n'a pas d'énoncé : il n'y a pas de mots à montrer.", { icone: "ℹ️" });
+          else if (r.motsEnImages === "voir") setMotsOuverts(true);
+          else if (r.motsEnImages === "imprimer") void imprimerLesMots(etat.mots);
+          else lesMotsSurLeBureau(etat.mots)
+            .then((m) => toast(`« ${m.titre} » est sur le bureau, dans le plan de travail.`, { icone: "🗂", duree: 8000 }))
+            .catch((e) => toast("Pas enregistré : " + texteErreur(e), { icone: "⚠️", duree: 7000 }));
+        }
       }, 300);
     }
   };
   // La feuille la plus récente, pour l'impression demandée à l'assistant.
-  const etatRef = React.useRef({ problemes, titre, presentation: p });
-  etatRef.current = { problemes, titre, presentation: p };
+  const etatRef = React.useRef({ problemes, titre, presentation: p, mots });
+  etatRef.current = { problemes, titre, presentation: p, mots };
+  const listeDesMots = [...mots.choses, ...mots.actions, ...mots.question].map((x) => x.mot);
   const pages = corrige
     ? [problemes.map((pb, i) => ({ i, html: blocCorrige(pb, i, p) }))]
     : decouperEnPages(problemes.map((pb, i) => ({ i, html: blocProbleme(pb, i, p) })), p.parPage);
@@ -277,7 +349,10 @@ function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, set
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 360px) 1fr", gap: 14, alignItems: "start" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <AssistantDesProblemes cle={cle} intro={intro} appliquer={appliquer}
-          etat={{ sorte: pilote.sorte, reglages: pilote.reglages, problemes, presentation: p, presentationsEnregistrees: enregistrees.liste.map((x) => x.nom), voirCorrige: corrige }} />
+          etat={{
+            sorte: pilote.sorte, reglages: pilote.reglages, problemes, presentation: p, presentationsEnregistrees: enregistrees.liste.map((x) => x.nom),
+            voirCorrige: corrige, motsDesEnonces: listeDesMots,
+          }} />
         {cle && (
           <button type="button" className="btn sm" style={{ alignSelf: "flex-start" }} onClick={() => setALaMain((v) => !v)}>
             {aLaMain ? "Masquer les réglages" : "⚙︎ Réglages à la main"}
@@ -318,6 +393,9 @@ function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, set
           </label>
           <div style={{ flex: 1 }} />
           <button className="btn sm" onClick={tirage.nouvelle} title="Tire d'autres nombres et d'autres situations">🔀 Nouvelle feuille</button>
+          {nombreDeMots(mots) > 0 && (
+            <button className="btn sm" onClick={() => setMotsOuverts(true)} title="Les mots des énoncés, chacun avec son image : à travailler avant les problèmes">🖼 Les mots</button>
+          )}
           <button className="btn sm primary" onClick={() => imprimer(atelier, problemes, titre, p)}>🖨 Imprimer</button>
           <BoutonBureau onEnregistrer={() => bureau(atelier, problemes, titre, p)} />
         </div>
@@ -346,6 +424,8 @@ function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, set
           )}
         </div>
       </div>
+
+      {motsOuverts && nombreDeMots(mots) > 0 && <LesMotsEnImages mots={mots} onFermer={() => setMotsOuverts(false)} />}
 
       {edite !== null && problemes[edite] && (
         <EditeurProbleme probleme={problemes[edite]} numero={edite + 1} presentation={p}
@@ -384,6 +464,8 @@ function usePresentationsEnregistrees() {
     supprimer: (nom: string) => ecrire(liste.filter((x) => x.nom !== nom)),
   };
 }
+
+const GROUPES_PRESENTATION: GroupePresentation[] = ["La feuille", "L'énoncé", "Le schéma"];
 
 function Groupe({ titre, children }: { titre: string; children: React.ReactNode }) {
   return (
@@ -424,6 +506,26 @@ function ReglagesPresentation({ p, set, enregistrees }: {
       {libelle}
     </label>
   );
+
+  /** Une commande de la liste : une case à cocher, une liste de choix, un texte. */
+  const commande = (c: CommandePresentation) => {
+    if (c.options) {
+      return (
+        <React.Fragment key={c.cle}>
+          {choix(c.cle, c.libelle, c.options as [Presentation[typeof c.cle], string][])}
+          {c.aide && <p style={{ fontSize: 12, color: "var(--text-2)", margin: "-6px 0 10px" }}>{c.aide}</p>}
+        </React.Fragment>
+      );
+    }
+    if (c.sorte === "texte") {
+      return (
+        <Field key={c.cle} label={c.libelle}>
+          <Input value={String(p[c.cle])} maxLength={30} onChange={(e) => maj({ [c.cle]: e.target.value } as Partial<Presentation>)} />
+        </Field>
+      );
+    }
+    return <React.Fragment key={c.cle}>{coche(c.cle, c.libelle, c.aide)}</React.Fragment>;
+  };
 
   const valider = () => {
     const n = (nom ?? "").trim();
@@ -473,69 +575,25 @@ function ReglagesPresentation({ p, set, enregistrees }: {
         )}
       </Field>
 
-      <Groupe titre="La feuille">
-        {coche("titre", "Titre")}
-        {coche("nomDate", "Lignes « Prénom » et « Date »")}
-        {coche("numeros", "Numéros des problèmes")}
-        {coche("cadres", "Cadre autour de chaque problème")}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 }}>
-          {choix("parPage", "Par page", [[0, "À la suite"], [1, "1 par page"], [2, "2 par page"], [3, "3 par page"], [4, "4 par page"], [6, "6 par page"]])}
-          {choix("colonnes", "Colonnes", [[1, "1 colonne"], [2, "2 colonnes"]])}
-        </div>
-        {choix("police", "Police", [["arial", "Arial"], ["verdana", "Verdana"], ["comic", "Comic Sans"]])}
-        {coche("corrige", "Corrigé à la fin", "Sur une page à part, pour vous.")}
-      </Groupe>
-
-      <Groupe titre="L'énoncé">
-        {coche("enonce", "Écrire l'énoncé")}
-        {p.enonce && (
-          <>
-            {choix("tailleTexte", "Taille du texte", [["normale", "Normale"], ["grande", "Grande"], ["tres-grande", "Très grande"]])}
-            {coche("capitales", "En capitales")}
-          </>
-        )}
-        {coche("calcul", "Ligne « Calcul »")}
-        {coche("reponse", "Ligne « Réponse »")}
-      </Groupe>
-
-      <Groupe titre="Le schéma">
-        {p.enonce && choix("schema", "Dans le schéma", [
-          ["nombres", "Les nombres de l'énoncé"], ["vide", "Cases vides, l'élève les remplit"], ["sans", "Pas de schéma : un cadre pour le dessiner"],
-        ])}
-        {choix("images", "Dans les cases", [["non", "Les nombres"], ["oui", "Des images à compter"], ["avec-nombres", "Des images et les nombres"]])}
-        {p.images !== "non" && (
-          <>
-            {choix("formeImages", "Les images", [["enonce", "Celles de l'énoncé : billes, pommes, fleurs…"], ["ronds", "Des ronds de couleur"]])}
-            <p style={{ fontSize: 12, color: "var(--text-2)", margin: "-6px 0 10px" }}>
-              Jusqu'à 20 objets par case : au-delà, ou dans une case trop étroite, le nombre reste écrit.
-            </p>
-          </>
-        )}
-        {choix("inconnue", "La case à trouver", [["?", "Un « ? »"], ["vide", "Vide"], ["surlignee", "Vide et surlignée en jaune"]])}
-        {coche("etiquettes", "Mots sur le schéma", "« TOUT », « PARTIE », prénoms des comparaisons.")}
-        {p.etiquettes && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <Field label="Mot du tout"><Input value={p.motTout} maxLength={30} onChange={(e) => maj({ motTout: e.target.value })} /></Field>
-            <Field label="Mot des parties"><Input value={p.motPartie} maxLength={30} onChange={(e) => maj({ motPartie: e.target.value })} /></Field>
-          </div>
-        )}
-        {coche("aides", "Accolades et légendes", "« 4 parts égales », « × 3 ».")}
-        {coche("proportionnel", "Longueurs proportionnelles aux nombres")}
-        {coche("toutEnBas", "Le tout sous les parties")}
-        {choix("couleurs", "Couleurs", [["classe", "Bleu, rouge, violet"], ["noir", "Noir seulement"], ["perso", "Choisies…"]])}
-        {p.couleurs === "perso" && (
-          <div className="pb-couleurs">
-            {couleur("couleurTout", "Tout")}
-            {couleur("couleurPartie1", "Partie 1")}
-            {couleur("couleurPartie2", "Partie 2")}
-            {couleur("couleurPartie3", "Partie 3")}
-          </div>
-        )}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {choix("epaisseur", "Traits", [["fin", "Fins"], ["normal", "Normaux"], ["epais", "Épais"]])}
-          {choix("tailleSchema", "Taille", [["moyen", "Moyenne"], ["grand", "Grande"], ["pleine", "Toute la largeur"]])}
-        </div>
-      </Groupe>
+      {GROUPES_PRESENTATION.map((g) => {
+        // Les commandes du groupe, d'après la liste qu'a aussi l'assistant (CATALOGUE_PRESENTATION).
+        const items = CATALOGUE_PRESENTATION.filter((c) => c.groupe === g && (!c.visible || c.visible(p)));
+        const blocs: React.ReactNode[] = [];
+        for (let i = 0; i < items.length; i++) {
+          const c = items[i];
+          if (c.sorte === "couleur") {
+            const couleurs = items.slice(i).filter((x) => x.sorte === "couleur");
+            blocs.push(<div key={c.cle} className="pb-couleurs">{couleurs.map((x) => couleur(x.cle as "couleurTout", x.libelle))}</div>);
+            i += couleurs.length - 1;
+          } else if (c.paire && items[i + 1]) {
+            blocs.push(<div key={c.cle} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 }}>{commande(c)}{commande(items[i + 1])}</div>);
+            i++;
+          } else {
+            blocs.push(<React.Fragment key={c.cle}>{commande(c)}</React.Fragment>);
+          }
+        }
+        return <Groupe key={g} titre={g}>{blocs}</Groupe>;
+      })}
     </div>
   );
 }
@@ -623,7 +681,7 @@ function suivreLaReponse(rep: ReponseProblemes, tirage: Tirage) {
   for (const n of rep.remplacer ?? []) tirage.retirer(n - 1);
 }
 
-type Bulle = { role: "user" | "assistant"; content: string; erreur?: boolean };
+type Bulle = { role: "user" | "assistant"; content: string; erreur?: boolean; changements?: string[] };
 
 /**
  * « Essaye de faire un tchatbot ici » : un fil de bulles et un champ. L'enseignant dit la feuille qu'il veut ;
@@ -649,9 +707,12 @@ function AssistantDesProblemes({ etat, appliquer, cle, intro }: {
     setSaisie("");
     setOccupe(true);
     try {
-      const r = await demanderALAssistantDesProblemes(etatRef.current, conversation);
+      const avant = etatRef.current;
+      const r = await demanderALAssistantDesProblemes(avant, conversation);
+      // Ce qui bouge se dit d'après l'atelier tel qu'il est à la réponse : c'est sur lui qu'elle s'applique.
+      const changements = changementsEnClair(r, etatRef.current);
       appliquer(r);
-      setFil((f) => [...f, { role: "assistant", content: r.reponse }]);
+      setFil((f) => [...f, { role: "assistant", content: r.reponse, changements }]);
     } catch (e) {
       setFil((f) => [...f, { role: "assistant", content: `Je n'ai pas pu répondre : ${texteErreur(e)}`, erreur: true }]);
     } finally {
@@ -668,7 +729,10 @@ function AssistantDesProblemes({ etat, appliquer, cle, intro }: {
       <div className="projet-assistant pb-assistant">
         <div className="projet-assistant-fil" ref={filRef} aria-live="polite">
           {fil.map((m, i) => (
-            <div key={i} className={`projet-assistant-bulle ${m.role === "user" ? "moi" : "lui"}${m.erreur ? " erreur" : ""}`}>{m.content}</div>
+            <React.Fragment key={i}>
+              <div className={`projet-assistant-bulle ${m.role === "user" ? "moi" : "lui"}${m.erreur ? " erreur" : ""}`}>{m.content}</div>
+              {!!m.changements?.length && <div className="pb-changements">✓ {m.changements.join(" · ")}</div>}
+            </React.Fragment>
           ))}
           {cle === false && (
             <div className="projet-assistant-bulle lui erreur">Pour répondre, l'assistant a besoin de la clé Mistral : Réglages › Assistant IA. En attendant, les réglages sont ci-dessous.</div>

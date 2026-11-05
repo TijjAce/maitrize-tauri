@@ -7,7 +7,7 @@ import { DEMARCHE_PROBLEME, planDuProblemeDuJour } from "./sequenceProblemeDuJou
 import { hasard } from "./hasard";
 import {
   DEMARCHES_A_PROBLEMES, MATERIEL_DES_MOTS, SEANCE_DES_MOTS, SEANCE_DES_MOTS_MATERNELLE, avecLaSeanceDesMots, avecLesMotsDesProblemes, enoncesDuHtml,
-  estLaSeanceDesMots, htmlMotsDesProblemes, motsDeLEnonce, motsDesEnonces, noteDesMots,
+  avecDesMotsEnPlus, estLaSeanceDesMots, htmlMotsDesProblemes, motsDeLEnonce, motsDesEnonces, motsDesThemes, noteDesMots,
 } from "./motsDesProblemes";
 
 const CLASSES: ClasseC2[] = ["CP", "CE1", "CE2"];
@@ -127,5 +127,38 @@ describe("la séance des mots", () => {
     expect(html).toContain("ARASAAC");
     // Sans image du tout, pas de mention des banques.
     expect(htmlMotsDesProblemes(m, () => null, {})).not.toContain("ARASAAC");
+  });
+});
+
+describe("les mots d'un thème écrit avec l'assistant des problèmes (« le vocabulaire du problème en image, en amont »)", () => {
+  const citrouilles = {
+    tout: ["citrouille", "citrouilles"] as const, lieu: "Dans le champ",
+    parties: [{ attribut: ["orange", "orange"] as const }, { attribut: ["verte", "vertes"] as const }],
+  };
+  const enonces = ["Dans le champ, il y a 8 citrouilles : 5 citrouilles orange et 3 citrouilles vertes. Combien de citrouilles vertes y a-t-il ?"];
+
+  it("la chose qu'on compte et le lieu cherchent leur image ; un attribut inconnu reste écrit seul ; un mot connu n'est pas répété", () => {
+    expect(motsDesThemes([citrouilles], enonces)).toEqual([
+      { mot: "citrouille", picto: "citrouille", fois: 1 }, { mot: "le champ", picto: "champ", fois: 1 }, { mot: "orange", picto: "", fois: 1 },
+    ]);
+    const m = avecDesMotsEnPlus(motsDesEnonces(enonces), motsDesThemes([citrouilles], enonces));
+    const choses = m.choses.map((x) => x.mot);
+    // Les mots du thème d'abord : ce sont ceux de ces problèmes-là.
+    expect(choses.slice(0, 3)).toEqual(["citrouille", "le champ", "orange"]);
+    expect(choses).toContain("vert");
+    expect(choses).not.toContain("verte");
+    expect(new Set(choses).size).toBe(choses.length);
+  });
+
+  it("un thème que les énoncés n'emploient pas n'apporte rien ; un mot déjà là ne revient pas", () => {
+    expect(motsDesThemes([citrouilles], ["Dans le sac, il y a 5 billes."])).toEqual([]);
+    const m = motsDesEnonces(["Dans le sac, il y a 5 billes."]);
+    expect(avecDesMotsEnPlus(m, [{ mot: "bille", picto: "bille", fois: 1 }])).toBe(m);
+  });
+
+  it("la feuille dit d'où viennent ses mots", () => {
+    const m = motsDesEnonces(enonces);
+    expect(htmlMotsDesProblemes(m, () => null, {})).toContain("Les mots des problèmes de la séquence");
+    expect(htmlMotsDesProblemes(m, () => null, {}, "Les mots de ces problèmes")).toContain("Les mots de ces problèmes");
   });
 });

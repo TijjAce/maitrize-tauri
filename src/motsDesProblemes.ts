@@ -205,6 +205,50 @@ export function motsDesEnonces(enonces: string[]): MotsDesProblemes {
   return { choses: de("choses"), actions: de("actions"), question: de("question") };
 }
 
+/** Un thème de problèmes écrit avec l'assistant de l'atelier : ses mots, que le dictionnaire ne connaît pas. */
+export interface ThemeEcrit { tout: readonly [string, string]; lieu?: string; parties: readonly { attribut: readonly [string, string] }[] }
+
+const echapper = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const motEntier = (mot: string) => new RegExp(`(^|[^\\p{L}])${echapper(mot)}($|[^\\p{L}])`, "iu");
+const sansArticle = (t: string) => t.toLowerCase().replace(/^(?:le|la|les)\s+|^l'/, "").trim();
+
+/**
+ * Les mots des thèmes écrits avec l'assistant (« des citrouilles, dans le
+ * champ »), quand les énoncés les emploient : la chose qu'on compte et le
+ * lieu, chacun cherché dans la banque ; un attribut que le dictionnaire ne
+ * connaît pas (« orange ») reste écrit seul — un picto au hasard pour un
+ * adjectif serait trop souvent faux.
+ */
+export function motsDesThemes(themes: ThemeEcrit[], enonces: string[]): MotDuProbleme[] {
+  const texte = enonces.join(" ").toLowerCase();
+  // Les énoncés qui emploient l'un de ces mots, entier : « pomme » n'est pas dans « pommes ».
+  const fois = (formes: readonly string[]) => enonces.filter((e) => formes.some((f) => motEntier(f).test(e))).length;
+  const sortie: MotDuProbleme[] = [];
+  for (const t of themes) {
+    const n = fois(t.tout);
+    if (!n) continue;
+    sortie.push({ mot: t.tout[0], picto: t.tout[0], fois: n });
+    const lieu = t.lieu?.trim();
+    if (lieu && texte.includes(lieu.toLowerCase())) {
+      // « Dans le champ » : le champ ; « au marché » : le marché.
+      const nom = lieu.replace(/^(?:dans|sur|sous|devant|derrière|près de|chez|en)\s+/i, "").replace(/^au\s+/i, "le ").replace(/^aux\s+/i, "les ").replace(/^à\s+/i, "");
+      sortie.push({ mot: nom.charAt(0).toLowerCase() + nom.slice(1), picto: sansArticle(nom), fois: n });
+    }
+    for (const p of t.parties) {
+      const [seul] = p.attribut;
+      if (seul && !motsDeLEnonce(seul).lus.length && fois(p.attribut)) sortie.push({ mot: seul, picto: "", fois: n });
+    }
+  }
+  return sortie;
+}
+
+/** Des mots en plus parmi les personnes et les choses — ceux du thème de ces problèmes, donc en tête —, sans ceux qui y sont déjà. */
+export function avecDesMotsEnPlus(m: MotsDesProblemes, choses: MotDuProbleme[]): MotsDesProblemes {
+  const vus = new Set([...m.choses, ...m.actions, ...m.question].map((x) => sansArticle(x.mot)));
+  const neufs = choses.filter((x) => { const cle = sansArticle(x.mot); if (!cle || vus.has(cle)) return false; vus.add(cle); return true; });
+  return neufs.length ? { ...m, choses: [...neufs, ...m.choses] } : m;
+}
+
 /** Les énoncés des problèmes d'une feuille : ceux des problèmes en barres, des durées, de la monnaie, du calcul, des cartes à tâches, du problème du jour. */
 export function enoncesDuHtml(html: string): string[] {
   const sortie: string[] = [];
@@ -332,7 +376,11 @@ export function noteDesMots(m: MotsDesProblemes): string {
 // ── La feuille ─────────────────────────────────────────────────────────────
 
 /** La feuille des mots : une carte par mot, son image au-dessus, à découper pour le tableau ou pour trier. */
-export function htmlMotsDesProblemes(m: MotsDesProblemes, pictoDe: (x: MotDuProbleme) => number | null, images: Record<number, string>): string {
+export const SOUS_TITRE_DES_MOTS = "Les mots des problèmes de la séquence, à découvrir avant de chercher : avec les objets, en photo ou en picto.";
+
+export function htmlMotsDesProblemes(
+  m: MotsDesProblemes, pictoDe: (x: MotDuProbleme) => number | null, images: Record<number, string>, sous = SOUS_TITRE_DES_MOTS,
+): string {
   const carte = (x: MotDuProbleme) => {
     const id = pictoDe(x);
     const src = id != null ? images[id] : undefined;
@@ -342,7 +390,7 @@ export function htmlMotsDesProblemes(m: MotsDesProblemes, pictoDe: (x: MotDuProb
     ? `<section class="mp-groupe"><h2>${titre} <span class="mp-aide">${aide}</span></h2><div class="mp-cartes">${liste.map(carte).join("")}</div></section>` : "");
   const tous = [...m.choses, ...m.actions, ...m.question];
   return feuille(`<div class="titre">Les mots des problèmes</div>
-    <div class="sous">Les mots des problèmes de la séquence, à découvrir avant de chercher : avec les objets, en photo ou en picto.</div>
+    <div class="sous">${escapeHtml(sous)}</div>
     ${groupe("Les personnes et les choses", "Qui ? Quoi ? Où ?", m.choses)}${groupe("Ce qui se passe", "Ce qu'on fait.", m.actions)}${groupe("Les mots de la question", "Ce qu'on cherche, et comment les nombres vont ensemble.", m.question)}
     ${attributionPour(tous.map(pictoDe))}`, "mp");
 }
@@ -365,7 +413,7 @@ export const STYLE_MOTS_DES_PROBLEMES = `
  * choix photos ou pictos de l'atelier « Étiquettes ». Un mot sans image
  * reste écrit seul sur sa carte.
  */
-export async function motsDesProblemesImprimable(m: MotsDesProblemes): Promise<{ html: string; style: string }> {
+export async function motsDesProblemesImprimable(m: MotsDesProblemes, sous = SOUS_TITRE_DES_MOTS): Promise<{ html: string; style: string }> {
   const [{ pictosDesMots }, { chargerPicto }, { cleModeImages, lireModeImages }, { api }] = await Promise.all([
     import("./mesPictos"), import("./components/ChoixPicto"), import("./imagesSelonMode"), import("./api"),
   ]);
@@ -382,5 +430,5 @@ export async function motsDesProblemesImprimable(m: MotsDesProblemes): Promise<{
     const id = x.picto ? idDe.get(x.picto.toLowerCase()) : undefined;
     return id != null && images[id] ? id : null;
   };
-  return { html: htmlMotsDesProblemes(m, pictoDe, images), style: STYLE_MOTS_DES_PROBLEMES };
+  return { html: htmlMotsDesProblemes(m, pictoDe, images, sous), style: STYLE_MOTS_DES_PROBLEMES };
 }

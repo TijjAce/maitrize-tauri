@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  consigneDesProblemes, lireReponseProblemes, nombreDeProblemes, type EtatDeLAtelier, type ReglagesDeLAtelier,
+  changementsEnClair, consigneDesProblemes, lireReponseProblemes, nombreDeProblemes, type EtatDeLAtelier, type ReglagesDeLAtelier,
 } from "./assistantProblemes";
-import { PRESENTATION_COMPLETE, contexteLu, contextesChoisis, genererPartieTout, retoucherPresentation, type ContexteParties } from "./problemesBarres";
+import {
+  CATALOGUE_PRESENTATION, PRESENTATION_COMPLETE, STYLE_FEUILLE, blocCorrige, blocProbleme, classesFeuille, contexteLu, contextesChoisis, genererPartieTout,
+  retoucherPresentation, type ContexteParties,
+} from "./problemesBarres";
 
 const REGLAGES: ReglagesDeLAtelier = {
   titre: "Problèmes partie-tout", nombre: 6, prenoms: "",
@@ -136,3 +139,101 @@ describe("l'assistant règle aussi la présentation (« tout ça, je voulais dir
   });
 });
 
+describe("l'assistant fait les commandes de l'écran (« je veux que l'IA comprenne réellement ce que je veux : relié aux commandes possibles à la main »)", () => {
+  const e = (): EtatDeLAtelier => ({
+    ...etat(), presentation: PRESENTATION_COMPLETE, presentationsEnregistrees: [], voirCorrige: false, motsDesEnonces: ["la bille", "donner"],
+  });
+
+  it("toutes les commandes de la présentation sont dans la liste de l'écran, une fois chacune", () => {
+    const cles = CATALOGUE_PRESENTATION.map((x) => x.cle);
+    expect(new Set(cles).size).toBe(cles.length);
+    expect([...cles].sort()).toEqual(Object.keys(PRESENTATION_COMPLETE).sort());
+  });
+
+  it("la consigne donne chaque commande avec son nom à l'écran, sa clé, ses choix et sa valeur", () => {
+    const c = consigneDesProblemes(e());
+    for (const x of CATALOGUE_PRESENTATION) expect(c).toContain(`« ${x.libelle} » — clé ${x.cle}`);
+    expect(c).toMatch(/« Écrire l'énoncé » — clé enonce, true ou false ; ses mots : la consigne, .+ — actuellement : oui/);
+    expect(c).toContain('« Taille du texte » — clé tailleTexte, choix "normale" (Normale), "grande" (Grande), "tres-grande" (Très grande)');
+    expect(c).toMatch(/« Nombre de problèmes » — clé nombre : .+ — actuellement : 6/);
+    expect(c).toMatch(/« Ce que l'élève cherche » — clé inconnue : .+ — actuellement : Le tout ou une partie, en alternance/);
+  });
+
+  it("« consigne » veut dire l'énoncé, et l'assistant agit au lieu de réciter les réglages", () => {
+    const c = consigneDesProblemes(e());
+    expect(c).toContain(`« pas de consigne » → ${JSON.stringify({ reponse: "Les problèmes n'ont plus d'énoncé : il reste les schémas.", presentation: { enonce: false } })}`);
+    expect(c).toMatch(/« consigne », « texte », « histoire », « phrase » désignent l'énoncé/);
+    expect(c).toMatch(/fais-les tout de suite/);
+    expect(c).toMatch(/Ne récite pas les réglages/);
+    // Aucune commande qui n'agirait pas sur cette feuille (le bandeau « La feuille » n'y a pas de consigne).
+    expect(c).not.toMatch(/clé (feuille|aide|tablettes)\b/);
+    // Les exemples ont de vraies réponses : rien que l'assistant recopierait tel quel.
+    expect(c).not.toMatch(/"reponse":"…"/);
+  });
+
+  it("« pas de consigne » décoche « Écrire l'énoncé », et le fil le dit avec le nom de l'écran", () => {
+    const r = lireReponseProblemes(JSON.stringify({ reponse: "Les problèmes n'ont plus d'énoncé.", presentation: { enonce: false } }), e());
+    expect(r.presentation).toEqual({ enonce: false });
+    expect(retoucherPresentation(PRESENTATION_COMPLETE, r.presentation!).enonce).toBe(false);
+    expect(changementsEnClair(r, e())).toEqual(["Écrire l'énoncé : non"]);
+  });
+
+  it("lit les valeurs telles que l'écran les écrit : « Très grande », « 2 par page », « non », « Noir seulement »", () => {
+    const r = lireReponseProblemes(JSON.stringify({
+      reponse: "ok", presentation: { tailleTexte: "Très grande", parPage: "2 par page", nomDate: "non", couleurs: "Noir seulement" },
+    }), e());
+    expect(r.presentation).toEqual({ tailleTexte: "tres-grande", parPage: 2, nomDate: false, couleurs: "noir" });
+    expect(changementsEnClair(r, e())).toEqual([
+      "Lignes « Prénom » et « Date » : non", "Par page : 2 par page", "Taille du texte : Très grande", "Couleurs : Noir seulement",
+    ]);
+  });
+
+  it("« laisser la place pour que l'élève puisse schématiser » : le schéma devient une place vide, plus grande avec la taille du schéma", () => {
+    expect(consigneDesProblemes(e())).toContain(`« laisse la place pour que l'élève schématise » → ${JSON.stringify({
+      reponse: "Chaque problème a maintenant une place vide où l'élève dessine son schéma.", presentation: { schema: "sans" } })}`);
+    const r = lireReponseProblemes(JSON.stringify({ reponse: "ok", presentation: { schema: "sans", tailleSchema: "grand" } }), e());
+    expect(changementsEnClair(r, e())).toEqual(["Dans le schéma : Pas de schéma : une place pour que l'élève le dessine", "Taille : Grande"]);
+    const p = retoucherPresentation(PRESENTATION_COMPLETE, r.presentation!);
+    const pb = generer(REGLAGES)[0];
+    expect(blocProbleme(pb, 0, p)).toContain('<div class="pb-cadre"></div>');
+    expect(blocProbleme(pb, 0, p)).not.toContain("<svg");
+    expect(classesFeuille(p)).toContain("pb-schema-grand");
+    expect(STYLE_FEUILLE).toMatch(/\.pb-schema-grand \.pb-cadre \{ height: 220px; \}/);
+    // Le corrigé garde le schéma, pour l'enseignant.
+    expect(blocCorrige(pb, 0, p)).toContain("<svg");
+  });
+
+  it("ce qui ne change rien ne s'affiche pas : une question laisse tout tel quel", () => {
+    expect(changementsEnClair(lireReponseProblemes(JSON.stringify({ reponse: "Le texte ou le schéma ?" }), e()), e())).toEqual([]);
+    expect(changementsEnClair(lireReponseProblemes(JSON.stringify({ reponse: "C'est déjà le cas.", presentation: { enonce: true }, nombre: 6 }), e()), e())).toEqual([]);
+  });
+
+  it("les problèmes, l'aperçu et l'impression se disent aussi avec les noms de l'écran", () => {
+    const r = lireReponseProblemes(JSON.stringify({
+      reponse: "ok", inconnue: "tout", max: 100, nombre: 8, remplacer: [2], voirCorrige: true, imprimer: true,
+    }), e());
+    expect(changementsEnClair(r, e())).toEqual([
+      "Nombre de problèmes : 8", "Ce que l'élève cherche : Le tout", "Nombres : jusqu'à 100", "↻ Problème 2 remplacé", "Voir le corrigé : oui", "🖨 Imprimer",
+    ]);
+    const modele = lireReponseProblemes(JSON.stringify({ reponse: "ok", modele: "modele-seul", presentation: { tailleSchema: "pleine" } }), e());
+    expect(changementsEnClair(modele, e())).toEqual(["▭ Modèle en barres seul", "Taille : Toute la largeur"]);
+  });
+
+  it("les mots des énoncés en images : à voir, à imprimer, sur le bureau ; la consigne dit lesquels, ou qu'il n'y en a pas", () => {
+    const mots = (v: unknown) => lireReponseProblemes(JSON.stringify({ reponse: "ok", motsEnImages: v }), e()).motsEnImages;
+    expect([mots(true), mots("voir"), mots("imprimer"), mots("bureau"), mots("autre chose")]).toEqual(["voir", "voir", "imprimer", "bureau", undefined]);
+    expect(consigneDesProblemes(e())).toMatch(/clé motsEnImages : .+ les mots relevés : la bille, donner/);
+    expect(consigneDesProblemes({ ...e(), motsDesEnonces: [] })).toMatch(/aucun mot : la feuille n'a pas d'énoncé/);
+    // Sans énoncé, rien ne s'affiche comme fait : l'atelier dit qu'il n'y a pas de mots.
+    const voir = lireReponseProblemes(JSON.stringify({ reponse: "ok", motsEnImages: "voir" }), e());
+    expect(changementsEnClair(voir, e())).toEqual(["🖼 Les mots"]);
+    expect(changementsEnClair(voir, { ...e(), motsDesEnonces: [] })).toEqual([]);
+  });
+
+  it("les exemples des problèmes multiplicatifs n'emploient que leurs clés", () => {
+    const c = consigneDesProblemes({ sorte: "multiplicatifs", reglages: REGLAGES, problemes: [] });
+    expect(c).toContain('"types":["part"],"table":5');
+    expect(c).not.toContain('"inconnue":"tout"');
+    expect(c).toMatch(/« Types de problèmes, en alternance sur la feuille » — clé types/);
+  });
+});

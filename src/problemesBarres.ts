@@ -710,17 +710,118 @@ export function normaliserPresentation(brut: unknown): Presentation {
   return sortie as unknown as Presentation;
 }
 
+// ── Les commandes de présentation : une seule liste pour l'écran et pour l'assistant ──
+//
+// « Ça doit être relié aux commandes possibles à la main » (l'enseignant, 5 novembre 2026) : chaque réglage de la
+// présentation est décrit ici une fois — son libellé tel qu'il est à l'écran, son groupe, ses choix, les autres mots
+// de l'enseignant pour la même chose. Le panneau « La présentation » se dessine d'après cette liste, et l'assistant de
+// l'atelier la reçoit telle quelle : ce qu'on fait à la main, il le fait ; rien d'autre.
+
+export type GroupePresentation = "La feuille" | "L'énoncé" | "Le schéma";
+
+export interface CommandePresentation {
+  cle: keyof Presentation;
+  libelle: string;
+  groupe: GroupePresentation;
+  /** Une liste : la valeur, et son libellé à l'écran. */
+  options?: [valeur: string | number, libelle: string][];
+  /** Un texte libre (le mot du tout…), une couleur. */
+  sorte?: "texte" | "couleur";
+  aide?: string;
+  /** Les autres mots de l'enseignant pour la même commande. */
+  synonymes?: string;
+  /** La commande ne se montre que si… */
+  visible?: (p: Presentation) => boolean;
+  /** Côte à côte avec la suivante, à l'écran. */
+  paire?: boolean;
+}
+
+export const CATALOGUE_PRESENTATION: CommandePresentation[] = [
+  { cle: "titre", libelle: "Titre", groupe: "La feuille", synonymes: "le titre de la feuille" },
+  { cle: "nomDate", libelle: "Lignes « Prénom » et « Date »", groupe: "La feuille", synonymes: "le prénom, la date, le nom de l'élève" },
+  { cle: "numeros", libelle: "Numéros des problèmes", groupe: "La feuille", synonymes: "numéroter" },
+  { cle: "cadres", libelle: "Cadre autour de chaque problème", groupe: "La feuille", synonymes: "encadrer, les cadres, les bordures" },
+  {
+    cle: "parPage", libelle: "Par page", groupe: "La feuille", paire: true, synonymes: "un problème par page, une page par problème",
+    options: [[0, "À la suite"], [1, "1 par page"], [2, "2 par page"], [3, "3 par page"], [4, "4 par page"], [6, "6 par page"]],
+  },
+  { cle: "colonnes", libelle: "Colonnes", groupe: "La feuille", options: [[1, "1 colonne"], [2, "2 colonnes"]] },
+  { cle: "police", libelle: "Police", groupe: "La feuille", synonymes: "l'écriture, les lettres", options: [["arial", "Arial"], ["verdana", "Verdana"], ["comic", "Comic Sans"]] },
+  { cle: "corrige", libelle: "Corrigé à la fin", groupe: "La feuille", aide: "Sur une page à part, pour vous.", synonymes: "la correction, les réponses, le corrigé" },
+  {
+    cle: "enonce", libelle: "Écrire l'énoncé", groupe: "L'énoncé",
+    synonymes: "la consigne, les consignes, le texte, le texte du problème, l'histoire, les phrases",
+  },
+  {
+    cle: "tailleTexte", libelle: "Taille du texte", groupe: "L'énoncé", visible: (p) => p.enonce, synonymes: "en gros, en grand, agrandir le texte",
+    options: [["normale", "Normale"], ["grande", "Grande"], ["tres-grande", "Très grande"]],
+  },
+  { cle: "capitales", libelle: "En capitales", groupe: "L'énoncé", visible: (p) => p.enonce, synonymes: "en majuscules, en lettres capitales, en script" },
+  { cle: "calcul", libelle: "Ligne « Calcul »", groupe: "L'énoncé", synonymes: "la ligne de calcul, l'opération" },
+  { cle: "reponse", libelle: "Ligne « Réponse »", groupe: "L'énoncé", synonymes: "la phrase réponse" },
+  {
+    cle: "schema", libelle: "Dans le schéma", groupe: "Le schéma", visible: (p) => p.enonce,
+    synonymes: "le modèle en barres, les barres, schématiser, laisser la place pour que l'élève fasse le schéma",
+    options: [["nombres", "Les nombres de l'énoncé"], ["vide", "Cases vides, l'élève les remplit"], ["sans", "Pas de schéma : une place pour que l'élève le dessine"]],
+  },
+  {
+    cle: "images", libelle: "Dans les cases", groupe: "Le schéma", synonymes: "des images à compter, des objets dessinés, des collections",
+    options: [["non", "Les nombres"], ["oui", "Des images à compter"], ["avec-nombres", "Des images et les nombres"]],
+  },
+  {
+    cle: "formeImages", libelle: "Les images", groupe: "Le schéma", visible: (p) => p.images !== "non",
+    aide: "Jusqu'à 20 objets par case : au-delà, ou dans une case trop étroite, le nombre reste écrit.",
+    options: [["enonce", "Celles de l'énoncé : billes, pommes, fleurs…"], ["ronds", "Des ronds de couleur"]],
+  },
+  {
+    cle: "inconnue", libelle: "La case à trouver", groupe: "Le schéma", synonymes: "le point d'interrogation, ce qu'on cherche",
+    options: [["?", "Un « ? »"], ["vide", "Vide"], ["surlignee", "Vide et surlignée en jaune"]],
+  },
+  { cle: "etiquettes", libelle: "Mots sur le schéma", groupe: "Le schéma", aide: "« TOUT », « PARTIE », prénoms des comparaisons.", synonymes: "les mots TOUT et PARTIE, les étiquettes" },
+  { cle: "motTout", libelle: "Mot du tout", groupe: "Le schéma", sorte: "texte", visible: (p) => p.etiquettes, paire: true },
+  { cle: "motPartie", libelle: "Mot des parties", groupe: "Le schéma", sorte: "texte", visible: (p) => p.etiquettes },
+  { cle: "aides", libelle: "Accolades et légendes", groupe: "Le schéma", aide: "« 4 parts égales », « × 3 ».", synonymes: "les accolades, les légendes" },
+  { cle: "proportionnel", libelle: "Longueurs proportionnelles aux nombres", groupe: "Le schéma", synonymes: "des barres à la bonne longueur" },
+  { cle: "toutEnBas", libelle: "Le tout sous les parties", groupe: "Le schéma", synonymes: "le tout en bas" },
+  {
+    cle: "couleurs", libelle: "Couleurs", groupe: "Le schéma", synonymes: "en noir et blanc, sans couleur",
+    options: [["classe", "Bleu, rouge, violet"], ["noir", "Noir seulement"], ["perso", "Choisies…"]],
+  },
+  { cle: "couleurTout", libelle: "Tout", groupe: "Le schéma", sorte: "couleur", visible: (p) => p.couleurs === "perso" },
+  { cle: "couleurPartie1", libelle: "Partie 1", groupe: "Le schéma", sorte: "couleur", visible: (p) => p.couleurs === "perso" },
+  { cle: "couleurPartie2", libelle: "Partie 2", groupe: "Le schéma", sorte: "couleur", visible: (p) => p.couleurs === "perso" },
+  { cle: "couleurPartie3", libelle: "Partie 3", groupe: "Le schéma", sorte: "couleur", visible: (p) => p.couleurs === "perso" },
+  { cle: "epaisseur", libelle: "Traits", groupe: "Le schéma", paire: true, synonymes: "des traits épais, gras", options: [["fin", "Fins"], ["normal", "Normaux"], ["epais", "Épais"]] },
+  { cle: "tailleSchema", libelle: "Taille", groupe: "Le schéma", synonymes: "un schéma plus grand, plus de place pour dessiner le schéma", options: [["moyen", "Moyenne"], ["grand", "Grande"], ["pleine", "Toute la largeur"]] },
+];
+
+/** La valeur d'une commande, comme l'écran la dit : « oui », « Très grande », « 2 par page ». */
+export function valeurEnClair(c: CommandePresentation, p: Presentation): string {
+  const v = p[c.cle];
+  if (c.options) return c.options.find(([x]) => x === v)?.[1] ?? String(v);
+  if (typeof v === "boolean") return v ? "oui" : "non";
+  return String(v);
+}
+
 /** Un élément de présentation lu (par l'assistant de l'atelier) : sa valeur s'il se lit, rien sinon. « 2 » se lit comme 2. */
 export function valeurDePresentation(cle: string, brut: unknown): unknown {
   if (!(cle in PRESENTATION_COMPLETE)) return undefined;
   const defaut = (PRESENTATION_COMPLETE as unknown as Record<string, unknown>)[cle];
   const choix = CHOIX[cle as keyof Presentation];
   if (choix) {
-    const v = typeof choix[0] === "number" && typeof brut === "string" ? Number(brut) : brut;
-    return choix.includes(v) ? v : undefined;
+    const v = typeof choix[0] === "number" && typeof brut === "string" && brut.trim() !== "" && !Number.isNaN(Number(brut)) ? Number(brut) : brut;
+    if (choix.includes(v)) return v;
+    // Le libellé de l'écran : « Très grande », « 2 par page », « Noir seulement ».
+    const plie = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[«»]/g, "").replace(/\s+/g, " ").trim();
+    const c = CATALOGUE_PRESENTATION.find((x) => x.cle === cle);
+    return typeof brut === "string" ? c?.options?.find(([, l]) => plie(l) === plie(brut))?.[0] : undefined;
   }
   if (/^couleur(Tout|Partie\d)$/.test(cle)) return typeof brut === "string" && /^#[0-9a-f]{6}$/i.test(brut.trim()) ? brut.trim().toLowerCase() : undefined;
-  if (typeof defaut === "boolean") return typeof brut === "boolean" ? brut : undefined;
+  if (typeof defaut === "boolean") {
+    if (typeof brut === "boolean") return brut;
+    const t = typeof brut === "string" ? brut.trim().toLowerCase() : "";
+    return t === "true" || t === "oui" ? true : t === "false" || t === "non" ? false : undefined;
+  }
   if (typeof defaut === "string") return typeof brut === "string" && brut.trim() ? brut.replace(/\s+/g, " ").trim().slice(0, 30) : undefined;
   return undefined;
 }
@@ -1170,6 +1271,8 @@ export const STYLE_FEUILLE = `
   .pb-schema-pleine .pb-schema svg { max-width: 100%; }
   .pb-colonnes-2 .pb-schema svg { max-width: 100%; }
   .pb-cadre { height: 150px; border: 2px dashed #b9c0d4; border-radius: 8px; }
+  .pb-schema-grand .pb-cadre { height: 220px; }
+  .pb-schema-pleine .pb-cadre { height: 300px; }
   .pb-reponse { display: grid; grid-template-columns: 1fr 1.6fr; gap: 18px; margin-top: 12px; font-size: 15px; }
   .pb-reponse-1 { grid-template-columns: 1fr; }
   .pb-reponse > div { display: flex; align-items: flex-end; gap: 6px; white-space: nowrap; }
