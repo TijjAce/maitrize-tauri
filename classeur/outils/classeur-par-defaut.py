@@ -638,10 +638,10 @@ SUITES = {
     "on va": [("lieux", 70), ("jouer", 20), ("gens", 10)],
     "faire": [("actions", 60), ("jouer", 25), ("classe", 15)],
     "on joue": [("jouer", 80), ("gens", 20)],
-    "je me sens": [("sens", 85), ("mal", 15)],
-    "j'ai mal": [("mal", 90), ("probleme", 10)],
+    "je me sens": [("sens", 100)],
+    "j'ai mal": [("mal", 100)],
     "ça ne va pas": [("probleme", 70), ("mal", 20), ("sens", 10)],
-    "j'ai une question": [("questions", 80), ("gens", 10), ("lieux", 10)],
+    "j'ai une question": [("questions", 100)],
     "je te raconte": [("gens", 30), ("actions", 25), ("lieux", 25), ("jouer", 20)],
     "j'ai une idée": [("jouer", 40), ("actions", 30), ("lieux", 30)],
     "je te montre": [("classe-2", 30), ("jouer", 30), ("animaux", 20), ("gens", 20)],
@@ -713,7 +713,7 @@ SUITES.update({
     "fini": [("veux", 60), ("jouer", 40)],
     "stop": [("probleme", 100)],
     "aide-moi": [("actions", 40), ("habits", 30), ("classe", 30)],
-    "attends": [("gens", 60), ("actions", 40)],
+    "attends": [("gens", 100)],
     "à moi": [("jouer", 60), ("classe-2", 40)],
     "à toi": [("jouer", 60), ("classe-2", 40)],
     "avec moi": [("jouer", 100)],
@@ -780,6 +780,14 @@ SUITES.update({
     "ranger": [("classe-2", 60), ("jouer", 40)],
     "travailler": [("classe-2", 100)],
 })
+# Les sentiments agréables : avec qui, à quoi l'on joue (pas « ça ne va pas »).
+for _bien in ("content", "calme", "fier", "bien", "surpris"):
+    SUITES[_bien] = [("gens", 50), ("jouer", 50)]
+# Une même case, sur une page donnée, appelle autre chose : « encore », « fini » sur la page du jeu.
+SUITES_SUR_LA_PAGE = {
+    ("jouer-2", "encore"): [("jouer", 100)],
+    ("jouer-2", "fini"): [("veux", 60), ("manger", 40)],
+}
 # Par page, pour les cases qui n'ont pas de règle à elles : après un lieu, ce qu'on y fait et avec qui ; après un jouet,
 # avec qui, comment il est, sa couleur ; après un aliment, la boisson et comment c'est… Les mots de la liste qui suit
 # chaque page n'en reçoivent pas : ils finissent une phrase.
@@ -834,6 +842,34 @@ CHOIX = {
     ("dessiner", "gens"): ["moi", "maman", "papa", "copain"],
     ("c'est…", "couleurs"): COULEURS_VIVES,
     ("j'ai peur", "animaux"): ["chien", "serpent", "lion", "ours"],
+    # Les objets de la classe, selon le geste.
+    **{(m, "classe-2"): ["crayon", "ciseaux", "colle", "cahier"] for m in ("prendre", "chercher", "trouver", "j'ai perdu", "il m'a pris")},
+    **{(m, "classe-2"): ["porte", "fenêtre", "cahier", "cartable"] for m in ("ouvrir", "fermer")},
+    **{(m, "classe-2"): ["table", "chaise", "cartable", "cahier"] for m in ("dans", "sur", "sous")},
+    **{(m, "lieux-2"): ["chambre", "cuisine", "salon", "salle de bain"] for m in ("dans", "sur", "sous")},
+    **{(m, "classe-2"): ["cahier", "crayon", "feuille", "tableau"] for m in ("compter", "travailler")},
+    **{(m, "classe-2"): ["crayon", "règle", "chaise", "table"] for m in ("casser", "c'est cassé")},
+    ("donner", "classe-2"): ["crayon", "ciseaux", "colle", "cahier"],
+    ("mettre", "classe-2"): ["cartable", "table", "chaise", "cahier"],
+    ("ranger", "classe-2"): ["crayon", "cahier", "ciseaux", "cartable"],
+    ("s'asseoir", "classe-2"): ["chaise", "table"],
+    ("je te montre", "classe-2"): ["cahier", "livre", "feuille", "crayon"],
+    # Avec qui l'on joue.
+    **{(m, "gens"): ["copain", "copine", "maman", "papa"] for m in ("on joue", "jouer", "faire semblant")},
+    # Ce qu'on aime, ce qu'on n'aime pas, à table.
+    ("j'aime", "manger"): ["gâteau", "chocolat", "frites", "pizza"],
+    **{(m, "manger"): ["légumes", "soupe", "poisson", "viande"] for m in ("je n'aime pas", "je ne veux pas")},
+    # Ce qui ne va pas.
+    ("ça ne va pas", "sens"): ["triste", "en colère", "pas bien", "inquiet"],
+    ("stop", "probleme"): ["trop de bruit", "j'ai peur", "je veux arrêter", "laisse-moi"],
+    ("non", "probleme"): ["je ne veux pas", "laisse-moi", "je veux arrêter", "trop de bruit"],
+    ("j'ai peur", "gens"): ["maman", "papa", "maîtresse", "AESH"],
+    # Ce qu'on veut, quand c'est fini, qu'on est fatigué, qu'on s'ennuie.
+    ("fini", "veux"): ["une pause", "sortir", "jouer", "la tablette"],
+    ("je suis fatigué", "veux"): ["dormir", "une pause", "être tranquille", "un câlin"],
+    ("je m'ennuie", "veux"): ["jouer", "sortir", "la tablette", "de la musique"],
+    # Les sentiments agréables : avec qui.
+    **{(m, "gens"): GENS_NOMMES for m in ("content", "calme", "fier", "bien", "surpris")},
     ("j'ai peur", "lieux"): ["dehors", "piscine", "médecin", "hôpital"],
 }
 # Pour les règles de page : (page, thème) → pictos.
@@ -853,6 +889,7 @@ CHOIX_PAR_PAGE = {
     ("classe-2", "actions"): ["prendre", "donner", "mettre", "chercher"],
     **{(pg, "actions"): ["jouer", "manger", "courir", "dormir"] for pg in ("lieux", "lieux-2")},
     **{(pg, "gens"): GENS_NOMMES for pg in ("lieux", "lieux-2", "sens")},
+    ("sens", "probleme"): ["trop de bruit", "on m'embête", "c'est trop dur", "j'ai perdu"],
 }
 
 COULEURS = {
@@ -952,7 +989,7 @@ def main(banque, sortie, chemin_lexique=None):
                 c["dire"] = dire
             if lien:
                 c["lien"] = lien
-            regle, de_la_page = SUITES.get(mot), False
+            regle, de_la_page = SUITES_SUR_LA_PAGE.get((cle, mot)) or SUITES.get(mot), False
             if regle is None and not lien and cle in SUITES_PAR_PAGE and mot not in SUITES_PAR_PAGE[cle][1]:
                 regle, de_la_page = SUITES_PAR_PAGE[cle][0], True
             if regle:
@@ -1004,7 +1041,8 @@ def main(banque, sortie, chemin_lexique=None):
                 suite["cases"] = refs
                 servis.add(id(choix))
     for (m, cible), choix in CHOIX.items():
-        assert any(cible == x for x, _ in SUITES.get(m, [])), f"choix sans règle : {m} → {cible}"
+        regles = SUITES.get(m, []) + [x for (pg, mm), r in SUITES_SUR_LA_PAGE.items() if mm == m for x in r]
+        assert any(cible == x for x, _ in regles), f"choix sans règle : {m} → {cible}"
     for (pg, cible), choix in CHOIX_PAR_PAGE.items():
         assert any(cible == x for x, _ in SUITES_PAR_PAGE.get(pg, ([], set()))[0]), f"choix sans règle de page : {pg} → {cible}"
     for cle, (regle, sans) in SUITES_PAR_PAGE.items():
@@ -1050,7 +1088,7 @@ def main(banque, sortie, chemin_lexique=None):
     with open(os.path.join(sortie, "src", "donnees", "classeur-par-defaut.json"), "w", encoding="utf-8") as f:
         modele = {"nom": "Classeur complet", "accueil": "accueil", "categories": "categories", "pages": pages}
         # La version des poids : un classeur complet déjà posé reçoit ceux-ci au lancement quand elle change.
-        modele["versionDesPoids"] = "2026-11-05-lexique383-choix3" if lex else "2026-11-05-ordre"
+        modele["versionDesPoids"] = "2026-11-05-lexique383-choix4" if lex else "2026-11-05-ordre"
         if lex:
             modele["sources"] = ["Fréquences : Lexique 3.83 (B. New, C. Pallier, lexique.org), CC BY-SA 4.0"]
         json.dump(modele, f, ensure_ascii=False, indent=1)

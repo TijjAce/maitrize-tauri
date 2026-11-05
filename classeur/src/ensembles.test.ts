@@ -67,6 +67,24 @@ describe("les ensembles de pictos par thème, aux poids calculés à l'avance", 
     expect(e[0].cases.some((k) => k.mot === "maman")).toBe(false);
   });
 
+  it("selon le geste ou le sentiment, d'autres pictos du même thème", () => {
+    const faire = page("Faire");
+    expect(noms(ensemblesApres(c, caseDe("Faire", "ouvrir"), faire.id))[0]).toBe("En classe : porte, fenêtre, cahier, cartable");
+    expect(noms(ensemblesApres(c, caseDe("Faire", "prendre"), faire.id))[0]).toBe("En classe : crayon, ciseaux, colle, cahier");
+    expect(noms(ensemblesApres(c, caseDe("Je veux dire…", "j'aime"), page("Je veux dire…").id))[0]).toBe("Manger : gâteau, chocolat, frites, pizza");
+    expect(noms(ensemblesApres(c, caseDe("Je veux dire…", "je n'aime pas"), page("Je veux dire…").id))[0]).toBe("Manger : légumes, soupe, poisson, viande");
+    // Un sentiment agréable n'appelle pas « ça ne va pas » ; un sentiment pénible, si.
+    expect(ensemblesApres(c, caseDe("Je me sens", "content"), page("Je me sens").id).map((x) => x.nom)).toEqual(["Les gens", "Jouer"]);
+    expect(ensemblesApres(c, caseDe("Je me sens", "triste"), page("Je me sens").id).map((x) => x.nom)).toContain("Ça ne va pas");
+  });
+
+  it("une même case appelle autre chose selon sa page : « encore » dans un jeu propose le jeu", () => {
+    const jeu2 = ordreDesPages(c).filter((p) => p.nom === "Jouer")[1];
+    const encore = jeu2.cases.find((k) => k?.mot === "encore")!;
+    expect(ensemblesApres(c, encore, jeu2.id).map((x) => x.nom)).toEqual(["Jouer"]);
+    expect(ensemblesApres(c, caseDe("L'essentiel", "encore"), c.accueil)[0].nom).toBe("Manger");
+  });
+
   it("une case qui finit la phrase ne propose rien", () => {
     expect(ensemblesApres(c, caseDe("J'ai mal", "tête"), page("J'ai mal").id)).toEqual([]);
     expect(ensemblesApres(c, null, c.accueil)).toEqual([]);

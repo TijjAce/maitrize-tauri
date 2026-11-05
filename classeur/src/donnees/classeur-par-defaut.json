@@ -36,7 +36,13 @@
       },
       {
        "page": "probleme",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "probleme-2:10",
+        "probleme:11",
+        "probleme:12",
+        "probleme:8"
+       ]
       }
      ],
      "poids": 0.924
@@ -82,7 +88,13 @@
      "suites": [
       {
        "page": "veux",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "veux:7",
+        "veux:10",
+        "veux:2",
+        "veux:16"
+       ]
       },
       {
        "page": "jouer",
@@ -99,7 +111,13 @@
      "suites": [
       {
        "page": "probleme",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "probleme:8",
+        "probleme:7",
+        "probleme:12",
+        "probleme:11"
+       ]
       }
      ],
      "poids": 0.565
@@ -145,17 +163,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.6,
+       "poids": 1.0,
        "cases": [
         "gens:0",
         "gens:2",
         "gens:3",
         "gens:11"
        ]
-      },
-      {
-       "page": "actions",
-       "poids": 0.4
       }
      ],
      "poids": 0.733
@@ -459,7 +473,13 @@
       },
       {
        "page": "gens",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:2",
+        "gens:3"
+       ]
       }
      ],
      "poids": 0.374
@@ -481,11 +501,7 @@
      "suites": [
       {
        "page": "sens",
-       "poids": 0.85
-      },
-      {
-       "page": "mal",
-       "poids": 0.15
+       "poids": 1.0
       }
      ],
      "poids": 0.349
@@ -499,11 +515,7 @@
      "suites": [
       {
        "page": "mal",
-       "poids": 0.9
-      },
-      {
-       "page": "probleme",
-       "poids": 0.1
+       "poids": 1.0
       }
      ],
      "poids": 0.335
@@ -526,7 +538,13 @@
       },
       {
        "page": "sens",
-       "poids": 0.1
+       "poids": 0.1,
+       "cases": [
+        "sens:1",
+        "sens:2",
+        "sens:17",
+        "sens:10"
+       ]
       }
      ],
      "poids": 0.123
@@ -540,15 +558,7 @@
      "suites": [
       {
        "page": "questions",
-       "poids": 0.8
-      },
-      {
-       "page": "gens",
-       "poids": 0.1
-      },
-      {
-       "page": "lieux",
-       "poids": 0.1
+       "poids": 1.0
       }
      ],
      "poids": 0.095
@@ -626,7 +636,13 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "classe-2:4",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:0"
+       ]
       },
       {
        "page": "jouer",
@@ -652,7 +668,13 @@
      "suites": [
       {
        "page": "manger",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "manger-2:1",
+        "manger-2:4",
+        "manger:9",
+        "manger:10"
+       ]
       },
       {
        "page": "jouer",
@@ -678,7 +700,13 @@
      "suites": [
       {
        "page": "manger",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "manger:12",
+        "manger:11",
+        "manger:14",
+        "manger:13"
+       ]
       },
       {
        "page": "jouer",
@@ -831,7 +859,13 @@
       },
       {
        "page": "gens",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:2",
+        "gens:3"
+       ]
       }
      ],
      "poids": 0.388
@@ -899,11 +933,7 @@
      "suites": [
       {
        "page": "sens",
-       "poids": 0.85
-      },
-      {
-       "page": "mal",
-       "poids": 0.15
+       "poids": 1.0
       }
      ],
      "poids": 0.331
@@ -1151,7 +1181,13 @@
       },
       {
        "page": "gens",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:2",
+        "gens:3"
+       ]
       }
      ],
      "poids": 0.388
@@ -1418,11 +1454,7 @@
      "suites": [
       {
        "page": "mal",
-       "poids": 0.9
-      },
-      {
-       "page": "probleme",
-       "poids": 0.1
+       "poids": 1.0
       }
      ],
      "poids": 0.148
@@ -1477,7 +1509,13 @@
      "suites": [
       {
        "page": "veux",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "veux:9",
+        "veux:7",
+        "veux:17",
+        "veux:5"
+       ]
       }
      ],
      "poids": 0.724
@@ -1528,7 +1566,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:13"
+       ]
       },
       {
        "page": "animaux",
@@ -1700,7 +1744,13 @@
       },
       {
        "page": "veux",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "veux:2",
+        "veux:10",
+        "veux:16",
+        "veux:13"
+       ]
       }
      ],
      "poids": 0.533
@@ -1733,7 +1783,13 @@
       },
       {
        "page": "classe-2",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "classe-2:0",
+        "classe-2:8",
+        "classe-2:12",
+        "classe-2:11"
+       ]
       }
      ],
      "poids": 0.147
@@ -1746,7 +1802,13 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "classe-2:0",
+        "classe-2:2",
+        "classe-2:3",
+        "classe-2:4"
+       ]
       },
       {
        "page": "jouer",
@@ -1846,7 +1908,13 @@
       },
       {
        "page": "classe-2",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "classe-2:0",
+        "classe-2:2",
+        "classe-2:3",
+        "classe-2:4"
+       ]
       }
      ],
      "poids": 0.603
@@ -1924,7 +1992,13 @@
       },
       {
        "page": "manger",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "manger:12",
+        "manger:11",
+        "manger:14",
+        "manger:13"
+       ]
       },
       {
        "page": "jouer",
@@ -2218,7 +2292,7 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4,
+       "poids": 0.5,
        "cases": [
         "gens:2",
         "gens:3",
@@ -2227,12 +2301,8 @@
        ]
       },
       {
-       "page": "probleme",
-       "poids": 0.3
-      },
-      {
        "page": "jouer",
-       "poids": 0.3
+       "poids": 0.5
       }
      ],
      "poids": 0.811
@@ -2255,7 +2325,13 @@
       },
       {
        "page": "probleme",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "probleme:8",
+        "probleme-2:4",
+        "probleme:15",
+        "probleme-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -2282,7 +2358,13 @@
       },
       {
        "page": "probleme",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "probleme:8",
+        "probleme-2:4",
+        "probleme:15",
+        "probleme-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -2309,7 +2391,13 @@
       },
       {
        "page": "probleme",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "probleme:8",
+        "probleme-2:4",
+        "probleme:15",
+        "probleme-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -2336,7 +2424,13 @@
       },
       {
        "page": "probleme",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "probleme:8",
+        "probleme-2:4",
+        "probleme:15",
+        "probleme-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -2363,7 +2457,13 @@
       },
       {
        "page": "probleme",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "probleme:8",
+        "probleme-2:4",
+        "probleme:15",
+        "probleme-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -2380,7 +2480,7 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4,
+       "poids": 0.5,
        "cases": [
         "gens:2",
         "gens:3",
@@ -2389,12 +2489,8 @@
        ]
       },
       {
-       "page": "probleme",
-       "poids": 0.3
-      },
-      {
        "page": "jouer",
-       "poids": 0.3
+       "poids": 0.5
       }
      ],
      "poids": 0.645
@@ -2407,7 +2503,7 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4,
+       "poids": 0.5,
        "cases": [
         "gens:2",
         "gens:3",
@@ -2416,12 +2512,8 @@
        ]
       },
       {
-       "page": "probleme",
-       "poids": 0.3
-      },
-      {
        "page": "jouer",
-       "poids": 0.3
+       "poids": 0.5
       }
      ],
      "poids": 0.564
@@ -2434,7 +2526,7 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4,
+       "poids": 0.5,
        "cases": [
         "gens:2",
         "gens:3",
@@ -2443,12 +2535,8 @@
        ]
       },
       {
-       "page": "probleme",
-       "poids": 0.3
-      },
-      {
        "page": "jouer",
-       "poids": 0.3
+       "poids": 0.5
       }
      ],
      "poids": 0.567
@@ -2471,7 +2559,13 @@
       },
       {
        "page": "probleme",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "probleme:8",
+        "probleme-2:4",
+        "probleme:15",
+        "probleme-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -2498,7 +2592,13 @@
       },
       {
        "page": "probleme",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "probleme:8",
+        "probleme-2:4",
+        "probleme:15",
+        "probleme-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -2525,7 +2625,13 @@
       },
       {
        "page": "probleme",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "probleme:8",
+        "probleme-2:4",
+        "probleme:15",
+        "probleme-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -2552,7 +2658,13 @@
       },
       {
        "page": "probleme",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "probleme:8",
+        "probleme-2:4",
+        "probleme:15",
+        "probleme-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -2579,7 +2691,13 @@
       },
       {
        "page": "probleme",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "probleme:8",
+        "probleme-2:4",
+        "probleme:15",
+        "probleme-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -2606,7 +2724,13 @@
       },
       {
        "page": "probleme",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "probleme:8",
+        "probleme-2:4",
+        "probleme:15",
+        "probleme-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -2633,7 +2757,13 @@
       },
       {
        "page": "probleme",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "probleme:8",
+        "probleme-2:4",
+        "probleme:15",
+        "probleme-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -2650,7 +2780,7 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4,
+       "poids": 0.5,
        "cases": [
         "gens:2",
         "gens:3",
@@ -2659,12 +2789,8 @@
        ]
       },
       {
-       "page": "probleme",
-       "poids": 0.3
-      },
-      {
        "page": "jouer",
-       "poids": 0.3
+       "poids": 0.5
       }
      ],
      "poids": 0.433
@@ -2687,7 +2813,13 @@
       },
       {
        "page": "probleme",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "probleme:8",
+        "probleme-2:4",
+        "probleme:15",
+        "probleme-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -3541,7 +3673,13 @@
       },
       {
        "page": "gens",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:2",
+        "gens:3"
+       ]
       }
      ],
      "poids": 0.665
@@ -3584,7 +3722,13 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "classe-2:0",
+        "classe-2:2",
+        "classe-2:3",
+        "classe-2:4"
+       ]
       },
       {
        "page": "jouer",
@@ -3615,7 +3759,13 @@
       },
       {
        "page": "classe-2",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "classe-2:0",
+        "classe-2:2",
+        "classe-2:3",
+        "classe-2:4"
+       ]
       },
       {
        "page": "jouer",
@@ -3642,7 +3792,13 @@
       },
       {
        "page": "classe-2",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "classe-2:9",
+        "classe-2:11",
+        "classe-2:12",
+        "classe-2:4"
+       ]
       },
       {
        "page": "jouer",
@@ -3693,7 +3849,13 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "classe-2:13",
+        "classe-2:14",
+        "classe-2:4",
+        "classe-2:9"
+       ]
       },
       {
        "page": "jouer",
@@ -3710,7 +3872,13 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "classe-2:13",
+        "classe-2:14",
+        "classe-2:4",
+        "classe-2:9"
+       ]
       },
       {
        "page": "jouer",
@@ -3782,11 +3950,23 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "classe-2:11",
+        "classe-2:12",
+        "classe-2:9",
+        "classe-2:4"
+       ]
       },
       {
        "page": "lieux-2",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "lieux-2:2",
+        "lieux-2:3",
+        "lieux-2:4",
+        "lieux-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -3803,11 +3983,23 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "classe-2:11",
+        "classe-2:12",
+        "classe-2:9",
+        "classe-2:4"
+       ]
       },
       {
        "page": "lieux-2",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "lieux-2:2",
+        "lieux-2:3",
+        "lieux-2:4",
+        "lieux-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -3824,11 +4016,23 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "classe-2:11",
+        "classe-2:12",
+        "classe-2:9",
+        "classe-2:4"
+       ]
       },
       {
        "page": "lieux-2",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "lieux-2:2",
+        "lieux-2:3",
+        "lieux-2:4",
+        "lieux-2:1"
+       ]
       },
       {
        "page": "jouer",
@@ -3926,7 +4130,11 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "classe-2:12",
+        "classe-2:11"
+       ]
       }
      ],
      "poids": 0.535
@@ -3972,7 +4180,13 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "classe-2:0",
+        "classe-2:2",
+        "classe-2:3",
+        "classe-2:4"
+       ]
       },
       {
        "page": "jouer",
@@ -3993,7 +4207,13 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "classe-2:0",
+        "classe-2:2",
+        "classe-2:3",
+        "classe-2:4"
+       ]
       },
       {
        "page": "jouer",
@@ -4018,7 +4238,13 @@
       },
       {
        "page": "classe-2",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "classe-2:0",
+        "classe-2:8",
+        "classe-2:12",
+        "classe-2:11"
+       ]
       }
      ],
      "poids": 0.47
@@ -4972,20 +5198,8 @@
      "arasaac": 37163,
      "suites": [
       {
-       "page": "manger",
-       "poids": 0.3
-      },
-      {
        "page": "jouer",
-       "poids": 0.3
-      },
-      {
-       "page": "boire",
-       "poids": 0.2
-      },
-      {
-       "page": "actions",
-       "poids": 0.2
+       "poids": 1.0
       }
      ],
      "poids": 0.203
@@ -4999,10 +5213,16 @@
      "suites": [
       {
        "page": "veux",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "veux:7",
+        "veux:10",
+        "veux:2",
+        "veux:16"
+       ]
       },
       {
-       "page": "jouer",
+       "page": "manger",
        "poids": 0.4
       }
      ],
@@ -5162,7 +5382,13 @@
       },
       {
        "page": "gens",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:2",
+        "gens:3"
+       ]
       }
      ],
      "poids": 0.553
@@ -6641,7 +6867,13 @@
      "suites": [
       {
        "page": "veux",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "veux:7",
+        "veux:10",
+        "veux:2",
+        "veux:16"
+       ]
       },
       {
        "page": "jouer",
@@ -7319,7 +7551,13 @@
      "suites": [
       {
        "page": "veux",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "veux:7",
+        "veux:10",
+        "veux:2",
+        "veux:16"
+       ]
       },
       {
        "page": "jouer",
@@ -7688,7 +7926,13 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "classe-2:4",
+        "classe-2:0",
+        "classe-2:6",
+        "classe-2:10"
+       ]
       }
      ],
      "poids": 0.871
@@ -7830,7 +8074,13 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "classe-2:0",
+        "classe-2:4",
+        "classe-2:2",
+        "classe-2:9"
+       ]
       },
       {
        "page": "jouer",
@@ -7882,7 +8132,13 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "classe-2:4",
+        "classe-2:0",
+        "classe-2:6",
+        "classe-2:10"
+       ]
       }
      ],
      "poids": 0.719
@@ -8380,7 +8636,11 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "classe-2:12",
+        "classe-2:11"
+       ]
       }
      ],
      "poids": 0.187
@@ -9683,7 +9943,13 @@
       },
       {
        "page": "classe-2",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "classe-2:9",
+        "classe-2:11",
+        "classe-2:12",
+        "classe-2:4"
+       ]
       },
       {
        "page": "jouer",
@@ -9737,7 +10003,7 @@
    ]
   }
  ],
- "versionDesPoids": "2026-11-05-lexique383-choix3",
+ "versionDesPoids": "2026-11-05-lexique383-choix4",
  "sources": [
   "Fréquences : Lexique 3.83 (B. New, C. Pallier, lexique.org), CC BY-SA 4.0"
  ]
