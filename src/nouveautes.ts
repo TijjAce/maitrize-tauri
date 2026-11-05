@@ -18,6 +18,33 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.43",
+    titre: "Le Visibiléo, trente-trois affichages de plus, les ateliers de manipulation de la maternelle, et un Assistant qui converse à voix haute",
+    points: [
+      { quoi: "Le Visibiléo (Marie-France Bishop, Laure Dappe, IFÉ 2018) : les pièces pour construire avec la classe la trace d'un récit — cadres, nuages, bulles, flèches, personnages —, avec son mémo et sa fiche. Collez le texte de l'histoire, ou photographiez-le avec le compagnon : l'IA en propose un premier jet, chaque picto choisi dans le sens du texte. L'affiche se compose à l'écran : étapes numérotées, personnages greffés dessus, bulles qui partent de qui parle, flèches à courber.", ou: "Fabriquer › Français › Lecture et écriture" },
+      { quoi: "Fabriquer s'ouvre sur deux choix : un support de séance — ce que les élèves ont en main — ou un affichage — ce qui va au mur. Les outils pour l'élève et les affichages se rangent par domaine, sans moments de séquence.", ou: "Fabriquer" },
+      { quoi: "Trente-trois affichages de plus, d'après les programmes et les guides d'Éduscol, chacun avec sa source : les tableaux de conjugaison, l'affiche du problème de référence, la valeur des lettres c, g et s, le tableau des nombres, la frise numérique, le mur de syllabes, les verbes des consignes, les responsabilités de la classe… Tous s'impriment à leur vraie taille, centrés.", ou: "Fabriquer › Un affichage" },
+      { quoi: "Les tables d'addition : la maison de chaque nombre, la table d'un nombre, la table de Pythagore de l'addition, les doubles en couleur.", ou: "Fabriquer › Un affichage › Mathématiques" },
+      { quoi: "Marelle, la police cursive de l'Éducation nationale, sous licence libre, au choix sur les feuilles d'écriture, avec ses lignes Seyès en couleur : l'écriture cursive, la frise alphabétique, la copie, et le verso de la copie du cours moyen.", ou: "Fabriquer › Français" },
+      { quoi: "Chaque feuille fabriquée garde sa matière et son domaine : sur les tablettes et dans les bandes, sa carte prend le bon picto.", ou: "Fabriquer" },
+      { quoi: "Les ateliers de manipulation de la maternelle, d'après un document de la DSDEN de la Savoie : le matériel de la classe s'enrichit — vie pratique, sens, tracer —, et quinze séquences toutes faites, cinq par section, chacune vers l'objectif du programme à son âge.", ou: "Fabriquer › 📚 Séquences toutes faites" },
+      { quoi: "« En retard » donne plus de fiches à faire seul : l'image et son ombre, les traits à repasser, les lettres de son prénom, la frise des nombres, le tableau des nombres, estimer, conjuguer. En petite section, deux fois sur trois, un plateau de manipulation parmi vingt-deux, tirés des séquences de la PS ; une fois l'inventaire du matériel fait, ceux dont la classe n'a pas le matériel ne se proposent plus.", ou: "Planning › En retard" },
+      { quoi: "Le tétraèdre des émotions : son patron à plier sur une page A4, ses quatre sommets — picto, mot, couleur — à votre goût.", ou: "CAA › Supports visuels" },
+      { quoi: "Au cahier journal, « ＋ Ajouter › 📖 Des pages de mes manuels » : choisissez des pages en vignettes, voyez-les en grand avant de les prendre. Un manuel reçoit sa matière et son domaine : ses pages deviennent une carte sur les tablettes et dans la journée en bandes.", ou: "Planning › un créneau" },
+      { quoi: "Au prévu, « 🔲 Encadrer » remplace « 🖍 Surligner » : la part de chaque élève dans un cadre à sa couleur, même seul dans son créneau.", ou: "Planning › un créneau" },
+      { quoi: "La journée en bandes : au-delà de cinq créneaux, les bandes passent sur plusieurs rangs ; les cartes et leurs pictos restent carrés ; les réunions et les formations n'ont plus de bande.", ou: "Planning › Jour › 🖨 PDF" },
+      { quoi: "L'Assistant à voix haute : 🎙 écrit en direct ce que vous dites, même chuchoté ; 🗣 converse — la question part quand vous vous taisez, la réponse est lue, et la voix se tait dès que vous reprenez la parole. Cette écoute en direct passe par un service de Mistral hors de l'Union européenne : un avertissement le dit avant.", ou: "Assistant IA" },
+      { quoi: "« 🗄️ Coffre-fort » : posez vos questions à un document du coffre ; Mistral Large répond d'après lui, et ses citations sont vérifiées dans le texte. Si le document ne dit rien, l'Assistant propose de chercher sur internet — hors de l'Union, et seulement si vous cliquez. Le bouton « 📄 Document » s'en va.", ou: "Assistant IA" },
+      { quoi: "Un texte sur les élèves part à l'IA sans rien qui désigne quelqu'un : sur l'ordinateur, les personnes — même celles que Maitrize ne connaît pas —, les lieux, les dates précises, les numéros et les diagnostics rares deviennent des marqueurs, qui reprennent leur place dans la réponse. « Voir ce qui part avant chaque envoi » montre le texte exact. La voix, elle, ne s'anonymise pas : un avertissement le dit.", ou: "Réglages › IA" },
+      { quoi: "Le quiz des guides d'Éduscol : Mistral pose cinq questions sur les pages mêmes d'un guide, avec leur numéro ; un thème à réviser, les erreurs qui reviennent les jours suivants, le pourquoi de chaque réponse. Rien d'inventé : la question et la réponse reprennent les mots de la page.", ou: "Ressources › Quiz des guides" },
+      { quoi: "Réunions : une voix basse s'entend mieux dans un petit micro.", ou: "Réunions" },
+      { quoi: "Une photo peut montrer un outil pour l'enseignant — une nouvelle sorte du plan de travail — ou un espace de la classe, dans un menu à part qui le crée d'après elle ; elle lui sert d'image sur le plan de travail.", ou: "Réglages › Personnalisation › Mes photos" },
+      { quoi: "Depuis le téléphone, « Reporter » sur un créneau : les temps pas faits, ou toute la séance, passent au prochain créneau de la même matière, et le cahier journal le montre. Le bouton arrive avec la prochaine version du compagnon.", ou: "Compagnon › Cahier journal" },
+      { quoi: "Les motifs à continuer : les pièces à découper ont la taille des cases, sur moins de pages.", ou: "Fabriquer" },
+      { quoi: "L'ancien référentiel de la maternelle (v1), masqué, s'en va ; s'il sert encore à une séquence, une évaluation ou une note, il reste, devenu un référentiel à vous.", ou: "Référentiels" },
+    ],
+  },
+  {
     version: "1.6.42",
     titre: "Mistral reste en Europe, chaque élève reçoit sa part du prévu, et les grilles d'observables",
     points: [
