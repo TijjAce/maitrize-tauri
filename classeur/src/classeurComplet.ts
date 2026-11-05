@@ -17,7 +17,10 @@ import modele from "./donnees/classeur-par-defaut.json";
 import { nouvelId, ordreDesPages, type Case, type Classeur, type Page } from "./modele";
 import { dansLApplication, garderClasseur, garderImage, lirePictoLivre, supprimerClasseur } from "./pont";
 
-export interface CaseModele { mot: string; fond?: string; bord?: string; arasaac?: number; dire?: string; lien?: string }
+export interface CaseModele {
+  mot: string; fond?: string; bord?: string; arasaac?: number; dire?: string; lien?: string;
+  poids?: number; suites?: { page: string; poids: number }[];
+}
 export interface PageModele { cle: string; nom: string; lignes: number; colonnes: number; suite?: boolean; cases: CaseModele[] }
 export interface ModeleDeClasseur { nom: string; accueil: string; categories?: string; pages: PageModele[] }
 
@@ -36,6 +39,9 @@ export function classeurComplet(nom = "", maintenant = new Date().toISOString(),
       if (k.bord) c.bord = k.bord;
       const lien = k.lien ? ids.get(k.lien) : undefined;
       if (lien) c.lien = lien;
+      if (typeof k.poids === "number") c.poids = k.poids;
+      const suites = (k.suites ?? []).flatMap((s) => { const page = ids.get(s.page); return page ? [{ page, poids: s.poids }] : []; });
+      if (suites.length) c.suites = suites;
       cases[i] = c;
     });
     const page: Page = { id: ids.get(p.cle)!, nom: p.nom, lignes: p.lignes, colonnes: p.colonnes, cases };
@@ -91,15 +97,58 @@ export function aPoser(deja: Classeur[], m: ModeleDeClasseur = MODELE_COMPLET): 
   return { poser: deja.length === 0 || remplacer.length > 0, remplacer };
 }
 
-let enCours: Promise<Classeur | null> | null = null;
+/**
+ * Un classeur complet créé avant les poids des ensembles par thème les reçoit, sans rien changer d'autre : chaque
+ * page retrouve celle du modèle à son nom (la deuxième « Manger » avec la deuxième), chaque case son mot. Rien si
+ * le classeur a déjà des poids, ou si rien ne correspond. Sa date de modification ne bouge pas.
+ */
+export function ajouterLesPoids(c: Classeur, m: ModeleDeClasseur = MODELE_COMPLET): Classeur | null {
+  if (c.pages.some((p) => p.cases.some((k) => k && (k.suites?.length || typeof k.poids === "number")))) return null;
+  const parNom = new Map<string, Page[]>();
+  for (const p of ordreDesPages(c)) parNom.set(p.nom, [...(parNom.get(p.nom) ?? []), p]);
+  const vus = new Map<string, number>();
+  const pageDuModele = new Map<string, Page>();
+  for (const pm of m.pages) {
+    const i = vus.get(pm.nom) ?? 0;
+    vus.set(pm.nom, i + 1);
+    const p = parNom.get(pm.nom)?.[i];
+    if (p) pageDuModele.set(pm.cle, p);
+  }
+  let change = false;
+  const pages = c.pages.map((p) => {
+    const pm = m.pages.find((x) => pageDuModele.get(x.cle)?.id === p.id);
+    if (!pm) return p;
+    const cases = p.cases.map((k) => {
+      const km = k && pm.cases.find((x) => x.mot === k.mot);
+      if (!k || !km) return k;
+      const suites = (km.suites ?? []).flatMap((s) => { const cible = pageDuModele.get(s.page); return cible ? [{ page: cible.id, poids: s.poids }] : []; });
+      if (typeof km.poids !== "number" && !suites.length) return k;
+      change = true;
+      return { ...k, ...(typeof km.poids === "number" ? { poids: km.poids } : {}), ...(suites.length ? { suites } : {}) };
+    });
+    return { ...p, cases };
+  });
+  return change ? { ...c, pages } : null;
+}
 
-/** Au lancement, le classeur complet se pose (ou remplace l'ancien, intact) ; rien sinon. */
-export function poserAuPremierLancement(deja: Classeur[]): Promise<Classeur | null> {
+let enCours: Promise<boolean> | null = null;
+
+/**
+ * Au lancement : le classeur complet se pose (ou remplace l'ancien, intact) ; un classeur complet d'avant les poids
+ * les reçoit. Vrai si quelque chose a changé.
+ */
+export function poserAuPremierLancement(deja: Classeur[]): Promise<boolean> {
   enCours ??= (async () => {
     const { poser, remplacer } = aPoser(deja);
-    if (!poser) return null;
     for (const id of remplacer) await supprimerClasseur(id);
-    return creerLeClasseurComplet();
+    if (poser) await creerLeClasseurComplet();
+    let change = poser;
+    for (const c of deja) {
+      if (remplacer.includes(c.id) || c.nom !== MODELE_COMPLET.nom) continue;
+      const avecPoids = ajouterLesPoids(c);
+      if (avecPoids) { await garderClasseur(avecPoids); change = true; }
+    }
+    return change;
   })();
   return enCours;
 }

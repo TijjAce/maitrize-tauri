@@ -6,6 +6,7 @@ import {
 } from "./modele";
 import { dire, garderClasseur, lireImages, voixDisponibles, type VoixDisponible } from "./pont";
 import { FicheCase } from "./FicheCase";
+import { ensemblesApres } from "./ensembles";
 import { Fenetre, annoncer, confirmer, saisir } from "./Fenetre";
 
 // ── Le classeur ouvert ────────────────────────────────────────────────────
@@ -105,7 +106,7 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
   const toucher = (k: Case) => {
     const dit = ditDeLaCase(k);
     void dire(dit, c.voix);
-    if (dit) setPhrase((p) => [...p, { mot: k.mot || dit, dire: dit, image: k.image }]);
+    if (dit) setPhrase((p) => [...p, { mot: k.mot || dit, dire: dit, image: k.image, caseId: k.id }]);
     if (k.lien) aller(k.lien);
   };
   const direLaPhrase = () => { void dire(texteDeLaPhrase(phrase), c.voix); };
@@ -177,6 +178,14 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
   };
 
   const enModif = mode === "modifier";
+  // Après la dernière case dite, les ensembles par thème (poids calculés à l'avance) ; rien en mode modifier.
+  const derniereCase = React.useMemo(() => {
+    const id = phrase[phrase.length - 1]?.caseId;
+    if (!id) return null;
+    for (const p of c.pages) for (const k of p.cases) if (k?.id === id) return k;
+    return null;
+  }, [phrase, c]);
+  const ensembles = enModif || c.suggestions === false ? [] : ensemblesApres(c, derniereCase, page.id);
   const numero = numeroDePage(c, page.id);
   const section = sectionDe(c, page.id);
   const couleur = couleurDeSection(section?.numero ?? 1);
@@ -235,12 +244,34 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
             <option value="0.8">Lent</option><option value="1">Normal</option><option value="1.15">Vif</option>
           </select>
           <label className="coche petite">
+            <input type="checkbox" checked={c.suggestions !== false}
+              onChange={(e) => changer({ ...c, suggestions: e.target.checked ? undefined : false })} /> Ensembles par thème
+          </label>
+          <label className="coche petite">
             <input type="checkbox" checked={c.balayer !== false}
               onChange={(e) => changer({ ...c, balayer: e.target.checked ? undefined : false })} /> Balayer tourne les pages
           </label>
           <span className="espace" />
           <button className="bouton" disabled={!passes.length} onClick={annuler} aria-label="Défaire">↶</button>
           <button className="bouton principal" onClick={() => setMode("parler")}>✓ Terminé</button>
+        </div>
+      )}
+
+      {ensembles.length > 0 && (
+        <div className="ensembles" aria-label="Ensembles par thème">
+          {ensembles.map((e) => (
+            <div key={e.page} className="ensemble" style={{ borderColor: couleurDeSection(e.section) }}>
+              <button className="ensemble-theme" style={{ background: couleurDeSection(e.section) }} onClick={() => aller(e.page)}>
+                {e.nom}
+              </button>
+              {e.cases.map((k) => (
+                <button key={k.id} className="ensemble-case" style={{ background: k.fond, borderColor: k.bord }} onClick={() => toucher(k)}>
+                  {k.image && images[k.image] && <img src={images[k.image]} alt="" />}
+                  <span>{k.mot}</span>
+                </button>
+              ))}
+            </div>
+          ))}
         </div>
       )}
 

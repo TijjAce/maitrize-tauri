@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { MODELE_COMPLET, aPoser, classeurComplet, pictosDuModele, poserLesPictos } from "./classeurComplet";
+import { MODELE_COMPLET, aPoser, ajouterLesPoids, classeurComplet, pictosDuModele, poserLesPictos } from "./classeurComplet";
+import { ensemblesApres } from "./ensembles";
 import { nouveauClasseur } from "./modele";
 import { numeroDePage, ordreDesPages, pageDe, pageVoisine, sectionsDe } from "./modele";
 import { depuisObz, versObz } from "./obz";
@@ -98,6 +99,10 @@ describe("le classeur complet", () => {
     expect(liens(retour)).toEqual(liens(c));
     const pictos = (x: typeof c) => x.pages.flatMap((p) => p.cases.flatMap((k) => (k?.image ? [k.image] : [])));
     expect(pictos(retour)).toEqual(pictos(c));
+    // Les poids des ensembles par thème font le voyage.
+    const suites = (x: typeof c) => x.pages.flatMap((p) => p.cases.flatMap((k) => (k?.suites ? [`${k.mot}→${k.suites.map((s) => `${pageDe(x, s.page)?.nom}:${s.poids}`).join(",")}`] : [])));
+    expect(suites(retour)).toEqual(suites(c));
+    expect(retour.pages.flatMap((p) => p.cases.map((k) => k?.poids ?? null))).toEqual(c.pages.flatMap((p) => p.cases.map((k) => k?.poids ?? null)));
   });
 });
 
@@ -125,6 +130,23 @@ describe("au lancement", () => {
     expect(aPoser([intact, nouveauClasseur("Le mien")])).toEqual({ poser: true, remplacer: [intact.id] });
     const change = { ...ancien(), modifieLe: "2026-11-05T10:00:00.000Z" };
     expect(aPoser([change])).toEqual({ poser: false, remplacer: [] });
+  });
+});
+
+describe("un classeur complet d'avant les poids", () => {
+  it("les reçoit à l'identique, sans que rien d'autre ne change", () => {
+    const neuf = classeurComplet("", "2026-11-05T08:00:00.000Z");
+    const sansPoids = { ...neuf, pages: neuf.pages.map((p) => ({ ...p, cases: p.cases.map((k) => (k ? { ...k, poids: undefined, suites: undefined } : k)) })) };
+    const repris = ajouterLesPoids(sansPoids)!;
+    expect(repris.modifieLe).toBe(sansPoids.modifieLe);
+    const jeVeux = (c: typeof neuf) => c.pages.flatMap((p) => p.cases).find((k) => k?.mot === "je veux" && k.lien)!;
+    const page = (c: typeof neuf, nom: string) => c.pages.find((p) => p.nom === nom)!.id;
+    expect(ensemblesApres(repris, jeVeux(repris), page(repris, "Je veux")).map((e) => e.nom))
+      .toEqual(ensemblesApres(neuf, jeVeux(neuf), page(neuf, "Je veux")).map((e) => e.nom));
+    expect(repris.pages.map((p) => p.cases.map((k) => k?.mot ?? null))).toEqual(neuf.pages.map((p) => p.cases.map((k) => k?.mot ?? null)));
+  });
+  it("ne touche pas un classeur qui a déjà ses poids", () => {
+    expect(ajouterLesPoids(classeurComplet())).toBeNull();
   });
 });
 

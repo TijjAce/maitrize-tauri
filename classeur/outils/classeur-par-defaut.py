@@ -611,6 +611,91 @@ PAGES = [
     ]),
 ]
 
+# ── Les ensembles par thème : les poids, calculés ici, une fois pour toutes ──
+#
+# « Les poids sont calculés à l'avance pour le classeur normal, pas d'IA intégrée. » Après une case, l'application
+# propose quelques thèmes — chacun avec ses pictos — dans une bande au-dessus de la grille ; elle ne fait que lire
+# ce qui suit. Deux sortes de poids :
+#  - SUITES : après tel mot, quels thèmes viennent, et combien (en pour cent, ramenés à 1). Une règle par mot ;
+#    toutes les cases qui écrivent ce mot la reçoivent. Le thème est une page : on y propose ses pictos et ceux de
+#    la suite de sa section.
+#  - le poids d'un picto dans son thème : l'ordre de la page (le plus courant d'abord, comme dans le PODD), et la
+#    sorte de mot qui fait la page (les aliments sur « Manger », pas « j'ai faim »).
+GENS = ["moi", "toi", "maman", "papa", "frère", "sœur", "mamie", "papi", "bébé", "copain", "copine", "maîtresse", "maître",
+        "AESH", "docteur", "les autres", "quelqu'un", "tout le monde", "lui", "elle"]
+OBJETS = [("classe-2", 40), ("jouer", 40), ("habits", 20)]
+SUITES = {
+    # Les débuts de phrase.
+    "je veux": [("manger", 30), ("jouer", 25), ("boire", 15), ("lieux", 15), ("actions", 10), ("gens", 5)],
+    "on va": [("lieux", 70), ("jouer", 20), ("gens", 10)],
+    "faire": [("actions", 60), ("jouer", 25), ("classe", 15)],
+    "on joue": [("jouer", 80), ("gens", 20)],
+    "je me sens": [("sens", 85), ("mal", 15)],
+    "j'ai mal": [("mal", 90), ("probleme", 10)],
+    "ça ne va pas": [("probleme", 70), ("mal", 20), ("sens", 10)],
+    "j'ai une question": [("questions", 80), ("gens", 10), ("lieux", 10)],
+    "je te raconte": [("gens", 30), ("actions", 25), ("lieux", 25), ("jouer", 20)],
+    "j'ai une idée": [("jouer", 40), ("actions", 30), ("lieux", 30)],
+    "je te montre": [("classe-2", 30), ("jouer", 30), ("animaux", 20), ("gens", 20)],
+    "j'aime": [("manger", 30), ("jouer", 30), ("animaux", 20), ("gens", 20)],
+    "je n'aime pas": [("manger", 40), ("jouer", 20), ("decrire", 20), ("probleme", 20)],
+    "c'est…": [("decrire", 70), ("couleurs", 30)],
+    "je veux quelqu'un": [("gens", 100)],
+    "en classe": [("classe", 100)],
+    "parce que": [("probleme", 40), ("gens", 30), ("jouer", 30)],
+    # Les verbes qui appellent un thème.
+    "manger": [("manger", 85), ("boire", 15)],
+    "boire": [("boire", 100)],
+    "jouer": [("jouer", 80), ("gens", 20)],
+    "aller": [("lieux", 100)],
+    "venir": [("lieux", 60), ("gens", 40)],
+    "courir": [("lieux", 100)],
+    "marcher": [("lieux", 100)],
+    "sortir": [("lieux", 100)],
+    "prendre": OBJETS,
+    "donner": [("gens", 40), ("classe-2", 30), ("jouer", 30)],
+    "mettre": [("habits", 50), ("classe-2", 30), ("jouer", 20)],
+    "ouvrir": [("classe-2", 60), ("jouer", 40)],
+    "fermer": [("classe-2", 60), ("jouer", 40)],
+    "chercher": OBJETS,
+    "trouver": OBJETS,
+    "regarder": [("jouer", 40), ("animaux", 30), ("classe-2", 30)],
+    "écouter": [("jouer", 100)],
+    "aider": [("gens", 100)],
+    "dessiner": [("animaux", 40), ("couleurs", 30), ("gens", 30)],
+    "caresser": [("animaux", 100)],
+    "donner à manger": [("animaux", 100)],
+    "s'habiller": [("habits", 100)],
+    "enlever": [("habits", 100)],
+    "attacher": [("habits", 100)],
+    # Les questions.
+    "qui ?": [("gens", 100)],
+    "c'est qui ?": [("gens", 100)],
+    "c'est à qui ?": [("gens", 100)],
+    "où ?": [("lieux", 100)],
+    "on va où ?": [("lieux", 100)],
+    "on fait quoi ?": [("actions", 50), ("jouer", 50)],
+    "tu veux ?": [("jouer", 40), ("manger", 30), ("boire", 30)],
+    "je peux ?": [("jouer", 40), ("actions", 30), ("lieux", 30)],
+    # Ce qui ne va pas : la suite qui précise.
+    "j'ai faim": [("manger", 100)],
+    "j'ai soif": [("boire", 100)],
+    "je suis malade": [("mal", 100)],
+    "je suis tombé": [("mal", 100)],
+    "on m'a fait mal": [("mal", 70), ("gens", 30)],
+    "on m'embête": [("gens", 100)],
+    "il m'a poussé": [("gens", 100)],
+    "il m'a tapé": [("gens", 100)],
+    "il triche": [("gens", 100)],
+    "il crie": [("gens", 100)],
+    "il m'a pris": [("jouer", 50), ("classe-2", 50)],
+    "j'ai perdu": OBJETS,
+    "c'est cassé": [("jouer", 50), ("classe-2", 50)],
+}
+# Les gens : ce qu'ils font, où ils sont, comment ils vont.
+for _qui in GENS:
+    SUITES.setdefault(_qui, [("actions", 50), ("lieux", 30), ("sens", 20)])
+
 COULEURS = {
     "personne": ("#fff2b8", "#e3b800"), "verbe": ("#d9f0d4", "#2e9b3e"), "nom": ("#fce6ca", "#e07b12"),
     "adjectif": ("#d6e6f7", "#2f6fd0"), "social": ("#fadeeb", "#d6408f"), "question": ("#e9ddf6", "#8a4fd8"),
@@ -668,6 +753,10 @@ def main(banque, sortie):
                 c["dire"] = dire
             if lien:
                 c["lien"] = lien
+            if mot in SUITES:
+                total = sum(x for _, x in SUITES[mot])
+                c["suites"] = [{"page": cible, "poids": round(x / total, 3)} for cible, x in SUITES[mot]]
+            c["_nature"] = nature
             sortie_cases.append(c)
             print(f"{nom:14} {mot:22} → {pid} « {libelle} »")
         sortie_page = {"cle": cle, "nom": nom, "lignes": lignes, "colonnes": colonnes, "cases": sortie_cases}
@@ -680,6 +769,28 @@ def main(banque, sortie):
     for p in pages:
         for c in p["cases"]:
             assert c.get("lien") is None or c["lien"] in cles, c
+            for x in c.get("suites", []):
+                assert x["page"] in cles, (c["mot"], x)
+    inconnus = sorted(set(SUITES) - {c["mot"] for p in pages for c in p["cases"]})
+    assert not inconnus, f"des suites pour des mots absents : {inconnus}"
+    # Le poids d'un picto dans son thème : son rang dans la section (le plus courant d'abord), et la sorte de mot
+    # qui fait la section (les autres pèsent moins : un début de phrase, un petit mot, une case qui mène ailleurs).
+    sections = []
+    for p in pages:
+        if p.get("suite"):
+            sections[-1].append(p)
+        else:
+            sections.append([p])
+    for section in sections:
+        cases = [c for p in section for c in p["cases"]]
+        natures = [c["_nature"] for c in cases]
+        dominante = max(set(natures), key=natures.count)
+        for rang, c in enumerate(cases):
+            facteur = (1.0 if c["_nature"] == dominante else 0.3) * (0.5 if c.get("lien") else 1.0)
+            c["poids"] = round(facteur / (1 + 0.08 * rang), 3)
+    for p in pages:
+        for c in p["cases"]:
+            del c["_nature"]
     os.makedirs(os.path.join(sortie, "src", "donnees"), exist_ok=True)
     with open(os.path.join(sortie, "src", "donnees", "classeur-par-defaut.json"), "w", encoding="utf-8") as f:
         json.dump({"nom": "Classeur complet", "accueil": "accueil", "categories": "categories", "pages": pages}, f, ensure_ascii=False, indent=1)
@@ -691,7 +802,8 @@ def main(banque, sortie):
     for pid in sorted(choisis):
         subprocess.run(["sips", "-Z", "256", os.path.join(images, f"{pid}.png"), "--out", os.path.join(dossier, f"{pid}.png")],
                        check=True, capture_output=True)
-    print(f"\n{sum(len(p['cases']) for p in pages)} cases, {len(pages)} pages, {len(choisis)} pictos ; sans picto : {manquants or 'aucune'}")
+    avec_suites = sum(1 for p in pages for c in p["cases"] if c.get("suites"))
+    print(f"\n{sum(len(p['cases']) for p in pages)} cases, {len(pages)} pages, {len(choisis)} pictos, {avec_suites} cases avec des suites ; sans picto : {manquants or 'aucune'}")
 
 
 main(sys.argv[1], sys.argv[2])

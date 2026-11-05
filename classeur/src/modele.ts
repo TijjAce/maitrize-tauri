@@ -25,6 +25,10 @@ export interface Case {
   lien?: string;
   /** Cachée à l'élève : la place reste, vide. */
   masquee?: boolean;
+  /** Son poids dans son thème (0 à 1), calculé à l'avance : les plus lourdes sont proposées d'abord. */
+  poids?: number;
+  /** Après elle, les thèmes à proposer (une page, et son poids), calculés à l'avance. */
+  suites?: { page: string; poids: number }[];
 }
 
 export interface Page {
@@ -49,6 +53,8 @@ export interface Classeur {
   voix?: { id?: string; debit?: number };
   /** Faux : balayer la grille ne tourne pas les pages (un élève qui pointe en glissant la main) ; ◀ ▶ restent. */
   balayer?: boolean;
+  /** Faux : pas de bande d'ensembles par thème au-dessus de la grille. */
+  suggestions?: boolean;
   creeLe: string;
   modifieLe: string;
 }
@@ -146,7 +152,12 @@ export const fairePageDesCategories = (c: Classeur, pageId: string): Classeur =>
 export function supprimerPage(c: Classeur, pageId: string): Classeur {
   if (c.pages.length <= 1 || !pageDe(c, pageId)) return c;
   const pages = sansLaPage(ordreDesPages(c), pageId).map((p) => ({
-    ...p, cases: p.cases.map((k) => (k?.lien === pageId ? { ...k, lien: undefined } : k)),
+    ...p,
+    cases: p.cases.map((k) => {
+      if (!k || (k.lien !== pageId && !k.suites?.some((s) => s.page === pageId))) return k;
+      const suites = k.suites?.filter((s) => s.page !== pageId);
+      return { ...k, lien: k.lien === pageId ? undefined : k.lien, suites: suites?.length ? suites : undefined };
+    }),
   }));
   return touche(c, pages, {
     accueil: c.accueil === pageId ? pages[0].id : c.accueil,
@@ -257,6 +268,7 @@ export function lireClasseur(brut: unknown): Classeur | null {
     accueil: pages.some((p) => p.id === o.accueil) ? (o.accueil as string) : pages[0].id,
     ...(typeof o.categories === "string" && pages.some((p) => p.id === o.categories) ? { categories: o.categories } : {}),
     pages, ...(o.voix && typeof o.voix === "object" ? { voix: o.voix } : {}), ...(o.balayer === false ? { balayer: false } : {}),
+    ...(o.suggestions === false ? { suggestions: false } : {}),
     creeLe: typeof o.creeLe === "string" ? o.creeLe : "", modifieLe: typeof o.modifieLe === "string" ? o.modifieLe : "",
   };
 }
@@ -276,6 +288,6 @@ export const COULEURS: { id: string; nom: string; fond: string; bord: string }[]
 
 // ── La phrase de l'élève ───────────────────────────────────────────────────
 
-export interface MotDit { mot: string; dire: string; image?: string }
+export interface MotDit { mot: string; dire: string; image?: string; caseId?: string }
 
 export const texteDeLaPhrase = (phrase: MotDit[]): string => phrase.map((m) => m.dire).join(" ").replace(/\s+/g, " ").trim();

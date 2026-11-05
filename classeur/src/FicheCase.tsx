@@ -87,6 +87,9 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
     const m = mot.trim();
     if (!m && !image) { onPoser(null); return; }
     const k: Case = { id: valeur?.id ?? nouvelId(), mot: m };
+    // Les poids calculés à l'avance restent à la case qu'on retouche.
+    if (valeur?.poids !== undefined) k.poids = valeur.poids;
+    if (valeur?.suites?.length) k.suites = valeur.suites;
     if (dire.trim() && dire.trim() !== m) k.dire = dire.trim();
     if (image) k.image = image;
     if (couleur.fond) k.fond = couleur.fond;

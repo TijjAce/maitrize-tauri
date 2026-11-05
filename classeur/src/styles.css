@@ -69,6 +69,21 @@ a { color: var(--accent); }
 .crayon::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: 0; background: var(--accent); }
 .crayon.appui::after { width: 100%; transition: width 1s linear; }
 
+/* Les ensembles par thème, après une case : une bande à part, au-dessus de la grille, qui défile si elle déborde. */
+.ensembles { flex: none; display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 2px; }
+.ensemble { flex: none; display: flex; align-items: stretch; gap: 4px; padding: 4px; border: 2px solid; border-radius: var(--rayon); background: #fffdf8; }
+.ensemble-theme {
+  flex: none; display: flex; align-items: center; padding: 0 10px; border: 0; border-radius: 10px;
+  font-size: clamp(12px, 1.3vw, 16px); font-weight: 800; color: var(--encre); max-width: clamp(64px, 7.5vw, 120px); white-space: normal; text-align: left; line-height: 1.1;
+}
+.ensemble-case {
+  flex: none; width: clamp(52px, 5.3vw, 84px); height: clamp(60px, 7.4vh, 84px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  padding: 3px; background: #fff; border: 2px solid var(--bord); border-radius: 10px; font-size: 12px; font-weight: 700; line-height: 1.05;
+}
+.ensemble-case img { flex: 1; min-height: 0; width: 100%; object-fit: contain; pointer-events: none; }
+.ensemble-case span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ensemble-case:active, .ensemble-theme:active { transform: scale(.96); }
+
 /* La grille et, à sa droite, la colonne fixe de chaque page (comme celle du PODD). Balayer tourne la page :
    le navigateur ne doit rien faire du geste. */
 .corps { flex: 1; min-height: 0; display: flex; gap: 10px; touch-action: none; }
@@ -188,6 +203,8 @@ a { color: var(--accent); }
   .bouton.tourne { min-width: 58px; min-height: 48px; }
   .barre-bas { gap: 6px; }
   .page-ici .nom-page { font-size: 15px; }
+  .ensemble-case { width: 60px; height: 64px; font-size: 10px; }
+  .ensemble-theme { font-size: 12px; padding: 0 6px; max-width: 80px; }
 }
 
 /* Couché, l'iPhone a de la largeur et peu de hauteur : l'image à côté du mot, des barres plus basses. */
@@ -207,5 +224,8 @@ a { color: var(--accent); }
   .bouton.tourne { min-height: 40px; }
   .page-ici { min-height: 40px; }
   .crayon { min-height: 40px; }
+  .ensemble-case { width: 64px; height: 46px; font-size: 10px; }
+  .ensemble-case img { max-height: 26px; }
+  .ensemble-theme { font-size: 12px; }
 }
 
