@@ -78,6 +78,20 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
 
   const page = pageDe(c, pageId) ?? pageDe(c, c.accueil) ?? c.pages[0];
 
+  // « J'ai cliqué sur puzzle et je suis encore à ballon : il faut qu'automatiquement ça se décale » (l'enseignant,
+  // 5 novembre 2026) : la phrase qui déborde défile jusqu'au dernier mot dit, à chaque mot ajouté ou retiré.
+  const phraseRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const el = phraseRef.current;
+    if (!el) return;
+    // D'un coup, sans glissé : un défilement animé peut ne jamais finir si l'écran ne se redessine pas, et iOS 15.0 ne l'a pas.
+    const allerAuBout = () => { el.scrollLeft = el.scrollWidth; };
+    allerAuBout();
+    // Une image qui finit d'arriver élargit le dernier mot : on recommence une fois l'écran redessiné.
+    const r = window.requestAnimationFrame(allerAuBout);
+    return () => window.cancelAnimationFrame(r);
+  }, [phrase]);
+
   // Les images du classeur, demandées une fois chacune (une image introuvable ne se redemande pas en boucle).
   const demandees = React.useRef(new Set<string>());
   React.useEffect(() => {
@@ -221,7 +235,7 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
     <div className={`ecran${enModif ? " en-modif" : ""}`}>
       <div className="barre-haut">
         <button className="bouton" onClick={() => { void fermer(); }} aria-label="Mes classeurs">‹<span className="large-seulement"> Classeurs</span></button>
-        <div className="phrase" role="button" tabIndex={0} aria-label="Redire la phrase" onClick={direLaPhrase}>
+        <div ref={phraseRef} className="phrase" role="button" tabIndex={0} aria-label="Redire la phrase" onClick={direLaPhrase}>
           {phrase.length === 0 ? <span className="discret">{enModif ? c.nom : " "}</span> : phrase.map((m, i) => (
             <span key={i} className="mot-dit">
               {m.image && images[m.image] && <img src={images[m.image]} alt="" />}
