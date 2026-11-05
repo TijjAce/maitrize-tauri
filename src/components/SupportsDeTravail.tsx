@@ -10,6 +10,7 @@ import { etiquetteDeMatiere } from "../pictosMatieres";
 import { usePictoImage } from "./ChoixPicto";
 import { useLudotheque } from "./ReglesDesJeux";
 import { toast, toastAnnulable } from "./Toaster";
+import { poserLesEspacesDansLaSalle } from "../espacesDansLaSalle";
 
 // ── Réglages › Personnalisation › Mes photos, supports de travail ─────────
 //
@@ -95,7 +96,10 @@ export function SupportsDeTravail() {
         .then(([outils, espaces]) => setBureau((b) => ({ ...b, outils, espaces }))).catch(() => {});
       await recharger();
       await changer(p, { elementId: cleDeLElement({ genre, source: id }) });
-      toastAnnulable(`« ${titre} » ajouté au plan de travail, ${genre === "espace" ? "dans les espaces de la classe" : "dans les outils pour l'enseignant"}.`, async () => {
+      // Un espace prend aussi sa place dans le plan de classe (voir espacesDansLaSalle.ts).
+      const dansLaSalle = genre === "espace" && (await poserLesEspacesDansLaSalle().catch(() => [])).some((e) => e.id === id);
+      const ou = genre === "espace" ? `dans les espaces de la classe${dansLaSalle ? ", et dans l'aménagement du plan de classe" : ""}` : "dans les outils pour l'enseignant";
+      toastAnnulable(`« ${titre} » ajouté au plan de travail, ${ou}.`, async () => {
         await (genre === "espace" ? api.espaceDelete(id) : api.outilClasseDelete(id));
         // La photo telle qu'elle est maintenant : un niveau changé entre-temps reste ; un autre choix fait depuis aussi.
         const actuelle = (await lireMesPictos().catch((): MonPicto[] => [])).find((x) => x.id === p.id) ?? p;

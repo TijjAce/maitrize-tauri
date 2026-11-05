@@ -1,10 +1,11 @@
 import React from "react";
-import { api, Creneau, Eleve, teinteCreneau, newId, texteErreur } from "../api";
+import { api, Creneau, Eleve, teinteCreneau, newId, texteErreur, type Espace } from "../api";
 import { Field, Input, Select, Modal, Empty, Confirm, useAsync, EVT_DONNEES_DISTANTES, PageVisibleContext } from "../components/ui";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { openCtx } from "../components/ctxmenu";
 import { printHTML, escapeHtml } from "../print";
 import { isoJour, hhmm } from "../dates";
+import { elementDeLEspace, espacesAPlacer, estUneZone, poserLesEspacesDansLaSalle } from "../espacesDansLaSalle";
 
 // ── Plan de salle ─────────────────────────────────────────────────────────
 // L'aménagement (mobilier + places) est unique pour la salle ; le placement
@@ -13,7 +14,8 @@ import { isoJour, hhmm } from "../dates";
 // La roulette fait défiler la journée, créneau par créneau.
 
 type TypeElem = "place" | "table" | "bureau" | "tapis" | "meuble" | "mur" | "porte" | "fenetre";
-interface ElemSalle { id: string; type: TypeElem; x: number; y: number; w: number; h: number; label: string }
+/** Un élément de la salle ; `espaceId` : l'espace de la classe qu'il représente (voir espacesDansLaSalle.ts). */
+interface ElemSalle { id: string; type: TypeElem; x: number; y: number; w: number; h: number; label: string; espaceId?: string }
 /** Qui est assis où, et pourquoi, sur un créneau donné. */
 interface Plan { places: Record<string, string>; notes: Record<string, string> }
 
@@ -264,6 +266,8 @@ export function PlanSalleTab() {
   const creneau = creneaux[Math.min(idx, Math.max(0, creneaux.length - 1))];
 
   const [profils, setProfils] = React.useState<Profil[]>([]);
+  // Les espaces de la classe (l'armoire, le coin lecture…) : chacun a sa place dans le plan ; null tant qu'on ne les connaît pas.
+  const [espaces, setEspaces] = React.useState<Espace[] | null>(null);
   // Agencement retenu pour un créneau, puis pour sa matière : la « Scolarité »
   // du mardi retrouve la disposition de celle de lundi.
   const [profilCreneau, setProfilCreneau] = React.useState<Record<string, string>>({});
@@ -297,11 +301,15 @@ export function PlanSalleTab() {
   React.useEffect(() => {
     if (!relu) return;
     (async () => {
-      const [pr, el, pl, pm, pc, pmat] = await Promise.all([
+      // Les espaces nouveaux d'abord : « quand j'ajoute un nouvel espace de classe, il se met dans aménagement ».
+      await poserLesEspacesDansLaSalle().catch(() => []);
+      const [pr, el, pl, pm, pc, pmat, esp] = await Promise.all([
         api.settingGet("salle:profils"), api.settingGet("salle:elements"),
         api.settingGet("salle:plans"), api.settingGet("salle:plansMatiere"),
         api.settingGet("salle:profilCreneau"), api.settingGet("salle:profilMatiere"),
+        api.espacesList().catch((): Espace[] | null => null),
       ]);
+      setEspaces(esp);
       let liste: Profil[] = [];
       try { liste = pr ? JSON.parse(pr) : []; } catch { liste = []; }
       if (liste.length === 0) {
@@ -375,6 +383,9 @@ export function PlanSalleTab() {
     : (profils.find((p) => p.id === profilManuel) ?? profils[0]);
   const profilId = profil?.id ?? "";
   const elements = profil?.elements ?? [];
+  // Ce que montre le plan : sans l'élément d'un espace supprimé — il revient si l'on rétablit l'espace.
+  const idsEspaces = espaces ? new Set(espaces.map((e) => e.id)) : null;
+  const visibles = idsEspaces ? elements.filter((e) => !e.espaceId || idsEspaces.has(e.espaceId)) : elements;
 
   /** Enregistre les éléments dans l'agencement courant seulement. */
   const persistElements = (e: ElemSalle[]) =>
@@ -450,6 +461,13 @@ export function PlanSalleTab() {
     setSelId(el.id);
   };
 
+  /** Un espace de la classe que cet agencement n'a pas : à une place libre, à son nom. */
+  const ajouterEspace = (espace: Espace) => {
+    const { elements: suite, element } = elementDeLEspace(espace, { id: profilId, nom: profil?.nom ?? "", elements });
+    persistElements(suite);
+    setSelId(element.id);
+  };
+
   // Supprime un élément et libère la place correspondante dans tous les plans.
   const supprimerElement = (id: string) => {
     const avant = { elements, plans: plansRef.current, mat: matRef.current };
@@ -478,7 +496,9 @@ export function PlanSalleTab() {
   };
 
   const dupliquerElement = (el: ElemSalle) => {
-    const copie: ElemSalle = { ...el, id: newId(), x: Math.min(CANVAS_W - el.w, el.x + 20), y: Math.min(CANVAS_H - el.h, el.y + 20) };
+    // La copie d'un espace est un meuble comme un autre : l'espace garde sa place.
+    const { espaceId: _espace, ...sansEspace } = el;
+    const copie: ElemSalle = { ...sansEspace, id: newId(), x: Math.min(CANVAS_W - el.w, el.x + 20), y: Math.min(CANVAS_H - el.h, el.y + 20) };
     persistElements([...elements, copie]);
     setSelId(copie.id);
   };
@@ -611,7 +631,7 @@ export function PlanSalleTab() {
     return `<h2 style="margin:0 0 2px">${hhmm(c.heureDebut)}–${hhmm(c.heureFin)} · ${escapeHtml(c.matiere || "Créneau")}</h2>
       <div class="meta">${n} élève(s) placé(s) sur ${ids.length} présent(s)</div>
       <div style="position:relative;width:${CANVAS_W}px;height:${CANVAS_H}px;border:1px solid #cfd4e2;border-radius:8px;background:#fff">
-        ${elements.map(el).join("")}
+        ${visibles.map(el).join("")}
       </div>`;
   };
 
@@ -744,6 +764,15 @@ export function PlanSalleTab() {
             {MODELES.map((m) => (
               <button key={m.t + m.label} className="btn sm" onClick={() => ajouterElement(m)}>{m.ico} {m.label}</button>
             ))}
+            {(() => {
+              const aPlacer = espacesAPlacer(espaces ?? [], profil);
+              return aPlacer.length > 0 && <>
+                <span style={{ fontSize: 12, color: "var(--text-2)", margin: "0 4px 0 8px" }}>Espaces de la classe :</span>
+                {aPlacer.map((e) => (
+                  <button key={e.id} className="btn sm" onClick={() => ajouterEspace(e as Espace)}>{estUneZone(e.titre) ? "🟩" : "🗄"} {e.titre}</button>
+                ))}
+              </>;
+            })()}
             <div className="spacer" />
             {selId && <>
               <button className="btn sm" onClick={() => dupliquerElement(elements.find((e) => e.id === selId)!)}>📑 Dupliquer</button>
@@ -769,7 +798,7 @@ export function PlanSalleTab() {
         </div>
       )}
 
-      {elements.length === 0 ? (
+      {visibles.length === 0 ? (
         <Empty icone="🪑" titre={profils.length === 0 ? "Aucun agencement" : `« ${profil?.nom} » est vide`}
           sous={profils.length === 0
             ? "Créez une salle depuis le bouton « ✨ Créer une salle » : îlots, frontal, en U ou coin regroupement."
@@ -780,7 +809,7 @@ export function PlanSalleTab() {
             style={{ position: "relative", width: CANVAS_W, height: CANVAS_H, flexShrink: 0,
               background: `var(--panel-2) repeating-linear-gradient(0deg, transparent, transparent ${GRILLE - 1}px, color-mix(in srgb, var(--border) 40%, transparent) ${GRILLE}px), repeating-linear-gradient(90deg, transparent, transparent ${GRILLE - 1}px, color-mix(in srgb, var(--border) 40%, transparent) ${GRILLE}px)`,
               borderRadius: 10, border: "1px solid var(--border)" }}>
-            {elements.map((el) => {
+            {visibles.map((el) => {
               const eleveId = plan.places[el.id];
               const eleve = estPresent(eleveId) ? (eleves ?? []).find((x) => x.id === eleveId) : undefined;
               const selection = selId === el.id && mode === "amenagement";
