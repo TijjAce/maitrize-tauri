@@ -44,6 +44,29 @@ describe("les ensembles de pictos par thème, aux poids calculés à l'avance", 
     expect(noms(ensemblesApres(c, lancer, deuxieme.id))).toEqual(["Jouer : voiture, ballon, jeu de société, poupée"]);
   });
 
+  it("montre les pictos choisis pour ce qui précède : « bonjour » → maman, papa… ; « j'ai froid » → manteau, bonnet…", () => {
+    expect(noms(ensemblesApres(c, caseDe("L'essentiel", "bonjour"), c.accueil))).toEqual(["Les gens : maman, papa, maîtresse, copain"]);
+    expect(noms(ensemblesApres(c, caseDe("Ça ne va pas", "j'ai froid"), page("Ça ne va pas").id))).toEqual(["S'habiller : manteau, bonnet, écharpe, gants"]);
+    expect(noms(ensemblesApres(c, caseDe("En classe", "peindre"), page("En classe").id))[0]).toBe("Couleurs et formes : rouge, bleu, jaune, vert");
+    const faire2 = ordreDesPages(c).filter((p) => p.nom === "Faire")[1];
+    const dormir = faire2.cases.find((k) => k?.mot === "dormir")!;
+    expect(noms(ensemblesApres(c, dormir, faire2.id))).toEqual(["Aller : chambre, maison, salon, chez un copain"]);
+  });
+
+  it("après un jouet : avec qui, comment il est, sa couleur", () => {
+    expect(noms(ensemblesApres(c, caseDe("Jouer", "ballon"), page("Jouer").id))).toEqual([
+      "Les gens : copain, copine, moi, toi", "C'est… : grand, petit, cassé, beau", "Couleurs et formes : rouge, bleu, jaune, vert",
+    ]);
+  });
+
+  it("un picto choisi qui a disparu (caché par l'enseignant) laisse la place au plus lourd du thème", () => {
+    const sansMaman = { ...c, pages: c.pages.map((p) => ({ ...p, cases: p.cases.map((k) => (k?.mot === "maman" ? { ...k, masquee: true } : k)) })) };
+    const e = ensemblesApres(sansMaman, caseDe("L'essentiel", "bonjour"), c.accueil);
+    expect(e[0].cases.map((k) => k.mot).slice(0, 3)).toEqual(["papa", "maîtresse", "copain"]);
+    expect(e[0].cases).toHaveLength(4);
+    expect(e[0].cases.some((k) => k.mot === "maman")).toBe(false);
+  });
+
   it("une case qui finit la phrase ne propose rien", () => {
     expect(ensemblesApres(c, caseDe("J'ai mal", "tête"), page("J'ai mal").id)).toEqual([]);
     expect(ensemblesApres(c, null, c.accueil)).toEqual([]);

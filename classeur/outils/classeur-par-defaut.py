@@ -798,6 +798,63 @@ SUITES_PAR_PAGE = {
     "habits": ([("couleurs", 50), ("actions", 30), ("decrire", 20)], {"trop petit", "trop grand", "couche", "lunettes"}),
 }
 
+# ── Les pictos de chaque suite, choisis pour le mot d'avant (« travaille à améliorer », 5 novembre 2026) ──
+# D'ordinaire, un thème montre ses pictos les plus lourds. Pour certaines suites, ceux qui vont avec ce qui précède :
+# « bonjour » → maman, papa… (pas « moi, toi ») ; « j'ai froid » → manteau, bonnet… ; « peindre » → rouge, bleu…
+# Les mots sont cherchés dans toute la section du thème (« dormir » → chambre, mais aussi maison, une page avant).
+COULEURS_VIVES = ["rouge", "bleu", "jaune", "vert"]
+GENS_NOMMES = ["maman", "papa", "maîtresse", "copain"]
+AUTRES_ENFANTS = ["copain", "copine", "les autres", "quelqu'un"]
+POUR_AIDER = {"actions": ["mettre", "ouvrir", "fermer", "prendre"], "habits": ["manteau", "chaussures", "attacher", "enlever"]}
+CHOIX = {
+    **{(m, "gens"): GENS_NOMMES for m in ("bonjour", "au revoir", "merci", "pardon", "parler", "je te raconte")},
+    **{(m, "gens"): AUTRES_ENFANTS for m in ("on m'embête", "il m'a poussé", "il m'a tapé", "il triche", "il crie", "on m'a fait mal")},
+    **{(m, t): v for m in ("aide-moi", "de l'aide", "tu m'aides ?") for t, v in POUR_AIDER.items()},
+    **{(m, "classe-2"): ["crayon", "cahier", "livre", "cartable"] for m in ("à moi", "à toi", "c'est à moi")},
+    ("un câlin", "gens"): ["maman", "papa", "mamie", "papi"],
+    ("regarde", "gens"): ["moi", "maman", "papa", "maîtresse"],
+    ("attends", "gens"): ["moi", "maman", "papa", "maîtresse"],
+    ("je veux quelqu'un", "gens"): ["maman", "papa", "maîtresse", "AESH"],
+    ("rire", "gens"): ["copain", "copine", "maman", "papa"],
+    ("donner", "gens"): ["moi", "toi", "maman", "copain"],
+    ("j'ai froid", "habits"): ["manteau", "bonnet", "écharpe", "gants"],
+    ("j'ai chaud", "habits"): ["enlever", "pull", "manteau", "short"],
+    ("je suis mouillé", "habits"): ["pantalon", "chaussettes", "couche", "chaussures"],
+    ("ça me gêne", "habits"): ["chaussures", "lunettes", "pull", "pantalon"],
+    ("mettre", "habits"): ["manteau", "chaussures", "bonnet", "pull"],
+    ("dormir", "lieux-2"): ["chambre", "maison", "salon", "chez un copain"],
+    ("lire", "classe-2"): ["livre", "cahier", "tableau", "feuille"],
+    ("lire", "jouer"): ["livre", "histoire", "tablette"],
+    ("écrire", "classe-2"): ["crayon", "feutre", "cahier", "tableau"],
+    ("découper", "classe-2"): ["ciseaux", "feuille", "colle", "cahier"],
+    ("coller", "classe-2"): ["colle", "feuille", "cahier", "ciseaux"],
+    ("peindre", "couleurs"): COULEURS_VIVES,
+    ("peindre", "classe-2"): ["feuille", "tableau"],
+    ("dessiner", "couleurs"): COULEURS_VIVES,
+    ("dessiner", "gens"): ["moi", "maman", "papa", "copain"],
+    ("c'est…", "couleurs"): COULEURS_VIVES,
+    ("j'ai peur", "animaux"): ["chien", "serpent", "lion", "ours"],
+    ("j'ai peur", "lieux"): ["dehors", "piscine", "médecin", "hôpital"],
+}
+# Pour les règles de page : (page, thème) → pictos.
+CHOIX_PAR_PAGE = {
+    ("jouer", "gens"): ["copain", "copine", "moi", "toi"],
+    ("jouer", "decrire"): ["grand", "petit", "cassé", "beau"],
+    ("jouer", "couleurs"): COULEURS_VIVES,
+    **{(pg, "decrire"): ["bon", "pas bon", "chaud", "froid"] for pg in ("manger", "manger-2")},
+    ("boire", "decrire"): ["chaud", "froid", "bon", "pas bon"],
+    ("animaux", "decrire"): ["grand", "petit", "gentil", "méchant"],
+    ("animaux", "actions"): ["manger", "dormir", "courir", "sauter"],
+    ("animaux", "couleurs"): ["noir", "blanc", "marron", "gris"],
+    ("habits", "couleurs"): COULEURS_VIVES,
+    ("habits", "actions"): ["mettre", "prendre", "ouvrir", "fermer"],
+    ("habits", "decrire"): ["grand", "petit", "sale", "mouillé"],
+    ("classe-2", "couleurs"): COULEURS_VIVES,
+    ("classe-2", "actions"): ["prendre", "donner", "mettre", "chercher"],
+    **{(pg, "actions"): ["jouer", "manger", "courir", "dormir"] for pg in ("lieux", "lieux-2")},
+    **{(pg, "gens"): GENS_NOMMES for pg in ("lieux", "lieux-2", "sens")},
+}
+
 COULEURS = {
     "personne": ("#fff2b8", "#e3b800"), "verbe": ("#d9f0d4", "#2e9b3e"), "nom": ("#fce6ca", "#e07b12"),
     "adjectif": ("#d6e6f7", "#2f6fd0"), "social": ("#fadeeb", "#d6408f"), "question": ("#e9ddf6", "#8a4fd8"),
@@ -895,12 +952,18 @@ def main(banque, sortie, chemin_lexique=None):
                 c["dire"] = dire
             if lien:
                 c["lien"] = lien
-            regle = SUITES.get(mot)
+            regle, de_la_page = SUITES.get(mot), False
             if regle is None and not lien and cle in SUITES_PAR_PAGE and mot not in SUITES_PAR_PAGE[cle][1]:
-                regle = SUITES_PAR_PAGE[cle][0]
+                regle, de_la_page = SUITES_PAR_PAGE[cle][0], True
             if regle:
                 total = sum(x for _, x in regle)
-                c["suites"] = [{"page": cible, "poids": round(x / total, 3)} for cible, x in regle]
+                c["suites"] = []
+                for cible, x in regle:
+                    suite = {"page": cible, "poids": round(x / total, 3)}
+                    choix = CHOIX_PAR_PAGE.get((cle, cible)) if de_la_page else CHOIX.get((mot, cible))
+                    if choix:
+                        suite["_choix"] = choix
+                    c["suites"].append(suite)
             c["_nature"] = nature
             c["_frequence"] = frequence(lex, mot, nature)
             sortie_cases.append(c)
@@ -917,6 +980,33 @@ def main(banque, sortie, chemin_lexique=None):
             assert c.get("lien") is None or c["lien"] in cles, c
             for x in c.get("suites", []):
                 assert x["page"] in cles, (c["mot"], x)
+    # Les choix de pictos : chaque mot, dans la section du thème, devient « clé de page:rang de la case ».
+    section_de = {}
+    courante = []
+    for p in pages:
+        if not p.get("suite"):
+            courante = []
+        courante.append(p)
+        for q in courante:
+            section_de[q["cle"]] = courante
+    servis = set()
+    for p in pages:
+        for c in p["cases"]:
+            for suite in c.get("suites", []):
+                choix = suite.pop("_choix", None)
+                if not choix:
+                    continue
+                refs = []
+                for m in choix:
+                    trouve = next((f"{q['cle']}:{i}" for q in section_de[suite["page"]] for i, x in enumerate(q["cases"]) if x["mot"] == m), None)
+                    assert trouve, f"« {m} » n'est pas dans le thème {suite['page']} ({c['mot']})"
+                    refs.append(trouve)
+                suite["cases"] = refs
+                servis.add(id(choix))
+    for (m, cible), choix in CHOIX.items():
+        assert any(cible == x for x, _ in SUITES.get(m, [])), f"choix sans règle : {m} → {cible}"
+    for (pg, cible), choix in CHOIX_PAR_PAGE.items():
+        assert any(cible == x for x, _ in SUITES_PAR_PAGE.get(pg, ([], set()))[0]), f"choix sans règle de page : {pg} → {cible}"
     for cle, (regle, sans) in SUITES_PAR_PAGE.items():
         assert cle in cles and all(x in cles for x, _ in regle), cle
         mots = {c["mot"] for p in pages if p["cle"] == cle for c in p["cases"]}
@@ -960,7 +1050,7 @@ def main(banque, sortie, chemin_lexique=None):
     with open(os.path.join(sortie, "src", "donnees", "classeur-par-defaut.json"), "w", encoding="utf-8") as f:
         modele = {"nom": "Classeur complet", "accueil": "accueil", "categories": "categories", "pages": pages}
         # La version des poids : un classeur complet déjà posé reçoit ceux-ci au lancement quand elle change.
-        modele["versionDesPoids"] = "2026-11-05-lexique383-suites2" if lex else "2026-11-05-ordre"
+        modele["versionDesPoids"] = "2026-11-05-lexique383-choix3" if lex else "2026-11-05-ordre"
         if lex:
             modele["sources"] = ["Fréquences : Lexique 3.83 (B. New, C. Pallier, lexique.org), CC BY-SA 4.0"]
         json.dump(modele, f, ensure_ascii=False, indent=1)

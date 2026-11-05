@@ -61,6 +61,8 @@ export function versObz(c: Classeur, images: Record<string, string>): FichiersOb
   const cheminsTableaux: Record<string, string> = {};
   const decrites = new Map<string, Record<string, unknown>>();
 
+  // L'identifiant de bouton de chaque case (« 3-7 »), pour les cases choisies des suites.
+  const bouton = new Map(ordre.flatMap((p) => p.cases.flatMap((k, i) => (k ? [[k.id, `${numero.get(p.id)}-${i + 1}`] as const] : []))));
   for (const p of ordre) {
     const n = numero.get(p.id)!;
     const boutons: Record<string, unknown>[] = [];
@@ -78,7 +80,11 @@ export function versObz(c: Classeur, images: Record<string, string>): FichiersOb
       if (k.masquee) b.hidden = true;
       // Les poids des ensembles par thème, calculés à l'avance : des champs d'extension, que les autres applications ignorent.
       if (typeof k.poids === "number") b.ext_maitrize_poids = k.poids;
-      const suites = (k.suites ?? []).flatMap((s) => { const n = numero.get(s.page); return n ? [{ id: `page${n}`, poids: s.poids }] : []; });
+      const suites = (k.suites ?? []).flatMap((s) => {
+        const n = numero.get(s.page);
+        const cases = (s.cases ?? []).flatMap((id) => { const b = bouton.get(id); return b ? [b] : []; });
+        return n ? [{ id: `page${n}`, poids: s.poids, ...(cases.length ? { cases } : {}) }] : [];
+      });
       if (suites.length) b.ext_maitrize_suites = suites;
       const cible = k.lien ? numero.get(k.lien) : undefined;
       if (cible) b.load_board = { id: `page${cible}`, path: `boards/page${cible}.obf` };
@@ -155,6 +161,7 @@ export function depuisObz(f: FichiersObz, nom: string, maintenant = new Date().t
   const parId = new Map(tableaux.filter((x) => texte(x.t.id)).map((x) => [texte(x.t.id), x.pageId]));
   const images: Record<string, string> = {};
   const imageDuChemin = new Map<string, string>();
+  const caseDuBouton = new Map<string, string>();
 
   const pages: Page[] = tableaux.map(({ chemin, t, pageId }) => {
     const boutons = Array.isArray(t.buttons) ? t.buttons : [];
@@ -181,12 +188,15 @@ export function depuisObz(f: FichiersObz, nom: string, maintenant = new Date().t
       if (b.hidden === true) k.masquee = true;
       if (typeof b.ext_maitrize_poids === "number" && Number.isFinite(b.ext_maitrize_poids)) k.poids = b.ext_maitrize_poids;
       if (Array.isArray(b.ext_maitrize_suites)) {
-        const suites = (b.ext_maitrize_suites as { id?: unknown; poids?: unknown }[]).flatMap((x) => {
+        const suites = (b.ext_maitrize_suites as { id?: unknown; poids?: unknown; cases?: unknown }[]).flatMap((x) => {
           const page = x && parId.get(texte(x.id));
-          return page && typeof x.poids === "number" ? [{ page, poids: x.poids }] : [];
+          // Les cases choisies sont encore des boutons : elles retrouvent leur case quand toutes les pages sont lues.
+          const cases = Array.isArray(x?.cases) ? (x.cases as unknown[]).map(texte).filter(Boolean) : [];
+          return page && typeof x.poids === "number" ? [{ page, poids: x.poids, ...(cases.length ? { cases } : {}) }] : [];
         });
         if (suites.length) k.suites = suites;
       }
+      if (texte(b.id)) caseDuBouton.set(texte(b.id), k.id);
       const vers = b.load_board;
       if (vers) {
         const cible = (typeof vers.path === "string" && parChemin.get(normalise(vers.path))) || parId.get(texte(vers.id));
@@ -216,6 +226,17 @@ export function depuisObz(f: FichiersObz, nom: string, maintenant = new Date().t
     return page;
   });
   if (pages[0]) delete pages[0].suite;
+  // Les cases choisies des suites : du bouton à la case.
+  for (const p of pages) {
+    for (const k of p.cases) {
+      if (!k?.suites) continue;
+      k.suites = k.suites.map((s) => {
+        const cases = (s.cases ?? []).flatMap((b) => { const id = caseDuBouton.get(b); return id ? [id] : []; });
+        const { cases: _, ...reste } = s;
+        return cases.length ? { ...reste, cases } : reste;
+      });
+    }
+  }
   const categories = tableaux.find((x) => x.t.ext_maitrize_categories === true)?.pageId;
   const classeur: Classeur = {
     id: nouvelId(), nom: nom.trim() || pages[0].nom || "Classeur importé", accueil: pages[0].id, ...(categories ? { categories } : {}),

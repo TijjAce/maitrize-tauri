@@ -34,6 +34,26 @@ const BALAYAGE_MS = 2500;
 /** La couleur d'une section, celle de son numéro sur les cases qui y mènent et en bas de ses pages. */
 const COULEURS_SECTIONS = ["#f6c9c4", "#fbe3a6", "#bfe3cf", "#c8d9f6", "#ddd2ee", "#fad2b4", "#c3e7f2", "#e9d6c4", "#d6ecbd", "#f3cbe2"];
 export const couleurDeSection = (numero: number) => COULEURS_SECTIONS[(Math.max(1, numero) - 1) % COULEURS_SECTIONS.length];
+
+/**
+ * Combien d'ensembles tiennent dans la largeur, avec des pictos assez grands pour un doigt d'enfant (les mêmes mesures
+ * que styles.css : .ensemble-case) : un sur un iPhone tenu droit, deux sur un iPad, trois sur un grand écran.
+ */
+export function ensemblesQuiTiennent(largeur: number): number {
+  const picto = largeur <= 520 ? 64 : Math.min(96, Math.max(56, largeur * 0.075));
+  const ensemble = 92 + 4 * picto + 24;
+  return Math.max(1, Math.min(3, Math.floor((largeur - 10) / (ensemble + 10))));
+}
+
+function useLargeur(): number {
+  const [largeur, setLargeur] = React.useState(() => (typeof window === "undefined" ? 1024 : window.innerWidth));
+  React.useEffect(() => {
+    const suivre = () => setLargeur(window.innerWidth);
+    window.addEventListener("resize", suivre);
+    return () => window.removeEventListener("resize", suivre);
+  }, []);
+  return largeur;
+}
 /** Un mot de neuf lettres ou plus s'écrit un peu plus petit sur un écran étroit, pour ne pas se couper au milieu. */
 const classeDuMot = (mot: string) => (Math.max(0, ...mot.split(/[\s'’-]+/).map((m) => m.length)) >= 9 ? "mot long" : "mot");
 
@@ -185,7 +205,8 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
     for (const p of c.pages) for (const k of p.cases) if (k?.id === id) return k;
     return null;
   }, [phrase, c]);
-  const ensembles = enModif || c.suggestions === false ? [] : ensemblesApres(c, derniereCase, page.id);
+  const largeur = useLargeur();
+  const ensembles = enModif || c.suggestions === false ? [] : ensemblesApres(c, derniereCase, page.id, ensemblesQuiTiennent(largeur));
   const numero = numeroDePage(c, page.id);
   const section = sectionDe(c, page.id);
   const couleur = couleurDeSection(section?.numero ?? 1);

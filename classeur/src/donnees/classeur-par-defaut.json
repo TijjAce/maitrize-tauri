@@ -112,11 +112,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:12",
+        "actions:15",
+        "actions:16",
+        "actions:10"
+       ]
       },
       {
        "page": "habits",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "habits:0",
+        "habits:4",
+        "habits:17",
+        "habits:16"
+       ]
       },
       {
        "page": "classe",
@@ -133,7 +145,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "gens:0",
+        "gens:2",
+        "gens:3",
+        "gens:11"
+       ]
       },
       {
        "page": "actions",
@@ -154,7 +172,13 @@
       },
       {
        "page": "gens",
-       "poids": 0.25
+       "poids": 0.25,
+       "cases": [
+        "gens:0",
+        "gens:2",
+        "gens:3",
+        "gens:11"
+       ]
       },
       {
        "page": "jouer",
@@ -179,7 +203,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       }
      ],
      "poids": 0.655
@@ -192,7 +222,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       }
      ],
      "poids": 0.597
@@ -205,7 +241,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       }
      ],
      "poids": 0.662
@@ -225,7 +267,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       }
      ],
      "poids": 0.554
@@ -277,7 +325,13 @@
       },
       {
        "page": "classe-2",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "classe-2:0",
+        "classe-2:4",
+        "classe-2:5",
+        "classe-2:9"
+       ]
       }
      ],
      "poids": 0.693
@@ -295,7 +349,13 @@
       },
       {
        "page": "classe-2",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "classe-2:0",
+        "classe-2:4",
+        "classe-2:5",
+        "classe-2:9"
+       ]
       }
      ],
      "poids": 0.664
@@ -511,7 +571,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "actions",
@@ -643,7 +709,13 @@
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.034
@@ -657,7 +729,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:13"
+       ]
       }
      ],
      "poids": 0.103
@@ -844,7 +922,13 @@
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.046
@@ -1116,7 +1200,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:6",
+        "gens:7"
+       ]
       }
      ],
      "poids": 0.14
@@ -1129,11 +1219,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:12",
+        "actions:15",
+        "actions:16",
+        "actions:10"
+       ]
       },
       {
        "page": "habits",
-       "poids": 0.25
+       "poids": 0.25,
+       "cases": [
+        "habits:0",
+        "habits:4",
+        "habits:17",
+        "habits:16"
+       ]
       },
       {
        "page": "classe",
@@ -1165,7 +1267,13 @@
      "suites": [
       {
        "page": "lieux-2",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "lieux-2:2",
+        "lieux:4",
+        "lieux-2:4",
+        "lieux-2:14"
+       ]
       }
      ],
      "poids": 0.615
@@ -1236,11 +1344,23 @@
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:0",
+        "gens:2",
+        "gens:3",
+        "gens:9"
+       ]
       }
      ],
      "poids": 0.422
@@ -1370,7 +1490,13 @@
      "suites": [
       {
        "page": "habits",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "habits:16",
+        "habits:8",
+        "habits:0",
+        "habits:11"
+       ]
       }
      ],
      "poids": 0.709
@@ -1383,7 +1509,13 @@
      "suites": [
       {
        "page": "habits",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "habits:0",
+        "habits:1",
+        "habits:2",
+        "habits:3"
+       ]
       }
      ],
      "poids": 0.722
@@ -1400,11 +1532,23 @@
       },
       {
        "page": "animaux",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "animaux:0",
+        "animaux:16",
+        "animaux:12",
+        "animaux:15"
+       ]
       },
       {
        "page": "lieux",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "lieux:5",
+        "lieux:7",
+        "lieux:13",
+        "lieux-2:10"
+       ]
       }
      ],
      "poids": 0.821
@@ -1433,11 +1577,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:12",
+        "actions:15",
+        "actions:16",
+        "actions:10"
+       ]
       },
       {
        "page": "habits",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "habits:0",
+        "habits:4",
+        "habits:17",
+        "habits:16"
+       ]
       },
       {
        "page": "classe",
@@ -1488,7 +1644,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:13"
+       ]
       }
      ],
      "poids": 0.11
@@ -1622,7 +1784,13 @@
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:15",
+        "gens:16"
+       ]
       }
      ],
      "poids": 0.533
@@ -1635,7 +1803,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:15",
+        "gens:16"
+       ]
       }
      ],
      "poids": 0.379
@@ -1648,7 +1822,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:15",
+        "gens:16"
+       ]
       }
      ],
      "poids": 0.333
@@ -1679,7 +1859,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:15",
+        "gens:16"
+       ]
       }
      ],
      "poids": 0.441
@@ -1696,7 +1882,13 @@
       },
       {
        "page": "classe-2",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "classe-2:0",
+        "classe-2:4",
+        "classe-2:5",
+        "classe-2:9"
+       ]
       }
      ],
      "poids": 0.19
@@ -1709,7 +1901,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:15",
+        "gens:16"
+       ]
       }
      ],
      "poids": 0.429
@@ -1765,7 +1963,13 @@
      "suites": [
       {
        "page": "habits",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "habits:6",
+        "habits:5",
+        "habits:13",
+        "habits:4"
+       ]
       }
      ],
      "poids": 0.093
@@ -1792,7 +1996,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:15",
+        "gens:16"
+       ]
       }
      ],
      "poids": 0.367
@@ -1805,7 +2015,13 @@
      "suites": [
       {
        "page": "habits",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "habits:4",
+        "habits:14",
+        "habits:8",
+        "habits:6"
+       ]
       },
       {
        "page": "mal",
@@ -2002,7 +2218,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2023,7 +2245,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2044,7 +2272,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2065,7 +2299,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2086,7 +2326,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2107,7 +2353,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2128,7 +2380,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2149,7 +2407,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2170,7 +2434,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2191,7 +2461,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2212,7 +2488,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2233,7 +2515,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2254,7 +2542,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2275,7 +2569,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2296,7 +2596,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2317,7 +2623,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2338,7 +2650,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2359,7 +2677,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "probleme",
@@ -2583,11 +2907,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "actions:12",
+        "actions:15",
+        "actions:16",
+        "actions:10"
+       ]
       },
       {
        "page": "habits",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "habits:0",
+        "habits:4",
+        "habits:17",
+        "habits:16"
+       ]
       }
      ],
      "poids": 0.591
@@ -3269,7 +3605,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:0",
+        "gens:1",
+        "gens:2",
+        "gens:9"
+       ]
       },
       {
        "page": "classe-2",
@@ -3290,7 +3632,13 @@
      "suites": [
       {
        "page": "habits",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "habits:0",
+        "habits:4",
+        "habits:1",
+        "habits:8"
+       ]
       },
       {
        "page": "classe-2",
@@ -3598,7 +3946,13 @@
      "suites": [
       {
        "page": "lieux-2",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "lieux-2:2",
+        "lieux:4",
+        "lieux-2:4",
+        "lieux-2:14"
+       ]
       }
      ],
      "poids": 0.541
@@ -3677,7 +4031,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:2",
+        "gens:3"
+       ]
       }
      ],
      "poids": 0.458
@@ -3707,7 +4067,13 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       }
      ],
      "poids": 0.626
@@ -3763,15 +4129,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.791
@@ -3784,15 +4168,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.608
@@ -3805,15 +4207,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.707
@@ -3826,15 +4246,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.903
@@ -3847,15 +4285,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.489
@@ -3868,15 +4324,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.715
@@ -3889,15 +4363,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.389
@@ -3910,15 +4402,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.415
@@ -3931,15 +4441,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.369
@@ -3952,15 +4480,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.587
@@ -3973,15 +4519,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.379
@@ -3994,15 +4558,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.548
@@ -4019,11 +4601,23 @@
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:0",
+        "gens:2",
+        "gens:3",
+        "gens:9"
+       ]
       }
      ],
      "poids": 0.161
@@ -4036,15 +4630,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.669
@@ -4057,15 +4669,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.672
@@ -4078,15 +4708,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.335
@@ -4099,15 +4747,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.401
@@ -4120,15 +4786,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.334
@@ -4141,15 +4825,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.243
@@ -4162,15 +4864,33 @@
      "suites": [
       {
        "page": "gens",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "gens:9",
+        "gens:10",
+        "gens:0",
+        "gens:1"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:9",
+        "decrire:4"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       }
      ],
      "poids": 0.656
@@ -4210,7 +4930,13 @@
       },
       {
        "page": "classe-2",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "classe-2:0",
+        "classe-2:4",
+        "classe-2:5",
+        "classe-2:9"
+       ]
       }
      ],
      "poids": 0.206
@@ -4228,7 +4954,13 @@
       },
       {
        "page": "classe-2",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "classe-2:0",
+        "classe-2:4",
+        "classe-2:5",
+        "classe-2:9"
+       ]
       }
      ],
      "poids": 0.204
@@ -4461,11 +5193,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4483,11 +5227,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4505,11 +5261,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4527,11 +5295,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4548,11 +5328,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4570,11 +5362,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4592,11 +5396,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4614,11 +5430,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4636,11 +5464,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4658,11 +5498,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4680,11 +5532,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4702,11 +5566,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4724,11 +5600,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4746,11 +5634,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4813,11 +5713,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4835,11 +5747,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4857,11 +5781,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4879,11 +5815,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4901,11 +5849,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4923,11 +5883,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4945,11 +5917,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4967,11 +5951,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -4989,11 +5985,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -5011,11 +6019,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -5033,11 +6053,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -5055,11 +6087,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -5077,11 +6121,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -5099,11 +6155,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -5120,11 +6188,23 @@
      "suites": [
       {
        "page": "actions",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "actions:7",
+        "actions:5",
+        "actions-2:5",
+        "actions-2:10"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:9"
+       ]
       },
       {
        "page": "jouer",
@@ -5202,7 +6282,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.942
@@ -5219,7 +6305,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.858
@@ -5236,7 +6328,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.686
@@ -5253,7 +6351,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.702
@@ -5270,7 +6374,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.53
@@ -5287,7 +6397,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.716
@@ -5304,7 +6420,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.645
@@ -5321,7 +6443,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.641
@@ -5338,7 +6466,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.555
@@ -5355,7 +6489,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.638
@@ -5372,7 +6512,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.663
@@ -5389,7 +6535,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.57
@@ -5406,7 +6558,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.677
@@ -5423,7 +6581,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.736
@@ -5514,7 +6678,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.631
@@ -5531,7 +6701,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.664
@@ -5548,7 +6724,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.492
@@ -5565,7 +6747,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.341
@@ -5582,7 +6770,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.582
@@ -5599,7 +6793,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.372
@@ -5616,7 +6816,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.662
@@ -5633,7 +6839,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.537
@@ -5650,7 +6862,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.154
@@ -5667,7 +6885,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.393
@@ -5684,7 +6908,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.395
@@ -5701,7 +6931,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.509
@@ -5718,7 +6954,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.412
@@ -5735,7 +6977,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.581
@@ -5752,7 +7000,13 @@
       },
       {
        "page": "decrire",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "decrire:5",
+        "decrire:6",
+        "decrire:2",
+        "decrire:3"
+       ]
       }
      ],
      "poids": 0.412
@@ -5823,7 +7077,13 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "decrire:2",
+        "decrire:3",
+        "decrire:5",
+        "decrire:6"
+       ]
       },
       {
        "page": "manger",
@@ -5841,7 +7101,13 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "decrire:2",
+        "decrire:3",
+        "decrire:5",
+        "decrire:6"
+       ]
       },
       {
        "page": "manger",
@@ -5858,7 +7124,13 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "decrire:2",
+        "decrire:3",
+        "decrire:5",
+        "decrire:6"
+       ]
       },
       {
        "page": "manger",
@@ -5875,7 +7147,13 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "decrire:2",
+        "decrire:3",
+        "decrire:5",
+        "decrire:6"
+       ]
       },
       {
        "page": "manger",
@@ -5892,7 +7170,13 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "decrire:2",
+        "decrire:3",
+        "decrire:5",
+        "decrire:6"
+       ]
       },
       {
        "page": "manger",
@@ -5909,7 +7193,13 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "decrire:2",
+        "decrire:3",
+        "decrire:5",
+        "decrire:6"
+       ]
       },
       {
        "page": "manger",
@@ -6351,11 +7641,22 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "classe-2:5",
+        "classe-2:4",
+        "classe-2:10",
+        "classe-2:6"
+       ]
       },
       {
        "page": "jouer",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "jouer:14",
+        "jouer-2:14",
+        "jouer:15"
+       ]
       }
      ],
      "poids": 0.957
@@ -6368,7 +7669,13 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "classe-2:0",
+        "classe-2:1",
+        "classe-2:4",
+        "classe-2:10"
+       ]
       }
      ],
      "poids": 0.927
@@ -6398,11 +7705,23 @@
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "gens",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "gens:0",
+        "gens:2",
+        "gens:3",
+        "gens:9"
+       ]
       }
      ],
      "poids": 0.681
@@ -6415,11 +7734,21 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.6
+       "poids": 0.6,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "classe-2",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "classe-2:6",
+        "classe-2:10"
+       ]
       }
      ],
      "poids": 0.671
@@ -6432,7 +7761,13 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "classe-2:2",
+        "classe-2:6",
+        "classe-2:3",
+        "classe-2:4"
+       ]
       }
      ],
      "poids": 0.569
@@ -6445,7 +7780,13 @@
      "suites": [
       {
        "page": "classe-2",
-       "poids": 1.0
+       "poids": 1.0,
+       "cases": [
+        "classe-2:3",
+        "classe-2:6",
+        "classe-2:4",
+        "classe-2:2"
+       ]
       }
      ],
      "poids": 0.658
@@ -6589,11 +7930,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.406
@@ -6606,11 +7959,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.264
@@ -6623,11 +7988,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.377
@@ -6640,11 +8017,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.366
@@ -6657,11 +8046,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.35
@@ -6674,11 +8075,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.622
@@ -6691,11 +8104,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.458
@@ -6708,11 +8133,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.293
@@ -6725,11 +8162,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.532
@@ -6742,11 +8191,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.232
@@ -6759,11 +8220,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.485
@@ -6776,11 +8249,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.555
@@ -6793,11 +8278,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.46
@@ -6810,11 +8307,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.637
@@ -6827,11 +8336,23 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "actions:10",
+        "actions:11",
+        "actions:12",
+        "actions-2:12"
+       ]
       }
      ],
      "poids": 0.523
@@ -6895,15 +8416,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 1.0
@@ -6916,15 +8455,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.883
@@ -6937,15 +8494,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.834
@@ -6958,15 +8533,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.811
@@ -6979,15 +8572,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.828
@@ -7000,15 +8611,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.716
@@ -7021,15 +8650,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.658
@@ -7042,15 +8689,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.578
@@ -7063,15 +8728,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.64
@@ -7084,15 +8767,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.587
@@ -7105,15 +8806,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.619
@@ -7126,15 +8845,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.555
@@ -7147,15 +8884,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.54
@@ -7168,15 +8923,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.503
@@ -7189,15 +8962,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.568
@@ -7210,15 +9001,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.527
@@ -7231,15 +9040,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.543
@@ -7252,15 +9079,33 @@
      "suites": [
       {
        "page": "decrire",
-       "poids": 0.4
+       "poids": 0.4,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:13",
+        "decrire:14"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:5",
+        "actions-2:10",
+        "actions-2:5",
+        "actions-2:7"
+       ]
       },
       {
        "page": "couleurs",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "couleurs:4",
+        "couleurs:5",
+        "couleurs:9",
+        "couleurs:10"
+       ]
       }
      ],
      "poids": 0.451
@@ -7307,15 +9152,33 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:12",
+        "actions:10",
+        "actions:15",
+        "actions:16"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:8",
+        "decrire:19"
+       ]
       }
      ],
      "poids": 0.917
@@ -7328,15 +9191,33 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:12",
+        "actions:10",
+        "actions:15",
+        "actions:16"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:8",
+        "decrire:19"
+       ]
       }
      ],
      "poids": 0.714
@@ -7349,15 +9230,33 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:12",
+        "actions:10",
+        "actions:15",
+        "actions:16"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:8",
+        "decrire:19"
+       ]
       }
      ],
      "poids": 0.635
@@ -7370,15 +9269,33 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:12",
+        "actions:10",
+        "actions:15",
+        "actions:16"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:8",
+        "decrire:19"
+       ]
       }
      ],
      "poids": 0.77
@@ -7391,15 +9308,33 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:12",
+        "actions:10",
+        "actions:15",
+        "actions:16"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:8",
+        "decrire:19"
+       ]
       }
      ],
      "poids": 0.864
@@ -7412,15 +9347,33 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:12",
+        "actions:10",
+        "actions:15",
+        "actions:16"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:8",
+        "decrire:19"
+       ]
       }
      ],
      "poids": 0.679
@@ -7433,15 +9386,33 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:12",
+        "actions:10",
+        "actions:15",
+        "actions:16"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:8",
+        "decrire:19"
+       ]
       }
      ],
      "poids": 0.748
@@ -7454,15 +9425,33 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:12",
+        "actions:10",
+        "actions:15",
+        "actions:16"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:8",
+        "decrire:19"
+       ]
       }
      ],
      "poids": 0.599
@@ -7475,15 +9464,33 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:12",
+        "actions:10",
+        "actions:15",
+        "actions:16"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:8",
+        "decrire:19"
+       ]
       }
      ],
      "poids": 0.605
@@ -7496,15 +9503,33 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:12",
+        "actions:10",
+        "actions:15",
+        "actions:16"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:8",
+        "decrire:19"
+       ]
       }
      ],
      "poids": 0.791
@@ -7517,15 +9542,33 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:12",
+        "actions:10",
+        "actions:15",
+        "actions:16"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:8",
+        "decrire:19"
+       ]
       }
      ],
      "poids": 0.573
@@ -7538,15 +9581,33 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:12",
+        "actions:10",
+        "actions:15",
+        "actions:16"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:8",
+        "decrire:19"
+       ]
       }
      ],
      "poids": 0.456
@@ -7559,15 +9620,33 @@
      "suites": [
       {
        "page": "couleurs",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
       },
       {
        "page": "actions",
-       "poids": 0.3
+       "poids": 0.3,
+       "cases": [
+        "actions:12",
+        "actions:10",
+        "actions:15",
+        "actions:16"
+       ]
       },
       {
        "page": "decrire",
-       "poids": 0.2
+       "poids": 0.2,
+       "cases": [
+        "decrire:0",
+        "decrire:1",
+        "decrire:8",
+        "decrire:19"
+       ]
       }
      ],
      "poids": 0.503
@@ -7594,7 +9673,13 @@
      "suites": [
       {
        "page": "habits",
-       "poids": 0.5
+       "poids": 0.5,
+       "cases": [
+        "habits:0",
+        "habits:4",
+        "habits:1",
+        "habits:8"
+       ]
       },
       {
        "page": "classe-2",
@@ -7652,7 +9737,7 @@
    ]
   }
  ],
- "versionDesPoids": "2026-11-05-lexique383-suites2",
+ "versionDesPoids": "2026-11-05-lexique383-choix3",
  "sources": [
   "Fréquences : Lexique 3.83 (B. New, C. Pallier, lexique.org), CC BY-SA 4.0"
  ]

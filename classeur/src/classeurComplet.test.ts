@@ -100,7 +100,10 @@ describe("le classeur complet", () => {
     const pictos = (x: typeof c) => x.pages.flatMap((p) => p.cases.flatMap((k) => (k?.image ? [k.image] : [])));
     expect(pictos(retour)).toEqual(pictos(c));
     // Les poids des ensembles par thème font le voyage.
-    const suites = (x: typeof c) => x.pages.flatMap((p) => p.cases.flatMap((k) => (k?.suites ? [`${k.mot}→${k.suites.map((s) => `${pageDe(x, s.page)?.nom}:${s.poids}`).join(",")}`] : [])));
+    const motDe = (x: typeof c, id: string) => x.pages.flatMap((p) => p.cases).find((k) => k?.id === id)?.mot;
+    const suites = (x: typeof c) => x.pages.flatMap((p) => p.cases.flatMap((k) => (k?.suites
+      ? [`${k.mot}→${k.suites.map((s) => `${pageDe(x, s.page)?.nom}:${s.poids}:${(s.cases ?? []).map((id) => motDe(x, id)).join("/")}`).join(",")}`]
+      : [])));
     expect(suites(retour)).toEqual(suites(c));
     expect(retour.pages.flatMap((p) => p.cases.map((k) => k?.poids ?? null))).toEqual(c.pages.flatMap((p) => p.cases.map((k) => k?.poids ?? null)));
   });
@@ -144,8 +147,11 @@ describe("un classeur complet d'avant les poids", () => {
     expect(repris.modifieLe).toBe(sansPoids.modifieLe);
     const jeVeux = (c: typeof neuf) => c.pages.flatMap((p) => p.cases).find((k) => k?.mot === "je veux" && k.lien)!;
     const page = (c: typeof neuf, nom: string) => c.pages.find((p) => p.nom === nom)!.id;
-    expect(ensemblesApres(repris, jeVeux(repris), page(repris, "Je veux")).map((e) => e.nom))
-      .toEqual(ensemblesApres(neuf, jeVeux(neuf), page(neuf, "Je veux")).map((e) => e.nom));
+    const vu = (c: typeof neuf, e: ReturnType<typeof ensemblesApres>) => e.map((x) => `${x.nom}: ${x.cases.map((k) => k.mot).join(", ")}`);
+    expect(vu(repris, ensemblesApres(repris, jeVeux(repris), page(repris, "Je veux"))))
+      .toEqual(vu(neuf, ensemblesApres(neuf, jeVeux(neuf), page(neuf, "Je veux"))));
+    const bonjour = (c: typeof neuf) => c.pages.flatMap((p) => p.cases).find((k) => k?.mot === "bonjour")!;
+    expect(vu(repris, ensemblesApres(repris, bonjour(repris), repris.accueil))).toEqual(["Les gens: maman, papa, maîtresse, copain"]);
     expect(repris.pages.map((p) => p.cases.map((k) => k?.mot ?? null))).toEqual(neuf.pages.map((p) => p.cases.map((k) => k?.mot ?? null)));
   });
   it("ne touche pas un classeur qui a déjà les poids d'aujourd'hui ; remplace ceux d'une autre version", () => {

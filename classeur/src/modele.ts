@@ -27,9 +27,12 @@ export interface Case {
   masquee?: boolean;
   /** Son poids dans son thème (0 à 1), calculé à l'avance : les plus lourdes sont proposées d'abord. */
   poids?: number;
-  /** Après elle, les thèmes à proposer (une page, et son poids), calculés à l'avance. */
-  suites?: { page: string; poids: number }[];
+  /** Après elle, les thèmes à proposer (une page, son poids, et parfois ses pictos, choisis pour cette case), calculés à l'avance. */
+  suites?: Suite[];
 }
+
+/** Un thème qui vient après une case : sa page, son poids ; les cases à montrer, quand elles ont été choisies. */
+export interface Suite { page: string; poids: number; cases?: string[] }
 
 export interface Page {
   id: string;

@@ -34,20 +34,25 @@ export function ensemblesApres(
   c: Classeur, k: Case | null | undefined, pageOuverte: string, max = ENSEMBLES_MAX, parEnsemble = PICTOS_PAR_ENSEMBLE,
 ): Ensemble[] {
   if (!k?.suites?.length) return [];
+  const parId = new Map(c.pages.flatMap((pg) => pg.cases.flatMap((x) => (x ? [[x.id, x] as const] : []))));
   const sortie: Ensemble[] = [];
   for (const s of [...k.suites].sort((a, b) => b.poids - a.poids)) {
     const p = pageDe(c, s.page);
     const section = p && sectionDe(c, p.id);
     if (!p || !section || sortie.some((e) => e.page === p.id)) continue;
     if (p.id === pageOuverte) continue;
-    // La page du thème et la suite de sa section, sauf la page ouverte : ses pictos sont déjà sous les yeux.
+    const ouverte = new Set((pageDe(c, pageOuverte)?.cases ?? []).flatMap((x) => (x ? [x.id] : [])));
+    const montrable = (x: Case | null | undefined): x is Case =>
+      !!x && !x.masquee && x.id !== k.id && !ouverte.has(x.id) && !!(x.mot.trim() || x.image);
+    // Les pictos choisis pour cette suite d'abord (« bonjour » → maman, papa…), dans leur ordre.
+    const choisies = (s.cases ?? []).map((id) => parId.get(id)).filter(montrable);
+    // Puis, s'il en manque, la page du thème, ses pictos les plus lourds en tête, et la suite de sa section.
     const pages = section.pages.slice(section.pages.findIndex((x) => x.id === p.id)).filter((x) => x.id !== pageOuverte);
-    // La page du thème d'abord, ses pictos les plus lourds en tête ; la suite de la section seulement s'il en manque.
-    const cases = pages.flatMap((x, page) => x.cases.map((y, rang) => ({ x: y, page, rang })))
-      .filter((y): y is { x: Case; page: number; rang: number } => !!y.x && !y.x.masquee && y.x.id !== k.id && !!(y.x.mot.trim() || y.x.image))
+    const lourdes = pages.flatMap((x, page) => x.cases.map((y, rang) => ({ x: y, page, rang })))
+      .filter((y): y is { x: Case; page: number; rang: number } => montrable(y.x) && !choisies.includes(y.x))
       .sort((a, b) => a.page - b.page || (b.x.poids ?? 0) - (a.x.poids ?? 0) || a.rang - b.rang)
-      .slice(0, parEnsemble)
       .map(({ x }) => x);
+    const cases = [...choisies, ...lourdes].slice(0, parEnsemble);
     if (!cases.length) continue;
     sortie.push({ page: p.id, nom: p.nom, section: section.numero, poids: s.poids, cases });
     if (sortie.length >= max) break;
