@@ -11,15 +11,32 @@
 // diapositives d'accueil d'avant (réglage « onboardingVu ») : une
 // installation qui les avait déjà vues ne le voit pas, elle n'a rien à
 // installer de nouveau.
+//
+// Hors connexion, les pictogrammes peuvent attendre : « Installer plus tard »
+// (« oui ajoute "Installer plus tard" hors connexion », le même jour). Ils
+// restent obligatoires : l'étape revient à chaque lancement, seule, jusqu'à
+// ce qu'ils soient installés.
 
 /** Le réglage qui retient que le premier lancement est fait : sa date, ou « deja-installee ». */
 export const CLE_PREMIER_LANCEMENT = "premierLancement";
 
-/** Ce que le lancement doit faire : montrer le parcours, le noter comme fait pour une installation d'avant, ou rien. */
-export function suiteDuLancement(fait: string | null | undefined, accueilVu: string | null | undefined): "montrer" | "deja-installee" | "rien" {
-  if (fait) return "rien";
+/** Le réglage qui retient que les pictogrammes ont été remis à plus tard, faute de connexion. */
+export const CLE_PICTOS_PLUS_TARD = "premierLancementPictos";
+export const PICTOS_PLUS_TARD = "plus-tard";
+
+/**
+ * Ce que le lancement doit faire : montrer le parcours, revenir aux seuls pictogrammes remis à plus tard, noter le
+ * parcours comme fait pour une installation d'avant, ou rien.
+ */
+export function suiteDuLancement(
+  fait: string | null | undefined, accueilVu: string | null | undefined, pictosPlusTard?: string | null,
+): "montrer" | "pictos" | "deja-installee" | "rien" {
+  if (fait) return pictosPlusTard === PICTOS_PLUS_TARD ? "pictos" : "rien";
   return accueilVu ? "deja-installee" : "montrer";
 }
+
+/** « Installer plus tard » ne se propose que sans connexion, ou quand un téléchargement vient d'échouer. */
+export const installerPlusTardPossible = (enLigne: boolean, erreur: boolean, enCours: boolean): boolean => !enCours && (!enLigne || erreur);
 
 export type EtapeDuLancement = "pictos" | "cle" | "edt";
 
