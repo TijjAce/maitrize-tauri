@@ -29,6 +29,16 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 5525,
+     "suites": [
+      {
+       "page": "dire",
+       "poids": 0.6
+      },
+      {
+       "page": "probleme",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.924
     },
     {
@@ -43,6 +53,24 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 37163,
+     "suites": [
+      {
+       "page": "manger",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      },
+      {
+       "page": "boire",
+       "poids": 0.2
+      },
+      {
+       "page": "actions",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.24
     },
     {
@@ -51,6 +79,16 @@
      "bord": "#8a8f98",
      "arasaac": 5358,
      "dire": "c'est fini",
+     "suites": [
+      {
+       "page": "veux",
+       "poids": 0.6
+      },
+      {
+       "page": "jouer",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.167
     },
     {
@@ -58,6 +96,12 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 38251,
+     "suites": [
+      {
+       "page": "probleme",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.565
     },
     {
@@ -65,6 +109,20 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 4570,
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "habits",
+       "poids": 0.3
+      },
+      {
+       "page": "classe",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.321
     },
     {
@@ -72,6 +130,16 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 8109,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.6
+      },
+      {
+       "page": "actions",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.733
     },
     {
@@ -79,6 +147,28 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2474,
+     "suites": [
+      {
+       "page": "animaux",
+       "poids": 0.25
+      },
+      {
+       "page": "gens",
+       "poids": 0.25
+      },
+      {
+       "page": "jouer",
+       "poids": 0.2
+      },
+      {
+       "page": "lieux",
+       "poids": 0.15
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.15
+      }
+     ],
      "poids": 0.214
     },
     {
@@ -86,6 +176,12 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 6009,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.655
     },
     {
@@ -93,6 +189,12 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 5896,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.597
     },
     {
@@ -100,6 +202,12 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 8128,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.662
     },
     {
@@ -114,6 +222,12 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 11625,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.554
     },
     {
@@ -129,6 +243,12 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 27363,
+     "suites": [
+      {
+       "page": "questions",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.623
     },
     {
@@ -136,6 +256,12 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 34639,
+     "suites": [
+      {
+       "page": "dire",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.212
     },
     {
@@ -144,6 +270,16 @@
      "bord": "#d6408f",
      "arasaac": 7158,
      "dire": "c'est à moi",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.693
     },
     {
@@ -152,6 +288,16 @@
      "bord": "#d6408f",
      "arasaac": 2608,
      "dire": "c'est à toi",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.664
     }
    ]
@@ -768,6 +914,20 @@
      "bord": "#8a8f98",
      "arasaac": 9839,
      "dire": "c'était avant",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "lieux",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.17
     },
     {
@@ -775,6 +935,20 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 13026,
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "lieux",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.179
     },
     {
@@ -782,6 +956,20 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 9829,
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "lieux",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.168
     },
     {
@@ -789,6 +977,20 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 6926,
+     "suites": [
+      {
+       "page": "lieux",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.15
     },
     {
@@ -796,6 +998,20 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 7152,
+     "suites": [
+      {
+       "page": "lieux",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.158
     }
    ]
@@ -897,6 +1113,12 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 4550,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.14
     },
     {
@@ -904,6 +1126,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 4570,
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.5
+      },
+      {
+       "page": "habits",
+       "poids": 0.25
+      },
+      {
+       "page": "classe",
+       "poids": 0.25
+      }
+     ],
      "poids": 0.208
     },
     {
@@ -926,6 +1162,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2369,
+     "suites": [
+      {
+       "page": "lieux-2",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.615
     },
     {
@@ -1112,6 +1354,12 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 2314,
+     "suites": [
+      {
+       "page": "veux",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.724
     },
     {
@@ -1119,6 +1367,12 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 2300,
+     "suites": [
+      {
+       "page": "habits",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.709
     },
     {
@@ -1126,6 +1380,12 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 2401,
+     "suites": [
+      {
+       "page": "habits",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.722
     },
     {
@@ -1133,6 +1393,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 10261,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "animaux",
+       "poids": 0.3
+      },
+      {
+       "page": "lieux",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.821
     },
     {
@@ -1156,6 +1430,20 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 4570,
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "habits",
+       "poids": 0.3
+      },
+      {
+       "page": "classe",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.083
     },
     {
@@ -1171,6 +1459,16 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 7195,
+     "suites": [
+      {
+       "page": "classe",
+       "poids": 0.5
+      },
+      {
+       "page": "jouer",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.227
     },
     {
@@ -1200,6 +1498,12 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 4629,
+     "suites": [
+      {
+       "page": "classe",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.642
     },
     {
@@ -1207,6 +1511,12 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 27363,
+     "suites": [
+      {
+       "page": "questions",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.216
     },
     {
@@ -1221,6 +1531,16 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 35553,
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "veux",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.533
     },
     {
@@ -1369,6 +1689,16 @@
      "fond": "#fff2b8",
      "bord": "#e3b800",
      "arasaac": 12264,
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.19
     },
     {
@@ -1389,6 +1719,20 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 6156,
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "manger",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.647
     },
     {
@@ -1418,6 +1762,12 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 4697,
+     "suites": [
+      {
+       "page": "habits",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.093
     },
     {
@@ -1452,6 +1802,16 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 25823,
+     "suites": [
+      {
+       "page": "habits",
+       "poids": 0.5
+      },
+      {
+       "page": "mal",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.362
     },
     {
@@ -1639,6 +1999,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 3245,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.811
     },
     {
@@ -1646,6 +2020,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 2606,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.741
     },
     {
@@ -1653,6 +2041,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 28671,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.685
     },
     {
@@ -1660,6 +2062,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 2314,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.665
     },
     {
@@ -1667,6 +2083,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 2261,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.597
     },
     {
@@ -1674,6 +2104,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 28742,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.661
     },
     {
@@ -1681,6 +2125,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 31310,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.645
     },
     {
@@ -1688,6 +2146,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 2574,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.564
     },
     {
@@ -1695,6 +2167,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 31408,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.567
     },
     {
@@ -1702,6 +2188,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 2374,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.531
     },
     {
@@ -1709,6 +2209,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 26985,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.492
     },
     {
@@ -1716,6 +2230,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 8707,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.437
     },
     {
@@ -1723,6 +2251,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 7253,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.662
     },
     {
@@ -1730,6 +2272,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 36911,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.474
     },
     {
@@ -1737,6 +2293,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 36295,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.614
     },
     {
@@ -1744,6 +2314,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 32390,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.52
     },
     {
@@ -1751,6 +2335,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 5397,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.433
     },
     {
@@ -1758,6 +2356,20 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 5504,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "probleme",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.712
     },
     {
@@ -1889,6 +2501,16 @@
      "fond": "#e9ddf6",
      "bord": "#8a4fd8",
      "arasaac": 9829,
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.5
+      },
+      {
+       "page": "jouer",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.638
     },
     {
@@ -1958,6 +2580,16 @@
      "fond": "#e9ddf6",
      "bord": "#8a4fd8",
      "arasaac": 4570,
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.6
+      },
+      {
+       "page": "habits",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.591
     },
     {
@@ -1965,6 +2597,12 @@
      "fond": "#e9ddf6",
      "bord": "#8a4fd8",
      "arasaac": 7064,
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.572
     },
     {
@@ -2498,6 +3136,24 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 37163,
+     "suites": [
+      {
+       "page": "manger",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      },
+      {
+       "page": "boire",
+       "poids": 0.2
+      },
+      {
+       "page": "actions",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.236
     },
     {
@@ -2754,6 +3410,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 8109,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.59
     }
    ]
@@ -2769,6 +3431,20 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 7034,
+     "suites": [
+      {
+       "page": "classe-2",
+       "poids": 0.4
+      },
+      {
+       "page": "lieux-2",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.208
     },
     {
@@ -2776,6 +3452,20 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 7814,
+     "suites": [
+      {
+       "page": "classe-2",
+       "poids": 0.4
+      },
+      {
+       "page": "lieux-2",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.206
     },
     {
@@ -2783,6 +3473,20 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 7047,
+     "suites": [
+      {
+       "page": "classe-2",
+       "poids": 0.4
+      },
+      {
+       "page": "lieux-2",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.168
     },
     {
@@ -2790,6 +3494,16 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 7064,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.7
+      },
+      {
+       "page": "animaux",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.203
     },
     {
@@ -2797,6 +3511,20 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 36758,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.3
+      },
+      {
+       "page": "lieux-2",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.163
     },
     {
@@ -2830,6 +3558,16 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2804,
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "lieux",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.476
     },
     {
@@ -2837,6 +3575,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 35033,
+     "suites": [
+      {
+       "page": "classe-2",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.535
     },
     {
@@ -2851,6 +3595,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2369,
+     "suites": [
+      {
+       "page": "lieux-2",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.541
     },
     {
@@ -2907,6 +3657,16 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 4735,
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.5
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.47
     },
     {
@@ -2914,6 +3674,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 13354,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.458
     },
     {
@@ -2921,6 +3687,16 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 3239,
+     "suites": [
+      {
+       "page": "sens",
+       "poids": 0.5
+      },
+      {
+       "page": "probleme",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.476
     },
     {
@@ -2928,6 +3704,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 3345,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.626
     },
     {
@@ -2935,6 +3717,16 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2315,
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "gens",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.461
     },
     {
@@ -2942,6 +3734,16 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 6052,
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "gens",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.446
     }
    ],
@@ -2958,6 +3760,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2269,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.791
     },
     {
@@ -2965,6 +3781,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2540,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.608
     },
     {
@@ -2972,6 +3802,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2482,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.707
     },
     {
@@ -2979,6 +3823,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2339,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.903
     },
     {
@@ -2986,6 +3844,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 8308,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.489
     },
     {
@@ -2993,6 +3865,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 32580,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.715
     },
     {
@@ -3000,6 +3886,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 4759,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.389
     },
     {
@@ -3007,6 +3907,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 4608,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.415
     },
     {
@@ -3014,6 +3928,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 23891,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.369
     },
     {
@@ -3021,6 +3949,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2277,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.587
     },
     {
@@ -3028,6 +3970,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2529,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.379
     },
     {
@@ -3035,6 +3991,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2348,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.548
     },
     {
@@ -3063,6 +4033,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 24795,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.669
     },
     {
@@ -3070,6 +4054,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2450,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.672
     },
     {
@@ -3077,6 +4075,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 28099,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.335
     },
     {
@@ -3084,6 +4096,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 6945,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.401
     },
     {
@@ -3091,6 +4117,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 21845,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.334
     },
     {
@@ -3098,6 +4138,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 25966,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.243
     },
     {
@@ -3105,6 +4159,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2603,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4
+      },
+      {
+       "page": "decrire",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.656
     }
    ]
@@ -3121,6 +4189,12 @@
      "bord": "#d6408f",
      "arasaac": 7064,
      "dire": "joue avec moi",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.208
     },
     {
@@ -3129,6 +4203,16 @@
      "bord": "#d6408f",
      "arasaac": 7158,
      "dire": "c'est à moi",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.206
     },
     {
@@ -3137,6 +4221,16 @@
      "bord": "#d6408f",
      "arasaac": 2608,
      "dire": "c'est à toi",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.204
     },
     {
@@ -3144,6 +4238,24 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 37163,
+     "suites": [
+      {
+       "page": "manger",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      },
+      {
+       "page": "boire",
+       "poids": 0.2
+      },
+      {
+       "page": "actions",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.203
     },
     {
@@ -3152,6 +4264,16 @@
      "bord": "#8a8f98",
      "arasaac": 5358,
      "dire": "c'est fini",
+     "suites": [
+      {
+       "page": "veux",
+       "poids": 0.6
+      },
+      {
+       "page": "jouer",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.131
     },
     {
@@ -3175,6 +4297,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 28295,
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.502
     },
     {
@@ -3182,6 +4310,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 8187,
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.53
     },
     {
@@ -3189,6 +4323,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2713,
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.486
     },
     {
@@ -3210,6 +4350,16 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2315,
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "gens",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.547
     },
     {
@@ -3217,6 +4367,16 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 6052,
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "gens",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.528
     },
     {
@@ -3263,6 +4423,16 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 33990,
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.5
+      },
+      {
+       "page": "gens",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.553
     }
    ],
@@ -3288,6 +4458,20 @@
      "bord": "#e07b12",
      "arasaac": 8681,
      "dire": "dans la cour",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.798
     },
     {
@@ -3296,6 +4480,20 @@
      "bord": "#e07b12",
      "arasaac": 5913,
      "dire": "en classe",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.773
     },
     {
@@ -3304,6 +4502,20 @@
      "bord": "#e07b12",
      "arasaac": 9824,
      "dire": "à la cantine",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.532
     },
     {
@@ -3312,6 +4524,20 @@
      "bord": "#e07b12",
      "arasaac": 2317,
      "dire": "à la maison",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.879
     },
     {
@@ -3319,6 +4545,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 5475,
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.585
     },
     {
@@ -3327,6 +4567,20 @@
      "bord": "#e07b12",
      "arasaac": 2859,
      "dire": "au parc",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.613
     },
     {
@@ -3335,6 +4589,20 @@
      "bord": "#e07b12",
      "arasaac": 3142,
      "dire": "à la piscine",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.57
     },
     {
@@ -3343,6 +4611,20 @@
      "bord": "#e07b12",
      "arasaac": 6005,
      "dire": "au gymnase",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.435
     },
     {
@@ -3351,6 +4633,20 @@
      "bord": "#e07b12",
      "arasaac": 3065,
      "dire": "à la bibliothèque",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.528
     },
     {
@@ -3359,6 +4655,20 @@
      "bord": "#e07b12",
      "arasaac": 9918,
      "dire": "à l'infirmerie",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.441
     },
     {
@@ -3367,6 +4677,20 @@
      "bord": "#e07b12",
      "arasaac": 2434,
      "dire": "au jardin",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.587
     },
     {
@@ -3375,6 +4699,20 @@
      "bord": "#e07b12",
      "arasaac": 3082,
      "dire": "à l'école",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.672
     },
     {
@@ -3383,6 +4721,20 @@
      "bord": "#e07b12",
      "arasaac": 2467,
      "dire": "chez le médecin",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.631
     },
     {
@@ -3391,6 +4743,20 @@
      "bord": "#e07b12",
      "arasaac": 8649,
      "dire": "en promenade",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.454
     },
     {
@@ -3444,6 +4810,20 @@
      "bord": "#e07b12",
      "arasaac": 9116,
      "dire": "au magasin",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.556
     },
     {
@@ -3452,6 +4832,20 @@
      "bord": "#e07b12",
      "arasaac": 33954,
      "dire": "à la salle de bain",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.568
     },
     {
@@ -3460,6 +4854,20 @@
      "bord": "#e07b12",
      "arasaac": 33068,
      "dire": "dans ma chambre",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.681
     },
     {
@@ -3468,6 +4876,20 @@
      "bord": "#e07b12",
      "arasaac": 5965,
      "dire": "à la cuisine",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.572
     },
     {
@@ -3476,6 +4898,20 @@
      "bord": "#e07b12",
      "arasaac": 6211,
      "dire": "au salon",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.497
     },
     {
@@ -3484,6 +4920,20 @@
      "bord": "#e07b12",
      "arasaac": 2826,
      "dire": "à la plage",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.51
     },
     {
@@ -3492,6 +4942,20 @@
      "bord": "#e07b12",
      "arasaac": 2666,
      "dire": "à la forêt",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.478
     },
     {
@@ -3500,6 +4964,20 @@
      "bord": "#e07b12",
      "arasaac": 3337,
      "dire": "à la ferme",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.542
     },
     {
@@ -3508,6 +4986,20 @@
      "bord": "#e07b12",
      "arasaac": 32418,
      "dire": "au zoo",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.382
     },
     {
@@ -3516,6 +5008,20 @@
      "bord": "#e07b12",
      "arasaac": 2909,
      "dire": "à la montagne",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.516
     },
     {
@@ -3524,6 +5030,20 @@
      "bord": "#e07b12",
      "arasaac": 3116,
      "dire": "à l'hôpital",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.579
     },
     {
@@ -3532,6 +5052,20 @@
      "bord": "#e07b12",
      "arasaac": 4602,
      "dire": "au cinéma",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.511
     },
     {
@@ -3540,6 +5074,20 @@
      "bord": "#e07b12",
      "arasaac": 10283,
      "dire": "au restaurant",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.487
     },
     {
@@ -3548,6 +5096,20 @@
      "bord": "#e07b12",
      "arasaac": 4757,
      "dire": "au manège",
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.308
     },
     {
@@ -3555,6 +5117,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 8487,
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.582
     },
     {
@@ -3619,6 +5195,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2494,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.942
     },
     {
@@ -3626,6 +5212,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2462,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.858
     },
     {
@@ -3633,6 +5229,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2530,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.686
     },
     {
@@ -3640,6 +5246,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2483,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.702
     },
     {
@@ -3647,6 +5263,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2618,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.53
     },
     {
@@ -3654,6 +5280,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2541,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.716
     },
     {
@@ -3661,6 +5297,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 8652,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.645
     },
     {
@@ -3668,6 +5314,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 6911,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.641
     },
     {
@@ -3675,6 +5331,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2505,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.555
     },
     {
@@ -3682,6 +5348,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2527,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.638
     },
     {
@@ -3689,6 +5365,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2573,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.663
     },
     {
@@ -3696,6 +5382,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 6244,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.57
     },
     {
@@ -3703,6 +5399,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2316,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.677
     },
     {
@@ -3710,6 +5416,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2520,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.736
     },
     {
@@ -3732,6 +5448,24 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 37163,
+     "suites": [
+      {
+       "page": "manger",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      },
+      {
+       "page": "boire",
+       "poids": 0.2
+      },
+      {
+       "page": "actions",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.214
     },
     {
@@ -3740,6 +5474,16 @@
      "bord": "#8a8f98",
      "arasaac": 5358,
      "dire": "j'ai fini",
+     "suites": [
+      {
+       "page": "veux",
+       "poids": 0.6
+      },
+      {
+       "page": "jouer",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.176
     },
     {
@@ -3763,6 +5507,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2427,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.631
     },
     {
@@ -3770,6 +5524,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2502,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.664
     },
     {
@@ -3777,6 +5541,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 8312,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.492
     },
     {
@@ -3784,6 +5558,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 34012,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.341
     },
     {
@@ -3791,6 +5575,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2334,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.582
     },
     {
@@ -3798,6 +5592,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2328,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.372
     },
     {
@@ -3805,6 +5609,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2420,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.662
     },
     {
@@ -3812,6 +5626,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2686,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.537
     },
     {
@@ -3819,6 +5643,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2281,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.154
     },
     {
@@ -3826,6 +5660,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 5400,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.393
     },
     {
@@ -3833,6 +5677,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2619,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.395
     },
     {
@@ -3840,6 +5694,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2594,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.509
     },
     {
@@ -3847,6 +5711,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 8354,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.412
     },
     {
@@ -3854,6 +5728,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 4952,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.581
     },
     {
@@ -3861,6 +5745,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2433,
+     "suites": [
+      {
+       "page": "boire",
+       "poids": 0.5
+      },
+      {
+       "page": "decrire",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.412
     },
     {
@@ -3926,6 +5820,16 @@
      "bord": "#e07b12",
      "arasaac": 2248,
      "dire": "de l'eau",
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.6
+      },
+      {
+       "page": "manger",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.963
     },
     {
@@ -3934,6 +5838,16 @@
      "bord": "#e07b12",
      "arasaac": 2445,
      "dire": "du lait",
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.6
+      },
+      {
+       "page": "manger",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.789
     },
     {
@@ -3941,6 +5855,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2624,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.6
+      },
+      {
+       "page": "manger",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.652
     },
     {
@@ -3948,6 +5872,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 11403,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.6
+      },
+      {
+       "page": "manger",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.654
     },
     {
@@ -3955,6 +5889,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 21326,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.6
+      },
+      {
+       "page": "manger",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.66
     },
     {
@@ -3962,6 +5906,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2962,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.6
+      },
+      {
+       "page": "manger",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.505
     },
     {
@@ -4039,6 +5993,24 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 37163,
+     "suites": [
+      {
+       "page": "manger",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      },
+      {
+       "page": "boire",
+       "poids": 0.2
+      },
+      {
+       "page": "actions",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.214
     },
     {
@@ -4054,6 +6026,16 @@
      "bord": "#8a8f98",
      "arasaac": 5358,
      "dire": "j'ai fini",
+     "suites": [
+      {
+       "page": "veux",
+       "poids": 0.6
+      },
+      {
+       "page": "jouer",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.148
     }
    ]
@@ -4366,6 +6348,16 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 7141,
+     "suites": [
+      {
+       "page": "classe-2",
+       "poids": 0.6
+      },
+      {
+       "page": "jouer",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.957
     },
     {
@@ -4373,6 +6365,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2380,
+     "suites": [
+      {
+       "page": "classe-2",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.927
     },
     {
@@ -4380,6 +6378,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2714,
+     "suites": [
+      {
+       "page": "classe-2",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.871
     },
     {
@@ -4408,6 +6412,16 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2348,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.671
     },
     {
@@ -4415,6 +6429,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2547,
+     "suites": [
+      {
+       "page": "classe-2",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.569
     },
     {
@@ -4422,6 +6442,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2511,
+     "suites": [
+      {
+       "page": "classe-2",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.658
     },
     {
@@ -4429,6 +6455,16 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2315,
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "gens",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.735
     },
     {
@@ -4450,6 +6486,16 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2872,
+     "suites": [
+      {
+       "page": "classe-2",
+       "poids": 0.6
+      },
+      {
+       "page": "jouer",
+       "poids": 0.4
+      }
+     ],
      "poids": 0.592
     },
     {
@@ -4492,6 +6538,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 2599,
+     "suites": [
+      {
+       "page": "classe-2",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.719
     },
     {
@@ -4513,6 +6565,12 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 27363,
+     "suites": [
+      {
+       "page": "questions",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.21
     }
    ]
@@ -4528,6 +6586,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2440,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.406
     },
     {
@@ -4535,6 +6603,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 3246,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.264
     },
     {
@@ -4542,6 +6620,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2591,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.377
     },
     {
@@ -4549,6 +6637,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2510,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.366
     },
     {
@@ -4556,6 +6654,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2359,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.35
     },
     {
@@ -4563,6 +6671,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2450,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.622
     },
     {
@@ -4570,6 +6688,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 8349,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.458
     },
     {
@@ -4577,6 +6705,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2409,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.293
     },
     {
@@ -4584,6 +6722,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2815,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.532
     },
     {
@@ -4591,6 +6739,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2475,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.232
     },
     {
@@ -4598,6 +6756,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2526,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.485
     },
     {
@@ -4605,6 +6773,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 3129,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.555
     },
     {
@@ -4612,6 +6790,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 3155,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.46
     },
     {
@@ -4619,6 +6807,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 3244,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.637
     },
     {
@@ -4626,6 +6824,16 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2611,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.5
+      }
+     ],
      "poids": 0.523
     },
     {
@@ -4648,6 +6856,12 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 35033,
+     "suites": [
+      {
+       "page": "classe-2",
+       "poids": 1.0
+      }
+     ],
      "poids": 0.187
     },
     {
@@ -4678,6 +6892,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2517,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 1.0
     },
     {
@@ -4685,6 +6913,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2406,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.883
     },
     {
@@ -4692,6 +6934,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2490,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.834
     },
     {
@@ -4699,6 +6955,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2520,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.811
     },
     {
@@ -4706,6 +6976,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2294,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.828
     },
     {
@@ -4713,6 +6997,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2609,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.716
     },
     {
@@ -4720,6 +7018,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2327,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.658
     },
     {
@@ -4727,6 +7039,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2489,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.578
     },
     {
@@ -4734,6 +7060,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2403,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.64
     },
     {
@@ -4741,6 +7081,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2563,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.587
     },
     {
@@ -4748,6 +7102,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2351,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.619
     },
     {
@@ -4755,6 +7123,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2546,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.555
     },
     {
@@ -4762,6 +7144,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2449,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.54
     },
     {
@@ -4769,6 +7165,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2372,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.503
     },
     {
@@ -4776,6 +7186,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2477,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.568
     },
     {
@@ -4783,6 +7207,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2488,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.527
     },
     {
@@ -4790,6 +7228,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2568,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.543
     },
     {
@@ -4797,6 +7249,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2465,
+     "suites": [
+      {
+       "page": "decrire",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3
+      }
+     ],
      "poids": 0.451
     },
     {
@@ -4838,6 +7304,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2242,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "decrire",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.917
     },
     {
@@ -4845,6 +7325,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2412,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "decrire",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.714
     },
     {
@@ -4852,6 +7346,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2290,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "decrire",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.635
     },
     {
@@ -4859,6 +7367,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2415,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "decrire",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.77
     },
     {
@@ -4866,6 +7388,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2622,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "decrire",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.864
     },
     {
@@ -4873,6 +7409,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2298,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "decrire",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.679
     },
     {
@@ -4880,6 +7430,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2565,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "decrire",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.748
     },
     {
@@ -4887,6 +7451,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2310,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "decrire",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.599
     },
     {
@@ -4894,6 +7472,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 39029,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "decrire",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.605
     },
     {
@@ -4901,6 +7493,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2613,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "decrire",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.791
     },
     {
@@ -4908,6 +7514,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2391,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "decrire",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.573
     },
     {
@@ -4915,6 +7535,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 13638,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "decrire",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.456
     },
     {
@@ -4922,6 +7556,20 @@
      "fond": "#fce6ca",
      "bord": "#e07b12",
      "arasaac": 2522,
+     "suites": [
+      {
+       "page": "couleurs",
+       "poids": 0.5
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "decrire",
+       "poids": 0.2
+      }
+     ],
      "poids": 0.503
     },
     {
@@ -5004,7 +7652,7 @@
    ]
   }
  ],
- "versionDesPoids": "2026-11-05-lexique383",
+ "versionDesPoids": "2026-11-05-lexique383-suites2",
  "sources": [
   "Fréquences : Lexique 3.83 (B. New, C. Pallier, lexique.org), CC BY-SA 4.0"
  ]

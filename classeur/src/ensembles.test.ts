@@ -33,8 +33,19 @@ describe("les ensembles de pictos par thème, aux poids calculés à l'avance", 
     expect(ensemblesApres(c, caseDe("Je veux dire…", "c'est…"), page("Je veux dire…").id).map((x) => x.nom)).toEqual(["C'est…", "Couleurs et formes"]);
   });
 
-  it("une case sans suites ne propose rien", () => {
-    expect(ensemblesApres(c, caseDe("Manger", "pomme"), page("Manger").id)).toEqual([]);
+  it("« regarde » propose ce qu'on montre : les animaux, les gens, les jeux (« j'ai pas forcément ce qui pourrait suivre »)", () => {
+    expect(ensemblesApres(c, caseDe("L'essentiel", "regarde"), c.accueil).map((x) => x.nom)).toEqual(["Les animaux", "Les gens", "Jouer"]);
+    expect(ensemblesApres(c, caseDe("Ça ne va pas", "j'ai froid"), page("Ça ne va pas").id).map((x) => x.nom)).toEqual(["S'habiller"]);
+  });
+
+  it("sur la deuxième page d'une section, propose la première (« lancer » → les jouets de la page Jouer)", () => {
+    const deuxieme = ordreDesPages(c).filter((p) => p.nom === "Jouer")[1];
+    const lancer = deuxieme.cases.find((k) => k?.mot === "lancer")!;
+    expect(noms(ensemblesApres(c, lancer, deuxieme.id))).toEqual(["Jouer : voiture, ballon, jeu de société, poupée"]);
+  });
+
+  it("une case qui finit la phrase ne propose rien", () => {
+    expect(ensemblesApres(c, caseDe("J'ai mal", "tête"), page("J'ai mal").id)).toEqual([]);
     expect(ensemblesApres(c, null, c.accueil)).toEqual([]);
   });
 

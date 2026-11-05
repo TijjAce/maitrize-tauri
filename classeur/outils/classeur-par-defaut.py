@@ -704,6 +704,100 @@ SUITES = {
 for _qui in GENS:
     SUITES.setdefault(_qui, [("actions", 50), ("lieux", 30), ("sens", 20)])
 
+# « Quand je dis regarde, j'ai pas forcément ce qui pourrait suivre » (5 novembre 2026) : tout ce qui appelle une
+# suite en reçoit une — d'abord par mot, puis par page.
+SUITES.update({
+    # L'essentiel.
+    "regarde": [("animaux", 25), ("gens", 25), ("jouer", 20), ("lieux", 15), ("classe-2", 15)],
+    "encore": [("manger", 30), ("jouer", 30), ("boire", 20), ("actions", 20)],
+    "fini": [("veux", 60), ("jouer", 40)],
+    "stop": [("probleme", 100)],
+    "aide-moi": [("actions", 40), ("habits", 30), ("classe", 30)],
+    "attends": [("gens", 60), ("actions", 40)],
+    "à moi": [("jouer", 60), ("classe-2", 40)],
+    "à toi": [("jouer", 60), ("classe-2", 40)],
+    "avec moi": [("jouer", 100)],
+    "bonjour": [("gens", 100)],
+    "au revoir": [("gens", 100)],
+    "merci": [("gens", 100)],
+    "pardon": [("gens", 100)],
+    "non": [("dire", 60), ("probleme", 40)],
+    "ce n'est pas ça": [("dire", 100)],
+    "je ne comprends pas": [("questions", 100)],
+    # Le temps, aux catégories : on raconte ce qui s'est passé, ce qui va venir.
+    "avant": [("actions", 40), ("lieux", 30), ("jouer", 30)],
+    "maintenant": [("actions", 40), ("lieux", 30), ("jouer", 30)],
+    "après": [("actions", 40), ("lieux", 30), ("jouer", 30)],
+    "hier": [("lieux", 40), ("actions", 30), ("jouer", 30)],
+    "demain": [("lieux", 40), ("actions", 30), ("jouer", 30)],
+    # Je veux.
+    "un câlin": [("gens", 100)],
+    "de l'aide": [("actions", 50), ("habits", 25), ("classe", 25)],
+    "dormir": [("lieux-2", 100)],
+    # Ça ne va pas.
+    "je suis fatigué": [("veux", 100)],
+    "j'ai chaud": [("habits", 100)],
+    "j'ai froid": [("habits", 100)],
+    "j'ai peur": [("gens", 40), ("animaux", 30), ("lieux", 30)],
+    "je veux arrêter": [("classe", 50), ("jouer", 50)],
+    "c'est trop dur": [("classe", 100)],
+    "je m'ennuie": [("jouer", 60), ("veux", 40)],
+    "je ne veux pas": [("actions", 40), ("manger", 30), ("jouer", 30)],
+    "c'est à moi": [("jouer", 60), ("classe-2", 40)],
+    "je suis mouillé": [("habits", 100)],
+    "ça me gêne": [("habits", 50), ("mal", 50)],
+    # Questions.
+    "et après ?": [("actions", 50), ("jouer", 50)],
+    "tu m'aides ?": [("actions", 60), ("habits", 40)],
+    "tu joues avec moi ?": [("jouer", 100)],
+    # Faire.
+    "attendre": [("gens", 100)],
+    "dans": [("classe-2", 40), ("lieux-2", 30), ("jouer", 30)],
+    "sur": [("classe-2", 40), ("lieux-2", 30), ("jouer", 30)],
+    "sous": [("classe-2", 40), ("lieux-2", 30), ("jouer", 30)],
+    "à côté": [("gens", 40), ("classe-2", 30), ("lieux-2", 30)],
+    "avec": [("gens", 70), ("animaux", 30)],
+    "sauter": [("jouer", 60), ("lieux", 40)],
+    "s'asseoir": [("classe-2", 100)],
+    "casser": [("jouer", 50), ("classe-2", 50)],
+    "rire": [("gens", 100)],
+    "pleurer": [("sens", 50), ("probleme", 50)],
+    "parler": [("gens", 100)],
+    "chanter": [("jouer", 60), ("gens", 40)],
+    "danser": [("jouer", 60), ("gens", 40)],
+    # Jouer.
+    "lancer": [("jouer", 100)],
+    "attraper": [("jouer", 100)],
+    "construire": [("jouer", 100)],
+    "faire semblant": [("jouer", 50), ("gens", 50)],
+    # En classe.
+    "lire": [("classe-2", 60), ("jouer", 40)],
+    "écrire": [("classe-2", 100)],
+    "compter": [("classe-2", 100)],
+    "peindre": [("couleurs", 60), ("classe-2", 40)],
+    "découper": [("classe-2", 100)],
+    "coller": [("classe-2", 100)],
+    "ranger": [("classe-2", 60), ("jouer", 40)],
+    "travailler": [("classe-2", 100)],
+})
+# Par page, pour les cases qui n'ont pas de règle à elles : après un lieu, ce qu'on y fait et avec qui ; après un jouet,
+# avec qui, comment il est, sa couleur ; après un aliment, la boisson et comment c'est… Les mots de la liste qui suit
+# chaque page n'en reçoivent pas : ils finissent une phrase.
+LIEUX = [("actions", 40), ("gens", 30), ("jouer", 30)]
+SUITES_PAR_PAGE = {
+    "sens": ([("gens", 40), ("probleme", 30), ("jouer", 30)], {"très"}),
+    "jouer": ([("gens", 40), ("decrire", 30), ("couleurs", 30)], set()),
+    "lieux": (LIEUX, {"ici", "là-bas", "à pied", "toilettes", "voiture", "bus"}),
+    "lieux-2": (LIEUX, {"en haut", "en bas", "devant", "derrière", "loin"}),
+    "manger": ([("boire", 50), ("decrire", 50)], {"c'est bon", "pas bon", "encore", "fini", "j'ai faim"}),
+    "manger-2": ([("boire", 50), ("decrire", 50)], {"cuillère", "fourchette", "couteau", "assiette", "bol"}),
+    "boire": ([("decrire", 60), ("manger", 40)], {"chaud", "froid", "c'est bon", "un peu", "beaucoup", "encore", "fini", "c'est renversé",
+                                                  "verre", "gourde", "paille", "bouteille", "tasse", "j'ai soif"}),
+    "classe-2": ([("couleurs", 50), ("actions", 50)], {"se laver les mains", "le manteau", "s'asseoir", "se mettre en rang", "silence"}),
+    "animaux": ([("decrire", 40), ("actions", 30), ("couleurs", 30)], set()),
+    "habits": ([("couleurs", 50), ("actions", 30), ("decrire", 20)], {"trop petit", "trop grand", "couche", "lunettes"}),
+}
+
 COULEURS = {
     "personne": ("#fff2b8", "#e3b800"), "verbe": ("#d9f0d4", "#2e9b3e"), "nom": ("#fce6ca", "#e07b12"),
     "adjectif": ("#d6e6f7", "#2f6fd0"), "social": ("#fadeeb", "#d6408f"), "question": ("#e9ddf6", "#8a4fd8"),
@@ -801,9 +895,12 @@ def main(banque, sortie, chemin_lexique=None):
                 c["dire"] = dire
             if lien:
                 c["lien"] = lien
-            if mot in SUITES:
-                total = sum(x for _, x in SUITES[mot])
-                c["suites"] = [{"page": cible, "poids": round(x / total, 3)} for cible, x in SUITES[mot]]
+            regle = SUITES.get(mot)
+            if regle is None and not lien and cle in SUITES_PAR_PAGE and mot not in SUITES_PAR_PAGE[cle][1]:
+                regle = SUITES_PAR_PAGE[cle][0]
+            if regle:
+                total = sum(x for _, x in regle)
+                c["suites"] = [{"page": cible, "poids": round(x / total, 3)} for cible, x in regle]
             c["_nature"] = nature
             c["_frequence"] = frequence(lex, mot, nature)
             sortie_cases.append(c)
@@ -820,6 +917,10 @@ def main(banque, sortie, chemin_lexique=None):
             assert c.get("lien") is None or c["lien"] in cles, c
             for x in c.get("suites", []):
                 assert x["page"] in cles, (c["mot"], x)
+    for cle, (regle, sans) in SUITES_PAR_PAGE.items():
+        assert cle in cles and all(x in cles for x, _ in regle), cle
+        mots = {c["mot"] for p in pages if p["cle"] == cle for c in p["cases"]}
+        assert sans <= mots, (cle, sans - mots)
     inconnus = sorted(set(SUITES) - {c["mot"] for p in pages for c in p["cases"]})
     assert not inconnus, f"des suites pour des mots absents : {inconnus}"
     # Le poids d'un picto dans son thème : sa fréquence en français parlé (Lexique, moitié) et son rang dans la
@@ -859,7 +960,7 @@ def main(banque, sortie, chemin_lexique=None):
     with open(os.path.join(sortie, "src", "donnees", "classeur-par-defaut.json"), "w", encoding="utf-8") as f:
         modele = {"nom": "Classeur complet", "accueil": "accueil", "categories": "categories", "pages": pages}
         # La version des poids : un classeur complet déjà posé reçoit ceux-ci au lancement quand elle change.
-        modele["versionDesPoids"] = "2026-11-05-lexique383" if lex else "2026-11-05-ordre"
+        modele["versionDesPoids"] = "2026-11-05-lexique383-suites2" if lex else "2026-11-05-ordre"
         if lex:
             modele["sources"] = ["Fréquences : Lexique 3.83 (B. New, C. Pallier, lexique.org), CC BY-SA 4.0"]
         json.dump(modele, f, ensure_ascii=False, indent=1)
