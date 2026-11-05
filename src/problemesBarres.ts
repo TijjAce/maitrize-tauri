@@ -97,7 +97,7 @@ export type Schema =
 
 /** Ce qui ne dépend pas des nombres : la situation racontée, les prénoms. */
 export type Situation =
-  | { forme: "parties"; contexte: number; categories: number[]; qui: string }
+  | { forme: "parties"; contexte: number; categories: number[]; qui: string; cadre?: ContexteParties }
   | { forme: "parts-egales"; contexte: number; qui: string }
   | { forme: "comparaison"; objets: number; noms: [string, string] };
 
@@ -132,8 +132,12 @@ function feuille(
 
 // ── Problèmes additifs : parties et tout ───────────────────────────────────
 
-interface Partie { groupe: Accord; attribut: Accord }
-interface ContexteParties { tout: Accord; lieu?: string; parties: Partie[]; objet: FormeObjet }
+export interface Partie { groupe: Accord; attribut: Accord }
+/**
+ * Un thème de problèmes partie-tout : le tout (« billes »), le lieu s'il y en a un (« Dans le panier ») — sinon une
+ * personne possède —, les parties (« billes rouges » / « rouges ») et ce qu'on dessine pour un non-lecteur.
+ */
+export interface ContexteParties { tout: Accord; lieu?: string; parties: Partie[]; objet: FormeObjet }
 
 const couleurs = (nom: Accord, adjectifs: Accord[]): Partie[] =>
   adjectifs.map(([s, p]) => ({ groupe: [`${nom[0]} ${s}`, `${nom[1]} ${p}`], attribut: [s, p] }));
@@ -170,6 +174,7 @@ export const CONTEXTES_PARTIES: ContexteParties[] = [
 const COULEURS_DES_MOTS: [RegExp, string][] = [
   [/rouge/, "#e53935"], [/bleu/, "#1e88e5"], [/vert/, "#43a047"], [/jaune/, "#fdd835"], [/noir/, "#455a64"],
   [/blanc/, "#ffffff"], [/chocolat/, "#6d4c41"], [/fraise/, "#f06292"], [/vanille/, "#fff3c4"],
+  [/orange/, "#fb8c00"], [/violet/, "#8e24aa"], [/rose/, "#f48fb1"], [/marron/, "#8d6e63"], [/gris/, "#9e9e9e"],
 ];
 /** À défaut de couleur dans les mots (moutons, vaches, chèvres), une par catégorie. */
 const COULEURS_DES_SORTES = ["#8d6e63", "#fb8c00", "#7e57c2"];
@@ -184,6 +189,8 @@ export type InconnuePartieTout = "tout" | "partie" | "melange";
 
 export interface ReglagesPartieTout {
   nombre: number;
+  /** Les thèmes où l'on tire : par défaut, tous ceux qui sont livrés (`CONTEXTES_PARTIES`). */
+  contextes?: ContexteParties[];
   parties: number;
   inconnue: InconnuePartieTout;
   /** Le tout ne dépasse pas ce nombre. */
@@ -241,11 +248,19 @@ export function problemePartieTout(reglages: ReglagesPartieTout, graine: number,
   const valeurs = partager(r, tout, combien, partMin);
   const cherche = reglages.inconnue === "melange" ? (i % 2 === 0 ? "tout" : "partie") : reglages.inconnue;
 
-  const possibles = CONTEXTES_PARTIES.map((_, k) => k).filter((k) => CONTEXTES_PARTIES[k].parties.length >= combien);
+  // Les thèmes choisis (ceux qui ont assez de parties), sinon tous ceux qui sont livrés.
+  const choisis = (reglages.contextes ?? []).filter((c) => c.parties.length >= combien);
+  const reserve = choisis.length ? choisis : CONTEXTES_PARTIES;
+  const possibles = reserve.map((_, k) => k).filter((k) => reserve[k].parties.length >= combien);
   const contexte = parmi(r, possibles);
-  const categories = melanger(r, CONTEXTES_PARTIES[contexte].parties.map((_, k) => k)).slice(0, combien);
+  const categories = melanger(r, reserve[contexte].parties.map((_, k) => k)).slice(0, combien);
   const qui = parmi(r, reglages.prenoms.length ? reglages.prenoms : PRENOMS);
-  const probleme = redigerPartieTout({ forme: "parties", contexte, categories, qui }, valeurs, cherche === "tout" ? -1 : combien - 1, reglages.enonces);
+  // Un thème livré se retrouve à son rang ; un autre voyage avec la situation.
+  const livre = CONTEXTES_PARTIES.indexOf(reserve[contexte]);
+  const situation: Extract<Situation, { forme: "parties" }> = livre >= 0
+    ? { forme: "parties", contexte: livre, categories, qui }
+    : { forme: "parties", contexte: -1, categories, qui, cadre: reserve[contexte] };
+  const probleme = redigerPartieTout(situation, valeurs, cherche === "tout" ? -1 : combien - 1, reglages.enonces);
   return { ...probleme, cle: `${cherche}:${tout}:${[...valeurs].sort((a, b) => a - b).join("+")}` };
 }
 
@@ -255,7 +270,7 @@ export function problemePartieTout(reglages: ReglagesPartieTout, graine: number,
  * l'énoncé (« les autres ») comme sur le schéma.
  */
 export function redigerPartieTout(situation: Extract<Situation, { forme: "parties" }>, valeursDonnees: number[], inconnue: number, enonces: boolean): Probleme {
-  const contexte = CONTEXTES_PARTIES[situation.contexte] ?? CONTEXTES_PARTIES[0];
+  const contexte = situation.cadre ?? CONTEXTES_PARTIES[situation.contexte] ?? CONTEXTES_PARTIES[0];
   let valeurs = valeursDonnees.map((v) => borne(v, 1, 1000000));
   let ordre = valeurs.map((_, k) => situation.categories[k] ?? k);
   const derniere = valeurs.length - 1;
@@ -308,6 +323,46 @@ export function redigerPartieTout(situation: Extract<Situation, { forme: "partie
       ? `${qui} a ${quantite(valeurs[derniere], cherchee.groupe)}.`
       : `Il y a ${quantite(valeurs[derniere], cherchee.groupe)}.`,
   };
+}
+
+/** Le nom d'un thème : son tout, au pluriel (« billes », « animaux »). */
+export const nomDuContexte = (c: ContexteParties) => c.tout[1];
+
+const plierNom = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+/** Les thèmes où tirer : les thèmes livrés nommés, puis ceux de l'enseignant ; rien — tous ceux qui sont livrés — sans nom. */
+export function contextesChoisis(noms: string[], perso: ContexteParties[]): ContexteParties[] | undefined {
+  const voulus = new Set(noms.map(plierNom));
+  const choisis = [...CONTEXTES_PARTIES, ...perso].filter((c) => voulus.has(plierNom(nomDuContexte(c))));
+  return choisis.length ? choisis : undefined;
+}
+
+/**
+ * Un thème écrit par l'IA (ou l'enseignant), relu avec méfiance : un tout au singulier et au pluriel, deux ou trois
+ * parties qui ont chacune leur groupe (« citrouilles vertes ») et ce qu'elles sont (« vertes »), un lieu facultatif
+ * (« Dans le champ »). Ni « il » ni « elle » : les énoncés n'en emploient jamais. Rien s'il ne se lit pas.
+ */
+export function contexteLu(v: unknown): ContexteParties | null {
+  const mot = (x: unknown) => (typeof x === "string" ? x.replace(/\s+/g, " ").trim().slice(0, 40) : "");
+  const accord = (x: unknown): Accord | null => {
+    if (!Array.isArray(x) || x.length < 2) return null;
+    const a = mot(x[0]), b = mot(x[1]);
+    return a && b && !/\b(il|elle|ils|elles)\b/i.test(`${a} ${b}`) ? [a, b] : null;
+  };
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  const tout = accord(o.tout);
+  const parties = (Array.isArray(o.parties) ? o.parties : []).flatMap((x): Partie[] => {
+    const q = x && typeof x === "object" ? (x as Record<string, unknown>) : {};
+    const groupe = accord(q.groupe), attribut = accord(q.attribut);
+    return groupe && attribut ? [{ groupe, attribut }] : [];
+  }).slice(0, 3);
+  if (!tout || parties.length < 2) return null;
+  const lieuBrut = mot(o.lieu).replace(/[.,;:]+$/, "");
+  const lieu = lieuBrut && /^(dans|sur|sous|au|à|chez|devant|derrière)\b/i.test(lieuBrut) ? lieuBrut.charAt(0).toUpperCase() + lieuBrut.slice(1) : undefined;
+  const objet = (["bille", "pomme", "fleur", "poisson", "etoile", "carte", "crayon", "livre", "voiture", "gateau", "personne", "animal", "chaise", "rond"] as FormeObjet[])
+    .find((f) => f === o.objet) ?? "rond";
+  return { tout, ...(lieu ? { lieu } : {}), parties, objet };
 }
 
 export function genererPartieTout(reglages: ReglagesPartieTout, graine: number, retirages: Record<number, number> = {}): Probleme[] {

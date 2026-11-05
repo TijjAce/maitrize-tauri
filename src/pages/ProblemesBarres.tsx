@@ -1,6 +1,6 @@
 import React from "react";
 import { Aide } from "../components/Aide";
-import { api, raccourci } from "../api";
+import { api, raccourci, texteErreur } from "../api";
 import { Field, Input, Modal, Select } from "../components/ui";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
@@ -10,9 +10,13 @@ import { useMemoire, useReglages } from "../components/useMemoire";
 import {
   genererPartieTout, genererMultiplicatifs, blocProbleme, blocCorrige, enteteFeuille, feuilleProblemes, classesFeuille,
   decouperEnPages, lirePrenoms, retoucheDe, retoucher, schemaSvg, styleSchema, normaliserPresentation, memePresentation,
-  STYLE_FEUILLE, TYPES_MULTIPLICATIFS, PLAFONDS, PRESENTATION_COMPLETE, PRESENTATION_MODELE_SEUL, nombre,
-  type Probleme, type Presentation, type Retouche, type InconnuePartieTout, type TypeMultiplicatif,
+  STYLE_FEUILLE, TYPES_MULTIPLICATIFS, PLAFONDS, PRESENTATION_COMPLETE, PRESENTATION_MODELE_SEUL, nombre, contextesChoisis,
+  type Probleme, type Presentation, type Retouche, type InconnuePartieTout, type TypeMultiplicatif, type ContexteParties,
 } from "../problemesBarres";
+import {
+  REGLAGES_NEUTRES, accueilDesProblemes, demanderALAssistantDesProblemes,
+  type EtatDeLAtelier, type ReglagesDeLAtelier, type ReponseProblemes, type SorteDeProblemes,
+} from "../assistantProblemes";
 import { useGraine } from "../modifierFeuille";
 
 // ── Fabriquer → Problèmes en barres ────────────────────────────────────────
@@ -63,19 +67,28 @@ export function PartieToutTab() {
     titre: "Problèmes partie-tout", nombre: 6, prenoms: "",
     parties: 2, inconnue: "melange" as InconnuePartieTout, max: 20,
     perso: false, toutMin: 5, toutMax: 10, partieMin: 1,
+    /** Les thèmes choisis avec l'assistant (vide : tous), et ceux qu'il a écrits. */
+    themes: [] as string[], themesPerso: [] as ContexteParties[],
   });
   const [presentation, setPresentation] = useMemoire("presentation:partieTout", normaliserPresentation);
   const tirage = useTirage(`${r.parties}|${r.inconnue}`);
   const problemes = React.useMemo(() => appliquerRetouches(genererPartieTout({
     nombre: r.nombre, parties: r.parties, inconnue: r.inconnue, enonces: presentation.enonce, prenoms: lirePrenoms(r.prenoms),
+    contextes: contextesChoisis(r.themes, r.themesPerso),
     ...(r.perso ? { max: r.toutMax, min: r.toutMin, partMin: r.partieMin } : { max: r.max }),
   }, tirage.graine, tirage.retirages), tirage.retouches, presentation.enonce),
   [r, presentation.enonce, tirage.graine, tirage.retirages, tirage.retouches]);
+  const appliquer = (rep: ReponseProblemes) => {
+    maj(reglagesRetenus(rep, ["titre", "nombre", "prenoms", "parties", "inconnue", "max", "perso", "toutMin", "toutMax", "partieMin", "themes", "themesPerso"]));
+    suivreLaReponse(rep, tirage);
+    for (const x of rep.nombres ?? []) tirage.retoucher(x.probleme - 1, { forme: "parties", valeurs: x.valeurs, inconnue: x.inconnue });
+  };
 
   return (
     <Atelier atelier="partieTout" titre={r.titre} setTitre={(titre) => maj({ titre })} nombre={r.nombre} setNombre={(nombre) => maj({ nombre })}
       prenoms={r.prenoms} setPrenoms={(prenoms) => maj({ prenoms })}
       presentation={presentation} setPresentation={setPresentation} problemes={problemes} tirage={tirage}
+      assistant={<AssistantDesProblemes etat={{ sorte: "partieTout", reglages: { ...REGLAGES_NEUTRES, ...r }, problemes }} appliquer={appliquer} />}
       intro={<>Un tout et ses parties : l'élève voit ce qui manque avant de choisir l'opération. Programmes : « résoudre des
         problèmes additifs en une étape de type parties-tout ».</>}
     >
@@ -101,6 +114,12 @@ export function PartieToutTab() {
           </Select>
         </Field>
       </div>
+      {r.themes.length > 0 && (
+        <div className="pb-themes">
+          <span>Thèmes : {r.themes.join(", ")}</span>
+          <button className="btn sm" onClick={() => maj({ themes: [] })}>Tous les thèmes</button>
+        </div>
+      )}
       {r.perso && (
         <div className="pb-plage">
           <NombreChamp label="Le tout, de" valeur={r.toutMin} min={2} onChange={(toutMin) => maj({ toutMin })} />
@@ -129,6 +148,11 @@ export function MultiplicatifsTab() {
   }, tirage.graine, tirage.retirages), tirage.retouches, presentation.enonce),
   [r, types.join(), presentation.enonce, tirage.graine, tirage.retirages, tirage.retouches]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const appliquer = (rep: ReponseProblemes) => {
+    maj(reglagesRetenus(rep, ["titre", "nombre", "prenoms", "types", "table", "perso", "partsMin", "partsMax", "valeurMin", "valeurMax"]));
+    suivreLaReponse(rep, tirage);
+  };
+
   const basculer = (t: TypeMultiplicatif) => {
     const suite = types.includes(t) ? types.filter((x) => x !== t) : [...types, t];
     if (!suite.length) { toast("Gardez au moins un type de problème.", { icone: "ℹ️" }); return; }
@@ -140,6 +164,7 @@ export function MultiplicatifsTab() {
     <Atelier atelier="multiplicatifs" titre={r.titre} setTitre={(titre) => maj({ titre })} nombre={r.nombre} setNombre={(nombre) => maj({ nombre })}
       prenoms={r.prenoms} setPrenoms={(prenoms) => maj({ prenoms })}
       presentation={presentation} setPresentation={setPresentation} problemes={problemes} tirage={tirage}
+      assistant={<AssistantDesProblemes etat={{ sorte: "multiplicatifs", reglages: { ...REGLAGES_NEUTRES, ...r }, problemes }} appliquer={appliquer} />}
       intro={<>Des parts égales qui font un tout, ou une quantité plusieurs fois plus grande qu'une autre. Programmes :
         « résoudre des problèmes multiplicatifs de type parties-tout en une étape ».</>}
     >
@@ -196,7 +221,7 @@ function NombreChamp({ label, valeur, min, onChange }: { label: string; valeur: 
 
 // ── Mise en page commune ───────────────────────────────────────────────────
 
-function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, setNombre, prenoms, setPrenoms, presentation, setPresentation, problemes, tirage, children }: {
+function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, setNombre, prenoms, setPrenoms, presentation, setPresentation, problemes, tirage, assistant, children }: {
   /** L'onglet de Fabriquer, où l'enseignant a choisi les compétences. */
   atelier: string;
   intro: React.ReactNode;
@@ -206,6 +231,8 @@ function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, set
   presentation: Presentation; setPresentation: (p: Presentation) => void;
   problemes: Probleme[];
   tirage: Tirage;
+  /** L'assistant de l'atelier : on lui dit la feuille voulue. */
+  assistant?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [corrige, setCorrige] = React.useState(false);
@@ -218,6 +245,7 @@ function Atelier({ atelier, intro, titre, setTitre, nombre: nombreProblemes, set
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 360px) 1fr", gap: 14, alignItems: "start" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {assistant}
         <div className="card">
           <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: 8 }}>
             Les problèmes
@@ -538,3 +566,81 @@ function EditeurProbleme({ probleme, numero, presentation, onFermer, onValider }
     </Modal>
   );
 }
+
+// ── L'assistant de l'atelier ───────────────────────────────────────────────
+
+/** Les réglages que la réponse change, parmi ceux d'un onglet. */
+function reglagesRetenus<K extends keyof ReglagesDeLAtelier>(rep: ReponseProblemes, cles: K[]): Partial<Pick<ReglagesDeLAtelier, K>> {
+  const m: Partial<Pick<ReglagesDeLAtelier, K>> = {};
+  for (const k of cles) if (rep.reglages[k] !== undefined) m[k] = rep.reglages[k] as ReglagesDeLAtelier[K];
+  return m;
+}
+
+/** Une autre feuille, des problèmes remplacés : ce que la réponse demande au tirage. */
+function suivreLaReponse(rep: ReponseProblemes, tirage: Tirage) {
+  if (rep.nouvelleFeuille) tirage.nouvelle();
+  for (const n of rep.remplacer ?? []) tirage.retirer(n - 1);
+}
+
+type Bulle = { role: "user" | "assistant"; content: string; erreur?: boolean };
+
+/**
+ * « Essaye de faire un tchatbot ici » : un fil de bulles et un champ. L'enseignant dit la feuille qu'il veut ;
+ * l'assistant règle l'atelier (voir assistantProblemes.ts). Le fil ne se garde pas d'une ouverture à l'autre.
+ */
+function AssistantDesProblemes({ etat, appliquer }: { etat: EtatDeLAtelier; appliquer: (r: ReponseProblemes) => void }) {
+  const [fil, setFil] = React.useState<Bulle[]>(() => [{ role: "assistant", content: accueilDesProblemes(etat.sorte as SorteDeProblemes) }]);
+  const [saisie, setSaisie] = React.useState("");
+  const [occupe, setOccupe] = React.useState(false);
+  const [cle, setCle] = React.useState<boolean | null>(null);
+  React.useEffect(() => {
+    api.settingGet("mistralApiKey").then((k) => setCle(!!k && k.trim().length > 0)).catch(() => setCle(false));
+  }, []);
+  // L'atelier le plus récent : la conversation part de la feuille telle qu'elle est quand on envoie.
+  const etatRef = React.useRef(etat);
+  etatRef.current = etat;
+  const filRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => { const el = filRef.current; if (el) el.scrollTop = el.scrollHeight; }, [fil, occupe]);
+
+  const envoyer = async () => {
+    const texte = saisie.trim();
+    if (!texte || occupe) return;
+    const conversation = [...fil.filter((m) => !m.erreur).map(({ role, content }) => ({ role, content })), { role: "user" as const, content: texte }];
+    setFil((f) => [...f, { role: "user", content: texte }]);
+    setSaisie("");
+    setOccupe(true);
+    try {
+      const r = await demanderALAssistantDesProblemes(etatRef.current, conversation);
+      appliquer(r);
+      setFil((f) => [...f, { role: "assistant", content: r.reponse }]);
+    } catch (e) {
+      setFil((f) => [...f, { role: "assistant", content: `Je n'ai pas pu répondre : ${texteErreur(e)}`, erreur: true }]);
+    } finally {
+      setOccupe(false);
+    }
+  };
+
+  return (
+    <div className="card">
+      <h3 style={{ marginTop: 0 }}>L'assistant</h3>
+      <div className="projet-assistant pb-assistant">
+        <div className="projet-assistant-fil" ref={filRef} aria-live="polite">
+          {fil.map((m, i) => (
+            <div key={i} className={`projet-assistant-bulle ${m.role === "user" ? "moi" : "lui"}${m.erreur ? " erreur" : ""}`}>{m.content}</div>
+          ))}
+          {cle === false && (
+            <div className="projet-assistant-bulle lui erreur">Pour répondre, l'assistant a besoin de la clé Mistral : Réglages › Assistant IA.</div>
+          )}
+          {occupe && <div className="projet-assistant-bulle lui en-cours" aria-label="L'assistant écrit">…</div>}
+        </div>
+        <div className="projet-assistant-saisie">
+          <Input value={saisie} autoComplete="off" placeholder="La feuille que vous voulez…" aria-label="Votre message à l'assistant de l'atelier"
+            disabled={cle === false} onChange={(e) => setSaisie(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void envoyer(); } }} />
+          <button type="button" className="btn primary" disabled={!saisie.trim() || occupe || cle === false} onClick={() => { void envoyer(); }}>Envoyer</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
