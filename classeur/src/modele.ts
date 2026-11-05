@@ -28,6 +28,8 @@ export interface Case {
    * « les gens », « maman » se dit « j'aime maman ». Faux : l'enseignant l'a fait parler (une mise à jour n'y touche plus).
    */
   muette?: boolean;
+  /** Ce qu'elle écrit et dit quand le classeur parle au féminin (« contente », « je suis tombée »), quand ça change. */
+  feminin?: { mot?: string; dire?: string };
   /** Cachée à l'élève : la place reste, vide. */
   masquee?: boolean;
   /** Son poids dans son thème (0 à 1), calculé à l'avance : les plus lourdes sont proposées d'abord. */
@@ -70,6 +72,13 @@ export interface Classeur {
   balayer?: boolean;
   /** Faux : pas de bande d'ensembles par thème au-dessus de la grille. */
   suggestions?: boolean;
+  /** L'élève parle au féminin : les cases prennent leurs formes féminines (« contente »). Les PODD le demandent à leur création. */
+  feminin?: boolean;
+  /**
+   * Faux : une case touchée ne se dit pas, elle rejoint seulement la phrase, qui se dit d'un coup (le réglage par défaut
+   * des PODD électroniques : le partenaire attend le message entier).
+   */
+  parlerAuToucher?: boolean;
   /** La version des poids calculés à l'avance qu'il porte (celle du classeur complet livré). */
   versionDesPoids?: string;
   creeLe: string;
@@ -100,6 +109,16 @@ export const pageDe = (c: Classeur, id: string | undefined): Page | undefined =>
 
 /** Ce que dit une case : sa phrase à dire, sinon son mot. */
 export const ditDeLaCase = (k: Pick<Case, "mot" | "dire">): string => (k.dire?.trim() || k.mot.trim());
+
+/**
+ * La case telle qu'elle s'écrit et se dit : au féminin, ses formes féminines quand elle en a. Une forme féminine qui ne
+ * donne que le mot le dit aussi (« contente ») ; une qui ne donne que ce qui se dit garde le mot.
+ */
+export function formeDeLaCase<K extends Pick<Case, "mot" | "dire" | "feminin">>(k: K, feminin: boolean | undefined): K {
+  const mot = feminin ? k.feminin?.mot?.trim() : undefined, dire = feminin ? k.feminin?.dire?.trim() : undefined;
+  if (!mot && !dire) return k;
+  return { ...k, mot: mot || k.mot, dire: dire || (mot ? undefined : k.dire) };
+}
 
 /** Ce que toucher la case ajoute à la phrase : rien quand elle est muette et ouvre une page (« les gens »). */
 export const ditEnTouchant = (k: Pick<Case, "mot" | "dire" | "lien" | "muette">): string => (k.muette && k.lien ? "" : ditDeLaCase(k));
@@ -314,6 +333,7 @@ export function lireClasseur(brut: unknown): Classeur | null {
     ...(typeof o.categories === "string" && pages.some((p) => p.id === o.categories) ? { categories: o.categories } : {}),
     pages, ...(o.voix && typeof o.voix === "object" ? { voix: o.voix } : {}), ...(o.balayer === false ? { balayer: false } : {}),
     ...(o.suggestions === false ? { suggestions: false } : {}),
+    ...(o.feminin === true ? { feminin: true } : {}), ...(o.parlerAuToucher === false ? { parlerAuToucher: false } : {}),
     ...(typeof o.versionDesPoids === "string" ? { versionDesPoids: o.versionDesPoids } : {}),
     creeLe: typeof o.creeLe === "string" ? o.creeLe : "", modifieLe: typeof o.modifieLe === "string" ? o.modifieLe : "",
   };

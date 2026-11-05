@@ -100,6 +100,7 @@ export function versObz(c: Classeur, images: Record<string, string>): FichiersOb
       if (k.masquee) b.hidden = true;
       // Une case qui ouvre sa page sans rien dire (une catégorie) : un champ d'extension, lui aussi.
       if (typeof k.muette === "boolean") b.ext_maitrize_muette = k.muette;
+      if (k.feminin) b.ext_maitrize_feminin = { ...k.feminin };
       // Les poids des ensembles par thème, calculés à l'avance : des champs d'extension, que les autres applications ignorent.
       if (typeof k.poids === "number") b.ext_maitrize_poids = k.poids;
       const suites = (k.suites ?? []).flatMap((s) => {
@@ -141,7 +142,7 @@ export function versObz(c: Classeur, images: Record<string, string>): FichiersOb
 interface BoutonObf {
   id?: unknown; label?: unknown; vocalization?: unknown; image_id?: unknown; background_color?: unknown; border_color?: unknown;
   hidden?: unknown; load_board?: { id?: unknown; path?: unknown };
-  ext_maitrize_poids?: unknown; ext_maitrize_suites?: unknown; ext_maitrize_suites_perso?: unknown; ext_maitrize_muette?: unknown;
+  ext_maitrize_poids?: unknown; ext_maitrize_suites?: unknown; ext_maitrize_suites_perso?: unknown; ext_maitrize_muette?: unknown; ext_maitrize_feminin?: unknown;
 }
 interface TableauObf {
   id?: unknown; name?: unknown; buttons?: BoutonObf[]; grid?: { rows?: unknown; columns?: unknown; order?: unknown[][] };
@@ -219,6 +220,10 @@ export function depuisObz(f: FichiersObz, nom: string, maintenant = new Date().t
       if (bord && bord !== "#8c8c96") k.bord = bord;
       if (b.hidden === true) k.masquee = true;
       if (typeof b.ext_maitrize_muette === "boolean") k.muette = b.ext_maitrize_muette;
+      if (b.ext_maitrize_feminin && typeof b.ext_maitrize_feminin === "object") {
+        const f = b.ext_maitrize_feminin as { mot?: unknown; dire?: unknown };
+        k.feminin = { ...(typeof f.mot === "string" && f.mot.trim() ? { mot: f.mot.trim() } : {}), ...(typeof f.dire === "string" && f.dire.trim() ? { dire: f.dire.trim() } : {}) };
+      }
       if (typeof b.ext_maitrize_poids === "number" && Number.isFinite(b.ext_maitrize_poids)) k.poids = b.ext_maitrize_poids;
       if (Array.isArray(b.ext_maitrize_suites)) {
         const suites = (b.ext_maitrize_suites as { id?: unknown; poids?: unknown; cases?: unknown }[]).flatMap((x) => {

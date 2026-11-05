@@ -608,7 +608,7 @@
      "bord": "#2e9b3e",
      "arasaac": 6461,
      "dire": "je te raconte quelque chose",
-     "lien": "categories",
+     "lien": "raconter",
      "suites": [
       {
        "page": "gens",
@@ -633,7 +633,10 @@
        "poids": 0.2
       }
      ],
-     "poids": 0.289
+     "poids": 0.289,
+     "lienAvant": [
+      "categories"
+     ]
     },
     {
      "mot": "j'ai une idée",
@@ -1092,7 +1095,7 @@
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 9839,
-     "dire": "c'était avant",
+     "dire": "c'est déjà arrivé",
      "suites": [
       {
        "page": "actions",
@@ -1107,13 +1110,17 @@
        "poids": 0.3
       }
      ],
-     "poids": 0.17
+     "poids": 0.17,
+     "direAvant": [
+      "c'était avant"
+     ]
     },
     {
      "mot": "maintenant",
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 13026,
+     "dire": "c'est maintenant",
      "suites": [
       {
        "page": "actions",
@@ -1128,13 +1135,17 @@
        "poids": 0.3
       }
      ],
-     "poids": 0.179
+     "poids": 0.179,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "après",
      "fond": "#f0f0f0",
      "bord": "#8a8f98",
      "arasaac": 9829,
+     "dire": "ça va arriver",
      "suites": [
       {
        "page": "actions",
@@ -1149,7 +1160,10 @@
        "poids": 0.3
       }
      ],
-     "poids": 0.168
+     "poids": 0.168,
+     "direAvant": [
+      ""
+     ]
     },
     {
      "mot": "hier",
@@ -1462,7 +1476,11 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 7141,
-     "poids": 0.515
+     "lien": "act-album",
+     "poids": 0.257,
+     "lienAvant": [
+      ""
+     ]
     },
     {
      "mot": "la tablette",
@@ -1520,6 +1538,9 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 28742,
+     "lienAvant": [
+      "mal"
+     ],
      "suites": [
       {
        "page": "mal",
@@ -1561,6 +1582,9 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 2314,
+     "feminin": {
+      "mot": "je suis fatiguée"
+     },
      "suites": [
       {
        "page": "veux",
@@ -1785,6 +1809,9 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 6992,
+     "feminin": {
+      "mot": "je me suis trompée"
+     },
      "poids": 0.182
     },
     {
@@ -1881,6 +1908,9 @@
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
      "arasaac": 29674,
+     "feminin": {
+      "mot": "je suis tombée"
+     },
      "suites": [
       {
        "page": "mal",
@@ -2089,6 +2119,9 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 4697,
+     "feminin": {
+      "mot": "je suis mouillée"
+     },
      "suites": [
       {
        "page": "habits",
@@ -2164,6 +2197,9 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 32528,
+     "feminin": {
+      "mot": "je suis mal installée"
+     },
      "poids": 0.111
     }
    ],
@@ -2344,6 +2380,9 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 3245,
+     "feminin": {
+      "mot": "contente"
+     },
      "suites": [
       {
        "page": "gens",
@@ -2433,6 +2472,9 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 2314,
+     "feminin": {
+      "mot": "fatiguée"
+     },
      "suites": [
       {
        "page": "gens",
@@ -2466,6 +2508,9 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 2261,
+     "feminin": {
+      "mot": "effrayée"
+     },
      "suites": [
       {
        "page": "gens",
@@ -2555,6 +2600,9 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 2574,
+     "feminin": {
+      "mot": "surprise"
+     },
      "suites": [
       {
        "page": "gens",
@@ -2578,6 +2626,9 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 31408,
+     "feminin": {
+      "mot": "fière"
+     },
      "suites": [
       {
        "page": "gens",
@@ -2601,6 +2652,9 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 2374,
+     "feminin": {
+      "mot": "énervée"
+     },
      "suites": [
       {
        "page": "gens",
@@ -2634,6 +2688,9 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 26985,
+     "feminin": {
+      "mot": "inquiète"
+     },
      "suites": [
       {
        "page": "gens",
@@ -2700,6 +2757,9 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 7253,
+     "feminin": {
+      "mot": "seule"
+     },
      "suites": [
       {
        "page": "gens",
@@ -2733,6 +2793,9 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 36911,
+     "feminin": {
+      "mot": "jalouse"
+     },
      "suites": [
       {
        "page": "gens",
@@ -2766,6 +2829,9 @@
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
      "arasaac": 36295,
+     "feminin": {
+      "mot": "perdue"
+     },
      "suites": [
       {
        "page": "gens",
@@ -3145,7 +3211,11 @@
      "bord": "#8a4fd8",
      "arasaac": 5583,
      "dire": "dis-moi oui ou non",
-     "poids": 0.637
+     "lien": "categories",
+     "poids": 0.318,
+     "lienAvant": [
+      ""
+     ]
     }
    ]
   },
@@ -4451,40 +4521,12 @@
      "bord": "#e07b12",
      "arasaac": 2269,
      "dire": "au ballon",
-     "suites": [
-      {
-       "page": "gens",
-       "poids": 0.4,
-       "cases": [
-        "gens:9",
-        "gens:10",
-        "gens:0",
-        "gens:1"
-       ]
-      },
-      {
-       "page": "decrire",
-       "poids": 0.3,
-       "cases": [
-        "decrire:0",
-        "decrire:1",
-        "decrire:9",
-        "decrire:4"
-       ]
-      },
-      {
-       "page": "couleurs",
-       "poids": 0.3,
-       "cases": [
-        "couleurs:0",
-        "couleurs:1",
-        "couleurs:3",
-        "couleurs:2"
-       ]
-      }
-     ],
-     "poids": 0.753,
+     "lien": "act-ballon",
+     "poids": 0.377,
      "direAvant": [
+      ""
+     ],
+     "lienAvant": [
       ""
      ]
     },
@@ -4494,40 +4536,12 @@
      "bord": "#e07b12",
      "arasaac": 2540,
      "dire": "au puzzle",
-     "suites": [
-      {
-       "page": "gens",
-       "poids": 0.4,
-       "cases": [
-        "gens:9",
-        "gens:10",
-        "gens:0",
-        "gens:1"
-       ]
-      },
-      {
-       "page": "decrire",
-       "poids": 0.3,
-       "cases": [
-        "decrire:0",
-        "decrire:1",
-        "decrire:9",
-        "decrire:4"
-       ]
-      },
-      {
-       "page": "couleurs",
-       "poids": 0.3,
-       "cases": [
-        "couleurs:0",
-        "couleurs:1",
-        "couleurs:3",
-        "couleurs:2"
-       ]
-      }
-     ],
-     "poids": 0.576,
+     "lien": "act-puzzle",
+     "poids": 0.288,
      "direAvant": [
+      ""
+     ],
+     "lienAvant": [
       ""
      ]
     },
@@ -4881,40 +4895,12 @@
      "bord": "#e07b12",
      "arasaac": 2529,
      "dire": "à la pâte à modeler",
-     "suites": [
-      {
-       "page": "gens",
-       "poids": 0.4,
-       "cases": [
-        "gens:9",
-        "gens:10",
-        "gens:0",
-        "gens:1"
-       ]
-      },
-      {
-       "page": "decrire",
-       "poids": 0.3,
-       "cases": [
-        "decrire:0",
-        "decrire:1",
-        "decrire:9",
-        "decrire:4"
-       ]
-      },
-      {
-       "page": "couleurs",
-       "poids": 0.3,
-       "cases": [
-        "couleurs:0",
-        "couleurs:1",
-        "couleurs:3",
-        "couleurs:2"
-       ]
-      }
-     ],
-     "poids": 0.367,
+     "lien": "act-pate",
+     "poids": 0.184,
      "direAvant": [
+      ""
+     ],
+     "lienAvant": [
       ""
      ]
     },
@@ -4924,40 +4910,12 @@
      "bord": "#e07b12",
      "arasaac": 2348,
      "dire": "à la peinture",
-     "suites": [
-      {
-       "page": "gens",
-       "poids": 0.4,
-       "cases": [
-        "gens:9",
-        "gens:10",
-        "gens:0",
-        "gens:1"
-       ]
-      },
-      {
-       "page": "decrire",
-       "poids": 0.3,
-       "cases": [
-        "decrire:0",
-        "decrire:1",
-        "decrire:9",
-        "decrire:4"
-       ]
-      },
-      {
-       "page": "couleurs",
-       "poids": 0.3,
-       "cases": [
-        "couleurs:0",
-        "couleurs:1",
-        "couleurs:3",
-        "couleurs:2"
-       ]
-      }
-     ],
-     "poids": 0.537,
+     "lien": "act-peinture",
+     "poids": 0.268,
      "direAvant": [
+      ""
+     ],
+     "lienAvant": [
       ""
      ]
     },
@@ -5516,7 +5474,11 @@
      "bord": "#e07b12",
      "arasaac": 2364,
      "dire": "une histoire",
-     "poids": 0.18
+     "lien": "act-album",
+     "poids": 0.09,
+     "lienAvant": [
+      ""
+     ]
     },
     {
      "mot": "sable",
@@ -7859,7 +7821,7 @@
      "mot": "chaud",
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
-     "arasaac": 2300,
+     "arasaac": 4583,
      "poids": 0.193
     },
     {
@@ -7972,7 +7934,7 @@
      "mot": "chaud",
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
-     "arasaac": 2300,
+     "arasaac": 26716,
      "poids": 0.733
     },
     {
@@ -7986,7 +7948,7 @@
      "mot": "beau",
      "fond": "#d6e6f7",
      "bord": "#2f6fd0",
-     "arasaac": 4660,
+     "arasaac": 11194,
      "poids": 0.822
     },
     {
@@ -8284,7 +8246,7 @@
        ]
       }
      ],
-     "poids": 0.957
+     "poids": 0.993
     },
     {
      "mot": "écrire",
@@ -8303,7 +8265,7 @@
        ]
       }
      ],
-     "poids": 0.927
+     "poids": 0.963
     },
     {
      "mot": "compter",
@@ -8322,7 +8284,7 @@
        ]
       }
      ],
-     "poids": 0.871
+     "poids": 0.905
     },
     {
      "mot": "dessiner",
@@ -8355,7 +8317,7 @@
        ]
       }
      ],
-     "poids": 0.681
+     "poids": 0.703
     },
     {
      "mot": "peindre",
@@ -8382,7 +8344,7 @@
        ]
       }
      ],
-     "poids": 0.671
+     "poids": 0.694
     },
     {
      "mot": "découper",
@@ -8401,7 +8363,7 @@
        ]
       }
      ],
-     "poids": 0.569
+     "poids": 0.586
     },
     {
      "mot": "coller",
@@ -8420,7 +8382,7 @@
        ]
       }
      ],
-     "poids": 0.658
+     "poids": 0.683
     },
     {
      "mot": "chanter",
@@ -8437,7 +8399,7 @@
        "poids": 0.4
       }
      ],
-     "poids": 0.735
+     "poids": 0.768
     },
     {
      "mot": "sport",
@@ -8445,7 +8407,7 @@
      "bord": "#e07b12",
      "arasaac": 7010,
      "dire": "le sport",
-     "poids": 0.175,
+     "poids": 0.181,
      "direAvant": [
       ""
      ]
@@ -8456,7 +8418,7 @@
      "bord": "#e07b12",
      "arasaac": 2487,
      "dire": "l'ordinateur",
-     "poids": 0.176,
+     "poids": 0.183,
      "direAvant": [
       ""
      ]
@@ -8482,7 +8444,7 @@
        "poids": 0.4
       }
      ],
-     "poids": 0.592
+     "poids": 0.617
     },
     {
      "mot": "regroupement",
@@ -8490,7 +8452,7 @@
      "bord": "#e07b12",
      "arasaac": 39679,
      "dire": "le regroupement",
-     "poids": 0.092,
+     "poids": 0.093,
      "direAvant": [
       ""
      ]
@@ -8501,7 +8463,7 @@
      "bord": "#e07b12",
      "arasaac": 6204,
      "dire": "la récréation",
-     "poids": 0.109,
+     "poids": 0.112,
      "direAvant": [
       ""
      ]
@@ -8512,7 +8474,7 @@
      "bord": "#e07b12",
      "arasaac": 9824,
      "dire": "la cantine",
-     "poids": 0.114,
+     "poids": 0.117,
      "direAvant": [
       ""
      ]
@@ -8523,7 +8485,7 @@
      "bord": "#e07b12",
      "arasaac": 28425,
      "dire": "la sieste",
-     "poids": 0.128,
+     "poids": 0.133,
      "direAvant": [
       ""
      ]
@@ -8534,29 +8496,26 @@
      "bord": "#e07b12",
      "arasaac": 32176,
      "dire": "l'atelier",
-     "poids": 0.138,
+     "poids": 0.144,
      "direAvant": [
       ""
      ]
     },
     {
-     "mot": "travailler",
+     "mot": "cuisiner",
      "fond": "#d9f0d4",
      "bord": "#2e9b3e",
-     "arasaac": 2599,
-     "suites": [
+     "arasaac": 2342,
+     "lien": "act-cuisine",
+     "avant": [
       {
-       "page": "classe-2",
-       "poids": 1.0,
-       "cases": [
-        "classe-2:5",
-        "classe-2:1",
-        "classe-2:7",
-        "classe-2:11"
-       ]
+       "mot": "travailler",
+       "arasaac": 2599,
+       "fond": "#d9f0d4",
+       "bord": "#2e9b3e"
       }
      ],
-     "poids": 0.719
+     "poids": 0.255
     },
     {
      "mot": "j'ai fini",
@@ -8570,7 +8529,7 @@
      "fond": "#fadeeb",
      "bord": "#d6408f",
      "arasaac": 7158,
-     "poids": 0.19
+     "poids": 0.2
     },
     {
      "mot": "je ne comprends pas",
@@ -10633,9 +10592,1955 @@
      "poids": 0.21
     }
    ]
+  },
+  {
+   "cle": "raconter",
+   "nom": "Raconter",
+   "lignes": 4,
+   "colonnes": 5,
+   "cases": [
+    {
+     "mot": "ce matin",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 25704,
+     "suites": [
+      {
+       "page": "lieux",
+       "poids": 0.4
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      }
+     ],
+     "poids": 0.842
+    },
+    {
+     "mot": "hier",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 6926,
+     "suites": [
+      {
+       "page": "lieux",
+       "poids": 0.4
+      },
+      {
+       "page": "actions",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      }
+     ],
+     "poids": 0.792
+    },
+    {
+     "mot": "ce week-end",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 27329,
+     "suites": [
+      {
+       "page": "lieux",
+       "poids": 0.4
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      },
+      {
+       "page": "gens",
+       "poids": 0.3
+      }
+     ],
+     "poids": 0.663
+    },
+    {
+     "mot": "vacances",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 3166,
+     "dire": "pendant les vacances",
+     "suites": [
+      {
+       "page": "lieux",
+       "poids": 0.5
+      },
+      {
+       "page": "jouer",
+       "poids": 0.25
+      },
+      {
+       "page": "gens",
+       "poids": 0.25
+      }
+     ],
+     "poids": 0.661
+    },
+    {
+     "mot": "à la maison",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2317,
+     "poids": 0.231
+    },
+    {
+     "mot": "je suis allé",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2432,
+     "lien": "lieux",
+     "feminin": {
+      "mot": "je suis allée"
+     },
+     "poids": 0.129
+    },
+    {
+     "mot": "on est allés",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2432,
+     "lien": "lieux",
+     "poids": 0.126
+    },
+    {
+     "mot": "j'ai joué",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2439,
+     "lien": "jouer",
+     "poids": 0.106
+    },
+    {
+     "mot": "j'ai mangé",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2349,
+     "lien": "manger",
+     "poids": 0.102
+    },
+    {
+     "mot": "j'ai vu",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2474,
+     "poids": 0.237
+    },
+    {
+     "mot": "j'ai fait",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 11749,
+     "poids": 0.233
+    },
+    {
+     "mot": "avec",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 7064,
+     "lien": "gens",
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.7
+      },
+      {
+       "page": "animaux",
+       "poids": 0.3
+      }
+     ],
+     "poids": 0.383
+    },
+    {
+     "mot": "c'était bien",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 5397,
+     "poids": 0.227
+    },
+    {
+     "mot": "c'était drôle",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 8593,
+     "poids": 0.164
+    },
+    {
+     "mot": "c'était nul",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2245,
+     "poids": 0.14
+    },
+    {
+     "mot": "j'ai eu peur",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 10261,
+     "poids": 0.184
+    },
+    {
+     "mot": "j'étais content",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 3245,
+     "feminin": {
+      "mot": "j'étais contente"
+     },
+     "poids": 0.161
+    },
+    {
+     "mot": "j'étais triste",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2606,
+     "poids": 0.148
+    },
+    {
+     "mot": "et après",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 9829,
+     "poids": 0.594
+    },
+    {
+     "mot": "c'est tout",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5358,
+     "poids": 0.685
+    }
+   ]
+  },
+  {
+   "cle": "act-pate",
+   "nom": "Pâte à modeler",
+   "lignes": 4,
+   "colonnes": 5,
+   "cases": [
+    {
+     "mot": "à moi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 7158,
+     "dire": "à mon tour",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4,
+       "cases": [
+        "classe-2:1",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:10"
+       ]
+      }
+     ],
+     "poids": 0.3
+    },
+    {
+     "mot": "à toi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 2608,
+     "dire": "à ton tour",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4,
+       "cases": [
+        "classe-2:1",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:10"
+       ]
+      }
+     ],
+     "poids": 0.289
+    },
+    {
+     "mot": "encore",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 37163,
+     "suites": [
+      {
+       "page": "manger",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      },
+      {
+       "page": "boire",
+       "poids": 0.2
+      },
+      {
+       "page": "actions",
+       "poids": 0.2
+      }
+     ],
+     "poids": 0.279
+    },
+    {
+     "mot": "aide-moi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 4570,
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4,
+       "cases": [
+        "actions:12",
+        "actions:15",
+        "actions:16",
+        "actions:10"
+       ]
+      },
+      {
+       "page": "habits",
+       "poids": 0.3,
+       "cases": [
+        "habits:1",
+        "habits:5",
+        "habits:17",
+        "habits:16"
+       ]
+      },
+      {
+       "page": "classe",
+       "poids": 0.3
+      }
+     ],
+     "poids": 0.121
+    },
+    {
+     "mot": "fini",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5358,
+     "dire": "c'est fini",
+     "suites": [
+      {
+       "page": "veux",
+       "poids": 0.6,
+       "cases": [
+        "veux:7",
+        "veux:10",
+        "veux:2",
+        "veux:16"
+       ]
+      },
+      {
+       "page": "jouer",
+       "poids": 0.4
+      }
+     ],
+     "poids": 0.224
+    },
+    {
+     "mot": "rouler",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 6603,
+     "poids": 0.243
+    },
+    {
+     "mot": "écraser",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 8015,
+     "poids": 0.234
+    },
+    {
+     "mot": "couper",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2720,
+     "poids": 0.246
+    },
+    {
+     "mot": "mélanger",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 5515,
+     "poids": 0.181
+    },
+    {
+     "mot": "je fais",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 11749,
+     "poids": 0.237
+    },
+    {
+     "mot": "une boule",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 4603,
+     "poids": 0.657
+    },
+    {
+     "mot": "un serpent",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2568,
+     "poids": 0.65
+    },
+    {
+     "mot": "un gâteau",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2502,
+     "poids": 0.697
+    },
+    {
+     "mot": "le rouleau",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 8211,
+     "poids": 0.458
+    },
+    {
+     "mot": "les formes",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 4651,
+     "poids": 0.736
+    },
+    {
+     "mot": "la pâte",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2529,
+     "dire": "de la pâte",
+     "poids": 0.541
+    },
+    {
+     "mot": "une autre couleur",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 5968,
+     "poids": 0.211
+    },
+    {
+     "mot": "c'est mou",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4578,
+     "poids": 0.132
+    },
+    {
+     "mot": "c'est dur",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4637,
+     "poids": 0.211
+    },
+    {
+     "mot": "regarde",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2474,
+     "suites": [
+      {
+       "page": "animaux",
+       "poids": 0.25,
+       "cases": [
+        "animaux:0",
+        "animaux:1",
+        "animaux:2",
+        "animaux:3"
+       ]
+      },
+      {
+       "page": "gens",
+       "poids": 0.25,
+       "cases": [
+        "gens:16",
+        "gens:0",
+        "gens:2",
+        "gens:3"
+       ]
+      },
+      {
+       "page": "jouer",
+       "poids": 0.2,
+       "cases": [
+        "jouer:0",
+        "jouer:1",
+        "jouer:4",
+        "jouer:2"
+       ]
+      },
+      {
+       "page": "lieux",
+       "poids": 0.15,
+       "cases": [
+        "lieux:19",
+        "lieux:18",
+        "lieux:5",
+        "lieux:4"
+       ]
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.15,
+       "cases": [
+        "classe-2:0",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:7"
+       ]
+      }
+     ],
+     "poids": 0.21
+    }
+   ]
+  },
+  {
+   "cle": "act-peinture",
+   "nom": "Peinture",
+   "lignes": 4,
+   "colonnes": 5,
+   "cases": [
+    {
+     "mot": "à moi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 7158,
+     "dire": "à mon tour",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4,
+       "cases": [
+        "classe-2:1",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:10"
+       ]
+      }
+     ],
+     "poids": 0.3
+    },
+    {
+     "mot": "à toi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 2608,
+     "dire": "à ton tour",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4,
+       "cases": [
+        "classe-2:1",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:10"
+       ]
+      }
+     ],
+     "poids": 0.289
+    },
+    {
+     "mot": "encore",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 37163,
+     "suites": [
+      {
+       "page": "manger",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      },
+      {
+       "page": "boire",
+       "poids": 0.2
+      },
+      {
+       "page": "actions",
+       "poids": 0.2
+      }
+     ],
+     "poids": 0.279
+    },
+    {
+     "mot": "aide-moi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 4570,
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4,
+       "cases": [
+        "actions:12",
+        "actions:15",
+        "actions:16",
+        "actions:10"
+       ]
+      },
+      {
+       "page": "habits",
+       "poids": 0.3,
+       "cases": [
+        "habits:1",
+        "habits:5",
+        "habits:17",
+        "habits:16"
+       ]
+      },
+      {
+       "page": "classe",
+       "poids": 0.3
+      }
+     ],
+     "poids": 0.121
+    },
+    {
+     "mot": "fini",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5358,
+     "dire": "c'est fini",
+     "suites": [
+      {
+       "page": "veux",
+       "poids": 0.6,
+       "cases": [
+        "veux:7",
+        "veux:10",
+        "veux:2",
+        "veux:16"
+       ]
+      },
+      {
+       "page": "jouer",
+       "poids": 0.4
+      }
+     ],
+     "poids": 0.185
+    },
+    {
+     "mot": "le pinceau",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2523,
+     "poids": 0.144
+    },
+    {
+     "mot": "l'éponge",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 7098,
+     "poids": 0.146
+    },
+    {
+     "mot": "avec les doigts",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 8189,
+     "poids": 0.635
+    },
+    {
+     "mot": "une feuille",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 8349,
+     "poids": 0.164
+    },
+    {
+     "mot": "mon tablier",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2366,
+     "poids": 0.125
+    },
+    {
+     "mot": "de l'eau",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2248,
+     "poids": 0.204
+    },
+    {
+     "mot": "les couleurs",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 5968,
+     "lien": "couleurs",
+     "muette": true,
+     "poids": 0.087
+    },
+    {
+     "mot": "mélanger",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 5515,
+     "poids": 0.448
+    },
+    {
+     "mot": "tremper",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 38397,
+     "poids": 0.444
+    },
+    {
+     "mot": "dessiner",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 8088,
+     "suites": [
+      {
+       "page": "animaux",
+       "poids": 0.4
+      },
+      {
+       "page": "couleurs",
+       "poids": 0.3,
+       "cases": [
+        "couleurs:0",
+        "couleurs:1",
+        "couleurs:3",
+        "couleurs:2"
+       ]
+      },
+      {
+       "page": "gens",
+       "poids": 0.3,
+       "cases": [
+        "gens:0",
+        "gens:2",
+        "gens:3",
+        "gens:9"
+       ]
+      }
+     ],
+     "poids": 0.478
+    },
+    {
+     "mot": "c'est beau",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 11194,
+     "poids": 0.206
+    },
+    {
+     "mot": "c'est mouillé",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4697,
+     "poids": 0.13
+    },
+    {
+     "mot": "c'est sale",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4750,
+     "poids": 0.169
+    },
+    {
+     "mot": "regarde",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2474,
+     "suites": [
+      {
+       "page": "animaux",
+       "poids": 0.25,
+       "cases": [
+        "animaux:0",
+        "animaux:1",
+        "animaux:2",
+        "animaux:3"
+       ]
+      },
+      {
+       "page": "gens",
+       "poids": 0.25,
+       "cases": [
+        "gens:16",
+        "gens:0",
+        "gens:2",
+        "gens:3"
+       ]
+      },
+      {
+       "page": "jouer",
+       "poids": 0.2,
+       "cases": [
+        "jouer:0",
+        "jouer:1",
+        "jouer:4",
+        "jouer:2"
+       ]
+      },
+      {
+       "page": "lieux",
+       "poids": 0.15,
+       "cases": [
+        "lieux:19",
+        "lieux:18",
+        "lieux:5",
+        "lieux:4"
+       ]
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.15,
+       "cases": [
+        "classe-2:0",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:7"
+       ]
+      }
+     ],
+     "poids": 0.705
+    },
+    {
+     "mot": "me laver les mains",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 8975,
+     "poids": 0.503
+    }
+   ]
+  },
+  {
+   "cle": "act-puzzle",
+   "nom": "Puzzle",
+   "lignes": 4,
+   "colonnes": 5,
+   "cases": [
+    {
+     "mot": "à moi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 7158,
+     "dire": "à mon tour",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4,
+       "cases": [
+        "classe-2:1",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:10"
+       ]
+      }
+     ],
+     "poids": 1.0
+    },
+    {
+     "mot": "à toi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 2608,
+     "dire": "à ton tour",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4,
+       "cases": [
+        "classe-2:1",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:10"
+       ]
+      }
+     ],
+     "poids": 0.94
+    },
+    {
+     "mot": "encore",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 37163,
+     "suites": [
+      {
+       "page": "manger",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      },
+      {
+       "page": "boire",
+       "poids": 0.2
+      },
+      {
+       "page": "actions",
+       "poids": 0.2
+      }
+     ],
+     "poids": 0.259
+    },
+    {
+     "mot": "aide-moi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 4570,
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4,
+       "cases": [
+        "actions:12",
+        "actions:15",
+        "actions:16",
+        "actions:10"
+       ]
+      },
+      {
+       "page": "habits",
+       "poids": 0.3,
+       "cases": [
+        "habits:1",
+        "habits:5",
+        "habits:17",
+        "habits:16"
+       ]
+      },
+      {
+       "page": "classe",
+       "poids": 0.3
+      }
+     ],
+     "poids": 0.403
+    },
+    {
+     "mot": "fini",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5358,
+     "dire": "c'est fini",
+     "suites": [
+      {
+       "page": "veux",
+       "poids": 0.6,
+       "cases": [
+        "veux:7",
+        "veux:10",
+        "veux:2",
+        "veux:16"
+       ]
+      },
+      {
+       "page": "jouer",
+       "poids": 0.4
+      }
+     ],
+     "poids": 0.175
+    },
+    {
+     "mot": "une pièce",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 8583,
+     "poids": 0.199
+    },
+    {
+     "mot": "ici",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5382,
+     "poids": 0.244
+    },
+    {
+     "mot": "ça va là",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 34641,
+     "poids": 0.786
+    },
+    {
+     "mot": "pas là",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 34639,
+     "dire": "ça ne va pas là",
+     "poids": 0.771
+    },
+    {
+     "mot": "tourner",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 37230,
+     "poids": 0.184
+    },
+    {
+     "mot": "chercher",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 6946,
+     "suites": [
+      {
+       "page": "classe-2",
+       "poids": 0.4,
+       "cases": [
+        "classe-2:0",
+        "classe-2:1",
+        "classe-2:3",
+        "classe-2:4"
+       ]
+      },
+      {
+       "page": "jouer",
+       "poids": 0.4
+      },
+      {
+       "page": "habits",
+       "poids": 0.2
+      }
+     ],
+     "poids": 0.203
+    },
+    {
+     "mot": "je ne trouve pas",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 7764,
+     "poids": 0.704
+    },
+    {
+     "mot": "un coin",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 5463,
+     "poids": 0.161
+    },
+    {
+     "mot": "un bord",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 19526,
+     "poids": 0.154
+    },
+    {
+     "mot": "c'est facile",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4645,
+     "poids": 0.164
+    },
+    {
+     "mot": "c'est difficile",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4629,
+     "poids": 0.16
+    },
+    {
+     "mot": "j'ai réussi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 21379,
+     "poids": 0.517
+    },
+    {
+     "mot": "un autre puzzle",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2540,
+     "poids": 0.096
+    },
+    {
+     "mot": "regarde",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2474,
+     "suites": [
+      {
+       "page": "animaux",
+       "poids": 0.25,
+       "cases": [
+        "animaux:0",
+        "animaux:1",
+        "animaux:2",
+        "animaux:3"
+       ]
+      },
+      {
+       "page": "gens",
+       "poids": 0.25,
+       "cases": [
+        "gens:16",
+        "gens:0",
+        "gens:2",
+        "gens:3"
+       ]
+      },
+      {
+       "page": "jouer",
+       "poids": 0.2,
+       "cases": [
+        "jouer:0",
+        "jouer:1",
+        "jouer:4",
+        "jouer:2"
+       ]
+      },
+      {
+       "page": "lieux",
+       "poids": 0.15,
+       "cases": [
+        "lieux:19",
+        "lieux:18",
+        "lieux:5",
+        "lieux:4"
+       ]
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.15,
+       "cases": [
+        "classe-2:0",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:7"
+       ]
+      }
+     ],
+     "poids": 0.191
+    },
+    {
+     "mot": "attends",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 8109,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 1.0,
+       "cases": [
+        "gens:0",
+        "gens:2",
+        "gens:3",
+        "gens:11"
+       ]
+      }
+     ],
+     "poids": 0.638
+    }
+   ]
+  },
+  {
+   "cle": "act-ballon",
+   "nom": "Ballon",
+   "lignes": 4,
+   "colonnes": 5,
+   "cases": [
+    {
+     "mot": "à moi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 7158,
+     "dire": "à mon tour",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4,
+       "cases": [
+        "classe-2:1",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:10"
+       ]
+      }
+     ],
+     "poids": 1.0
+    },
+    {
+     "mot": "à toi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 2608,
+     "dire": "à ton tour",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4,
+       "cases": [
+        "classe-2:1",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:10"
+       ]
+      }
+     ],
+     "poids": 0.94
+    },
+    {
+     "mot": "encore",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 37163,
+     "suites": [
+      {
+       "page": "manger",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      },
+      {
+       "page": "boire",
+       "poids": 0.2
+      },
+      {
+       "page": "actions",
+       "poids": 0.2
+      }
+     ],
+     "poids": 0.259
+    },
+    {
+     "mot": "attends",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 8109,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 1.0,
+       "cases": [
+        "gens:0",
+        "gens:2",
+        "gens:3",
+        "gens:11"
+       ]
+      }
+     ],
+     "poids": 0.842
+    },
+    {
+     "mot": "fini",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5358,
+     "dire": "c'est fini",
+     "suites": [
+      {
+       "page": "veux",
+       "poids": 0.6,
+       "cases": [
+        "veux:7",
+        "veux:10",
+        "veux:2",
+        "veux:16"
+       ]
+      },
+      {
+       "page": "jouer",
+       "poids": 0.4
+      }
+     ],
+     "poids": 0.175
+    },
+    {
+     "mot": "lance",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 28449,
+     "dire": "lance-moi le ballon",
+     "poids": 0.186
+    },
+    {
+     "mot": "attrape",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 9015,
+     "poids": 0.188
+    },
+    {
+     "mot": "tire",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 5961,
+     "poids": 0.206
+    },
+    {
+     "mot": "fais rouler",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 37927,
+     "dire": "fais rouler le ballon",
+     "poids": 0.167
+    },
+    {
+     "mot": "fais rebondir",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 5929,
+     "dire": "fais rebondir le ballon",
+     "poids": 0.114
+    },
+    {
+     "mot": "plus fort",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4655,
+     "poids": 0.177
+    },
+    {
+     "mot": "doucement",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 4676,
+     "poids": 0.165
+    },
+    {
+     "mot": "plus haut",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 39778,
+     "poids": 0.156
+    },
+    {
+     "mot": "loin",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 30385,
+     "poids": 0.174
+    },
+    {
+     "mot": "dans le but",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 37095,
+     "poids": 0.177
+    },
+    {
+     "mot": "dans le panier",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 3260,
+     "poids": 0.12
+    },
+    {
+     "mot": "bravo",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 4563,
+     "poids": 0.458
+    },
+    {
+     "mot": "raté",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 29638,
+     "poids": 0.48
+    },
+    {
+     "mot": "j'ai gagné",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 7218,
+     "poids": 0.551
+    },
+    {
+     "mot": "stop",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 38251,
+     "suites": [
+      {
+       "page": "probleme",
+       "poids": 1.0,
+       "cases": [
+        "probleme:8",
+        "probleme:7",
+        "probleme:12",
+        "probleme:11"
+       ]
+      }
+     ],
+     "poids": 0.431
+    }
+   ]
+  },
+  {
+   "cle": "act-album",
+   "nom": "Album",
+   "lignes": 4,
+   "colonnes": 5,
+   "cases": [
+    {
+     "mot": "lis-moi",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 7141,
+     "dire": "lis-moi l'histoire",
+     "poids": 0.15
+    },
+    {
+     "mot": "tourne la page",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 37186,
+     "poids": 0.227
+    },
+    {
+     "mot": "encore",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 37163,
+     "dire": "encore une fois",
+     "suites": [
+      {
+       "page": "manger",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      },
+      {
+       "page": "boire",
+       "poids": 0.2
+      },
+      {
+       "page": "actions",
+       "poids": 0.2
+      }
+     ],
+     "poids": 0.279
+    },
+    {
+     "mot": "attends",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 8109,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 1.0,
+       "cases": [
+        "gens:0",
+        "gens:2",
+        "gens:3",
+        "gens:11"
+       ]
+      }
+     ],
+     "poids": 0.271
+    },
+    {
+     "mot": "fini",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5358,
+     "dire": "c'est fini",
+     "suites": [
+      {
+       "page": "veux",
+       "poids": 0.6,
+       "cases": [
+        "veux:7",
+        "veux:10",
+        "veux:2",
+        "veux:16"
+       ]
+      },
+      {
+       "page": "jouer",
+       "poids": 0.4
+      }
+     ],
+     "poids": 0.193
+    },
+    {
+     "mot": "regarde",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2474,
+     "suites": [
+      {
+       "page": "animaux",
+       "poids": 0.25,
+       "cases": [
+        "animaux:0",
+        "animaux:1",
+        "animaux:2",
+        "animaux:3"
+       ]
+      },
+      {
+       "page": "gens",
+       "poids": 0.25,
+       "cases": [
+        "gens:16",
+        "gens:0",
+        "gens:2",
+        "gens:3"
+       ]
+      },
+      {
+       "page": "jouer",
+       "poids": 0.2,
+       "cases": [
+        "jouer:0",
+        "jouer:1",
+        "jouer:4",
+        "jouer:2"
+       ]
+      },
+      {
+       "page": "lieux",
+       "poids": 0.15,
+       "cases": [
+        "lieux:19",
+        "lieux:18",
+        "lieux:5",
+        "lieux:4"
+       ]
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.15,
+       "cases": [
+        "classe-2:0",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:7"
+       ]
+      }
+     ],
+     "poids": 0.257
+    },
+    {
+     "mot": "montre-moi",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 36964,
+     "dire": "montre-moi l'image",
+     "poids": 0.101
+    },
+    {
+     "mot": "c'est qui ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 9853,
+     "poids": 0.246
+    },
+    {
+     "mot": "il fait quoi ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 22620,
+     "poids": 0.241
+    },
+    {
+     "mot": "pourquoi ?",
+     "fond": "#e9ddf6",
+     "bord": "#8a4fd8",
+     "arasaac": 24763,
+     "poids": 0.237
+    },
+    {
+     "mot": "c'est drôle",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 8593,
+     "poids": 0.671
+    },
+    {
+     "mot": "c'est triste",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 2606,
+     "poids": 0.633
+    },
+    {
+     "mot": "j'ai peur",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 10261,
+     "suites": [
+      {
+       "page": "gens",
+       "poids": 0.4,
+       "cases": [
+        "gens:2",
+        "gens:3",
+        "gens:11",
+        "gens:13"
+       ]
+      },
+      {
+       "page": "animaux",
+       "poids": 0.3,
+       "cases": [
+        "animaux:0",
+        "animaux:1",
+        "animaux:16",
+        "animaux:13"
+       ]
+      },
+      {
+       "page": "lieux",
+       "poids": 0.3,
+       "cases": [
+        "lieux:5",
+        "lieux:7",
+        "lieux:13",
+        "lieux-2:10"
+       ]
+      }
+     ],
+     "poids": 0.755
+    },
+    {
+     "mot": "un méchant",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 38390,
+     "dire": "c'est un méchant",
+     "poids": 0.561
+    },
+    {
+     "mot": "un gentil",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 33994,
+     "dire": "c'est un gentil",
+     "poids": 0.652
+    },
+    {
+     "mot": "le loup",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 5892,
+     "poids": 0.15
+    },
+    {
+     "mot": "la fin",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 34607,
+     "dire": "c'est la fin",
+     "poids": 0.193
+    },
+    {
+     "mot": "j'aime ce livre",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 2418,
+     "poids": 0.189
+    },
+    {
+     "mot": "un autre livre",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2450,
+     "poids": 0.187
+    },
+    {
+     "mot": "tenir le livre",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2364,
+     "dire": "je veux tenir le livre",
+     "poids": 0.185
+    }
+   ]
+  },
+  {
+   "cle": "act-cuisine",
+   "nom": "Cuisine",
+   "lignes": 4,
+   "colonnes": 5,
+   "cases": [
+    {
+     "mot": "à moi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 7158,
+     "dire": "à mon tour",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4,
+       "cases": [
+        "classe-2:1",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:10"
+       ]
+      }
+     ],
+     "poids": 0.3
+    },
+    {
+     "mot": "à toi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 2608,
+     "dire": "à ton tour",
+     "suites": [
+      {
+       "page": "jouer",
+       "poids": 0.6
+      },
+      {
+       "page": "classe-2",
+       "poids": 0.4,
+       "cases": [
+        "classe-2:1",
+        "classe-2:5",
+        "classe-2:6",
+        "classe-2:10"
+       ]
+      }
+     ],
+     "poids": 0.289
+    },
+    {
+     "mot": "encore",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 37163,
+     "suites": [
+      {
+       "page": "manger",
+       "poids": 0.3
+      },
+      {
+       "page": "jouer",
+       "poids": 0.3
+      },
+      {
+       "page": "boire",
+       "poids": 0.2
+      },
+      {
+       "page": "actions",
+       "poids": 0.2
+      }
+     ],
+     "poids": 0.279
+    },
+    {
+     "mot": "aide-moi",
+     "fond": "#fadeeb",
+     "bord": "#d6408f",
+     "arasaac": 4570,
+     "suites": [
+      {
+       "page": "actions",
+       "poids": 0.4,
+       "cases": [
+        "actions:12",
+        "actions:15",
+        "actions:16",
+        "actions:10"
+       ]
+      },
+      {
+       "page": "habits",
+       "poids": 0.3,
+       "cases": [
+        "habits:1",
+        "habits:5",
+        "habits:17",
+        "habits:16"
+       ]
+      },
+      {
+       "page": "classe",
+       "poids": 0.3
+      }
+     ],
+     "poids": 0.121
+    },
+    {
+     "mot": "fini",
+     "fond": "#f0f0f0",
+     "bord": "#8a8f98",
+     "arasaac": 5358,
+     "dire": "c'est fini",
+     "suites": [
+      {
+       "page": "veux",
+       "poids": 0.6,
+       "cases": [
+        "veux:7",
+        "veux:10",
+        "veux:2",
+        "veux:16"
+       ]
+      },
+      {
+       "page": "jouer",
+       "poids": 0.4
+      }
+     ],
+     "poids": 0.236
+    },
+    {
+     "mot": "me laver les mains",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 8975,
+     "poids": 0.257
+    },
+    {
+     "mot": "mélanger",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 5981,
+     "poids": 0.201
+    },
+    {
+     "mot": "verser",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 7298,
+     "poids": 0.223
+    },
+    {
+     "mot": "couper",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2720,
+     "poids": 0.241
+    },
+    {
+     "mot": "goûter",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 39016,
+     "poids": 0.225
+    },
+    {
+     "mot": "la farine",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 8600,
+     "poids": 0.545
+    },
+    {
+     "mot": "le sucre",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 25560,
+     "poids": 0.692
+    },
+    {
+     "mot": "les œufs",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2427,
+     "poids": 0.706
+    },
+    {
+     "mot": "le lait",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2445,
+     "poids": 0.745
+    },
+    {
+     "mot": "le saladier",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 13082,
+     "poids": 0.305
+    },
+    {
+     "mot": "la cuillère",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2362,
+     "poids": 0.485
+    },
+    {
+     "mot": "le four",
+     "fond": "#fce6ca",
+     "bord": "#e07b12",
+     "arasaac": 2426,
+     "poids": 0.56
+    },
+    {
+     "mot": "c'est chaud",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 26716,
+     "poids": 0.214
+    },
+    {
+     "mot": "c'est bon",
+     "fond": "#d6e6f7",
+     "bord": "#2f6fd0",
+     "arasaac": 32340,
+     "poids": 0.211
+    },
+    {
+     "mot": "ça sent bon",
+     "fond": "#d9f0d4",
+     "bord": "#2e9b3e",
+     "arasaac": 2486,
+     "poids": 0.21
+    }
+   ]
   }
  ],
- "versionDesPoids": "2026-11-05-lexique383-phrases7",
+ "versionDesPoids": "2026-11-05-lexique383-podd8",
  "sources": [
   "Fréquences : Lexique 3.83 (B. New, C. Pallier, lexique.org), CC BY-SA 4.0"
  ]

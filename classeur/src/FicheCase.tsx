@@ -24,6 +24,8 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
 }) {
   const [mot, setMot] = React.useState(valeur?.mot ?? "");
   const [dire, setDire] = React.useState(valeur?.dire ?? "");
+  const [motF, setMotF] = React.useState(valeur?.feminin?.mot ?? "");
+  const [direF, setDireF] = React.useState(valeur?.feminin?.dire ?? "");
   const [image, setImage] = React.useState(valeur?.image);
   const [couleur, setCouleur] = React.useState<{ fond?: string; bord?: string }>({ fond: valeur?.fond, bord: valeur?.bord });
   const [lien, setLien] = React.useState(valeur?.lien ?? "");
@@ -61,6 +63,10 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
       if (valeur?.suitesPerso) k.suitesPerso = true;
     }
     if (dire.trim() && dire.trim() !== m) k.dire = dire.trim();
+    // Au féminin : ce qui change seulement ; vide, la case garde ses formes (une mise à jour n'y touche plus si on les a vidées).
+    const fm = motF.trim(), fd = direF.trim();
+    if ((fm && fm !== m) || fd) k.feminin = { ...(fm && fm !== m ? { mot: fm } : {}), ...(fd ? { dire: fd } : {}) };
+    else if (valeur?.feminin) k.feminin = {};
     if (image) k.image = image;
     if (couleur.fond) k.fond = couleur.fond;
     if (couleur.bord) k.bord = couleur.bord;
@@ -93,6 +99,14 @@ export function FicheCase({ classeur, page, valeur, images, onImage, onPoser, on
           <label className="etiquette">Ce qui se dit
             <input className="champ" value={dire} onChange={(e) => setDire(e.target.value)} placeholder="Comme le mot" />
           </label>
+          {(classeur.feminin || valeur?.feminin) && (
+            <div className="etiquette">Au féminin
+              <div className="rangee">
+                <input className="champ" aria-label="Le mot au féminin" value={motF} onChange={(e) => setMotF(e.target.value)} placeholder={mot.trim() || "Le mot"} />
+                <input className="champ" aria-label="Ce qui se dit au féminin" value={direF} onChange={(e) => setDireF(e.target.value)} placeholder="Ce qui se dit" />
+              </div>
+            </div>
+          )}
           <div className="etiquette">L'image
             <ChoixImage rechercheDeDepart={valeur?.mot ?? ""} image={image} onPrise={prise} onSansImage={() => setImage(undefined)} onOccupe={setOccupe} />
           </div>

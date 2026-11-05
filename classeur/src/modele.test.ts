@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  ajouterPage, ajouterPageSuivante, ajouterSectionApres, casesPerdues, changerSuite, changerTaille, deplacerSection, ditDeLaCase, ditEnTouchant, dupliquer,
+  ajouterPage, ajouterPageSuivante, ajouterSectionApres, casesPerdues, changerSuite, changerTaille, deplacerSection, ditDeLaCase, ditEnTouchant, dupliquer, formeDeLaCase,
   fairePageDAccueil, fairePageDesCategories, imagesDuClasseur, lireClasseur, nouveauClasseur, nouvellePage, numeroDePage, ordreDesPages,
   pageVoisine, poserCase, redimensionner, sectionsDe, supprimerPage, texteDeLaPhrase, type Case, type Classeur,
 } from "./modele";
@@ -62,6 +62,19 @@ describe("le classeur de communication (demande de l'enseignant, 5 novembre 2026
     expect(ditEnTouchant(k("jouer", { lien: "jouer" }))).toBe("jouer");
     expect(ditEnTouchant(k("les gens", { lien: "gens", muette: false }))).toBe("les gens");
     expect(ditEnTouchant(k("maman", { muette: true }))).toBe("maman");
+  });
+
+  it("au féminin, une case prend ses formes féminines ; au masculin, ou sans elles, elle ne change pas", () => {
+    const content = k("content", { feminin: { mot: "contente" } });
+    expect(ditDeLaCase(formeDeLaCase(content, true))).toBe("contente");
+    expect(formeDeLaCase(content, true).mot).toBe("contente");
+    expect(formeDeLaCase(content, false)).toBe(content);
+    const tombe = k("tombé", { dire: "je suis tombé", feminin: { mot: "tombée", dire: "je suis tombée" } });
+    expect(ditDeLaCase(formeDeLaCase(tombe, true))).toBe("je suis tombée");
+    // Le mot seul au féminin le dit aussi, à la place de ce que disait la case.
+    expect(ditDeLaCase(formeDeLaCase(k("fier", { dire: "je suis fier", feminin: { mot: "fière" } }), true))).toBe("fière");
+    expect(formeDeLaCase(k("petit"), true).mot).toBe("petit");
+    expect(formeDeLaCase(k("seul", { feminin: {} }), true).mot).toBe("seul");
   });
 
   it("relit un classeur gardé en remettant d'aplomb ce qui déborde, et refuse l'illisible", () => {

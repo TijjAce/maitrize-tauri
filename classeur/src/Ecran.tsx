@@ -1,7 +1,7 @@
 import React from "react";
 import {
   LIGNES_MAX, COLONNES_MAX, ajouterPageSuivante, ajouterSectionApres, casesPerdues, changerImageDePage, changerSuite, changerTaille, deplacerSection,
-  ditEnTouchant, fairePageDAccueil, fairePageDesCategories, imagesDuClasseur, nouvellePage, numeroDePage, pageDe, pageVoisine,
+  ditEnTouchant, formeDeLaCase, fairePageDAccueil, fairePageDesCategories, imagesDuClasseur, nouvellePage, numeroDePage, pageDe, pageVoisine,
   pictoDeLaPage, poserCase, renommerPage, sectionDe, sectionsDe, supprimerPage, texteDeLaPhrase, type Case, type Classeur, type MotDit,
 } from "./modele";
 import { dire, garderClasseur, lireImages, voixDisponibles, type VoixDisponible } from "./pont";
@@ -139,13 +139,24 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
   };
   const tourner = (sens: 1 | -1) => aller(pageVoisine(c, page.id, sens)?.id, sens === 1 ? "droite" : "gauche");
   const toucher = (k: Case) => {
-    // Une case muette (une catégorie) ouvre sa page sans rien dire.
-    const dit = ditEnTouchant(k);
+    // Au féminin, la case prend sa forme féminine ; muette (une catégorie), elle ouvre sa page sans rien dire ; sans
+    // « dire chaque case », elle rejoint la phrase en silence.
+    const v = formeDeLaCase(k, c.feminin);
+    const dit = ditEnTouchant(v);
     if (dit) {
-      void dire(dit, c.voix);
-      setPhrase((p) => [...p, { mot: k.mot || dit, dire: dit, image: k.image, caseId: k.id }]);
+      if (c.parlerAuToucher !== false) void dire(dit, c.voix);
+      setPhrase((p) => [...p, { mot: v.mot || dit, dire: dit, image: k.image, caseId: k.id }]);
     }
     if (k.lien) aller(k.lien);
+  };
+  /**
+   * « Ce n'est pas dans mon classeur, je vais te donner un indice » (à la place de « Catégories », sur les catégories,
+   * comme dans les PODD) : ce qui suit n'est pas le message, mais un indice pour deviner le mot qui manque.
+   */
+  const indice = () => {
+    const dit = "ce n'est pas dans mon classeur, je vais te donner un indice";
+    if (c.parlerAuToucher !== false) void dire(dit, c.voix);
+    setPhrase((p) => [...p, { mot: "pas dans mon classeur", dire: dit }]);
   };
   const direLaPhrase = () => { void dire(texteDeLaPhrase(phrase), c.voix); };
   const accueil = () => { setEntree(null); setPageId(c.accueil); setChemin([]); };
@@ -230,6 +241,8 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
   const couleur = couleurDeSection(section?.numero ?? 1);
   const debut = section && section.pages[0].id !== page.id ? section.pages[0] : undefined;
   const avant = pageVoisine(c, page.id, -1), apres = pageVoisine(c, page.id, 1);
+  const motDe = (k: Case) => formeDeLaCase(k, c.feminin).mot;
+  const dansLesCategories = !!c.categories && !!sectionDe(c, c.categories)?.pages.some((p) => p.id === page.id);
   const coin = (k: Case) => k.lien && pageDe(c, k.lien)
     ? <span className="coin" aria-hidden style={{ background: couleurDeSection(sectionDe(c, k.lien)?.numero ?? 1) }}>{numeroDePage(c, k.lien)}</span>
     : null;
@@ -294,6 +307,14 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
             <input type="checkbox" checked={c.balayer !== false}
               onChange={(e) => changer({ ...c, balayer: e.target.checked ? undefined : false })} /> Balayer tourne les pages
           </label>
+          <label className="coche petite">
+            <input type="checkbox" checked={!!c.feminin}
+              onChange={(e) => changer({ ...c, feminin: e.target.checked || undefined })} /> Parle au féminin
+          </label>
+          <label className="coche petite">
+            <input type="checkbox" checked={c.parlerAuToucher !== false}
+              onChange={(e) => changer({ ...c, parlerAuToucher: e.target.checked ? undefined : false })} /> Dire chaque case touchée
+          </label>
           <span className="espace" />
           <button className="bouton" disabled={!passes.length} onClick={annuler} aria-label="Défaire">↶</button>
           <button className="bouton principal" onClick={() => setMode("parler")}>✓ Terminé</button>
@@ -324,7 +345,7 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
                   style={k ? { background: k.fond, borderColor: k.bord } : undefined} onClick={() => setFiche(i)}>
                   {k ? <>
                     {k.image && images[k.image] && <img src={images[k.image]} alt="" />}
-                    <span className={classeDuMot(k.mot)}>{k.mot}</span>
+                    <span className={classeDuMot(motDe(k))}>{motDe(k)}</span>
                     {coin(k)}
                     {k.masquee && <span className="marque" aria-hidden>caché</span>}
                   </> : <span className="plus">＋</span>}
@@ -335,7 +356,7 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
             return (
               <button key={i} className={`case${k.lien ? " lien" : ""}`} style={{ background: k.fond, borderColor: k.bord }} onClick={() => toucher(k)}>
                 {k.image && images[k.image] && <img src={images[k.image]} alt="" />}
-                <span className={classeDuMot(k.mot)}>{k.mot}</span>
+                <span className={classeDuMot(motDe(k))}>{motDe(k)}</span>
                 {coin(k)}
               </button>
             );
@@ -344,10 +365,9 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
 
         <div className="operations" role="toolbar" aria-label="Aller dans le classeur">
           <button className="operation" disabled={page.id === c.accueil} onClick={accueil}><span className="op-icone">🏠</span><span>Page 1</span></button>
-          {c.categories && pageDe(c, c.categories) && (
-            <button className="operation" disabled={page.id === c.categories} onClick={() => aller(c.categories)}>
-              <span className="op-icone">▦</span><span>Catégories</span>
-            </button>
+          {c.categories && pageDe(c, c.categories) && (dansLesCategories
+            ? <button className="operation" onClick={indice}><span className="op-icone">💡</span><span>Un indice</span></button>
+            : <button className="operation" onClick={() => aller(c.categories)}><span className="op-icone">▦</span><span>Catégories</span></button>
           )}
           {debut && (
             <button className="operation" style={{ borderColor: couleur }} onClick={() => aller(debut.id, "gauche")}>

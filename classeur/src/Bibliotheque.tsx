@@ -34,14 +34,14 @@ export function Bibliotheque({ classeurs, onOuvrir, onRecharger }: {
   const [nouveau, setNouveau] = React.useState(false);
   const fichier = React.useRef<HTMLInputElement>(null);
 
-  const creer = async (nom: string, complet: boolean) => {
+  const creer = async (nom: string, complet: boolean, feminin: boolean) => {
     setNouveau(false);
     setOccupe(true);
     try {
       let c: Classeur;
-      if (complet) c = await creerLeClasseurComplet(nom);
+      if (complet) c = await creerLeClasseurComplet(nom, feminin);
       else {
-        c = nouveauClasseur(nom);
+        c = { ...nouveauClasseur(nom), ...(feminin ? { feminin: true } : {}) };
         await garderClasseur(c);
       }
       await onRecharger();
@@ -135,7 +135,7 @@ export function Bibliotheque({ classeurs, onOuvrir, onRecharger }: {
           </div>
         )}
 
-      {nouveau && <FenetreNouveau onCreer={(nom, complet) => { void creer(nom, complet); }} onFermer={() => setNouveau(false)} />}
+      {nouveau && <FenetreNouveau onCreer={(nom, complet, feminin) => { void creer(nom, complet, feminin); }} onFermer={() => setNouveau(false)} />}
 
       {credits && (
         <Fenetre titre="Crédits" onFermer={() => setCredits(false)}>
@@ -154,11 +154,15 @@ export function Bibliotheque({ classeurs, onOuvrir, onRecharger }: {
 
 const CASES_DU_MODELE = MODELE_COMPLET.pages.reduce((n, p) => n + p.cases.length, 0);
 
-/** Un nouveau classeur : son nom, et ses pages — complètes d'office, ou une seule, vide. */
-function FenetreNouveau({ onCreer, onFermer }: { onCreer: (nom: string, complet: boolean) => void; onFermer: () => void }) {
+/**
+ * Un nouveau classeur : son nom, et ses pages — complètes d'office, ou une seule, vide ; et si l'élève parle au féminin
+ * (les PODD le demandent à leur création : « contente », « je suis tombée »).
+ */
+function FenetreNouveau({ onCreer, onFermer }: { onCreer: (nom: string, complet: boolean, feminin: boolean) => void; onFermer: () => void }) {
   const [nom, setNom] = React.useState("");
   const [complet, setComplet] = React.useState(true);
-  const valider = () => onCreer(nom.trim(), complet);
+  const [feminin, setFeminin] = React.useState(false);
+  const valider = () => onCreer(nom.trim(), complet, feminin);
   return (
     <Fenetre titre="Nouveau classeur" onFermer={onFermer}
       pied={<>
@@ -178,6 +182,9 @@ function FenetreNouveau({ onCreer, onFermer }: { onCreer: (nom: string, complet:
             <span className="discret">1 page</span>
           </button>
         </div>
+        <label className="coche">
+          <input type="checkbox" checked={feminin} onChange={(e) => setFeminin(e.target.checked)} /> Parle au féminin
+        </label>
       </div>
     </Fenetre>
   );

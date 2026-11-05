@@ -14,8 +14,12 @@ export function Fenetre({ titre, onFermer, children, pied, large }: {
     window.addEventListener("keydown", touche);
     return () => window.removeEventListener("keydown", touche);
   }, [onFermer]);
+  // Toucher à côté ferme la fenêtre au relâcher, sur le voile lui-même : fermée dès l'appui, le relâcher tombait sur la
+  // case d'en dessous, qui se disait.
+  const appuiDehors = React.useRef(false);
   return (
-    <div className="voile" onPointerDown={(e) => { if (e.target === e.currentTarget) onFermer(); }}>
+    <div className="voile" onPointerDown={(e) => { appuiDehors.current = e.target === e.currentTarget; }}
+      onClick={(e) => { if (appuiDehors.current && e.target === e.currentTarget) onFermer(); appuiDehors.current = false; }}>
       <div className={`fenetre${large ? " large" : ""}`} role="dialog" aria-modal="true" aria-label={titre}>
         <div className="fenetre-tete">
           <h2>{titre}</h2>

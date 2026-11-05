@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { MODELE_COMPLET, aPoser, ajouterLesPoids, classeurComplet, pictosDesCasesRenommees, pictosDuModele, poserLesPictos } from "./classeurComplet";
+import { MODELE_COMPLET, aPoser, ajouterLesPoids, classeurComplet, nouveauxPictos, pictosDuModele, poserLesPictos } from "./classeurComplet";
 import { categoriesApres } from "./ensembles";
 import { nouveauClasseur, type Case, type Classeur } from "./modele";
-import { ditEnTouchant, numeroDePage, ordreDesPages, pageDe, pageVoisine, sectionDe, sectionsDe } from "./modele";
+import { ditEnTouchant, formeDeLaCase, nouvellePage, numeroDePage, ordreDesPages, pageDe, pageVoisine, sectionDe, sectionsDe } from "./modele";
 import { depuisObz, versObz } from "./obz";
 
 // Les pictos livrés avec l'application, par leur numéro.
@@ -65,12 +65,18 @@ describe("le classeur complet", () => {
     expect([...vues].sort()).toEqual(c.pages.map((p) => p.id).sort());
   });
 
-  it("les catégories mènent à toutes les sections", () => {
-    const cat = pageDe(c, c.categories)!;
-    const menees = new Set(cat.cases.flatMap((k) => (k?.lien ? [k.lien] : [])));
+  it("les catégories mènent à toutes les sections ; les pages d'activité, par le jeu qui y mène", () => {
+    const menees = (ids: string[]) => new Set(ids.flatMap((id) => pageDe(c, id)!.cases.flatMap((k) => (k?.lien ? [k.lien] : []))));
+    const cat = sectionDe(c, c.categories!)!.pages.map((p) => p.id);
+    const direct = menees(cat);
     const premieres = sectionsDe(c).slice(3).map((s) => s.pages[0]);
-    const sansLien = premieres.filter((p) => !menees.has(p.id) && p.nom !== "Je veux" && p.nom !== "Ça ne va pas").map((p) => p.nom);
-    expect(sansLien).toEqual([]);
+    const sansLien = premieres.filter((p) => !direct.has(p.id) && !["Je veux", "Ça ne va pas", "Raconter"].includes(p.nom)).map((p) => p.nom);
+    expect(sansLien).toEqual(["Pâte à modeler", "Peinture", "Puzzle", "Ballon", "Album", "Cuisine"]);
+    // Celles-là s'ouvrent depuis une page que les catégories ouvrent (ou tournent) : « jouer » › « ballon ».
+    const enDeux = menees([...direct].flatMap((id) => sectionDe(c, id)!.pages.map((p) => p.id)));
+    expect(sansLien.filter((nom) => !enDeux.has(c.pages.find((p) => p.nom === nom)!.id))).toEqual([]);
+    // « Raconter » s'ouvre depuis « je te raconte ».
+    expect(pageDe(c, ordreDesPages(c)[1].cases.find((k) => k?.mot === "je te raconte")?.lien)?.nom).toBe("Raconter");
   });
 
   it("a un picto à chaque case, livré avec l'application, et rien de plus", () => {
@@ -86,19 +92,20 @@ describe("le classeur complet", () => {
 
   // « Fais toi-même les phrases et regarde si elles ont du sens » (l'enseignant, 5 novembre 2026).
   /** La phrase que l'on fait en touchant ces mots, depuis « Je veux dire… » : chaque lien ouvre sa page, que l'on peut tourner. */
-  const phrase = (...mots: string[]) => {
-    let page = ordreDesPages(c)[1].id;
+  const phraseDans = (x: Classeur, ...mots: string[]) => {
+    let page = ordreDesPages(x)[1].id;
     const dits: string[] = [];
     for (const mot of mots) {
-      const s = sectionDe(c, page)!;
-      const k = s.pages.slice(s.pages.findIndex((p) => p.id === page)).flatMap((p) => p.cases).find((x) => x?.mot === mot);
-      if (!k) throw new Error(`« ${mot} » n'est pas sur la page « ${pageDe(c, page)?.nom} »`);
-      const dit = ditEnTouchant(k);
+      const s = sectionDe(x, page)!;
+      const k = s.pages.slice(s.pages.findIndex((p) => p.id === page)).flatMap((p) => p.cases).find((y) => y?.mot === mot);
+      if (!k) throw new Error(`« ${mot} » n'est pas sur la page « ${pageDe(x, page)?.nom} »`);
+      const dit = ditEnTouchant(formeDeLaCase(k, x.feminin));
       if (dit) dits.push(dit);
       if (k.lien) page = k.lien;
     }
     return dits.join(" ");
   };
+  const phrase = (...mots: string[]) => phraseDans(c, ...mots);
 
   it("fait des phrases qui ont du sens : le verbe, puis ce qui le complète, avec son article", () => {
     expect(phrase("je veux", "jouer", "ballon")).toBe("je veux jouer au ballon");
@@ -107,7 +114,11 @@ describe("le classeur complet", () => {
     expect(phrase("je veux", "aller", "piscine")).toBe("je veux aller à la piscine");
     expect(phrase("on joue", "poupée")).toBe("on joue à la poupée");
     expect(phrase("ça ne va pas", "j'ai mal", "ventre")).toBe("quelque chose ne va pas j'ai mal au ventre");
-    expect(phrase("je te raconte", "j'ai mal", "tête")).toBe("je te raconte quelque chose j'ai mal à la tête");
+    expect(phrase("autre chose", "j'ai mal", "tête")).toBe("autre chose j'ai mal à la tête");
+    // Les indices de temps, comme dans les PODD.
+    expect(phrase("autre chose", "avant", "aller", "parc")).toBe("autre chose c'est déjà arrivé aller au parc");
+    // « Dis-moi oui ou non » mène aux catégories : on montre sur quoi porte la question.
+    expect(phrase("j'ai une question", "oui ou non ?", "aller", "piscine")).toBe("j'ai une question dis-moi oui ou non aller à la piscine");
     // « je suis malade » ne mène plus au corps (« je suis malade à la tête ») : la bande propose « j'ai mal ».
     const malade = c.pages.flatMap((p) => p.cases).find((k) => k?.mot === "je suis malade")!;
     expect(malade.lien).toBeUndefined();
@@ -124,6 +135,31 @@ describe("le classeur complet", () => {
     // Les verbes qui ouvrent leur page parlent.
     expect(phrase("je n'aime pas", "manger", "soupe")).toBe("je n'aime pas manger de la soupe");
     expect(phrase("j'aime", "jouer", "cache-cache")).toBe("j'aime jouer à cache-cache");
+  });
+
+  it("raconte ce qui s'est passé, et ouvre la page d'activité du jeu choisi", () => {
+    expect(phrase("je te raconte", "hier", "on est allés", "piscine")).toBe("je te raconte quelque chose hier on est allés à la piscine");
+    expect(phrase("je te raconte", "ce week-end", "j'ai joué", "ballon")).toBe("je te raconte quelque chose ce week-end j'ai joué au ballon");
+    expect(phrase("je te raconte", "avec", "mamie")).toBe("je te raconte quelque chose avec mamie");
+    expect(phrase("on joue", "ballon", "à moi", "lance")).toBe("on joue au ballon à mon tour lance-moi le ballon");
+    expect(phrase("je veux", "lire un livre", "lis-moi")).toBe("je veux lire un livre lis-moi l'histoire");
+    expect(phrase("en classe", "cuisiner", "mélanger")).toBe("cuisiner mélanger");
+    // Après « hier », la bande propose de dire où l'on est allé, à quoi l'on a joué.
+    const raconter = c.pages.find((p) => p.nom === "Raconter")!;
+    const hier = raconter.cases.find((k) => k?.mot === "hier")!;
+    expect(categoriesApres(c, hier, raconter.id).map((x) => x.nom)).toEqual(["je suis allé", "j'ai joué"]);
+    const weekEnd = raconter.cases.find((k) => k?.mot === "ce week-end")!;
+    expect(categoriesApres(c, weekEnd, raconter.id).map((x) => x.nom)).toEqual(["je suis allé", "j'ai joué", "avec"]);
+  });
+
+  it("parle au féminin quand l'élève est une fille : « je me sens contente », « je suis tombée »", () => {
+    const elle = { ...c, feminin: true };
+    expect(phraseDans(elle, "je me sens", "content")).toBe("je me sens contente");
+    expect(phraseDans(elle, "ça ne va pas", "je suis fatigué")).toBe("quelque chose ne va pas je suis fatiguée");
+    expect(phraseDans(elle, "je te raconte", "hier", "je suis allé", "piscine")).toBe("je te raconte quelque chose hier je suis allée à la piscine");
+    expect(phrase("je me sens", "content")).toBe("je me sens content");
+    // Ce qui décrit une chose ne change pas.
+    expect(phraseDans(elle, "c'est…", "petit")).toBe("c'est petit");
   });
 
   it("après « jouer », « manger », « boire », chaque chose dit son article ou sa préposition", () => {
@@ -160,7 +196,10 @@ describe("le classeur complet", () => {
     // Ce qui se dit, et les catégories muettes, aussi.
     const dits = (x: typeof c) => x.pages.flatMap((p) => p.cases.flatMap((k) => (k ? [`${k.mot}=${ditEnTouchant(k)}`] : [])));
     expect(dits(retour)).toEqual(dits(c));
-    expect(retour.pages.flatMap((p) => p.cases.filter((k) => k?.muette)).length).toBe(10);
+    expect(retour.pages.flatMap((p) => p.cases.filter((k) => k?.muette)).length).toBe(c.pages.flatMap((p) => p.cases.filter((k) => k?.muette)).length);
+    const feminins = (x: typeof c) => x.pages.flatMap((p) => p.cases.flatMap((k) => (k?.feminin ? [`${k.mot}=${k.feminin.mot ?? ""}/${k.feminin.dire ?? ""}`] : [])));
+    expect(feminins(retour)).toEqual(feminins(c));
+    expect(feminins(c).length).toBeGreaterThan(10);
   });
 });
 
@@ -269,7 +308,46 @@ describe("un classeur complet d'avant les poids", () => {
     const livree = neuf.pages.find((p) => p.nom === "Catégories")!.cases.find((k) => k?.mot === "j'ai mal")!;
     expect({ image: mal.image, fond: mal.fond, bord: mal.bord, lien: mal.lien }).toEqual({ image: livree.image, fond: livree.fond, bord: livree.bord, lien: livree.lien });
     expect(caseDe("Manger", false, "boire").image).toBe("photo-de-la-classe");
-    expect(pictosDesCasesRenommees()).toEqual(expect.arrayContaining([38801, 39085, 11295]));
+    expect(repris.modifieLe).toBe(ancien.modifieLe);
+  });
+
+  it("reçoit les pages neuves (« Raconter », les activités), leurs liens, et les formes féminines", () => {
+    const neuf = classeurComplet();
+    const neuves = ["Raconter", "Pâte à modeler", "Peinture", "Puzzle", "Ballon", "Album", "Cuisine"];
+    const idsNeufs = new Set(neuf.pages.filter((p) => neuves.includes(p.nom)).map((p) => p.id));
+    const mal = neuf.pages.find((p) => p.nom === "J'ai mal")!.id;
+    // Un classeur d'avant : sans ces pages ; « je te raconte » menait aux catégories, « je suis malade » au corps,
+    // « oui ou non ? » et les jeux nulle part ; pas de formes féminines ; et l'enseignant a ajouté une page à « S'habiller ».
+    let ancien: Classeur = {
+      ...neuf, versionDesPoids: "2026-11-05-lexique383-phrases7",
+      pages: neuf.pages.filter((p) => !idsNeufs.has(p.id)).map((p) => ({
+        ...p, cases: p.cases.map((k) => {
+          if (!k) return k;
+          const x: Case = { ...k };
+          delete x.feminin;
+          if (x.lien && idsNeufs.has(x.lien)) delete x.lien;
+          if (x.mot === "je te raconte") x.lien = neuf.categories;
+          if (x.mot === "oui ou non ?") delete x.lien;
+          if (x.mot === "je suis malade") x.lien = mal;
+          return x;
+        }),
+      })),
+    };
+    const iHabits = ancien.pages.findIndex((p) => p.nom === "S'habiller");
+    ancien = { ...ancien, pages: [...ancien.pages.slice(0, iHabits + 1), { ...nouvellePage("Mes vêtements", 4, 5), suite: true }, ...ancien.pages.slice(iHabits + 1)] };
+    const repris = ajouterLesPoids(ancien)!;
+    const noms = ordreDesPages(repris).map((p) => p.nom);
+    // Les pages neuves arrivent après la section « S'habiller », la page de l'enseignant comprise.
+    expect(noms.slice(noms.indexOf("S'habiller"))).toEqual(["S'habiller", "Mes vêtements", ...neuves]);
+    const caseDe = (nomPage: string, mot: string) => repris.pages.find((p) => p.nom === nomPage && !p.suite)!.cases.find((k) => k?.mot === mot)!;
+    const versPage = (k: Case) => pageDe(repris, k.lien)?.nom;
+    expect(versPage(caseDe("Jouer", "ballon"))).toBe("Ballon");
+    expect(versPage(caseDe("Je veux dire…", "je te raconte"))).toBe("Raconter");
+    expect(versPage(caseDe("Questions", "oui ou non ?"))).toBe("Catégories");
+    expect(caseDe("Ça ne va pas", "je suis malade").lien).toBeUndefined();
+    expect(caseDe("Je me sens", "content").feminin).toEqual({ mot: "contente" });
+    expect(versPage(caseDe("Raconter", "je suis allé"))).toBe("Aller");
+    expect(nouveauxPictos(ancien, repris)).toEqual(expect.arrayContaining([8583, 37186, 25704]));
     expect(repris.modifieLe).toBe(ancien.modifieLe);
   });
 
