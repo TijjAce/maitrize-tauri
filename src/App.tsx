@@ -37,7 +37,7 @@ import { NotesPanel } from "./components/NotesPanel";
 import { BoutonPictos } from "./components/BoutonPictos";
 import { CommandPalette } from "./components/CommandPalette";
 import { ChercherDansLaPage } from "./components/ChercherDansLaPage";
-import { Onboarding } from "./components/Onboarding";
+import { PremierLancement } from "./components/PremierLancement";
 import { ContextMenuHost } from "./components/ctxmenu";
 import { CguGate } from "./components/CGU";
 import { bootTheme } from "./theme";
@@ -328,7 +328,8 @@ export default function App() {
       <CommandPalette />
       {/* ⌘F partout : chercher dans ce que l'écran montre. */}
       <ChercherDansLaPage />
-      <Onboarding />
+      {/* Après les conditions d'utilisation : les pictogrammes, la clé, l'emploi du temps (voir premierLancement.ts). */}
+      {surLeMac && <PremierLancement />}
       {/* L'été : proposer de laisser place à la classe suivante (voir finDAnnee.ts). */}
       {surLeMac && <FinDAnneeHost />}
       <ContextMenuHost />
