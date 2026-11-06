@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { chercherAteliers, lirePlis } from "./pages/Jeux";
+import { describe, it, expect, vi } from "vitest";
+import { chercherAteliers, lirePlis, lireRangement } from "./pages/Jeux";
 
 const familles = [
   { libelle: "🗣 Langage", outils: [
@@ -52,6 +52,24 @@ describe("le français, rassemblé en trois parties", () => {
       .toEqual(["famille:francais", "famille:francais:ecrit", "famille:francais:langage", "famille:francais:sons"]);
     expect(lirePlis(["famille:francais:sons", "famille:maths:calcul"])).toEqual(["famille:francais:sons", "famille:maths:calcul"]);
     expect(lirePlis("rien")).toEqual([]);
+  });
+});
+
+describe("la lecture du catalogue, gardée sur cet ordinateur", () => {
+  const lue = (valeur: string | null) => {
+    vi.stubGlobal("localStorage", { getItem: () => valeur });
+    try { return lireRangement(); } finally { vi.unstubAllGlobals(); }
+  };
+
+  it("garde la lecture par compétence, sinon celle par domaine", () => {
+    expect(lue("competence")).toBe("competence");
+    expect(lue("famille")).toBe("famille");
+    expect(lue(null)).toBe("famille");
+    expect(lue("usage")).toBe("famille");
+  });
+
+  it("ne rouvre pas les séquences toutes faites : elles s'ouvrent du premier écran", () => {
+    expect(lue("sequences")).toBe("famille");
   });
 });
 

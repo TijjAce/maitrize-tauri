@@ -157,6 +157,13 @@ const compteDesSequences = (outils: Outil[]) => {
   return [dossiers ? `${dossiers} dossier${dossiers > 1 ? "s" : ""}` : "", seules ? `${seules} séquence${seules > 1 ? "s" : ""}` : ""].filter(Boolean).join(", ");
 };
 const RANGEMENT_MEMORISE = "fabriquer:rangement";
+/**
+ * La lecture des supports gardée sur cet ordinateur. L'ancienne « par moment » est devenue celle par domaine. Les séquences
+ * toutes faites ne se gardent plus : elles s'ouvrent du premier écran, et demander des supports n'y ramène pas.
+ */
+export const lireRangement = (): Rangement => {
+  try { return localStorage.getItem(RANGEMENT_MEMORISE) === "competence" ? "competence" : "famille"; } catch { return "famille"; }
+};
 
 /** Les familles devenues des parties du français (octobre 2026) : « famille:sons » se lit « famille:francais:sons ». */
 const ANCIENNES_FAMILLES_DU_FRANCAIS = ["langage", "sons", "ecrit"];
@@ -314,15 +321,10 @@ export default function Jeux() {
     const d = descriptionDe(usage);
     toast(`${outilDe(id)?.nom ?? "L'atelier"} rangé dans ${d.nom} — ${d.quand}.`, { icone: d.ico });
   };
-  const [rangement, setRangementBrut] = React.useState<Rangement>(() => {
-    try {
-      const lu = localStorage.getItem(RANGEMENT_MEMORISE);
-      // L'ancienne lecture « par moment » est devenue celle par domaine, rangée par moment.
-      return lu === "competence" || lu === "sequences" ? lu : "famille";
-    } catch { return "famille"; }
-  });
+  const [rangement, setRangementBrut] = React.useState<Rangement>(lireRangement);
   const setRangement = (r: Rangement) => {
     setRangementBrut(r);
+    if (r === "sequences") return;
     try { localStorage.setItem(RANGEMENT_MEMORISE, r); } catch { /* stockage indisponible */ }
   };
   // Ce qu'on fabrique, choisi en arrivant (voir SorteDeFabrication) : un support de séance, un outil pour l'élève, un affichage. Chaque
@@ -334,6 +336,11 @@ export default function Jeux() {
     if (visible && !etaitVisible.current && !onglet) setSorte(null);
     etaitVisible.current = visible;
   }, [visible, onglet]);
+  // Choisir une sorte ramène à ses ateliers, même depuis les séquences toutes faites.
+  const choisirLaSorte = (s: SorteDeFabrication) => {
+    setSorte(s); setRecherche("");
+    if (rangement === "sequences") setRangementBrut(lireRangement());
+  };
   const familles = famillesDeSorte(sorte ?? "support");
   const vue: SorteDeFabrication = sorte ?? "support";
   const dire = DIRE_LA_SORTE[vue];
@@ -416,7 +423,7 @@ export default function Jeux() {
   if (!onglet && !sorte) {
     const nombre = (s: SorteDeFabrication) => famillesDeSorte(s).reduce((n, f) => n + f.outils.length, 0) + (s === "support" ? generateurs.length : 0);
     const choix = (s: SorteDeFabrication, icone: string, titre: string, quoi: string, compte: string) => (
-      <button type="button" className="fabriquer-sorte" onClick={() => { setSorte(s); setRecherche(""); }}>
+      <button type="button" className="fabriquer-sorte" onClick={() => choisirLaSorte(s)}>
         <span className="fabriquer-sorte-icone" aria-hidden="true">{icone}</span>
         <b>{titre}</b>
         <span className="fabriquer-sorte-quoi">{quoi}</span>
@@ -456,7 +463,7 @@ export default function Jeux() {
       ? <CartesParMoment outils={outils} usages={usages} carte={carteRangeable} />
       : <div className="ateliers">{outils.map(carte)}</div>);
     return (
-      <Page titre="Fabriquer" sous={dire.sous}
+      <Page titre="Fabriquer" sous={lecture === "sequences" ? "📚 Séquences toutes faites" : dire.sous}
         actions={boutonDuMateriel}>
         {inventaireOuvert && <MaterielDeLaClasse onClose={() => setInventaireOuvert(false)} />}
         <BandeauModification atelier="" onReprendre={(a) => setOnglet(a as Onglet)} />
@@ -464,7 +471,7 @@ export default function Jeux() {
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
           <div className="seg" role="group" aria-label="Ce qu'on fabrique">
             {SORTES_DE_FABRICATION.map((s) => (
-              <button key={s} className={vue === s ? "active" : ""} onClick={() => { setSorte(s); setRecherche(""); }}>{DIRE_LA_SORTE[s].icone} {DIRE_LA_SORTE[s].les}</button>
+              <button key={s} className={vue === s && lecture !== "sequences" ? "active" : ""} onClick={() => choisirLaSorte(s)}>{DIRE_LA_SORTE[s].icone} {DIRE_LA_SORTE[s].les}</button>
             ))}
           </div>
           {lecture !== "sequences" && (
@@ -473,13 +480,11 @@ export default function Jeux() {
               aria-label={lecture === "competence" ? "Chercher une compétence" : dire.chercher.split(" :")[0]}
               style={{ flex: "1 1 260px", maxWidth: 420 }} />
           )}
-          {vue === "support" && (
+          {vue === "support" && lecture !== "sequences" && (
             <div className="seg" role="group" aria-label="Le catalogue">
               <button className={rangement === "famille" ? "active" : ""} onClick={() => setRangement("famille")}>Par domaine</button>
               <button className={rangement === "competence" ? "active" : ""} onClick={() => setRangement("competence")}
                 title="Les compétences des programmes, et les supports qui travaillent chacune">Par compétence</button>
-              <button className={rangement === "sequences" ? "active" : ""} onClick={() => setRangement("sequences")}
-                title="À part des supports : des séquences prêtes, leurs séances et toutes leurs feuilles">📚 Séquences toutes faites</button>
             </div>
           )}
           {lecture === "famille" && vue === "support" && (
