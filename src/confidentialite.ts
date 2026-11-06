@@ -108,11 +108,11 @@ function formes(nom: string): string[] {
  * demande la même chose pour un autre mot. Un mot collé à un échappement (« \\n »
  * d'un texte en JSON) reste un mot entier : le « n » n'en fait pas partie.
  */
-function occurrences(texte: string, mot: string, avecMajuscule = false): number[] {
+function occurrences(texte: string, mot: string, avecMajuscule = false, memeEnMinuscules = false): number[] {
   const res: number[] = [];
   const bas = plier(texte);
   const cible = plier(mot);
-  const courant = avecMajuscule || (!cible.includes(" ") && MOTS_COURANTS.has(cible));
+  const courant = !memeEnMinuscules && (avecMajuscule || (!cible.includes(" ") && MOTS_COURANTS.has(cible)));
   let i = bas.indexOf(cible);
   while (i >= 0) {
     const avant = i > 0 ? texte[i - 1] : "";
@@ -127,6 +127,11 @@ function occurrences(texte: string, mot: string, avecMajuscule = false): number[
   }
   return res;
 }
+
+// Un prénom qui est aussi un mot courant, écrit sans majuscule : au milieu d'autres prénoms, c'en
+// est un (« avec [P1], rose, [P2] »). Le mot de trop revient à la restauration.
+const AVANT_UNE_LISTE = /\[P\d+\](?:\s*[,;/&+]\s*|\s+et\s+|\s+)$/u;
+const APRES_UNE_LISTE = /^(?:\s*[,;/&+]\s*|\s+et\s+|\s+)\[P\d+\]/u;
 
 /** Combien de fautes séparent deux mots : une lettre en moins, en trop, changée, ou deux lettres inversées. */
 function fautes(a: string, b: string): number {
@@ -213,19 +218,31 @@ export function pseudonymiser(texte: string, noms: string[], options: OptionsMas
   const variantes = [...connus, ...aLaMajuscule].sort((a, b) => b.length - a.length);
   const table: Remplacement[] = [];
   const parOriginal = new Map<string, string>();
+  const poser = (p: number, longueur: number) => {
+    const original = sortie.slice(p, p + longueur);
+    let marqueur = parOriginal.get(original);
+    if (!marqueur) {
+      marqueur = `[P${table.length + 1}]`;
+      parOriginal.set(original, marqueur);
+      table.push({ marqueur, original });
+    }
+    sortie = sortie.slice(0, p) + marqueur + sortie.slice(p + longueur);
+  };
   for (const v of variantes) {
-    const pos = occurrences(sortie, v, aLaMajuscule.has(v));
-    if (!pos.length) continue;
     // De la fin vers le début : les positions restent valables pendant le remplacement.
-    for (const p of pos.reverse()) {
-      const original = sortie.slice(p, p + v.length);
-      let marqueur = parOriginal.get(original);
-      if (!marqueur) {
-        marqueur = `[P${table.length + 1}]`;
-        parOriginal.set(original, marqueur);
-        table.push({ marqueur, original });
+    for (const p of occurrences(sortie, v, aLaMajuscule.has(v)).reverse()) poser(p, v.length);
+  }
+  const courantsConnus = connus.filter((v) => MOTS_COURANTS.has(plier(v)));
+  for (let encore = courantsConnus.length > 0; encore;) {
+    encore = false;
+    for (const v of courantsConnus) {
+      for (const p of occurrences(sortie, v, false, true).reverse()) {
+        const avant = sortie.slice(Math.max(0, p - 16), p);
+        const apres = sortie.slice(p + v.length, p + v.length + 16);
+        if (!AVANT_UNE_LISTE.test(avant) && !APRES_UNE_LISTE.test(apres)) continue;
+        poser(p, v.length);
+        encore = true;
       }
-      sortie = sortie.slice(0, p) + marqueur + sortie.slice(p + v.length);
     }
   }
   sortie = masquerLeReste(sortie, options, poseur(table), table);

@@ -49,6 +49,14 @@ describe("pseudonymiser", () => {
     expect(texte).toBe("Le chat de [P1]. Le [P2] est venu, la maman de [P3] aussi.");
   });
 
+  it("un prénom qui est aussi un mot courant, en minuscules au milieu d'autres prénoms, part masqué", () => {
+    const { texte, table } = pseudonymiser("Avec Amandine, rose, Léo : une fleur rose.", eleves);
+    expect(texte).toBe("Avec [P1], [P2], [P3] : une fleur rose.");
+    expect(restaurer(texte, table).texte).toBe("Avec Amandine, rose, Léo : une fleur rose.");
+    expect(pseudonymiser("Amandine rose et Léo", eleves).texte).toBe("[P1] [P2] et [P3]");
+    expect(pseudonymiser("La robe d'Amandine est très rose.", eleves).texte).toBe("La robe d'[P1] est très rose.");
+  });
+
   it("un nom de famille qui est un mot courant ne masque pas ce mot en minuscules", () => {
     expect(pseudonymiser("Un petit chat, petit à petit.", eleves).texte).toBe("Un petit chat, petit à petit.");
     expect(pseudonymiser("Rose Petit a lu.", eleves).texte).toBe("[P1] a lu.");
