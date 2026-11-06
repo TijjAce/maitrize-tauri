@@ -189,118 +189,32 @@ export function cuireLeTexte(mp: MiseEnPage, famille: string, echelle: number): 
 
 type Rvb = [number, number, number];
 
-/** Les couleurs de la page : la soie, du plus clair au plus foncé, le verre des lettres, et les textes autour. */
-export interface Palette {
-  blanc: Rvb; nacre: Rvb; poudre: Rvb; teinte: Rvb; vif: Rvb; fonce: Rvb;
+/** Les couleurs de la page : le papier, la soie, l'écriture, et les textes autour. */
+interface Palette {
+  /** Le papier. */
+  blanc: Rvb; nacre: Rvb;
+  /** La soie : sa clarté au pied, son corps, ses nappes. */
+  poudre: Rvb; teinte: Rvb; vif: Rvb; fonce: Rvb;
   /** Ce que l'ombre des lettres laisse passer. */
   ombre: Rvb;
   /** Le fil de lumière du bord de la soie, et sa clarté. */
   fil: Rvb; clarteDuFil: Rvb;
-  /** Le corps du verre sur un fond foncé, sur un fond clair ; son bord de même ; la lueur au creux du tube. */
-  verreSurFonce: Rvb; verreSurClair: Rvb; filtre: Rvb; bordSurFonce: Rvb; bordSurClair: Rvb; creux: Rvb;
+  /** L'écriture : les bandes du Z, de haut en bas ; ce que le verre laisse passer du fond ; la lueur au creux du tube. */
+  bandes: Rvb[]; filtre: Rvb; creux: Rvb;
   /** Le fond avant la première image, le crédit, la signature. */
   page: string; credit: string; signature: string;
-  /** L'écriture aux couleurs des bandes du Z, de haut en bas : elles remplacent le corps et le bord du verre. */
-  bandes?: Rvb[];
-  /** Les lignes du cahier, si la soie est trop claire pour les tracer de sa couleur. */
-  ligne?: Rvb;
 }
 
-/** « En rose et blanc », puis « un mauve », puis « orange pour voir » (l'enseignant, 6 novembre 2026). */
-export const PALETTES = {
-  rose: {
-    blanc: [1.0, 0.994, 0.997], nacre: [0.998, 0.950, 0.970], poudre: [0.992, 0.860, 0.915], teinte: [0.972, 0.640, 0.780], vif: [0.925, 0.285, 0.600], fonce: [0.760, 0.120, 0.430],
-    ombre: [0.80, 0.56, 0.70], fil: [1.0, 0.93, 0.97], clarteDuFil: [1.0, 0.82, 0.90],
-    verreSurFonce: [1.0, 0.86, 0.92], verreSurClair: [0.965, 0.47, 0.68], filtre: [1.0, 0.90, 0.95], bordSurFonce: [1.0, 0.95, 0.975], bordSurClair: [0.76, 0.10, 0.42], creux: [1.0, 0.80, 0.90],
-    page: "#fff6fa", credit: "#7d2350", signature: "#c2185b",
-  },
-  mauve: {
-    blanc: [0.998, 0.996, 1.0], nacre: [0.970, 0.950, 0.998], poudre: [0.880, 0.825, 0.985], teinte: [0.735, 0.620, 0.950], vif: [0.520, 0.310, 0.860], fonce: [0.360, 0.150, 0.640],
-    ombre: [0.70, 0.60, 0.86], fil: [0.96, 0.93, 1.0], clarteDuFil: [0.86, 0.80, 1.0],
-    verreSurFonce: [0.91, 0.87, 1.0], verreSurClair: [0.62, 0.44, 0.93], filtre: [0.93, 0.90, 1.0], bordSurFonce: [0.97, 0.95, 1.0], bordSurClair: [0.33, 0.13, 0.62], creux: [0.86, 0.78, 1.0],
-    page: "#faf8ff", credit: "#452a78", signature: "#5b2fb0",
-  },
-  orange: {
-    blanc: [1.0, 0.997, 0.990], nacre: [1.0, 0.960, 0.905], poudre: [0.998, 0.870, 0.730], teinte: [0.990, 0.690, 0.420], vif: [0.950, 0.450, 0.110], fonce: [0.740, 0.270, 0.040],
-    ombre: [0.90, 0.70, 0.52], fil: [1.0, 0.96, 0.90], clarteDuFil: [1.0, 0.85, 0.66],
-    verreSurFonce: [1.0, 0.92, 0.82], verreSurClair: [0.975, 0.56, 0.19], filtre: [1.0, 0.93, 0.86], bordSurFonce: [1.0, 0.97, 0.93], bordSurClair: [0.68, 0.24, 0.02], creux: [1.0, 0.85, 0.66],
-    page: "#fffaf4", credit: "#6e3a12", signature: "#b4500f",
-  },
-  lagon: {
-    blanc: [0.995, 1.0, 0.998], nacre: [0.930, 0.985, 0.975], poudre: [0.780, 0.945, 0.925], teinte: [0.450, 0.850, 0.820], vif: [0.050, 0.620, 0.660], fonce: [0.020, 0.400, 0.470],
-    ombre: [0.58, 0.80, 0.80], fil: [0.92, 1.0, 0.99], clarteDuFil: [0.70, 0.96, 0.94],
-    verreSurFonce: [0.86, 0.98, 0.97], verreSurClair: [0.16, 0.68, 0.70], filtre: [0.88, 0.98, 0.97], bordSurFonce: [0.95, 1.0, 0.99], bordSurClair: [0.02, 0.36, 0.42], creux: [0.72, 0.96, 0.94],
-    page: "#f4fdfb", credit: "#0d4a50", signature: "#0b7078",
-  },
-  sauge: {
-    blanc: [0.998, 1.0, 0.990], nacre: [0.945, 0.980, 0.925], poudre: [0.830, 0.930, 0.780], teinte: [0.600, 0.820, 0.540], vif: [0.280, 0.620, 0.300], fonce: [0.120, 0.420, 0.200],
-    ombre: [0.70, 0.82, 0.62], fil: [0.95, 1.0, 0.92], clarteDuFil: [0.80, 0.95, 0.72],
-    verreSurFonce: [0.90, 0.98, 0.86], verreSurClair: [0.36, 0.68, 0.33], filtre: [0.92, 0.98, 0.88], bordSurFonce: [0.96, 1.0, 0.94], bordSurClair: [0.10, 0.36, 0.14], creux: [0.80, 0.95, 0.72],
-    page: "#f7fcf3", credit: "#22492a", signature: "#2f7a3c",
-  },
-  ciel: {
-    blanc: [0.995, 0.998, 1.0], nacre: [0.930, 0.965, 1.0], poudre: [0.780, 0.890, 0.995], teinte: [0.500, 0.740, 0.980], vif: [0.130, 0.460, 0.920], fonce: [0.060, 0.270, 0.700],
-    ombre: [0.62, 0.74, 0.92], fil: [0.92, 0.97, 1.0], clarteDuFil: [0.72, 0.86, 1.0],
-    verreSurFonce: [0.86, 0.93, 1.0], verreSurClair: [0.24, 0.55, 0.95], filtre: [0.88, 0.94, 1.0], bordSurFonce: [0.95, 0.98, 1.0], bordSurClair: [0.05, 0.24, 0.66], creux: [0.74, 0.87, 1.0],
-    page: "#f5f9ff", credit: "#173a7a", signature: "#1f5fc4",
-  },
-  corail: {
-    blanc: [1.0, 0.995, 0.990], nacre: [1.0, 0.945, 0.925], poudre: [0.995, 0.830, 0.780], teinte: [0.980, 0.620, 0.540], vif: [0.930, 0.340, 0.300], fonce: [0.720, 0.160, 0.180],
-    ombre: [0.90, 0.64, 0.60], fil: [1.0, 0.95, 0.92], clarteDuFil: [1.0, 0.80, 0.74],
-    verreSurFonce: [1.0, 0.90, 0.87], verreSurClair: [0.95, 0.47, 0.40], filtre: [1.0, 0.92, 0.89], bordSurFonce: [1.0, 0.96, 0.95], bordSurClair: [0.66, 0.14, 0.14], creux: [1.0, 0.80, 0.74],
-    page: "#fff7f4", credit: "#6e2420", signature: "#b83a33",
-  },
-  miel: {
-    blanc: [1.0, 0.998, 0.985], nacre: [1.0, 0.975, 0.870], poudre: [0.995, 0.920, 0.680], teinte: [0.980, 0.820, 0.380], vif: [0.930, 0.660, 0.080], fonce: [0.700, 0.450, 0.020],
-    ombre: [0.90, 0.78, 0.50], fil: [1.0, 0.98, 0.88], clarteDuFil: [1.0, 0.92, 0.62],
-    verreSurFonce: [1.0, 0.96, 0.80], verreSurClair: [0.93, 0.67, 0.12], filtre: [1.0, 0.96, 0.82], bordSurFonce: [1.0, 0.99, 0.92], bordSurClair: [0.62, 0.38, 0.0], creux: [1.0, 0.92, 0.62],
-    page: "#fffcf0", credit: "#5f4208", signature: "#a36f06",
-  },
-  // La soie du miel, l'écriture violette : la couleur complémentaire. Le filtre retient le jaune, sinon le verre tourne au gris.
-  mielViolet: {
-    blanc: [1.0, 0.998, 0.985], nacre: [1.0, 0.975, 0.870], poudre: [0.995, 0.920, 0.680], teinte: [0.980, 0.820, 0.380], vif: [0.930, 0.660, 0.080], fonce: [0.700, 0.450, 0.020],
-    ombre: [0.72, 0.58, 0.66], fil: [1.0, 0.98, 0.88], clarteDuFil: [1.0, 0.92, 0.62],
-    verreSurFonce: [0.50, 0.24, 0.86], verreSurClair: [0.40, 0.14, 0.78], filtre: [0.62, 0.42, 0.98], bordSurFonce: [0.78, 0.66, 1.0], bordSurClair: [0.24, 0.06, 0.50], creux: [0.80, 0.68, 1.0],
-    page: "#fffcf0", credit: "#3a2266", signature: "#5a2ca8",
-  },
-  ardoise: {
-    blanc: [0.998, 0.998, 0.998], nacre: [0.945, 0.955, 0.965], poudre: [0.840, 0.865, 0.890], teinte: [0.660, 0.710, 0.760], vif: [0.360, 0.430, 0.510], fonce: [0.200, 0.260, 0.330],
-    ombre: [0.72, 0.75, 0.79], fil: [0.95, 0.97, 0.99], clarteDuFil: [0.80, 0.85, 0.90],
-    verreSurFonce: [0.90, 0.92, 0.95], verreSurClair: [0.45, 0.52, 0.60], filtre: [0.92, 0.94, 0.96], bordSurFonce: [0.97, 0.98, 0.99], bordSurClair: [0.16, 0.21, 0.28], creux: [0.80, 0.85, 0.90],
-    page: "#f8f9fa", credit: "#2b3540", signature: "#46586b",
-  },
-  // Le logo, mesuré sur son icône : le crème du fond, et les bandes du Z, de l'orange au vert puis au bleu.
-  logo: {
-    blanc: [0.965, 0.942, 0.875], nacre: [0.945, 0.918, 0.835], poudre: [0.827, 0.702, 0.290], teinte: [0.431, 0.651, 0.286], vif: [0.235, 0.478, 0.714], fonce: [0.204, 0.451, 0.235],
-    ombre: [0.62, 0.56, 0.40], fil: [1.0, 0.97, 0.88], clarteDuFil: [0.95, 0.85, 0.60],
-    verreSurFonce: [0.99, 0.95, 0.82], verreSurClair: [0.827, 0.553, 0.220], filtre: [1.0, 0.96, 0.86], bordSurFonce: [1.0, 0.98, 0.90], bordSurClair: [0.62, 0.34, 0.08], creux: [0.98, 0.88, 0.62],
-    page: "#f1ead5", credit: "#4a3d22", signature: "#8a5a22",
-  },
-  // Plusieurs teintes dans la même soie : le couchant réunit l'orange, le rose et le mauve ; la boréale, le vert et le bleu.
-  couchant: {
-    blanc: [1.0, 0.995, 0.985], nacre: [1.0, 0.955, 0.905], poudre: [0.995, 0.800, 0.620], teinte: [0.975, 0.560, 0.500], vif: [0.610, 0.240, 0.730], fonce: [0.400, 0.140, 0.600],
-    ombre: [0.88, 0.62, 0.62], fil: [1.0, 0.95, 0.90], clarteDuFil: [1.0, 0.80, 0.70],
-    verreSurFonce: [1.0, 0.90, 0.85], verreSurClair: [0.955, 0.430, 0.430], filtre: [1.0, 0.92, 0.90], bordSurFonce: [1.0, 0.96, 0.94], bordSurClair: [0.62, 0.14, 0.36], creux: [1.0, 0.82, 0.74],
-    page: "#fff8f2", credit: "#5f1f3f", signature: "#b02a66",
-  },
-  boreale: {
-    blanc: [0.995, 1.0, 0.998], nacre: [0.935, 0.990, 0.975], poudre: [0.700, 0.960, 0.850], teinte: [0.300, 0.820, 0.770], vif: [0.260, 0.330, 0.880], fonce: [0.310, 0.160, 0.660],
-    ombre: [0.58, 0.80, 0.80], fil: [0.92, 1.0, 0.98], clarteDuFil: [0.70, 0.96, 0.92],
-    verreSurFonce: [0.86, 0.98, 0.96], verreSurClair: [0.12, 0.62, 0.68], filtre: [0.88, 0.98, 0.97], bordSurFonce: [0.95, 1.0, 0.99], bordSurClair: [0.03, 0.30, 0.42], creux: [0.72, 0.96, 0.94],
-    page: "#f4fdfa", credit: "#0f3f52", signature: "#0f6f86",
-  },
-  // L'écriture aux bandes du Z, de l'orange au bleu, sur un bleu très clair et le papier crème.
-  bandesBleu: {
-    blanc: [0.992, 0.984, 0.955], nacre: [0.982, 0.970, 0.930], poudre: [0.89, 0.94, 0.98], teinte: [0.78, 0.88, 0.96], vif: [0.62, 0.79, 0.93], fonce: [0.50, 0.70, 0.88],
-    ombre: [0.70, 0.68, 0.68], fil: [1.0, 0.98, 0.92], clarteDuFil: [0.95, 0.88, 0.70], ligne: [0.52, 0.71, 0.87],
-    verreSurFonce: [0.235, 0.478, 0.714], verreSurClair: [0.235, 0.478, 0.714], filtre: [0.45, 0.45, 0.45], bordSurFonce: [0.235, 0.478, 0.714], bordSurClair: [0.235, 0.478, 0.714], creux: [1.0, 0.96, 0.86],
-    bandes: [[0.90, 0.50, 0.12], [0.86, 0.66, 0.16], [0.62, 0.70, 0.16], [0.24, 0.60, 0.24], [0.10, 0.50, 0.58], [0.12, 0.38, 0.78]],
-    page: "#faf6ea", credit: "#1d3a5f", signature: "#23589a",
-  },
-} satisfies Record<string, Palette>;
-
-/** Celle de la page ; le nom suffit pour en changer. */
-export const PALETTE: Palette = PALETTES.bandesBleu;
+/** Les couleurs du logo : très claires dans le fond, franches dans l'écriture. Son choix, parmi les essais gardés dans l'historique. */
+export const PALETTE: Palette = {
+  blanc: [0.992, 0.984, 0.955], nacre: [0.982, 0.970, 0.930],
+  poudre: [0.97, 0.93, 0.76], teinte: [0.84, 0.92, 0.76], vif: [0.72, 0.85, 0.94], fonce: [0.62, 0.78, 0.86],
+  ombre: [0.70, 0.68, 0.68],
+  fil: [1.0, 0.98, 0.92], clarteDuFil: [0.95, 0.88, 0.70],
+  bandes: [[0.90, 0.50, 0.12], [0.86, 0.66, 0.16], [0.62, 0.70, 0.16], [0.24, 0.60, 0.24], [0.10, 0.50, 0.58], [0.12, 0.38, 0.78]],
+  filtre: [0.45, 0.45, 0.45], creux: [1.0, 0.96, 0.86],
+  page: "#faf6ea", credit: "#1d3a5f", signature: "#23589a",
+};
 
 const enGlsl = ([r, v, b]: Rvb) => `vec3(${r.toFixed(3)}, ${v.toFixed(3)}, ${b.toFixed(3)})`;
 
@@ -378,7 +292,7 @@ vec3 fond(vec2 uv, float t, float net) {
     float loin = abs(fract(k + 0.5) - 0.5) * uReglure.y;
     float rang = mod(floor(k + 0.5), 4.0);
     float trait = smoothstep(uPx * 1.6, 0.0, loin) * (rang < 0.5 ? 0.62 : 0.30);
-    col = mix(col, ${enGlsl(PALETTE.ligne ?? PALETTE.teinte)}, trait * uAvecTexte * smoothstep(0.012, 0.0, d));
+    col = mix(col, TEINTE, trait * uAvecTexte * smoothstep(0.012, 0.0, d));
     // Le fil de lumière du bord, et la clarté qu'il laisse dans la soie.
     float fil = max(uPx * 1.1, 0.0011);
     col += ${enGlsl(PALETTE.fil)} * 0.75 * exp(-d * d / (fil * fil));
@@ -414,13 +328,10 @@ void main() {
           // Le verre dévie ce qu'il y a derrière.
           vec3 devie = fond(uv + nxy * uRayon * 3.2, uT, 0.0);
           float bordure = pow(1.0 - nz, 2.2);
-          // Le corps du verre, teinté. Son bord foncé sur le clair, clair sur le foncé, comme une vraie vitre.
-          float clarte = dot(devie, vec3(0.3, 0.45, 0.25));
-          float surLeClair = smoothstep(0.55, 0.85, clarte);
-          vec3 teinte = ${PALETTE.bandes ? bandesEnGlsl(PALETTE.bandes) : `mix(${enGlsl(PALETTE.verreSurFonce)}, ${enGlsl(PALETTE.verreSurClair)}, surLeClair)`};
-          vec3 verre = mix(devie * ${enGlsl(PALETTE.filtre)}, teinte, ${PALETTE.bandes ? "0.84" : "mix(0.72, 0.62, surLeClair)"});
-          vec3 cercle = ${PALETTE.bandes ? "teinte * 0.6" : `mix(${enGlsl(PALETTE.bordSurFonce)}, ${enGlsl(PALETTE.bordSurClair)}, surLeClair)`};
-          verre = mix(verre, cercle, 0.82 * bordure);
+          // Le corps du verre, aux couleurs des bandes du Z selon sa hauteur dans le titre ; son bord, plus foncé.
+          vec3 teinte = ${bandesEnGlsl(PALETTE.bandes)};
+          vec3 verre = mix(devie * ${enGlsl(PALETTE.filtre)}, teinte, 0.84);
+          verre = mix(verre, teinte * 0.6, 0.82 * bordure);
           // La lumière : un reflet vif en haut à gauche, une lueur au creux du bas.
           float vif = pow(max(dot(n, normalize(vec3(-0.34, 0.58, 0.74))), 0.0), 46.0);
           float creux = pow(max(dot(n, normalize(vec3(0.20, -0.72, 0.66))), 0.0), 14.0);
