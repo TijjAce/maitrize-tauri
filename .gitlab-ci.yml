@@ -21,6 +21,8 @@ variables:
   CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
   npm_config_cache: "$CI_PROJECT_DIR/.npm"
   NODE_VERSION: "22.21.1"
+  # L'empreinte publiée par nodejs.org pour cette version : à changer avec elle.
+  NODE_SHA256: "680d3f30b24a7ff24b98db5e96f294c0070f8f9078df658da1bce1b9c9873c88"
 
 .machine:
   # Debian 13 : le NSIS de Debian 12 (3.08) n'a pas encore ce que l'installeur de Tauri demande.
@@ -31,7 +33,9 @@ variables:
       apt-get install -y -qq --no-install-recommends
       libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       cmake clang xz-utils
-    - curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" | tar -xJ -C /usr/local --strip-components=1
+    - curl -fsSL -o /tmp/node.tar.xz "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz"
+    - echo "${NODE_SHA256}  /tmp/node.tar.xz" | sha256sum -c -
+    - tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
     - node --version && cargo --version && nproc
     - npm install --no-audit --no-fund
 
