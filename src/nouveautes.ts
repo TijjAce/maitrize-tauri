@@ -18,6 +18,25 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.44",
+    titre: "Une page de bienvenue, une première connexion qui installe la classe, et des données d'élèves bien mieux protégées",
+    points: [
+      { quoi: "Une page de bienvenue à chaque lancement : « Bienvenue sur Maitrize » s'écrit à la cursive du ministère, en lettres de verre aux couleurs du logo. Un clic ou une touche la fait partir dès que l'application est prête." },
+      { quoi: "La première connexion installe la classe : les pictogrammes, votre clé Mistral si vous en avez une, le matériel de la classe trié d'un geste (à droite je l'ai, à gauche je ne l'ai pas), le plan de classe à dessiner, puis l'emploi du temps. Sans connexion, les pictogrammes peuvent attendre." },
+      { quoi: "Ce qui part chez Mistral sur vos élèves est mieux masqué : un prénom mal écrit, un nom de famille à côté d'un prénom, « Frère : … », un nom noté à la va-vite, une adresse sans majuscule, un code postal seul, une maladie rare sans « syndrome de ». Ce que le masque repère une fois reste masqué ensuite, sur cet ordinateur.", ou: "Réglages · IA" },
+      { quoi: "Ce qui échappait au masque y passe aussi : le contexte de la classe et le nom d'un document du coffre dans l'Assistant, l'en-tête d'une observation, la date d'une réunion, ce que vous dites à la télécommande. Si la liste des élèves ne se lit pas, plus rien ne part." },
+      { quoi: "La voix ne reçoit plus aucun nom : en conversation, elle dit « une personne » à la place d'un prénom, et une consigne qui nomme quelqu'un est lue par la tablette elle-même.", ou: "Assistant IA" },
+      { quoi: "Sur les tablettes, jamais un prénom : un créneau intitulé avec les prénoms de son groupe s'affiche « Créneau ».", ou: "application du téléphone" },
+      { quoi: "Une fiche faite pour un élève ne part plus sur un bureau commun avec son dossier.", ou: "Plan de travail · 🤝 Bureaux communs" },
+      { quoi: "Le rapport d'erreur copié ou enregistré est nettoyé des noms de la classe et de vos dossiers, comme celui qui part par e-mail." },
+      { quoi: "L'Assistant retient ce que vous lui dites de vous et de votre classe, jamais rien sur un élève : vous voyez ses souvenirs, vous les corrigez, vous les oubliez, ou vous coupez la mémoire. Il laisse aussi un peu plus de silence avant de répondre à voix haute.", ou: "Assistant IA · 🧠 Mémoire" },
+      { quoi: "L'atelier des problèmes se règle en conversation : l'assistant connaît toutes les commandes de l'écran, montre les mots du problème en images, et laisse la place de schématiser.", ou: "Fabriquer · Mathématiques" },
+      { quoi: "Deux séquences pour le début d'année : « Problèmes parties-tout : chercher le tout » au CP, les parties-tout jusqu'à 100 au CE1, chacune avec son rituel de problèmes à dire chaque jour.", ou: "Fabriquer › 📚 Séquences toutes faites" },
+      { quoi: "Tableaux de langage : un classeur au format .obz, celui d'un iPad par exemple, se reprend et redevient des tableaux à pages liées.", ou: "Communication › Tableaux de langage" },
+      { quoi: "Un nouvel espace de la classe se pose tout seul dans l'aménagement du plan de classe.", ou: "Plan de classe" },
+    ],
+  },
+  {
     version: "1.6.43",
     titre: "Le Visibiléo, trente-trois affichages de plus, les ateliers de manipulation de la maternelle, et un Assistant qui converse à voix haute",
     points: [
