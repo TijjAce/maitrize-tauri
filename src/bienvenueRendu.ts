@@ -203,7 +203,7 @@ export interface Palette {
 }
 
 /** « En rose et blanc », puis « un mauve », puis « orange pour voir » (l'enseignant, 6 novembre 2026). */
-export const PALETTES: Record<"rose" | "mauve" | "orange", Palette> = {
+export const PALETTES = {
   rose: {
     blanc: [1.0, 0.994, 0.997], nacre: [0.998, 0.950, 0.970], poudre: [0.992, 0.860, 0.915], teinte: [0.972, 0.640, 0.780], vif: [0.925, 0.285, 0.600], fonce: [0.760, 0.120, 0.430],
     ombre: [0.80, 0.56, 0.70], fil: [1.0, 0.93, 0.97], clarteDuFil: [1.0, 0.82, 0.90],
@@ -222,7 +222,63 @@ export const PALETTES: Record<"rose" | "mauve" | "orange", Palette> = {
     verreSurFonce: [1.0, 0.92, 0.82], verreSurClair: [0.975, 0.56, 0.19], filtre: [1.0, 0.93, 0.86], bordSurFonce: [1.0, 0.97, 0.93], bordSurClair: [0.68, 0.24, 0.02], creux: [1.0, 0.85, 0.66],
     page: "#fffaf4", credit: "#6e3a12", signature: "#b4500f",
   },
-};
+  lagon: {
+    blanc: [0.995, 1.0, 0.998], nacre: [0.930, 0.985, 0.975], poudre: [0.780, 0.945, 0.925], teinte: [0.450, 0.850, 0.820], vif: [0.050, 0.620, 0.660], fonce: [0.020, 0.400, 0.470],
+    ombre: [0.58, 0.80, 0.80], fil: [0.92, 1.0, 0.99], clarteDuFil: [0.70, 0.96, 0.94],
+    verreSurFonce: [0.86, 0.98, 0.97], verreSurClair: [0.16, 0.68, 0.70], filtre: [0.88, 0.98, 0.97], bordSurFonce: [0.95, 1.0, 0.99], bordSurClair: [0.02, 0.36, 0.42], creux: [0.72, 0.96, 0.94],
+    page: "#f4fdfb", credit: "#0d4a50", signature: "#0b7078",
+  },
+  sauge: {
+    blanc: [0.998, 1.0, 0.990], nacre: [0.945, 0.980, 0.925], poudre: [0.830, 0.930, 0.780], teinte: [0.600, 0.820, 0.540], vif: [0.280, 0.620, 0.300], fonce: [0.120, 0.420, 0.200],
+    ombre: [0.70, 0.82, 0.62], fil: [0.95, 1.0, 0.92], clarteDuFil: [0.80, 0.95, 0.72],
+    verreSurFonce: [0.90, 0.98, 0.86], verreSurClair: [0.36, 0.68, 0.33], filtre: [0.92, 0.98, 0.88], bordSurFonce: [0.96, 1.0, 0.94], bordSurClair: [0.10, 0.36, 0.14], creux: [0.80, 0.95, 0.72],
+    page: "#f7fcf3", credit: "#22492a", signature: "#2f7a3c",
+  },
+  ciel: {
+    blanc: [0.995, 0.998, 1.0], nacre: [0.930, 0.965, 1.0], poudre: [0.780, 0.890, 0.995], teinte: [0.500, 0.740, 0.980], vif: [0.130, 0.460, 0.920], fonce: [0.060, 0.270, 0.700],
+    ombre: [0.62, 0.74, 0.92], fil: [0.92, 0.97, 1.0], clarteDuFil: [0.72, 0.86, 1.0],
+    verreSurFonce: [0.86, 0.93, 1.0], verreSurClair: [0.24, 0.55, 0.95], filtre: [0.88, 0.94, 1.0], bordSurFonce: [0.95, 0.98, 1.0], bordSurClair: [0.05, 0.24, 0.66], creux: [0.74, 0.87, 1.0],
+    page: "#f5f9ff", credit: "#173a7a", signature: "#1f5fc4",
+  },
+  corail: {
+    blanc: [1.0, 0.995, 0.990], nacre: [1.0, 0.945, 0.925], poudre: [0.995, 0.830, 0.780], teinte: [0.980, 0.620, 0.540], vif: [0.930, 0.340, 0.300], fonce: [0.720, 0.160, 0.180],
+    ombre: [0.90, 0.64, 0.60], fil: [1.0, 0.95, 0.92], clarteDuFil: [1.0, 0.80, 0.74],
+    verreSurFonce: [1.0, 0.90, 0.87], verreSurClair: [0.95, 0.47, 0.40], filtre: [1.0, 0.92, 0.89], bordSurFonce: [1.0, 0.96, 0.95], bordSurClair: [0.66, 0.14, 0.14], creux: [1.0, 0.80, 0.74],
+    page: "#fff7f4", credit: "#6e2420", signature: "#b83a33",
+  },
+  miel: {
+    blanc: [1.0, 0.998, 0.985], nacre: [1.0, 0.975, 0.870], poudre: [0.995, 0.920, 0.680], teinte: [0.980, 0.820, 0.380], vif: [0.930, 0.660, 0.080], fonce: [0.700, 0.450, 0.020],
+    ombre: [0.90, 0.78, 0.50], fil: [1.0, 0.98, 0.88], clarteDuFil: [1.0, 0.92, 0.62],
+    verreSurFonce: [1.0, 0.96, 0.80], verreSurClair: [0.93, 0.67, 0.12], filtre: [1.0, 0.96, 0.82], bordSurFonce: [1.0, 0.99, 0.92], bordSurClair: [0.62, 0.38, 0.0], creux: [1.0, 0.92, 0.62],
+    page: "#fffcf0", credit: "#5f4208", signature: "#a36f06",
+  },
+  ardoise: {
+    blanc: [0.998, 0.998, 0.998], nacre: [0.945, 0.955, 0.965], poudre: [0.840, 0.865, 0.890], teinte: [0.660, 0.710, 0.760], vif: [0.360, 0.430, 0.510], fonce: [0.200, 0.260, 0.330],
+    ombre: [0.72, 0.75, 0.79], fil: [0.95, 0.97, 0.99], clarteDuFil: [0.80, 0.85, 0.90],
+    verreSurFonce: [0.90, 0.92, 0.95], verreSurClair: [0.45, 0.52, 0.60], filtre: [0.92, 0.94, 0.96], bordSurFonce: [0.97, 0.98, 0.99], bordSurClair: [0.16, 0.21, 0.28], creux: [0.80, 0.85, 0.90],
+    page: "#f8f9fa", credit: "#2b3540", signature: "#46586b",
+  },
+  // Le logo, mesuré sur son icône : le crème du fond, et les bandes du Z, de l'orange au vert puis au bleu.
+  logo: {
+    blanc: [0.965, 0.942, 0.875], nacre: [0.945, 0.918, 0.835], poudre: [0.827, 0.702, 0.290], teinte: [0.431, 0.651, 0.286], vif: [0.235, 0.478, 0.714], fonce: [0.204, 0.451, 0.235],
+    ombre: [0.62, 0.56, 0.40], fil: [1.0, 0.97, 0.88], clarteDuFil: [0.95, 0.85, 0.60],
+    verreSurFonce: [0.99, 0.95, 0.82], verreSurClair: [0.827, 0.553, 0.220], filtre: [1.0, 0.96, 0.86], bordSurFonce: [1.0, 0.98, 0.90], bordSurClair: [0.62, 0.34, 0.08], creux: [0.98, 0.88, 0.62],
+    page: "#f1ead5", credit: "#4a3d22", signature: "#8a5a22",
+  },
+  // Plusieurs teintes dans la même soie : le couchant réunit l'orange, le rose et le mauve ; la boréale, le vert et le bleu.
+  couchant: {
+    blanc: [1.0, 0.995, 0.985], nacre: [1.0, 0.955, 0.905], poudre: [0.995, 0.800, 0.620], teinte: [0.975, 0.560, 0.500], vif: [0.610, 0.240, 0.730], fonce: [0.400, 0.140, 0.600],
+    ombre: [0.88, 0.62, 0.62], fil: [1.0, 0.95, 0.90], clarteDuFil: [1.0, 0.80, 0.70],
+    verreSurFonce: [1.0, 0.90, 0.85], verreSurClair: [0.955, 0.430, 0.430], filtre: [1.0, 0.92, 0.90], bordSurFonce: [1.0, 0.96, 0.94], bordSurClair: [0.62, 0.14, 0.36], creux: [1.0, 0.82, 0.74],
+    page: "#fff8f2", credit: "#5f1f3f", signature: "#b02a66",
+  },
+  boreale: {
+    blanc: [0.995, 1.0, 0.998], nacre: [0.935, 0.990, 0.975], poudre: [0.700, 0.960, 0.850], teinte: [0.300, 0.820, 0.770], vif: [0.260, 0.330, 0.880], fonce: [0.310, 0.160, 0.660],
+    ombre: [0.58, 0.80, 0.80], fil: [0.92, 1.0, 0.98], clarteDuFil: [0.70, 0.96, 0.92],
+    verreSurFonce: [0.86, 0.98, 0.96], verreSurClair: [0.12, 0.62, 0.68], filtre: [0.88, 0.98, 0.97], bordSurFonce: [0.95, 1.0, 0.99], bordSurClair: [0.03, 0.30, 0.42], creux: [0.72, 0.96, 0.94],
+    page: "#f4fdfa", credit: "#0f3f52", signature: "#0f6f86",
+  },
+} satisfies Record<string, Palette>;
 
 /** Celle de la page ; le nom suffit pour en changer. */
 export const PALETTE = PALETTES.orange;
