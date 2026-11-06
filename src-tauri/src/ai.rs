@@ -1192,8 +1192,10 @@ pub async fn transcrire_audio(
 // Sur les tablettes, un élève qui ne lit pas encore touche une étape de la
 // consigne et l'entend. L'audio se prépare ici, une fois par phrase, avec la
 // synthèse vocale de Mistral (Voxtral TTS) : seule la phrase part, jamais un
-// prénom — une consigne n'en porte pas. Gardé sur le disque, il ne se refait
-// pas : la même page garde la même empreinte, et ne repart pas vers le téléphone.
+// prénom — celle qui nomme quelqu'un reste sur l'ordinateur, la tablette la lit
+// de sa voix ; l'Assistant, lui, envoie `pourLaVoix` (voir nomsAMasquer.ts). Gardé
+// sur le disque, il ne se refait pas : la même page garde la même empreinte, et ne
+// repart pas vers le téléphone.
 
 /// Le modèle et la voix qui lisent les consignes : une voix française, posée.
 /// Voxtral Realtime : la voix transcrite pendant qu'on la dit (télécommande du tableau). Le « -3 » : le « -2602 »

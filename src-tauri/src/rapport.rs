@@ -46,14 +46,24 @@ fn plier(c: char) -> char {
     }
 }
 
+/// Un accent décomposé : macOS écrit ainsi les noms de fichiers, « é » en deux signes.
+fn accent_decompose(c: char) -> bool {
+    ('\u{300}'..='\u{36f}').contains(&c)
+}
+
 fn plie(mot: &str) -> String {
-    mot.chars().map(plier).collect()
+    mot.chars().filter(|c| !accent_decompose(*c)).map(plier).collect()
+}
+
+/// Une lettre d'un mot, ou son accent décomposé : il ne coupe pas le mot en deux.
+fn dans_un_mot(c: char) -> bool {
+    c.is_alphabetic() || accent_decompose(c)
 }
 
 /// Les mots des noms de la classe, pliés : chacun sera masqué partout.
 pub(crate) fn mots_des_noms(noms: &[String]) -> HashSet<String> {
     noms.iter()
-        .flat_map(|n| n.split(|c: char| !c.is_alphabetic()).map(plie).collect::<Vec<_>>())
+        .flat_map(|n| n.split(|c: char| !dans_un_mot(c)).map(plie).collect::<Vec<_>>())
         .filter(|m| m.chars().count() >= 2)
         .collect()
 }
@@ -109,7 +119,7 @@ pub(crate) fn nettoyer(texte: &str, mots: &HashSet<String>, maison: Option<&str>
         }
     };
     for c in texte.chars() {
-        if c.is_alphabetic() {
+        if dans_un_mot(c) {
             mot.push(c);
         } else {
             vider(&mut mot, &mut sortie);
@@ -232,17 +242,27 @@ pub struct RapportCourriel {
     pub ouvert: bool,
 }
 
+/// Les mots des noms de la classe, lus dans la base : sans eux, rien ne sort.
+fn mots_de_la_classe(db: &Db) -> R<HashSet<String>> {
+    let c = db.lock();
+    let mut st = c.prepare("SELECT nom FROM eleves").map_err(|e| e.to_string())?;
+    let it = st.query_map([], |r| r.get::<_, String>(0)).map_err(|e| e.to_string())?;
+    let noms: Vec<String> = it.flatten().collect();
+    Ok(mots_des_noms(&noms))
+}
+
+/// Un texte prêt à quitter l'application : noms de la classe, dossier personnel et adresses nettoyés.
+pub(crate) fn sans_les_noms(db: &Db, texte: &str) -> R<String> {
+    let mots = mots_de_la_classe(db)?;
+    let maison = dirs::home_dir().map(|m| m.to_string_lossy().to_string());
+    Ok(nettoyer(texte, &mots, maison.as_deref()))
+}
+
 /// Ouvre la messagerie sur le rapport, adressé à l'éditeur. `motif` : ce qui
 /// vient d'arriver, s'il y a lieu.
 #[tauri::command]
 pub fn diag_courriel(app: tauri::AppHandle, db: State<Db>, motif: Option<String>) -> R<RapportCourriel> {
-    let noms: Vec<String> = {
-        let c = db.lock();
-        let mut st = c.prepare("SELECT nom FROM eleves").map_err(|e| e.to_string())?;
-        let it = st.query_map([], |r| r.get::<_, String>(0)).map_err(|e| e.to_string())?;
-        it.flatten().collect()
-    };
-    let mots = mots_des_noms(&noms);
+    let mots = mots_de_la_classe(&db)?;
     let maison = dirs::home_dir().map(|m| m.to_string_lossy().to_string());
     let propre = |t: &str| nettoyer(t, &mots, maison.as_deref());
     let lignes: Vec<String> = lignes_d_incident(&lire_journal()).iter().map(|l| propre(l)).collect();
@@ -268,6 +288,14 @@ pub fn diag_incident_precedent() -> Option<(String, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn un_nom_de_fichier_a_l_accent_decompose_se_masque_aussi() {
+        let mots = mots_des_noms(&["Mélusine".to_string(), "Me\u{301}lodie".to_string()]);
+        assert_eq!(nettoyer("Copie de Me\u{301}lusine.pdf", &mots, None), "Copie de [élève].pdf");
+        assert_eq!(nettoyer("Bilan de Mélodie", &mots, None), "Bilan de [élève]");
+        assert_eq!(nettoyer("Le café décomposé cafe\u{301} reste", &mots, None), "Le café décomposé cafe\u{301} reste");
+    }
+
 
     #[test]
     fn les_noms_de_la_classe_et_le_dossier_personnel_ne_partent_pas() {

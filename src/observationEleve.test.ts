@@ -5,6 +5,7 @@ let reponse = "";
 
 vi.mock("./api", () => ({
   api: {
+    elevesList: async () => [],
     modeleActif: async () => "ministral-8b-latest",
     mistralChat: async (messages: { role: string; content: string }[]) => {
       appels.push({ messages });
@@ -103,6 +104,15 @@ describe("la fiche d'observation", () => {
 });
 
 describe("ranger le bilan en colonnes", () => {
+  it("l'en-tête part masqué avec la note, et sans la date", async () => {
+    reponse = "## Réussites, points d'appui\n- A lu seul.";
+    await repartir(fiche({ note: "A lu seul.", contexte: "Lecture Barnabé", competence: "Lire avec Barnabé", date: "2026-11-05" }), "Barnabé");
+    const envoye = JSON.stringify(appels[0].messages);
+    expect(envoye).not.toContain("Barnabé");
+    expect(envoye).not.toContain("2026-11-05");
+    expect(envoye).toContain("Contexte : Lecture [P1]");
+  });
+
   it("la consigne nomme les cinq colonnes et interdit le diagnostic", () => {
     const m = promptRepartition(fiche({ note: "A demandé de l'aide." }));
     for (const c of COLONNES) expect(m[0].content).toContain(c.titre);

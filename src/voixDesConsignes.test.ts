@@ -32,6 +32,16 @@ describe("la voix des consignes", () => {
     expect(html.indexOf(".voix {")).toBeLessThan(html.indexOf("</head>"));
   });
 
+  it("garde sur l'ordinateur une phrase qui nomme quelqu'un : la tablette la lit de sa voix, sans que cela compte pour un échec", async () => {
+    const lus: string[] = [];
+    const etape = (t: string) => `<li class="at-etape">${t}</li>`;
+    const html = await avecLaVoix(`<html><head></head><body><ol>${etape("Barnabé distribue.")}${etape("Barnabé range.")}${etape("Lis la consigne.")}</ol></body></html>`,
+      async (t) => { lus.push(t); return "QUJD"; }, (t) => t.includes("Barnabé"));
+    expect(lus).toEqual(["Lis la consigne."]);
+    expect(html.match(/data-lire=/g)).toHaveLength(3);
+    expect(html.match(/data-audio=/g)).toHaveLength(1);
+  });
+
   it("trouve les étapes d'une aide, même avec des blocs dedans, et laisse les cachées", async () => {
     const aide = '<html><head></head><body><div class="at-etape dr-etape"><img src="a.png" alt=""><span class="dr-mots"><span class="dr-matiere">Maths</span>'
       + '<span class="at-texte">Les pyramides</span></span><div class="at-case"></div></div><div class="at-etape at-cachee"><span class="at-texte">Cachée</span></div></body></html>';

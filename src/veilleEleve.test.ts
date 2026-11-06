@@ -5,6 +5,7 @@ let reponse = "## Bilan\n[P1] progresse.\n## Mathématiques\n[P1] dénombre jusq
 
 vi.mock("./api", () => ({
   api: {
+    elevesList: async () => [],
     settingsAll: async () => ({ typeStructure: "ime" }),
     modeleActif: async () => "ministral-8b-latest",
     mistralChat: async (messages: { role: string; content: string }[]) => {

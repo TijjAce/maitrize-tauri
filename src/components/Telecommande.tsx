@@ -12,8 +12,8 @@ import { zoomerDeLoin } from "../theme";
 import { DIRECT_COUPE } from "../voxtralDirect";
 import { EVT_CHERCHER_BUREAU } from "../bureauAteliers";
 import { annulerDeLoin } from "../annulation";
-import { pseudonymiserTout, restaurer } from "../confidentialite";
-import { nomsAMasquer } from "../nomsAMasquer";
+import { restaurer } from "../confidentialite";
+import { masquerSurLesEleves } from "../nomsAMasquer";
 import { seanceACreer, sequenceACreer, sequenceToutefaiteACreer, type Demander } from "../creationsALaVoix";
 import {
   CLE_SECOURS, CLE_TEMPS_REEL, MODELE_DE_SECOURS, catalogue, ceQuIlComprend, comprendre, consigneDeMistral, destinationsDe,
@@ -103,7 +103,7 @@ async function parMistral(texte: string, ctx: ContexteTelecommande, nav: (to: st
   let actions: Compris[] | null;
   try {
     // La phrase dite — « note pour Lucas : … » — part sans les noms connus, la consigne aussi ; la réponse les retrouve.
-    const masque = pseudonymiserTout([consigneDeMistral(ctx.destinations, elements, ceQuiEstEnCours()), texte], await nomsAMasquer());
+    const masque = await masquerSurLesEleves([consigneDeMistral(ctx.destinations, elements, ceQuiEstEnCours()), texte]);
     const reponse = await Promise.race([
       api.mistralChat([
         { role: "system", content: masque.textes[0] },

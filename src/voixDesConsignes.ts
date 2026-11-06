@@ -72,9 +72,10 @@ export const STYLE_VOIX = `
  * La page, chaque étape avec son haut-parleur : le texte à dire, et l'audio
  * quand on a pu le préparer. `lire` rend l'audio d'une phrase, en mp3 base64 ;
  * il échoue sans clé ou sans réseau — après deux échecs, on n'insiste plus,
- * la tablette lira de sa voix.
+ * la tablette lira de sa voix. Une phrase que `aTaire` retient ne part pas : la
+ * tablette la lira de sa voix elle aussi.
  */
-export async function avecLaVoix(page: string, lire: (texte: string) => Promise<string>): Promise<string> {
+export async function avecLaVoix(page: string, lire: (texte: string) => Promise<string>, aTaire: (texte: string) => boolean = () => false): Promise<string> {
   let echecs = 0;
   const ajouts: { ou: number; html: string }[] = [];
   for (const b of blocs(page, ETAPES)) {
@@ -82,7 +83,7 @@ export async function avecLaVoix(page: string, lire: (texte: string) => Promise<
     const texte = texteDeLEtape(interieur);
     if (!texte || b.classes.includes("at-cachee") || /\bclass="voix"/.test(interieur)) continue;
     let audio = "";
-    if (echecs < 2) {
+    if (echecs < 2 && !aTaire(texte)) {
       try { audio = ` data-audio="data:audio/mpeg;base64,${await lire(texte)}"`; } catch { echecs++; }
     }
     ajouts.push({ ou: b.debutFermeture, html: `<button type="button" class="voix" aria-label="Écouter" data-lire="${echapper(texte)}"${audio}></button>` });

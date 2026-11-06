@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AGENTS_COUPES, api, texteErreur, type DocumentCoffre, ChatMessage, Sequence, Seance, PiloteConversation, CYCLES, MATIERES, MODELES_MISTRAL, MODELE_DEFAUT, nouvelleSequence, nouvelleSeance, couleurPourMatiere, newId, nowIso } from "../api";
 import { Modal, Field, Input, Select, Demander, useAsync } from "../components/ui";
 import { construireContexteIA } from "../contexteIA";
-import { lieuxAMasquer, nomsAMasquer } from "../nomsAMasquer";
+import { masquerSurLesEleves, nomsAMasquer, pourLaVoix } from "../nomsAMasquer";
 import { pseudonymiser, pseudonymiserTout, restaurer } from "../confidentialite";
 import { relireAvantEnvoi } from "../relectureEnvoi";
 import { DEBUT_OBJECTIF_SEANCE } from "../demarches";
@@ -291,7 +291,8 @@ export default function Assistant() {
     attendue.current = messagesRef.current.length + 2;
     majOral("reponse");
     const l = lecteurAuFil({
-      voix: (t) => api.voixLire(t),
+      // Une réponse s'écrit avec les vrais noms ; la voix, elle, ne les reçoit jamais.
+      voix: (t) => pourLaVoix(t).then((dit) => api.voixLire(dit)),
       jouer,
       surDebut: () => {
         if (etatOral() !== "reponse") return;
@@ -501,8 +502,7 @@ export default function Assistant() {
       let prefixe: ChatMessage[] = [];
       let consigne: { role: boolean; contexte: string; programmes: string } = { role: false, contexte: "", programmes: "" };
       let memoire = "";
-      if (doc) prefixe = [{ role: "system", content: consigneDuDocument(doc.nom) }];
-      else {
+      if (!doc) {
         const [ctx, programmes, souvenirs] = await Promise.all([
           contexteActif ? construireContexteIA() : Promise.resolve(""),
           contexteActif
@@ -535,9 +535,10 @@ export default function Assistant() {
       // l'établissement —, masquée d'un seul tenant, les passages du document
       // compris ; la réponse les retrouve à mesure qu'elle s'écrit.
       // La mémoire part masquée avec elle, de la même table : la réponse retrouve les vrais mots des deux.
-      const masque = pseudonymiserTout([memoire, ...aEnvoyer.map((m) => m.content)], await nomsAMasquer(), { portee: "eleves", lieux: await lieuxAMasquer() });
-      const [memoireMasquee, ...textesMasques] = masque.textes;
-      const systeme = doc ? "" : consigneDeLAssistant({ ...consigne, memoire: memoireMasquee });
+      // Le contexte de la classe et le nom du document aussi : une séquence, un fichier portent parfois un prénom.
+      const masque = await masquerSurLesEleves([memoire, consigne.contexte, doc?.nom ?? "", ...aEnvoyer.map((m) => m.content)]);
+      const [memoireMasquee, contexteMasque, titreMasque, ...textesMasques] = masque.textes;
+      const systeme = doc ? consigneDuDocument(titreMasque) : consigneDeLAssistant({ ...consigne, contexte: contexteMasque, memoire: memoireMasquee });
       if (systeme) prefixe = [{ role: "system", content: systeme }];
       // À voix haute : une réponse qui s'écoute (voir conversationVocale.ts).
       if (options.oral) prefixe = [...prefixe, { role: "system", content: CONSIGNE_ORALE }];
@@ -645,7 +646,7 @@ export default function Assistant() {
     setLoading(true);
     setMessages(avec("_🔎 Recherche sur internet…_"));
     try {
-      const q = pseudonymiserTout([`À propos du document « ${p.titre} » : ${p.question}`], await nomsAMasquer(), { portee: "eleves", lieux: await lieuxAMasquer() });
+      const q = await masquerSurLesEleves([`À propos du document « ${p.titre} » : ${p.question}`]);
       const r = await api.mistralRechercheWebAssistant(q.textes[0]);
       if (arretee) return;
       const web = restaurer(r.texte || "", q.table).texte.trim();

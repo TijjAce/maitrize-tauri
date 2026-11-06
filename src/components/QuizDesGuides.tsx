@@ -137,7 +137,7 @@ export function QuizDesGuides({ guides }: { guides: GuideDuQuiz[] }) {
         total = lu.total;
         if (!essai) dire("Mistral prépare les questions…");
         const brut = await api.mistralChat([
-          { role: "system", content: consigneDuQuiz(guide.titre, QUESTIONS_PAR_SERIE, leTheme) },
+          { role: "system", content: consigneDuQuiz(guide.titre, QUESTIONS_PAR_SERIE, pseudonymiser(leTheme, await nomsAMasquer()).texte) },
           { role: "user", content: demandeDuQuiz(lu.pages) },
         ], await api.modeleActif(), true);
         questions = lireLesQuestions(brut, lu.pages, graine);

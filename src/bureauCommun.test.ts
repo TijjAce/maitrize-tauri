@@ -34,6 +34,16 @@ function bureau(): Contenu {
 }
 
 describe("déposer un dossier sur le bureau commun", () => {
+  it("ne prend pas une fiche faite pour un élève : son prénom est dans son titre, son PDF et sa fabrication", () => {
+    const tout = bureau();
+    tout.materiels = [
+      materiel({ id: "pour-tous", dossier: "cycle 1", fabricationJson: '{"atelier":"loto"}' }),
+      materiel({ id: "pour-lui", dossier: "cycle 1", titre: "Loto — Barnabé, 6 novembre", fabricationJson: '{"atelier":"loto","eleve":{"prenom":"Barnabé","date":"2026-11-06"}}' }),
+      materiel({ id: "illisible", dossier: "cycle 1", fabricationJson: "{pas du json" }),
+    ];
+    expect(contenuDuDossier("cycle 1", tout).materiels.map((m) => m.id)).toEqual(["pour-tous", "illisible"]);
+  });
+
   it("prend tout le dossier, sous-dossiers compris, et rien d'ailleurs", () => {
     const c = contenuDuDossier("cycle 1", bureau());
     expect(c.sequences.map((s) => [s.titre, s.dossier])).toEqual([["Les fractions", "Maths"]]);

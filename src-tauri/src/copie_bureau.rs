@@ -782,9 +782,7 @@ pub fn miroir_incidents(tout_de_suite: bool) {
         return;
     }
     DERNIER_MIROIR.store(maintenant, Ordering::Relaxed);
-    if let Ok(rapport) = crate::commands::diag_rapport(2000) {
-        ecrire_rapport(&racine, &journal_masque(&rapport));
-    }
+    ecrire_rapport(&racine, &journal_masque(&crate::commands::journal_recent(2000)));
 }
 
 /// Au démarrage : retenir où est la copie, et y recopier le journal.

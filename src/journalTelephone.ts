@@ -587,8 +587,13 @@ export async function pageDeLaSeance(s: Seance, materiel: MaterielItem[]): Promi
  * phrase ; sans clé ni réseau, la tablette lit de sa propre voix.
  */
 async function avecSaVoix(page: string): Promise<string> {
-  const [{ avecLaVoix }, { api }] = await Promise.all([import("./voixDesConsignes"), import("./api")]);
-  return avecLaVoix(page, (texte) => api.voixLire(texte));
+  const [{ avecLaVoix }, { api }, { masqueDesEleves }, { pseudonymiser }] = await Promise.all([
+    import("./voixDesConsignes"), import("./api"), import("./nomsAMasquer"), import("./confidentialite"),
+  ]);
+  // Une phrase qui nomme quelqu'un ne part pas à la synthèse vocale : cela se fait tout seul, sans personne pour relire.
+  const masque = await masqueDesEleves().catch(() => null);
+  return avecLaVoix(page, (texte) => api.voixLire(texte), (texte) =>
+    !masque || pseudonymiser(texte, masque.noms, { portee: "eleves", lieux: masque.lieux, reperes: masque.reperes }).table.length > 0);
 }
 
 // ── Le déroulement d'un créneau ────────────────────────────────────────────

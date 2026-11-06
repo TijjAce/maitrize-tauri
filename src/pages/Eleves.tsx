@@ -24,9 +24,9 @@ import { DossierTab } from "./DossierEleve";
 import { EvaluationDiagnostiqueTab } from "./EvaluationDiagnostique";
 import { GrillesDesSequences } from "./GrillesDesSequences";
 import syntheseDomaines from "../data/syntheseGS.json";
-import { pseudonymiser, restaurer } from "../confidentialite";
+import { restaurer } from "../confidentialite";
 import { SyntheseEleveTab } from "./SyntheseEleve";
-import { lieuxAMasquer, nomsAMasquer } from "../nomsAMasquer";
+import { masquerSurLesEleves } from "../nomsAMasquer";
 import { fabricationsDesFiches, niveauDesFiches } from "../fichesAutonomie";
 import { isoJour } from "../dates";
 import { useEleveDuDossier } from "../eleveDuDossier";
@@ -586,7 +586,7 @@ function SyntheseGS() {
     try {
       // Aucun nom ne part : ceux des élèves sont masqués dans le texte, et
       // l'élève concerné est désigné par [E], remplacé par son prénom au retour.
-      const { texte: masque, table } = pseudonymiser(texte, [...(eleves ?? []).map((e) => e.nom), ...await nomsAMasquer()], { portee: "eleves", lieux: await lieuxAMasquer() });
+      const { textes: [masque], table } = await masquerSurLesEleves([texte], (eleves ?? []).map((e) => e.nom));
       const modele = await api.modeleActif();
       const rep = await api.mistralChat([
         { role: "system", content:

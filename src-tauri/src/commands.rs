@@ -3618,11 +3618,17 @@ pub fn diag_arret() {
 /**
  * Le rapport à envoyer : de quoi aider quelqu'un dont la fenêtre s'est figée.
  *
- * Les dernières lignes du journal, précédées de ce qui situe la machine. Rien
- * d'un élève n'y figure : le journal ne contient que des messages techniques.
+ * Les dernières lignes du journal, précédées de ce qui situe la machine, et
+ * nettoyées avant de quitter l'application : un chemin ou un nom de fichier du
+ * journal peut porter un prénom.
  */
 #[tauri::command]
-pub fn diag_rapport(lignes: usize) -> R<String> {
+pub fn diag_rapport(db: State<Db>, lignes: usize) -> R<String> {
+    crate::rapport::sans_les_noms(&db, &journal_recent(lignes))
+}
+
+/// Les dernières lignes du journal, telles quelles : à masquer avant de sortir.
+pub fn journal_recent(lignes: usize) -> String {
     let chemin = diag_chemin();
     // Juste après une rotation, le journal est court : le précédent le complète.
     let precedent = std::fs::read_to_string(chemin.with_file_name("diagnostic.1.log")).unwrap_or_default();
@@ -3630,14 +3636,14 @@ pub fn diag_rapport(lignes: usize) -> R<String> {
     let n = lignes.clamp(20, 2000);
     let dernieres: Vec<&str> = contenu.lines().rev().take(n).collect();
     let corps = dernieres.into_iter().rev().collect::<Vec<_>>().join("\n");
-    Ok(format!(
+    format!(
         "Rapport Maitrize — {}\nSystème : {} {}\nJournal : {}\n\n{}",
         chrono::Local::now().format("%d/%m/%Y %H:%M"),
         std::env::consts::OS,
         std::env::consts::ARCH,
         chemin.display(),
         if corps.trim().is_empty() { "(aucun incident enregistré)".to_string() } else { corps },
-    ))
+    )
 }
 
 /// Ouvre le journal de diagnostic dans l'application par défaut.

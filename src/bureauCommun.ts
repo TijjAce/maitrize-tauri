@@ -221,6 +221,11 @@ const relatif = (racine: string, chemin: string) => {
   return c === racine ? "" : c.slice(racine.length + 1);
 };
 
+/** Une fiche faite pour un élève : son prénom est dans son titre, son PDF et sa fabrication. */
+const ficheDUnEleve = (m: { fabricationJson?: string }): boolean => {
+  try { return Boolean(JSON.parse(m.fabricationJson || "{}")?.eleve); } catch { return false; }
+};
+
 /**
  * Ce que contient un dossier du bureau, sous-dossiers compris, prêt à partir :
  * chemins relatifs, et rien de ce qui touche aux élèves.
@@ -245,7 +250,7 @@ export function contenuDuDossier(chemin: string, tout: Contenu): Contenu {
 
   return {
     sequences, seances, pieces,
-    materiels: dedans(tout.materiels).map((m) => ({
+    materiels: dedans(tout.materiels.filter((m) => !ficheDUnEleve(m))).map((m) => ({
       ...m,
       // Le coffre garde des documents personnels ; un lien vers une séance qui ne part pas ne mène à rien.
       coffreJson: "[]",

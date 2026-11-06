@@ -20,8 +20,8 @@
 // disque.
 
 import { api, type Reunion, MODELE_TACHES } from "./api";
-import { pseudonymiser, restaurer, sansMarqueursRestants } from "./confidentialite";
-import { lieuxAMasquer, nomsAMasquer } from "./nomsAMasquer";
+import { restaurer, sansMarqueursRestants } from "./confidentialite";
+import { masquerSurLesEleves, nomsAMasquer } from "./nomsAMasquer";
 
 /**
  * Durée d'une tranche, en secondes.
@@ -508,11 +508,9 @@ const nomsDesEleves = (...textes: string[]): Promise<string[]> => nomsAMasquer(t
  * seule table — [P1] désigne alors la même personne dans le titre et dans le
  * texte, ce qu'un masquage séparé ne garantirait pas.
  */
-const SEPARE = "\u0000";
 async function masquerTout(morceaux: string[], noms: string[]) {
-  const { texte, table } = pseudonymiser(morceaux.join(SEPARE), noms, { portee: "eleves", lieux: await lieuxAMasquer() });
-  const parts = texte.split(SEPARE);
-  return { parts: morceaux.map((_, i) => parts[i] ?? ""), table };
+  const { textes, table } = await masquerSurLesEleves(morceaux, noms);
+  return { parts: textes, table };
 }
 
 /**
@@ -584,11 +582,11 @@ export async function mettreAuPropre(
 ): Promise<string> {
   if (planVide(lirePlan(plan))) throw new Error("Le compte rendu est encore vide.");
   const { parts, table } = await masquerTout(
-    [reunion.titre, reunion.participants, plan], await nomsDesEleves(reunion.participants));
-  const [titre, participants, planMasque] = parts;
+    [reunion.titre, reunion.participants, plan, reunion.date], await nomsDesEleves(reunion.participants));
+  const [titre, participants, planMasque, date] = parts;
   const modele = await api.modeleActif();
   const rep = await api.mistralChat(promptCompteRendu({
-    genre: reunion.genre, titre, date: reunion.date, participants, resumes: planMasque,
+    genre: reunion.genre, titre, date, participants, resumes: planMasque,
   }), modele);
   const propre = nettoyer(rep);
   if (!propre) throw new Error("La réponse de l'IA est vide.");
@@ -653,10 +651,10 @@ export function promptReformuler(passage: string, masques: boolean) {
  * repère le passage par son contenu et non par sa position, laquelle aura
  * bougé quand la réponse arrivera.
  */
-export async function reformulerPassage(passage: string): Promise<string> {
+export async function reformulerPassage(passage: string, participants = ""): Promise<string> {
   const brut = passage.trim();
   if (brut.length < 12) throw new Error("Surlignez un passage un peu plus long.");
-  const { parts, table } = await masquerTout([brut], await nomsDesEleves());
+  const { parts, table } = await masquerTout([brut], await nomsDesEleves(participants));
   const modele = await api.modeleActif(MODELE_TACHES);
   const rep = await api.mistralChat(promptReformuler(parts[0], table.length > 0), modele);
   const propre = nettoyer(rep);

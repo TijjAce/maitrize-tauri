@@ -37,6 +37,7 @@ const CYCLE2 = {
 vi.mock("./api", () => ({
   api: {
     referentielsList: async () => [REFERENTIEL, CYCLE2],
+    elevesList: async () => [],
     settingsAll: async () => ({ niveauClasse: "GS", typeStructure: "ime" }),
     modeleActif: async () => "ministral-8b-latest",
     mistralChat: async (messages: { role: string; content: string }[]) => {

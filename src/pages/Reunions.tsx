@@ -755,7 +755,7 @@ export default function Reunions() {
     resumeEnCours.current = true;
     setReformule(true);
     try {
-      const mieux = await reformulerPassage(passage);
+      const mieux = await reformulerPassage(passage, contexte.current.participants);
       const actuel = compteRenduRef.current;
       const ou = actuel.indexOf(passage);
       if (ou < 0) { toast("Ce passage a changé depuis : rien n'a été remplacé.", { icone: "↩️" }); return; }

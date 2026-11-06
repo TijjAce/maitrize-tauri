@@ -17,7 +17,7 @@ import { lireLEleve } from "./agentSynthese";
 import { nomDeStructure, structureDe } from "./classe";
 import { normaliser } from "./competencesTravaillees";
 import { restaurer } from "./confidentialite";
-import { lieuxAMasquer, nomsAMasquer } from "./nomsAMasquer";
+import { masqueDesEleves, retenirLesReperes } from "./nomsAMasquer";
 import type { PointASavoir } from "./remplacant";
 import { SECTIONS_SYNTHESE, TYPE_DOC_SYNTHESE, sansAutresEleves } from "./synthese";
 import { dossierDesEcrits, masquerLEleveEtLesAdultes } from "./veilleEleve";
@@ -136,8 +136,10 @@ export async function redigerASavoir(a: {
     : "";
   // Les camarades disparaissent ; l'élève devient [P1], les adultes nommés [P2], [P3]…
   const eleves = new Set([a.eleve.nom, ...a.autresEleves]);
-  const adultes = (await nomsAMasquer()).filter((n) => !eleves.has(n));
-  const { texte: masque, table } = masquerLEleveEtLesAdultes(sansAutresEleves(connu, a.autresEleves), a.eleve.nom, adultes, await lieuxAMasquer());
+  const m = await masqueDesEleves();
+  const adultes = m.noms.filter((n) => !eleves.has(n));
+  const { texte: masque, table } = masquerLEleveEtLesAdultes(sansAutresEleves(connu, a.autresEleves), a.eleve.nom, adultes, m.lieux, m.reperes);
+  void retenirLesReperes(table);
   const rep = await api.mistralChat(promptASavoir({ connu: masque, niveau: a.eleve.niveau, contexte }), await api.modeleActif());
   return lireASavoir(restaurer(rep.trim(), table).texte);
 }

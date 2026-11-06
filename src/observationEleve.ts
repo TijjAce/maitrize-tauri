@@ -20,7 +20,7 @@ import { GRILLES } from "./data/evaluationsDiagnostiques";
 import { normaliser } from "./competencesTravaillees";
 import { restaurer } from "./confidentialite";
 import { citeLePrenom, clesDeLEleve, masquerLEleveEtLesAdultes, phrasesQuiCitent, prenomDe } from "./veilleEleve";
-import { lieuxAMasquer, nomsAMasquer } from "./nomsAMasquer";
+import { masqueDesEleves, retenirLesReperes } from "./nomsAMasquer";
 
 /** Un observable de la grille, avec d'où il vient. */
 export interface Axe {
@@ -193,7 +193,6 @@ export function promptRepartition(o: ObservationEleve) {
     o.axe && `Axe observé : ${o.axe}${o.domaine ? ` (${o.domaine})` : ""}`,
     o.competence && `Compétence travaillée : ${o.competence}`,
     o.contexte && `Contexte : ${o.contexte}`,
-    o.date && `Date : ${o.date}`,
   ].filter(Boolean).join("\n");
   return [
     {
@@ -252,10 +251,15 @@ export function lireRepartition(reponse: string): Partial<Record<Colonne, string
  */
 export async function repartir(o: ObservationEleve, nomEleve: string): Promise<Partial<Record<Colonne, string>>> {
   if (!o.note.trim()) throw new Error("Rien à ranger : le bilan de ce temps d'observation est vide.");
-  const adultes = (await nomsAMasquer()).filter((n) => n !== nomEleve);
-  const { texte: note, table } = masquerLEleveEtLesAdultes(o.note, nomEleve, adultes, await lieuxAMasquer());
+  const m = await masqueDesEleves();
+  const adultes = m.noms.filter((n) => n !== nomEleve);
+  // L'en-tête part masqué avec la note : un créneau s'intitule souvent d'une matière et d'un prénom.
+  const separe = "\u0000";
+  const { texte, table } = masquerLEleveEtLesAdultes([o.note, o.contexte, o.competence, o.axe, o.domaine].join(separe), nomEleve, adultes, m.lieux, m.reperes);
+  void retenirLesReperes(table);
+  const [note, contexte, competence, axe, domaine] = texte.split(separe);
   const modele = await api.modeleActif();
-  const rep = await api.mistralChat(promptRepartition({ ...o, note }), modele);
+  const rep = await api.mistralChat(promptRepartition({ ...o, note, contexte, competence, axe, domaine }), modele);
   const lu = lireRepartition(rep);
   const rendu: Partial<Record<Colonne, string>> = {};
   for (const [cle, valeur] of Object.entries(lu) as [Colonne, string][]) {

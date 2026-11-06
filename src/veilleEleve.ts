@@ -22,7 +22,7 @@ import { pseudonymiser, restaurer, type Remplacement } from "./confidentialite";
 import { lireResumes, lireTranches, riendedit } from "./reunion";
 import { SECTIONS_SYNTHESE, sansAutresEleves, type Section, type SyntheseEleve } from "./synthese";
 import { nomDeStructure, structureDe } from "./classe";
-import { lieuxAMasquer, nomsAMasquer } from "./nomsAMasquer";
+import { masqueDesEleves, retenirLesReperes } from "./nomsAMasquer";
 
 /** D'où vient un écrit — pour que l'enseignant puisse aller le relire. */
 export type Origine = "observation" | "journal" | "reunion";
@@ -324,8 +324,8 @@ export function lireSyntheseRedigee(reponse: string): { bilan: string; sections:
  * soit la forme de son nom et où qu'il paraisse ; les adultes [P2], [P3]…
  * La consigne du modèle compte sur [P1] ; l'élève revient sous son prénom.
  */
-export function masquerLEleveEtLesAdultes(texte: string, eleve: string, adultes: string[], lieux: string[] = []): { texte: string; table: Remplacement[] } {
-  const { texte: masque, table } = pseudonymiser(texte, [eleve, ...adultes], { portee: "eleves", lieux });
+export function masquerLEleveEtLesAdultes(texte: string, eleve: string, adultes: string[], lieux: string[] = [], reperes?: { noms: string[]; lieux: string[] }): { texte: string; table: Remplacement[] } {
+  const { texte: masque, table } = pseudonymiser(texte, [eleve, ...adultes], { portee: "eleves", lieux, reperes });
   const personne = (r: Remplacement) => !r.genre || r.genre === "personne";
   const estLEleve = (original: string) => Boolean(eleve.trim()) && pseudonymiser(original, [eleve]).table.length > 0;
   const siens = table.filter((r) => personne(r) && estLEleve(r.original));
@@ -373,8 +373,10 @@ export async function redigerSyntheseSuivie(a: {
   const plans = sansCamarades((a.plans ?? "").trim());
   // L'élève devient [P1] ; les adultes nommés — contacts de l'établissement, participants — suivent.
   const eleves = new Set([a.eleve.nom, ...a.autresEleves]);
-  const adultes = (await nomsAMasquer()).filter((n) => !eleves.has(n));
-  const { texte: masque, table } = masquerLEleveEtLesAdultes(`${ecrits} ${suivi} ${plans}`, a.eleve.nom, adultes, await lieuxAMasquer());
+  const m = await masqueDesEleves();
+  const adultes = m.noms.filter((n) => !eleves.has(n));
+  const { texte: masque, table } = masquerLEleveEtLesAdultes(`${ecrits} ${suivi} ${plans}`, a.eleve.nom, adultes, m.lieux, m.reperes);
+  void retenirLesReperes(table);
   const [ecritsMasques, suiviMasque, plansMasques] = masque.split(" ");
 
   const modele = await api.modeleActif();
