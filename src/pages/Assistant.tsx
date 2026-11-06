@@ -14,7 +14,6 @@ import { openCtx } from "../components/ctxmenu";
 import { Markdown } from "../components/Markdown";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useDictee, mmss } from "../dictee";
 import { aLaSuite, useDicteeEnDirect } from "../dicteeEnDirect";
 import { CONSIGNE_ORALE, lecteurAuFil, questionFinie, type LecteurAuFil } from "../conversationVocale";
 import { FENETRE_ECHO_S, detecteurDePriseDeParole, enveloppeDuMp3, niveauJoue, type DetecteurDePriseDeParole } from "../priseDeParole";
@@ -177,12 +176,8 @@ export default function Assistant() {
   const colleEnBas = React.useRef(true);
   const [detache, setDetache] = React.useState(false);
 
-  // Dictée : on remplit la zone de saisie, sans envoyer — l'enseignant relit
-  // et complète avant de lancer la demande.
-  const dictee = useDictee();
-  // La dictée en direct : les mots s'écrivent pendant qu'on parle, chuchotés compris (Voxtral, hors de l'Union
-  // européenne : voir dicteeEnDirect.ts, et l'avertissement sous la conversation). Si le direct ne répond pas, la
-  // dictée d'avant prend le relais.
+  // La conversation à voix haute : les mots s'écrivent pendant qu'on parle, chuchotés compris (Voxtral, hors de
+  // l'Union européenne : voir dicteeEnDirect.ts, et l'avertissement sous la conversation).
   const premierMot = React.useRef(true);
   // Ce que la dictée a écrit, tenu à jour à chaque mot : la question d'une conversation part sans attendre l'écran.
   const dite = React.useRef("");
@@ -200,13 +195,8 @@ export default function Assistant() {
       setInput((v) => aLaSuite(v, m, premier));
     },
     surPanne: (raison) => {
-      if (oralRef.current !== "non") {
-        void finirLaConversation();
-        toast(`Le direct de Mistral ne répond pas (${raison}) : la conversation s'arrête.`, { icone: "📡", duree: 7000 });
-        return;
-      }
-      toast(`Le direct de Mistral ne répond pas (${raison}) : la dictée continue par passages.`, { icone: "📡", duree: 7000 });
-      void dictee.demarrer().then((e) => { if (e) toast(e, { icone: "🎙" }); });
+      void finirLaConversation();
+      toast(`Le direct de Mistral ne répond pas (${raison}) : la conversation s'arrête.`, { icone: "📡", duree: 7000 });
     },
     // Pendant que la voix parle, chaque trame du micro est comparée à ce qu'elle joue : l'enseignant qui parle
     // par-dessus la fait taire (voir priseDeParole.ts).
@@ -364,21 +354,6 @@ export default function Assistant() {
 
   // L'écran qui se ferme se tait.
   React.useEffect(() => () => { lecture.current?.arreter(); audio.current?.pause(); oralRef.current = "non"; }, []);
-  const basculerDictee = async () => {
-    if (oralRef.current !== "non") return;
-    if (enDirect.etat === "ecoute") { await enDirect.arreter(); return; }
-    if (dictee.etat === "enregistrement") {
-      const { texte, erreur } = await dictee.arreter();
-      if (erreur) { toast("Transcription impossible : " + erreur, { icone: "⚠️" }); return; }
-      if (!texte.trim()) { toast("Rien n'a été compris.", { icone: "🤔" }); return; }
-      setInput((v) => (v.trim() ? v.trimEnd() + " " : "") + texte);
-      return;
-    }
-    premierMot.current = true;
-    dite.current = input;
-    const erreur = await enDirect.demarrer();
-    if (erreur) toast(erreur, { icone: "🎙" });
-  };
 
   const versLeBas = React.useCallback((lisse = false) => {
     const n = scrollRef.current; if (!n) return;
@@ -1012,7 +987,7 @@ export default function Assistant() {
       {/* « Mets un panneau d'avertissement : là, les données ne sont pas traitées [en Europe], il ne faut pas en
           envoyer ici » (l'enseignant, 3 novembre 2026). Toujours en vue : c'est un avertissement, pas une aide. */}
       <p className="assistant-avertissement" role="note">
-        ⚠️ <b>Ici, la dictée et la recherche sur internet ne sont pas traitées en Europe.</b> Votre voix, et les questions
+        ⚠️ <b>Ici, la conversation à voix haute et la recherche sur internet ne sont pas traitées en Europe.</b> Votre voix, et les questions
         que vous choisissez de chercher sur internet, partent chez Mistral, hors de l'Union européenne : n'y mettez rien
         sur vos élèves — ni prénom, ni santé, ni famille.
       </p>
@@ -1021,23 +996,12 @@ export default function Assistant() {
           placeholder={oral === "ecoute" ? "Parlez, même tout bas : la question part quand vous vous taisez…"
             : oral === "reponse" ? "L'Assistant réfléchit…"
             : oral === "lecture" ? "L'Assistant vous répond à voix haute : parlez pour l'interrompre…"
-            : enDirect.etat === "ecoute" ? "Parlez : les mots s'écrivent en direct…" : dictee.etat === "enregistrement" ? "Enregistrement en cours…" : documentChoisi ? `Une question sur « ${documentChoisi.nom} »…` : "Écrivez ou dictez votre demande…"} value={input}
+            : documentChoisi ? `Une question sur « ${documentChoisi.nom} »…` : "Écrivez ou dictez votre demande…"} value={input}
           onChange={(e) => setInput(e.target.value)} onPaste={surCollage}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerOuParler(); } }} />
-        <button className={"btn" + (oral === "non" && (dictee.etat === "enregistrement" || enDirect.etat === "ecoute") ? " danger" : "")}
-          onClick={basculerDictee} disabled={loading || oral !== "non" || dictee.etat === "transcription" || enDirect.etat === "fin"}
-          title={enDirect.etat === "ecoute" ? "Terminer la dictée"
-            : dictee.etat === "enregistrement" ? "Terminer la dictée et transcrire"
-            : "Dicter en direct : les mots s'écrivent pendant que vous parlez — la voix part chez Mistral, hors de l'Union européenne"}
-          aria-pressed={dictee.etat === "enregistrement" || enDirect.etat === "ecoute"}>
-          {oral === "non" && enDirect.etat === "ecoute" ? `⏹ ${mmss(enDirect.secondes)}`
-            : oral === "non" && enDirect.etat === "fin" ? "⏳"
-            : dictee.etat === "enregistrement" ? `⏹ ${mmss(dictee.secondes)}`
-            : dictee.etat === "transcription" ? "⏳" : "🎙"}
-        </button>
         <button className={"btn" + (oral !== "non" ? " danger" : "")}
           onClick={() => { void (oral === "non" ? ecouterLaQuestion() : finirLaConversation()); }}
-          disabled={oral === "non" && (loading || dictee.etat !== "repos" || enDirect.etat !== "repos")}
+          disabled={oral === "non" && (loading || enDirect.etat !== "repos")}
           title={oral === "non"
             ? "Parler avec l'Assistant : vous parlez, même tout bas, et il vous répond à voix haute — la voix part chez Mistral, hors de l'Union européenne"
             : "Finir la conversation"}
