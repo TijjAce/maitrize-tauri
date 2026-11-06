@@ -252,6 +252,13 @@ export const PALETTES = {
     verreSurFonce: [1.0, 0.96, 0.80], verreSurClair: [0.93, 0.67, 0.12], filtre: [1.0, 0.96, 0.82], bordSurFonce: [1.0, 0.99, 0.92], bordSurClair: [0.62, 0.38, 0.0], creux: [1.0, 0.92, 0.62],
     page: "#fffcf0", credit: "#5f4208", signature: "#a36f06",
   },
+  // La soie du miel, l'écriture violette : la couleur complémentaire. Le filtre retient le jaune, sinon le verre tourne au gris.
+  mielViolet: {
+    blanc: [1.0, 0.998, 0.985], nacre: [1.0, 0.975, 0.870], poudre: [0.995, 0.920, 0.680], teinte: [0.980, 0.820, 0.380], vif: [0.930, 0.660, 0.080], fonce: [0.700, 0.450, 0.020],
+    ombre: [0.72, 0.58, 0.66], fil: [1.0, 0.98, 0.88], clarteDuFil: [1.0, 0.92, 0.62],
+    verreSurFonce: [0.50, 0.24, 0.86], verreSurClair: [0.40, 0.14, 0.78], filtre: [0.62, 0.42, 0.98], bordSurFonce: [0.78, 0.66, 1.0], bordSurClair: [0.24, 0.06, 0.50], creux: [0.80, 0.68, 1.0],
+    page: "#fffcf0", credit: "#3a2266", signature: "#5a2ca8",
+  },
   ardoise: {
     blanc: [0.998, 0.998, 0.998], nacre: [0.945, 0.955, 0.965], poudre: [0.840, 0.865, 0.890], teinte: [0.660, 0.710, 0.760], vif: [0.360, 0.430, 0.510], fonce: [0.200, 0.260, 0.330],
     ombre: [0.72, 0.75, 0.79], fil: [0.95, 0.97, 0.99], clarteDuFil: [0.80, 0.85, 0.90],
@@ -281,7 +288,7 @@ export const PALETTES = {
 } satisfies Record<string, Palette>;
 
 /** Celle de la page ; le nom suffit pour en changer. */
-export const PALETTE = PALETTES.orange;
+export const PALETTE = PALETTES.mielViolet;
 
 const enGlsl = ([r, v, b]: Rvb) => `vec3(${r.toFixed(3)}, ${v.toFixed(3)}, ${b.toFixed(3)})`;
 
