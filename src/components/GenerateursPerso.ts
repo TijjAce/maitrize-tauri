@@ -7,8 +7,8 @@
 
 import React from "react";
 import { api, newId, nowIso, type ChatMessage } from "../api";
-import { pseudonymiserTout, restaurer } from "../confidentialite";
-import { nomsAMasquer } from "../nomsAMasquer";
+import { restaurer } from "../confidentialite";
+import { masquerSurLesEleves } from "../nomsAMasquer";
 import { lireMesPictos, pourLeMot, type MonPicto } from "../mesPictos";
 import {
   CLE_GENERATEURS, CONSIGNE_DE_L_IA, CONSIGNE_DES_QUESTIONS, EVT_GENERATEURS, QUESTIONS_MAX, demandeALIA, lireGenerateurs, lireQuestion, lireRecette, motsSansImage,
@@ -51,7 +51,7 @@ export async function supprimerGenerateur(id: string): Promise<void> {
  * reviennent dans la recette.
  */
 async function demanderUneRecette(message: string): Promise<GenerateurPerso> {
-  const masque = pseudonymiserTout([message], await nomsAMasquer());
+  const masque = await masquerSurLesEleves([message]);
   const messages: ChatMessage[] = [{ role: "system", content: CONSIGNE_DE_L_IA }, { role: "user", content: masque.textes[0] }];
   const modele = await api.modeleActif();
   // Mistral répond par un objet JSON ; un modèle qui ne le saurait pas répond comme d'habitude.
@@ -122,7 +122,7 @@ export async function avecLesPictos(g: GenerateurPerso, garder: GenerateurPerso 
  */
 export async function questionDeLIA(demande: string, classe: string, echanges: Echange[]): Promise<QuestionDeLIA | null> {
   if (echanges.length >= QUESTIONS_MAX) return null;
-  const masque = pseudonymiserTout([questionsALIA(demande, classe, echanges)], await nomsAMasquer());
+  const masque = await masquerSurLesEleves([questionsALIA(demande, classe, echanges)]);
   const messages: ChatMessage[] = [{ role: "system", content: CONSIGNE_DES_QUESTIONS }, { role: "user", content: masque.textes[0] }];
   const modele = await api.modeleActif();
   let reponse: string;

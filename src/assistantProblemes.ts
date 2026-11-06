@@ -29,8 +29,8 @@
 // dans les énoncés » — partent masqués et reviennent ici (confidentialite.ts).
 
 import { api, type ChatMessage } from "./api";
-import { pseudonymiserTout, restaurer } from "./confidentialite";
-import { nomsAMasquer } from "./nomsAMasquer";
+import { restaurer } from "./confidentialite";
+import { masquerLaPreparation } from "./nomsAMasquer";
 import {
   CATALOGUE_PRESENTATION, CONTEXTES_PARTIES, PLAFONDS, PRESENTATION_COMPLETE, PRESENTATION_MODELE_SEUL, TYPES_MULTIPLICATIFS, contexteLu, lirePrenoms,
   nombre as nombreEnClair, nomDuContexte, retoucherPresentation, valeurDePresentation, valeurEnClair,
@@ -426,8 +426,7 @@ export async function demanderALAssistantDesProblemes(e: EtatDeLAtelier, fil: { 
   const premier = fil.findIndex((m) => m.role === "user");
   const envoyes = premier < 0 ? [] : fil.slice(premier);
   const textes = [consigneDesProblemes(e), ...envoyes.map((m) => m.content)];
-  const noms = [...await nomsAMasquer(), ...lirePrenoms(e.reglages.prenoms)];
-  const { textes: masques, table } = pseudonymiserTout(textes, noms);
+  const { textes: masques, table } = await masquerLaPreparation(textes, lirePrenoms(e.reglages.prenoms));
   const messages: ChatMessage[] = [
     { role: "system", content: masques[0] },
     ...envoyes.map((m, i): ChatMessage => ({ role: m.role, content: masques[i + 1] })),

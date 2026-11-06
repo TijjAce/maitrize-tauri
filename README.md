@@ -34,7 +34,7 @@ Téléchargez le fichier de votre ordinateur, ouvrez-le, suivez [le mode d'emplo
 
 ## Vos données
 
-Tout s'enregistre sur votre ordinateur : il n'y a ni compte Maitrize, ni serveur Maitrize. Sans clé d'IA, le reste de l'application fonctionne sans elle. Avec votre clé, les demandes sont traitées dans l'Union européenne et les noms des élèves sont masqués, sauf la dictée en direct et la recherche sur internet de l'assistant, que l'application signale ; la voix, si vous choisissez la transcription en ligne, part telle quelle. Le détail est dans [le mode d'emploi](https://clementtitet.forge.apps.education.fr/maitrize/mode-d-emploi.html#ia).
+Tout s'enregistre sur votre ordinateur : il n'y a ni compte Maitrize, ni serveur Maitrize. Sans clé d'IA, le reste de l'application fonctionne sans elle. Avec votre clé, les demandes sont traitées dans l'Union européenne et les noms des élèves sont masqués, sauf la conversation à voix haute et la recherche sur internet de l'assistant, que l'application signale ; la voix, si vous choisissez la transcription en ligne, part telle quelle. Le détail est dans [le mode d'emploi](https://clementtitet.forge.apps.education.fr/maitrize/mode-d-emploi.html#ia).
 
 ## Licence et auteur
 

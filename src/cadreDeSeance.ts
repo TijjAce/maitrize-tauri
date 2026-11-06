@@ -765,6 +765,8 @@ export async function redigerLaFiche(o: {
   /** Ce que Fabriquer sait faire : les numéros des feuilles s'y retrouvent. */
   supports?: Pick<SupportsDuSujet, "feuilles" | "ateliers">;
   surCorrection?: () => void;
+  /** Ce qu'on demande de corriger cite des mots de la fiche, déjà restaurée : il repart sans les noms. */
+  masquerLaCorrection?: (texte: string) => string;
 }): Promise<{ fiche: FicheDeSeance; notes: string[] } | { reponse: string }> {
   const lire = (rep: string): FicheLue | { reponse: string } | null => {
     const v = lireJson(rep);
@@ -782,10 +784,11 @@ export async function redigerLaFiche(o: {
 
   o.surCorrection?.();
   const aCorriger = lue?.problemes ?? ["Ta réponse n'était pas un objet JSON valide."];
+  const correction = `Corrige seulement ceci, et renvoie la fiche entière en JSON :\n${aCorriger.map((p) => `- ${p}`).join("\n")}`;
   const seconde = await o.appeler([
     ...o.messages,
     { role: "assistant", content: premiere },
-    { role: "user", content: `Corrige seulement ceci, et renvoie la fiche entière en JSON :\n${aCorriger.map((p) => `- ${p}`).join("\n")}` },
+    { role: "user", content: o.masquerLaCorrection ? o.masquerLaCorrection(correction) : correction },
   ]);
   const corrigee = lire(seconde);
   const finale = corrigee && !("reponse" in corrigee) ? corrigee : lue;

@@ -10,8 +10,8 @@ import { toast, toastAnnulable } from "../components/Toaster";
 import { CompetenceTree, labelCourt, type CompetenceSelectionnee } from "../components/CompetenceTree";
 import { demarchesDeLaCompetence } from "../demarches";
 import { ajouterManuelle, consigneSousCompetences, estManuelle, lireSousCompetences } from "../sousCompetences";
-import { pseudonymiserTout, restaurer } from "../confidentialite";
-import { nomsAMasquer } from "../nomsAMasquer";
+import { restaurer } from "../confidentialite";
+import { masquerLaPreparation } from "../nomsAMasquer";
 import { ConsignesSeance } from "../components/Tapuscrit";
 import { lireConsignes } from "../tapuscrit";
 import { ReglesCitees, useLudotheque } from "../components/ReglesDesJeux";
@@ -318,7 +318,7 @@ function CompetencesDeLaSeance({ s, up, sequence, cycle, onClose }: {
         titreSeance: s.titre, objectifs: s.objectifs, dejaLa: comps.map((c) => c.competenceTitre),
       });
       // Le titre et l'objectif de la séance partent sans les noms connus.
-      const masque = pseudonymiserTout(consigne.map((m) => m.content), await nomsAMasquer());
+      const masque = await masquerLaPreparation(consigne.map((m) => m.content));
       const reponse = restaurer(await api.mistralChat(consigne.map((m, i) => ({ ...m, content: masque.textes[i] }))), masque.table).texte;
       const lues = lireSousCompetences(reponse);
       if (!lues.length) { toast("L'assistant n'a rien proposé de lisible ; réessayez.", { icone: "⚠️" }); return; }

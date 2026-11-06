@@ -3,8 +3,8 @@
 
 import React from "react";
 import { MODELE_TACHES, api, newId, nowIso, texteErreur, type ManuelPdf, type PoidsDuManuel, type PoidsPdf } from "../api";
-import { pseudonymiserTout, restaurer } from "../confidentialite";
-import { nomsAMasquer } from "../nomsAMasquer";
+import { restaurer } from "../confidentialite";
+import { masquerLaPreparation } from "../nomsAMasquer";
 import { Field, Input, Modal, PageVisibleContext, Select, Textarea, useAsync } from "../components/ui";
 import { toast, toastAnnulable } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
@@ -322,7 +322,7 @@ export function ManuelsPanel() {
     phase(eid, "simplification");
     // Un exercice retouché à la main peut nommer un élève.
     const consigne = consigneReadaptation(e, o, m.niveau);
-    const masque = pseudonymiserTout(consigne.map((x) => x.content), await nomsAMasquer());
+    const masque = await masquerLaPreparation(consigne.map((x) => x.content));
     const rep = await api.mistralChat(consigne.map((x, i) => ({ ...x, content: masque.textes[i] })), await api.modeleActif(MODELE_TACHES));
     const fiche = lireFicheAdaptee(restaurer(rep, masque.table).texte);
     if (!fiche) { toast("Le modèle n'a pas renvoyé de modèle simplifié lisible : « Refaire » le redemandera.", { icone: "🤔", duree: 6000 }); return false; }

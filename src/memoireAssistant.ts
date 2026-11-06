@@ -19,9 +19,8 @@
 // - ne part au modèle que ce qui tient dans un budget, le plus utile à la
 //   question d'abord.
 //
-// Le magasin : un réglage par souvenir (« assistantMemoire:<id> »), sur
-// l'ordinateur ; il passe à l'autre ordinateur avec la synchronisation. Un
-// souvenir oublié devient un réglage vide.
+// Le magasin : un réglage par souvenir (« assistantMemoire:<id> »), sur cet
+// ordinateur seulement. Un souvenir oublié devient un réglage vide.
 //
 // Jamais un élève : un souvenir qui désigne quelqu'un (« [P1] »), sa santé ou
 // ses coordonnées est écarté, et la mémoire part masquée, comme la conversation

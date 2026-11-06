@@ -20,8 +20,8 @@
 
 import { api, type ChatMessage } from "./api";
 import { normaliser } from "./competencesTravaillees";
-import { pseudonymiserTout, restaurer } from "./confidentialite";
-import { nomsAMasquer } from "./nomsAMasquer";
+import { restaurer } from "./confidentialite";
+import { masquerSurLesEleves } from "./nomsAMasquer";
 import { CATALOGUE, MOIS, THEMES, nomDuMois, nomDuTheme, type IdeeProjet, type Theme } from "./projets";
 
 /** Une réplique de la conversation : l'enseignant, ou l'assistant. */
@@ -146,7 +146,8 @@ export function lireReponseDecouverte(brut: string): ReponseDecouverte {
 export async function demanderALaDecouverte(fil: RepliqueDecouverte[], aujourdhui: string): Promise<ReponseDecouverte> {
   const premier = fil.findIndex((m) => m.role === "user");
   const envoyes = premier < 0 ? [] : fil.slice(premier);
-  const { textes: masques, table } = pseudonymiserTout(envoyes.map((m) => m.content), await nomsAMasquer());
+  // Il peut y parler de ses élèves, on l'y invite : masqué comme tout texte sur les élèves.
+  const { textes: masques, table } = await masquerSurLesEleves(envoyes.map((m) => m.content));
   const messages: ChatMessage[] = [
     { role: "system", content: consigneDeLaDecouverte(aujourdhui) },
     ...envoyes.map((m, i): ChatMessage => ({ role: m.role, content: masques[i] })),

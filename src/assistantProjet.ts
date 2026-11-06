@@ -24,9 +24,9 @@
 
 import { api, type ChatMessage, type ProjetClasse } from "./api";
 import { normaliser } from "./competencesTravaillees";
-import { pseudonymiserTout, restaurer } from "./confidentialite";
+import { restaurer } from "./confidentialite";
 import { corpusDe, texteDuCorpus } from "./corpusProjet";
-import { nomsAMasquer } from "./nomsAMasquer";
+import { masquerLaPreparation } from "./nomsAMasquer";
 import { ETATS, MOIS, avancement, ecrireEtapes, etatDeduit, lireEtapes, nomDuMois, placer, semainesDuMois, type Etat } from "./projets";
 
 /** Ce que l'assistant fait du corpus : tout refaire, tirer d'autres mots, réécrire les phrases. */
@@ -258,7 +258,7 @@ export async function demanderALAssistant(p: ProjetClasse, annee: string, fil: R
   const premier = fil.findIndex((m) => m.role === "user");
   const envoyes = premier < 0 ? [] : fil.slice(premier);
   const textes = [consigneDeLAssistant(p, annee, aujourdhui), ...envoyes.map((m) => m.content)];
-  const { textes: masques, table } = pseudonymiserTout(textes, await nomsAMasquer());
+  const { textes: masques, table } = await masquerLaPreparation(textes);
   const messages: ChatMessage[] = [
     { role: "system", content: masques[0] },
     ...envoyes.map((m, i): ChatMessage => ({ role: m.role, content: masques[i + 1] })),

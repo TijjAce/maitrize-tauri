@@ -4,6 +4,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { api, MODELE_TACHES, type ProjetClasse } from "../api";
+import { nomsAMasquer } from "../nomsAMasquer";
 import { Select, ouvrirOnglet, useAsync } from "./ui";
 import { useReglages } from "./useMemoire";
 import {
@@ -51,7 +52,8 @@ export const servicesCorpus: ServicesCorpus = {
   selection: (themes) => api.arasaacSelection(themes, EXCLUES_PAR_DEFAUT, false, 0, 1),
   chercher: (mot) => api.arasaacChercher(mot, 40),
   chat: async (messages) => api.mistralChat(messages, await api.modeleActif(MODELE_TACHES)),
-  noms: () => api.elevesList().then((l) => l.map((e) => e.nom)).catch(() => []),
+  // Sans la liste des élèves, rien ne part (voir nomsAMasquer).
+  noms: () => nomsAMasquer(),
 };
 
 /** Ce qu'on dit d'un projet à la préparation de son corpus. */

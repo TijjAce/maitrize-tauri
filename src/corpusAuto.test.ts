@@ -7,6 +7,7 @@ import { DEMANDE_CORPUS } from "./corpusIa";
 import {
   devinerLesThemes, formesAChercher, motsPorteurs, preparerLeCorpus, racine, reserverLaPreparation,
   resumeDeLaPreparation, singulier, themesParLibelle, themesParPictos, themesProposables, titreExploitable, type ServicesCorpus,
+  corpusParLIa,
 } from "./corpusAuto";
 
 const cat = (nom: string, nombre: number): CategorieArasaac => ({ nom, nombre });
@@ -102,6 +103,18 @@ describe("préparer le corpus", () => {
     expect(user.content).toContain("Les mots du projet : âne, poule, vache");
     expect(user.content).not.toContain("Amandine");
     expect(user.content).toContain("[P1] adopte un animal.");
+  });
+
+  it("les mots déjà choisis partent sans les prénoms ; sans la liste des élèves, rien ne part", async () => {
+    const s = services({ reponse: "PHRASES\nLe chat dort." });
+    await corpusParLIa(projet, { ...DEMANDE_CORPUS, avec: ["chat", "Amandine"] }, s);
+    expect(s.envoyes[0][1].content).toContain("chat");
+    expect(JSON.stringify(s.envoyes)).not.toContain("Amandine");
+
+    const sansListe = services({ noms: async () => { throw new Error("rien n'est envoyé"); }, reponse: "PHRASES\nLe chat dort.", selection: async () => [{ id: 1, mot: "chat" }] });
+    const r = await preparerLeCorpus(projet, { ...DEMANDE_CORPUS, phrases: 2 }, sansListe, 1);
+    expect(sansListe.envoyes).toHaveLength(0);
+    expect(r.sansIa).toBe(true);
   });
 
   it("sans thème par le libellé, suit les pictogrammes qui portent les mots du projet", async () => {

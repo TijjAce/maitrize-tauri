@@ -464,7 +464,7 @@ export async function rangerLeDocument(
   const [titre, docMasque] = parts;
   const modele = await api.modeleActif(MODELE_TACHES);
   const rep = await api.mistralChat(
-    promptRangement({ genre: contexte.genre, titre, document: docMasque, masques: table.length > 0 }), modele, false, false);
+    promptRangement({ genre: contexte.genre, titre, document: docMasque, masques: table.length > 0 }), modele);
   const fusionne = fusionnerPlan(lirePlan(docMasque), lirePlan(nettoyer(rep)));
   if (planVide(fusionne)) throw new Error("L'agent n'a rien rendu d'exploitable.");
   return sansMarqueursOrphelins(restaurer(ecrirePlan(fusionne), table).texte);
@@ -566,7 +566,7 @@ export async function relireLeDocument(
   const [titre, docMasque] = parts;
   const modele = await api.modeleActif(MODELE_TACHES);
   const rep = await api.mistralChat(
-    promptRelecture({ genre: contexte.genre, titre, document: docMasque, masques: table.length > 0 }), modele, false, false);
+    promptRelecture({ genre: contexte.genre, titre, document: docMasque, masques: table.length > 0 }), modele);
   const fusionne = fusionnerPlan(lirePlan(docMasque), lirePlan(nettoyer(rep)));
   if (planVide(fusionne)) throw new Error("La relecture n'a rien rendu d'exploitable.");
   return sansMarqueursOrphelins(restaurer(ecrirePlan(fusionne), table).texte);

@@ -14,7 +14,7 @@ vi.mock("./api", () => ({
   },
 }));
 
-import { masquerSurLesEleves, nomsAMasquer, pourLaVoix, retenirLesReperes } from "./nomsAMasquer";
+import { masquerLaPreparation, masquerSurLesEleves, nomsAMasquer, pourLaVoix, retenirLesReperes } from "./nomsAMasquer";
 
 beforeEach(() => { eleves = [{ nom: "Barnabé" }]; reglages = {}; });
 
@@ -23,6 +23,17 @@ describe("ce qui part sur les élèves (« continue de vérifier pour l'anonymis
     eleves = new Error("base illisible");
     await expect(masquerSurLesEleves(["Barnabé lit."])).rejects.toThrow("rien n'est envoyé");
     await expect(nomsAMasquer()).rejects.toThrow("rien n'est envoyé");
+  });
+
+  it("un texte de préparation garde son sens, sans les noms connus ni l'établissement", async () => {
+    reglages = { ecole: "École des Tilleuls" };
+    const { textes, table } = await masquerLaPreparation(["Barnabé, à l'École des Tilleuls, lit Jules Verne le 12 mars."], ["Ondine"]);
+    expect(textes[0]).not.toMatch(/Barnabé|Tilleuls/);
+    expect(textes[0]).toContain("Jules Verne");
+    expect(textes[0]).toContain("12 mars");
+    expect(table.map((r) => r.original)).toContain("Barnabé");
+    eleves = new Error("base illisible");
+    await expect(masquerLaPreparation(["Barnabé lit."])).rejects.toThrow("rien n'est envoyé");
   });
 
   it("un nom repéré une fois reste masqué quand il revient sans ce qui le désignait", async () => {

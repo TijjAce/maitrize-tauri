@@ -88,6 +88,15 @@ export async function masquerSurLesEleves(textes: string[], autres: string[] = [
 }
 
 /**
+ * Un texte de préparation de classe : les noms connus et l'établissement, rien d'autre. Les personnages d'une
+ * histoire et les dates d'une leçon y gardent leur sens. Comme ailleurs, sans la liste des élèves, rien ne part.
+ */
+export async function masquerLaPreparation(textes: string[], autres: string[] = []): Promise<{ textes: string[]; table: Remplacement[] }> {
+  const [noms, lieux] = await Promise.all([nomsAMasquer(), lieuxAMasquer()]);
+  return pseudonymiserTout(textes, [...autres, ...noms], { lieux });
+}
+
+/**
  * Ce qu'une voix de Mistral peut lire : un son ne se restaure pas. La phrase part
  * donc sans rien qui désigne quelqu'un, et dit « une personne », « un lieu ».
  */

@@ -196,16 +196,22 @@ export async function candidatsDeLaBanque(
   return motsPropres(trouves);
 }
 
-/** Le projet tel qu'il part vers l'IA : sans les prénoms des élèves. */
+/** Le projet tel qu'il part vers l'IA : sans les prénoms des élèves. Sans leur liste, rien ne part. */
 async function projetMasque(p: ProjetDecrit, s: ServicesCorpus): Promise<ProjetDecrit> {
-  const noms = await s.noms().catch(() => []);
+  const noms = await s.noms();
   const masquer = (t: string) => pseudonymiser(t, noms).texte;
   return { titre: masquer(p.titre), descriptif: masquer(p.descriptif), domaines: masquer(p.domaines), etapes: p.etapes.map(masquer) };
 }
 
+/** Les mots du projet, écrits par l'enseignant : un prénom s'y glisse parfois. */
+async function motsMasques(mots: string[], s: ServicesCorpus): Promise<string[]> {
+  return mots.length ? pseudonymiser(mots.join("\n"), await s.noms()).texte.split("\n") : mots;
+}
+
 /** Ce que l'IA écrit — les phrases, et les mots faute de banque ; le projet part sans les prénoms. */
 export async function corpusParLIa(p: ProjetDecrit, d: DemandeCorpus, s: ServicesCorpus): Promise<Corpus> {
-  return corpusDeLaReponse(await s.chat(promptCorpus(await projetMasque(p, s), d)));
+  const demande = d.avec ? { ...d, avec: await motsMasques(d.avec, s) } : d;
+  return corpusDeLaReponse(await s.chat(promptCorpus(await projetMasque(p, s), demande)));
 }
 
 /**
@@ -220,9 +226,9 @@ export async function preparerLeCorpus(
 ): Promise<CorpusPrepare> {
   let sansIa = false;
   /** Un passage par l'IA ; le premier échec suffit, on n'insiste pas. */
-  const ia = async (messages: ChatMessage[]): Promise<string | null> => {
+  const ia = async (demande: () => Promise<ChatMessage[]>): Promise<string | null> => {
     if (sansIa) return null;
-    try { return await s.chat(messages); } catch { sansIa = true; return null; }
+    try { return await s.chat(await demande()); } catch { sansIa = true; return null; }
   };
   let decrit: ProjetDecrit | null = null;
   const masque = async () => (decrit ??= await projetMasque(p, s));
@@ -232,7 +238,7 @@ export async function preparerLeCorpus(
     // Ni les libellés ni les pictogrammes n'ont parlé : l'IA désigne des thèmes parmi ceux de la banque.
     const proposables = themesProposables(await s.categories().catch(() => [] as CategorieArasaac[]))
       .map((c) => ({ nom: c.nom, libelle: libelleCategorie(c.nom) }));
-    const rep = proposables.length ? await ia(promptChoisirLesThemes(await masque(), proposables.map((c) => c.libelle), THEMES_MAX)) : null;
+    const rep = proposables.length ? await ia(async () => promptChoisirLesThemes(await masque(), proposables.map((c) => c.libelle), THEMES_MAX)) : null;
     if (rep) themes = themesChoisisDeLaReponse(rep, proposables, THEMES_MAX);
   }
 
@@ -244,7 +250,7 @@ export async function preparerLeCorpus(
     if (candidats.length > d.mots) {
       // Plus de mots que demandé : l'IA retient ceux du projet ; à défaut, le hasard.
       const soumis = melanger(alea, candidats).slice(0, CANDIDATS_MAX);
-      const rep = await ia(promptChoisirLesMots(await masque(), soumis, d.mots, d.cycle, eviter));
+      const rep = await ia(async () => promptChoisirLesMots(await masque(), soumis, d.mots, d.cycle, await motsMasques(eviter, s)));
       const choisis = rep ? motsChoisisDeLaReponse(rep, soumis, d.mots) : [];
       if (choisis.length >= Math.min(4, d.mots)) { mots = parOrdre(choisis); choisisParLIa = true; }
     }
@@ -254,11 +260,11 @@ export async function preparerLeCorpus(
 
   let phrases: string[] = [];
   if (mots.length || d.mots <= 0) {
-    const rep = d.phrases > 0 ? await ia(promptCorpus(await masque(), { ...d, mots: 0, avec: mots })) : null;
+    const rep = d.phrases > 0 ? await ia(async () => promptCorpus(await masque(), { ...d, mots: 0, avec: await motsMasques(mots, s) })) : null;
     if (rep) phrases = corpusDeLaReponse(rep).phrases;
   } else {
     // Rien dans la banque : l'IA propose les mots, et les phrases avec.
-    const rep = await ia(promptCorpus(await masque(), d));
+    const rep = await ia(async () => promptCorpus(await masque(), d.avec ? { ...d, avec: await motsMasques(d.avec, s) } : d));
     if (rep) {
       const c = corpusDeLaReponse(rep);
       mots = c.mots;

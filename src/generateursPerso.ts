@@ -596,7 +596,7 @@ Règles :
 
 /** Le message de l'enseignant pour l'IA : sa classe, et ce qu'il veut. */
 export const demandeALIA = (demande: string, classe: string) =>
-  `Classe : ${classe || "non précisée"}.\nCe que veut l'enseignant : ${demande.trim()}`;
+  `Classe : ${classe || "non précisée"}.\nLa demande : ${demande.trim()}`;
 
 // ── Les questions de l'IA, avant la recette ──────────────────────────────
 //

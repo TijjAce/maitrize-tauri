@@ -522,9 +522,10 @@ export default function Assistant() {
       // compris ; la réponse les retrouve à mesure qu'elle s'écrit.
       // La mémoire part masquée avec elle, de la même table : la réponse retrouve les vrais mots des deux.
       // Le contexte de la classe et le nom du document aussi : une séquence, un fichier portent parfois un prénom.
-      const masque = await masquerSurLesEleves([memoire, consigne.contexte, doc?.nom ?? "", ...aEnvoyer.map((m) => m.content)]);
-      const [memoireMasquee, contexteMasque, titreMasque, ...textesMasques] = masque.textes;
-      const systeme = doc ? consigneDuDocument(titreMasque) : consigneDeLAssistant({ ...consigne, contexte: contexteMasque, memoire: memoireMasquee });
+      // Le référentiel d'une école, ajouté à la main, peut en porter un aussi.
+      const masque = await masquerSurLesEleves([memoire, consigne.contexte, doc?.nom ?? "", consigne.programmes, ...aEnvoyer.map((m) => m.content)]);
+      const [memoireMasquee, contexteMasque, titreMasque, programmesMasques, ...textesMasques] = masque.textes;
+      const systeme = doc ? consigneDuDocument(titreMasque) : consigneDeLAssistant({ ...consigne, contexte: contexteMasque, memoire: memoireMasquee, programmes: programmesMasques });
       if (systeme) prefixe = [{ role: "system", content: systeme }];
       // À voix haute : une réponse qui s'écoute (voir conversationVocale.ts).
       if (options.oral) prefixe = [...prefixe, { role: "system", content: CONSIGNE_ORALE }];
@@ -607,8 +608,8 @@ export default function Assistant() {
       setMessages(final); setLoading(false); void sauvegarderConv(final);
     };
     if (tour.genre === "confirmer") {
+      // Rien ne part encore : ni la demande, ni la mémoire. Il peut répondre non.
       finir({ role: "assistant", content: questionDeConfirmation(tour.sorte), cadre: { etape: "confirmation", sorte: tour.sorte } });
-      void retenir(contenu);
       return;
     }
     if (tour.genre === "abandon") { finir({ role: "assistant", content: "D'accord, on laisse cela de côté." }); return; }
@@ -643,11 +644,10 @@ export default function Assistant() {
         texte: [connuAvant.sujet, connuAvant.objectif, connuAvant.support, tour.genre === "retoucher" ? tour.fiche.titre : "", ...conv.filter((m) => m.role === "user").slice(-3).map((m) => m.content)].filter(Boolean).join(" "),
       });
       const fiche = tour.genre === "retoucher" ? JSON.stringify(ficheAuFormat(tour.fiche, supports)) : "";
-      const masque = await masquerSurLesEleves([blocDeMemoire(souvenirsPourLaQuestion(souvenirs, demande)), ctx, fiche, JSON.stringify(connuAvant), ...conv.map((m) => m.content)]);
-      const [memoire, contexte, ficheMasquee, connuMasque, ...textes] = masque.textes;
+      const masque = await masquerSurLesEleves([blocDeMemoire(souvenirsPourLaQuestion(souvenirs, demande)), ctx, fiche, JSON.stringify(connuAvant), extraitsPourLAssistant(trouvailles), ...conv.map((m) => m.content)]);
+      const [memoire, contexte, ficheMasquee, connuMasque, programmes, ...textes] = masque.textes;
       const echanges = conv.map((m, i) => ({ role: m.role, content: textes[i] ?? m.content }));
       const rendre = (t: string) => restaurer(t, masque.table).texte;
-      const programmes = extraitsPourLAssistant(trouvailles);
       const entrees = { contexte, memoire, materiel };
       if (tour.genre === "cadrer") {
         const lu = lireLEntretien(await api.mistralChat([{ role: "system", content: consigneDeLEntretien(sorte, connuMasque, { ...entrees, programmes, supports: S.blocDesSupports(supports, false) }) }, ...echanges], model, true), rendre);
@@ -670,6 +670,7 @@ export default function Assistant() {
           : [systeme, ...echanges, { role: "user", content: DEMANDE_DE_REDACTION }],
         appeler: (messages) => api.mistralChat(messages, model, true),
         surCorrection: () => attente("Je relis et je corrige…", avantLaFiche),
+        masquerLaCorrection: (t) => pseudonymiser(t, masque.table.map((r) => r.original)).texte.replace(/\[P\d+\]/g, "…"),
       });
       if (arretee) return;
       if ("reponse" in r) { finir({ role: "assistant", content: r.reponse, dit: `${avantLaFiche} ${r.reponse}` }); return; }
@@ -1077,10 +1078,11 @@ function ModifierSequence({ model, onClose }: { model: string; onClose: () => vo
         `{"titre":"...","objectifs":"...","seances":[{"numero":1,"titre":"...","objectifs":"...","deroulement":"...","materiel":"...","duree":45}]}\n` +
         `Conserve ce qui n'est pas visé par la demande. Numérote les séances à partir de 1. duree en minutes. ` +
       `L'objectif d'une séance nouvelle ou réécrite commence par « ${DEBUT_OBJECTIF_SEANCE} » et dit ce qu'ils sauront faire.`;
-      const masque = pseudonymiser(prompt, await nomsAMasquer());
+      // La demande est libre : elle peut parler d'un élève, de sa famille.
+      const masque = await masquerSurLesEleves([prompt]);
       const rep = restaurer(await api.mistralChat(
         [{ role: "system", content: "Tu modifies des séquences pédagogiques. Tu réponds en JSON strict uniquement." },
-         { role: "user", content: masque.texte }],
+         { role: "user", content: masque.textes[0] }],
         model,
       ), masque.table).texte;
       const data = extraireJson(rep);

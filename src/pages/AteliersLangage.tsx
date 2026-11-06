@@ -35,8 +35,8 @@ import {
 } from "../triIa";
 import { DEMANDE_CORPUS } from "../corpusIa";
 import { elider } from "../elisions";
-import { pseudonymiser, pseudonymiserTout, restaurer } from "../confidentialite";
-import { nomsAMasquer } from "../nomsAMasquer";
+import { restaurer } from "../confidentialite";
+import { masquerLaPreparation } from "../nomsAMasquer";
 import { LigneDuProjet, useProjetDuMoment } from "../components/ProjetDuMoment";
 import { estUnModele, trisDuProjet } from "../triDuProjet";
 import { objectifsDesAteliers } from "../ateliersCompetences";
@@ -323,7 +323,7 @@ export function PhrasesTab() {
     try {
       const modele = await api.modeleActif(MODELE_TACHES);
       // Le thème part sans les noms connus : un projet peut porter le prénom d'un élève.
-      const masque = pseudonymiserTout([theme], await nomsAMasquer());
+      const masque = await masquerLaPreparation([theme]);
       const reponse = restaurer(await api.mistralChat(promptPhrases({ ...demande, theme: masque.textes[0] }), modele), masque.table).texte;
       const nouvelles = phrasesDeLaReponse(reponse).filter((p) => !phrases.some((q) => q.toLowerCase() === p.toLowerCase()));
       if (!nouvelles.length) { toast("Le modèle n'a rien proposé de lisible ; réessayez, ou changez le thème.", { icone: "🤔" }); return; }
@@ -422,10 +422,9 @@ export function TriTab() {
     setTransposition(m.nom);
     try {
       // Le thème et ses mots partent, jamais un prénom d'élève.
-      const eleves = await api.elevesList().catch(() => []);
       const theme = [projet.titre.trim(), projet.descriptif.trim()].filter(Boolean).join(" — ");
-      const masque = pseudonymiser([theme, ...corpus.mots.slice(0, 30)].join("\n"), eleves.map((e) => e.nom));
-      const [themeMasque, ...motsMasques] = masque.texte.split("\n");
+      const masque = await masquerLaPreparation([[theme, ...corpus.mots.slice(0, 30)].join("\n")]);
+      const [themeMasque, ...motsMasques] = masque.textes[0].split("\n");
       const modele = await api.modeleActif(MODELE_TACHES);
       const reponse = restaurer(await api.mistralChat(promptTransposer(patron, themeMasque, motsMasques, parMaison, demandeCorpus.cycle), modele), masque.table).texte;
       const ecrites = transpositionDeLaReponse(reponse, patron.map((m) => m.titre), parMaison);
@@ -442,8 +441,8 @@ export function TriTab() {
       let corrigees = 0;
       let relue = true;
       try {
-        const masque2 = pseudonymiser(relues.join("\n"), eleves.map((e) => e.nom));
-        const reponse2 = restaurer(await api.mistralChat(promptRelireEtiquettes(masque2.texte.split("\n"), demandeCorpus.cycle), modele), masque2.table).texte;
+        const masque2 = await masquerLaPreparation([relues.join("\n")]);
+        const reponse2 = restaurer(await api.mistralChat(promptRelireEtiquettes(masque2.textes[0].split("\n"), demandeCorpus.cycle), modele), masque2.table).texte;
         ({ etiquettes: relues, corrigees } = relectureDeLaReponse(reponse2, relues));
       } catch { relue = false; }
       // Les élisions, que la relecture laisse passer quand un astérisque les coupe : « Je *ai* » → « J'*ai* ».
@@ -488,10 +487,11 @@ export function TriTab() {
     if (!aRanger.length) { toast("Tout le corpus du projet est déjà dans les maisons.", { icone: "ℹ️" }); return; }
     setOccupe(true);
     try {
-      const eleves = await api.elevesList().catch(() => []);
-      const masque = pseudonymiser(aRanger.join("\n"), eleves.map((e) => e.nom));
+      // Les titres des maisons aussi : une maison peut porter un prénom.
+      const masque = await masquerLaPreparation([[...titres, ...aRanger].join("\n")]);
+      const lignes = masque.textes[0].split("\n");
       const modele = await api.modeleActif(MODELE_TACHES);
-      const reponse = restaurer(await api.mistralChat(promptRangerEtiquettes(titres, masque.texte.split("\n")), modele), masque.table).texte;
+      const reponse = restaurer(await api.mistralChat(promptRangerEtiquettes(lignes.slice(0, titres.length), lignes.slice(titres.length)), modele), masque.table).texte;
       const { parMaison, ecartees } = rangementDeLaReponse(reponse, titres.length, aRanger);
       const rangees = aRanger.length - ecartees.length;
       if (!rangees) { toast("Le modèle n'a rien rangé de sûr ; écrivez les étiquettes dans leurs maisons.", { icone: "🤔", duree: 6000 }); return; }
@@ -508,10 +508,9 @@ export function TriTab() {
     if (!phrases.length) { toast("Écrivez d'abord des étiquettes.", { icone: "ℹ️" }); return; }
     setOccupe(true);
     try {
-      const eleves = await api.elevesList().catch(() => []);
-      const masque = pseudonymiser(phrases.join("\n"), eleves.map((e) => e.nom));
+      const masque = await masquerLaPreparation([phrases.join("\n")]);
       const modele = await api.modeleActif(MODELE_TACHES);
-      const reponse = restaurer(await api.mistralChat(promptMarquerVerbes(masque.texte.split("\n")), modele), masque.table).texte;
+      const reponse = restaurer(await api.mistralChat(promptMarquerVerbes(masque.textes[0].split("\n")), modele), masque.table).texte;
       const { phrases: marquees, marquees: combien } = marquesDeLaReponse(reponse, phrases);
       if (!combien) { toast("Le modèle n'a rien marqué de sûr ; marquez à la main, entre astérisques.", { icone: "🤔", duree: 6000 }); return; }
       let k = 0;

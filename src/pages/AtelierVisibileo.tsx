@@ -19,8 +19,8 @@ import { api } from "../api";
 import { confirmer } from "../components/confirmer";
 import { PhotoTelephone } from "../components/PhotoTelephone";
 import { pngDeLaZone } from "../exercicesDesManuels";
-import { pseudonymiserTout, restaurer } from "../confidentialite";
-import { nomsAMasquer } from "../nomsAMasquer";
+import { restaurer } from "../confidentialite";
+import { masquerLaPreparation } from "../nomsAMasquer";
 import { singulier } from "../corpusAuto";
 import {
   CONSIGNE_IMAGES, CONSIGNE_LECTURE_PAGE, CONSIGNE_VISIBILEO, COULEURS, STYLE_AFFICHAGE, htmlAffichage, idLibre, EXEMPLE_VISIBILEO, FLECHES_MAX, GENRES, PERSONNAGES_MAX, PIECES_MAX, REGLAGES_VISIBILEO,
@@ -71,7 +71,9 @@ async function pictosDuPremierJet(jet: PremierJet, modele: string): Promise<{ pe
   let choix = new Map<number, number | null>();
   if (images.some((i) => i.candidats.length)) {
     try {
-      const brut = await api.mistralChat([{ role: "system", content: CONSIGNE_IMAGES }, { role: "user", content: demandeDesImages(images) }], modele, true);
+      // Ce que le modèle a écrit revient ici en clair : il repart masqué. Il ne répond que des numéros de pictos.
+      const { textes: [demande] } = await masquerLaPreparation([demandeDesImages(images)]);
+      const brut = await api.mistralChat([{ role: "system", content: CONSIGNE_IMAGES }, { role: "user", content: demande }], modele, true);
       choix = lireChoixDesImages(brut, images);
     } catch { /* sans réponse : sans images */ }
   }
@@ -138,7 +140,7 @@ export function VisibileoTab({ banque }: { banque: boolean }) {
     setOccupe("L'IA lit l'histoire…");
     try {
       const modele = await api.modeleActif();
-      const masque = pseudonymiserTout([r.texte], await nomsAMasquer());
+      const masque = await masquerLaPreparation([r.texte]);
       const brut = await api.mistralChat([
         { role: "system", content: CONSIGNE_VISIBILEO },
         { role: "user", content: `Le texte de l'histoire :\n\n${masque.textes[0]}` },

@@ -17,8 +17,8 @@
 // l'enseignant et des extraits de programmes officiels, rien d'autre.
 
 import { api, type Referentiel, type SourceWeb } from "./api";
-import { pseudonymiserTout, restaurer } from "./confidentialite";
-import { nomsAMasquer } from "./nomsAMasquer";
+import { restaurer } from "./confidentialite";
+import { masquerSurLesEleves } from "./nomsAMasquer";
 import { normaliser } from "./competencesTravaillees";
 import eduscol from "./data/eduscol.json";
 import { nomDeStructure, structureDe } from "./classe";
@@ -276,9 +276,9 @@ export async function demanderAuxProgrammes(
   const competences = chercherDansLesProgrammes(refs, question);
   const ressources = ressourcesEduscol(question);
 
-  // La question part sans les noms connus ; la réponse les retrouve.
-  const masque = pseudonymiserTout([question], await nomsAMasquer());
-  const questionMasquee = masque.textes[0];
+  // La question part sans rien qui désigne quelqu'un, et le référentiel d'une école aussi ; la réponse les retrouve.
+  const masque = await masquerSurLesEleves([question, extraitsDesProgrammes(competences)]);
+  const [questionMasquee, extraits] = masque.textes;
 
   let texteWeb = "";
   let sources: SourceWeb[] = [];
@@ -299,7 +299,7 @@ export async function demanderAuxProgrammes(
   const modele = await api.modeleActif();
   const texte = restaurer(await api.mistralChat(promptDocumentaliste({
     question: questionMasquee,
-    extraits: extraitsDesProgrammes(competences),
+    extraits,
     ressources,
     web: texteWeb,
     contexte: await contexteDeLaClasse(),

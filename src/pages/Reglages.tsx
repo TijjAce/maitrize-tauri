@@ -425,7 +425,7 @@ export default function Reglages() {
               part sans rien qui désigne quelqu'un, même ce que l'application ne connaît pas : un prénom et son nom, le frère d'un élève,
               « Mme Durand », une ville, une adresse, une date précise, un téléphone, un numéro INE. Un diagnostic rare est remplacé par
               sa catégorie. Tout revient à sa place dans la réponse, sur cet ordinateur.</p>
-            <p>Ce qui part tout seul — le compte rendu qui se range pendant une réunion, la télécommande, la mémoire de l'assistant, la recherche sur internet, la voix — ne s'arrête pas pour demander.
+            <p>Ce qui part tout seul — la télécommande, la mémoire de l'assistant, la recherche sur internet, la voix — ne s'arrête pas pour demander.
               La voix qui lit une réponse dit « une personne » à la place d'un prénom ; une consigne qui nomme quelqu'un, la tablette la lit de sa propre voix.</p>
           </Aide>
         </div>

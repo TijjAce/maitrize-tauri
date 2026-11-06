@@ -32,7 +32,10 @@ vi.mock("../mesPictos", async (avant) => ({
   lireMesPictos: vi.fn(async () => [{ id: -5, mot: "le lapereau", fichier: "lapereau.jpg", origine: "photo", date: "2026-10-01" }]),
 }));
 // Un prénom inventé, pour l'essai : il ne doit jamais partir chez Mistral.
-vi.mock("../nomsAMasquer", () => ({ nomsAMasquer: vi.fn(async () => ["Pimprenelle"]) }));
+vi.mock("../nomsAMasquer", async () => {
+  const { pseudonymiserTout } = await vi.importActual<typeof import("../confidentialite")>("../confidentialite");
+  return { masquerSurLesEleves: vi.fn(async (textes: string[]) => pseudonymiserTout(textes, ["Pimprenelle"], { portee: "eleves" })) };
+});
 
 import { creerAvecLIA, pictosPourLesMots, questionDeLIA, retoucherAvecLIA } from "./GenerateursPerso";
 

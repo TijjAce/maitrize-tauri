@@ -7,9 +7,8 @@
 // d'anonymisation (2 novembre 2026). Un réglage de Réglages › IA, éteint par
 // défaut, montre avant chaque demande à Mistral le texte exact qui sort de
 // l'ordinateur — les noms, les lieux, les dates déjà remplacés par leurs
-// marqueurs —, à envoyer ou à annuler. Ce qui part tout seul — le compte rendu
-// qui se range pendant une réunion, la télécommande — ne s'arrête pas pour
-// demander : il passe `relire = false`.
+// marqueurs —, à envoyer ou à annuler. Ce qui part tout seul — la télécommande,
+// la mémoire de l'assistant — ne s'arrête pas pour demander : il passe `relire = false`.
 
 import { invoke } from "@tauri-apps/api/core";
 
