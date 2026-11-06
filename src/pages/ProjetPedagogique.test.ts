@@ -75,13 +75,6 @@ describe("trame du projet pédagogique", () => {
       }
     }
   });
-
-  it("porte les champs pré-remplissables attendus", () => {
-    // « Pré-remplir » cherche ces identifiants exacts.
-    const ids = SECTIONS.flatMap((s) => s.champs.map((c) => c.id));
-    expect(ids).toContain("etablissement");
-    expect(ids).toContain("anneeScolaire");
-  });
 });
 
 describe("compterRempli", () => {

@@ -7,32 +7,25 @@
 // cahier, le mot qui explique aux familles ce qu'elles vont y lire, et la
 // liste de ce qu'il faut acheter. L'application connaît déjà l'établissement,
 // l'enseignant et l'année : elle pose l'en-tête et la signature, et il ne
-// reste que le texte à écrire — à la main, ou avec l'IA.
+// reste que le texte à écrire.
 //
 // Ce texte se compose en cochant des cases : ce que la page doit porter, ce
-// que le mot doit dire, ce que la liste doit contenir. Chaque case sait deux
-// choses — la phrase qu'elle écrit toute seule, et ce qu'elle demande au
-// modèle. On obtient donc le même document dans les deux cas, l'IA n'ajoutant
-// que le style.
+// que le mot doit dire, ce que la liste doit contenir. Chaque case écrit sa
+// phrase toute seule, sans IA, et le document reste à retoucher.
 //
 // La liste de fournitures suit l'esprit des listes ministérielles : courte,
 // simple, peu coûteuse, pour épargner le budget des familles et le dos des
 // élèves. D'où les cases « liste courte », « réutiliser l'an dernier »,
 // « éviter le matériel coûteux », cochées ou non selon l'école.
 //
-// L'IA n'écrit que le corps : l'en-tête et les coordonnées viennent des
-// réglages, jamais du modèle, qui inventerait un numéro de téléphone. Rien de
-// nominatif sur les élèves ne lui est transmis.
+// L'en-tête et les coordonnées viennent des réglages.
 //
 // La page de garde a deux visages : celle du cahier d'un élève, et celle du
 // cahier journal de l'enseignant — l'année, la classe, les cinq périodes et
-// leurs dates, une citation, une frise de petits dessins. Ce que l'on sait
-// (les dates, la citation exacte) s'écrit ici ; l'IA ne rédige que les mots
-// doux, une devise, un souhait.
+// leurs dates, une citation, une frise de petits dessins, une devise, un souhait.
 //
 // Un document peut servir à plusieurs élèves : il s'imprime alors une fois
-// par élève coché, à son nom. Les noms s'ajoutent ici, à l'impression ; ils ne
-// partent jamais vers le modèle.
+// par élève coché, à son nom : les noms s'ajoutent ici, à l'impression.
 
 import { echapper } from "./texteRiche";
 import type { PeriodeDeClasse } from "./vacances";
@@ -71,20 +64,13 @@ export interface InfosGarde {
   fonction: string;
   telephone: string;
   niveau: string;
-  /**
-   * Où l'on enseigne, pour l'IA : « IME », « SESSAD »… ; vide en classe
-   * ordinaire (voir classe.ts). Les cases proposées n'en dépendent pas.
-   */
-  structure: string;
   /** Les cases cochées : ce que le document doit contenir. */
   choix: string[];
   /** Les précisions communes : lignage des cahiers, pages, couverture… */
   reglages: Record<string, string>;
-  /** Ce que l'enseignant ajoute : « élèves non lecteurs », « budget serré »… */
-  precisions: string;
   /** Pour le cahier journal : les cinq périodes de l'année, si le calendrier est connu. */
   periodes?: PeriodeDeClasse[];
-  /** Les élèves pour qui le document est fait : un exemplaire à leur nom chacun. Jamais transmis au modèle. */
+  /** Les élèves pour qui le document est fait : un exemplaire à leur nom chacun. */
   eleves?: string[];
 }
 
@@ -97,10 +83,8 @@ export interface OptionGarde {
   id: string;
   /** Ce que la case dit, à côté du carré. */
   libelle: string;
-  /** Ce qu'elle demande au modèle, à la suite de « le mot doit dire … ». */
-  demande: string;
   /**
-   * Ce qu'elle écrit sans l'IA : du HTML simple, écrit ici et jamais saisi,
+   * Ce qu'elle écrit : du HTML simple, écrit ici et jamais saisi,
    * ou une fonction quand la phrase dépend des réglages.
    */
   corps?: string | ((i: InfosGarde) => string);
@@ -115,23 +99,19 @@ export interface OptionGarde {
   precise?: string[];
   /** Cochée à l'ouverture. */
   dOffice?: boolean;
-  /** Écrite ici, même quand l'IA rédige : les dates, la citation exacte, les cadres. */
+  /** Écrite à part, dans la page du cahier journal : les dates, la citation exacte, les cadres. */
   local?: boolean;
 }
 
 export interface GroupeGarde { titre: string; options: OptionGarde[] }
 
-/** Une case ordinaire : ce qu'elle demande, et le paragraphe qu'elle écrit. */
-const c = (id: string, libelle: string, demande: string,
-           corps?: OptionGarde["corps"], reste: Partial<OptionGarde> = {}): OptionGarde =>
-  ({ id, libelle, demande, corps, ...reste });
+/** Une case ordinaire : le paragraphe qu'elle écrit. */
+const c = (id: string, libelle: string, corps?: OptionGarde["corps"], reste: Partial<OptionGarde> = {}): OptionGarde =>
+  ({ id, libelle, corps, ...reste });
 
-/** « Un cahier » devient « un cahier » : une puce se cite au fil d'une phrase. */
-const bas = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
-
-/** Une fourniture : la puce qu'elle ajoute est aussi ce qu'on en dit au modèle. */
+/** Une fourniture : la puce qu'elle ajoute à la liste. */
 const f = (id: string, libelle: string, puce: string, reste: Partial<OptionGarde> = {}): OptionGarde =>
-  ({ id, libelle, demande: bas(puce), puce, ...reste });
+  ({ id, libelle, puce, ...reste });
 
 // ── Les précisions communes ───────────────────────────────────────────────
 //
@@ -150,8 +130,8 @@ export interface ReglageGarde { id: string; libelle: string; valeurs: ValeurRegl
 const AU_CHOIX: ValeurReglage = { id: "", libelle: "Sans préciser", texte: "" };
 
 /**
- * Des citations exactes, pour le cahier journal : on cite, on n'invente pas —
- * l'IA ne choisit pas la citation, elle se lit ici, avec sa source.
+ * Des citations exactes, pour le cahier journal : on cite, on n'invente pas,
+ * elle se lit ici, avec sa source.
  */
 export const CITATIONS: { texte: string; auteur: string }[] = [
   { texte: "Plutôt la tête bien faite que bien pleine.", auteur: "Montaigne, Essais, I, 26" },
@@ -241,79 +221,77 @@ const quiSigne = (i: InfosGarde) => [i.enseignant.trim(), i.fonction.trim()].fil
 export const GROUPES: Record<SorteGarde, GroupeGarde[]> = {
   cahier: [
     { titre: "Sur la page", options: [
-      c("nom", "Une ligne « Nom de l'élève » à compléter", "une ligne « Nom de l'élève » à compléter à la main",
+      c("nom", "Une ligne « Nom de l'élève » à compléter",
         centre("<b>Nom de l'élève :</b> ……………………………………"), { dOffice: true }),
-      c("classe", "La classe", "la classe",
+      c("classe", "La classe",
         (i) => (i.niveau.trim() ? centre(echapper(`Classe : ${i.niveau.trim()}`)) : centre("Classe : …………………"))),
-      c("enseignant", "Le nom de l'enseignant", "le nom de l'enseignant",
+      c("enseignant", "Le nom de l'enseignant",
         (i) => (quiSigne(i) ? centre(echapper(quiSigne(i))) : ""), { dOffice: true }),
-      c("photo", "De la place pour une photo ou un dessin", "un espace vide au milieu, pour coller une photo ou faire un dessin",
+      c("photo", "De la place pour une photo ou un dessin",
         centre("<br><br><br>") + centre("<i>photo ou dessin de l'élève</i>")),
-      c("picto", "De la place pour un pictogramme", "la place d'un pictogramme, à côté du titre",
+      c("picto", "De la place pour un pictogramme",
         centre("<br>")),
     ] },
     { titre: "Le ton", options: [
-      c("role", "Une phrase qui dit à quoi sert ce cahier", "une phrase qui dit à quoi sert ce cahier",
+      c("role", "Une phrase qui dit à quoi sert ce cahier",
         centre("<i>Ce cahier fait le lien entre la classe et la maison : regardez-le ensemble.</i>"), { dOffice: true }),
-      c("accueil", "Un mot d'accueil pour l'élève", "un mot d'accueil adressé à l'élève",
+      c("accueil", "Un mot d'accueil pour l'élève",
         centre("<i>Bienvenue dans ta classe. Bonne année de travail !</i>")),
-      c("soin", "Trois règles de tenue du cahier", "trois règles simples de tenue du cahier, écrites à la première personne",
+      c("soin", "Trois règles de tenue du cahier",
         centre("<i>Je note la date. J'écris proprement. Je range mon cahier dans mon cartable.</i>")),
-      c("sobre", "Peu de texte, de grands caractères", "très peu de texte : quelques mots par ligne, lisibles de loin"),
     ] },
   ],
 
   journal: [
     { titre: "Sur la page", options: [
-      c("annee", "L'année scolaire, en grand", "l'année scolaire", undefined, { dOffice: true, local: true }),
-      c("classe", "L'établissement et la classe", "l'établissement et la classe", undefined, { dOffice: true, local: true }),
-      c("moi", "Mon nom et ma fonction", "le nom de l'enseignant", undefined, { dOffice: true, local: true }),
-      c("periodes", "Les cinq périodes et leurs dates", "les cinq périodes de l'année", undefined, { dOffice: true, local: true }),
-      c("chiffres", "Mon année en chiffres", "l'année en chiffres", undefined, { local: true }),
-      c("photo", "Un cadre pour la photo de la classe", "un cadre pour la photo de la classe", undefined, { dOffice: true, local: true }),
-      c("objectifs", "Mes objectifs pour l'année, à écrire", "trois lignes pour mes objectifs de l'année", undefined, { local: true }),
-      c("contacts", "Les contacts utiles", "les contacts utiles", undefined, { local: true }),
+      c("annee", "L'année scolaire, en grand", undefined, { dOffice: true, local: true }),
+      c("classe", "L'établissement et la classe", undefined, { dOffice: true, local: true }),
+      c("moi", "Mon nom et ma fonction", undefined, { dOffice: true, local: true }),
+      c("periodes", "Les cinq périodes et leurs dates", undefined, { dOffice: true, local: true }),
+      c("chiffres", "Mon année en chiffres", undefined, { local: true }),
+      c("photo", "Un cadre pour la photo de la classe", undefined, { dOffice: true, local: true }),
+      c("objectifs", "Mes objectifs pour l'année, à écrire", undefined, { local: true }),
+      c("contacts", "Les contacts utiles", undefined, { local: true }),
     ] },
     { titre: "Les petits plus", options: [
-      c("frise", "Une frise de petits dessins", "une frise de petits dessins", undefined, { dOffice: true, local: true, precise: ["frise"] }),
-      c("citation", "Une citation pour l'année", "une citation", undefined, { dOffice: true, local: true, precise: ["citation"] }),
-      c("devise", "Une devise pour la classe", "une devise pour la classe, courte et positive, en une phrase",
+      c("frise", "Une frise de petits dessins", undefined, { dOffice: true, local: true, precise: ["frise"] }),
+      c("citation", "Une citation pour l'année", undefined, { dOffice: true, local: true, precise: ["citation"] }),
+      c("devise", "Une devise pour la classe",
         centre("<b>Notre devise : « Ici, on a le droit de se tromper : c'est comme ça qu'on apprend. »</b>")),
-      c("souhait", "Un petit mot pour moi", "un petit mot d'encouragement de l'enseignant pour lui-même, en une phrase, chaleureux et sans mièvrerie",
+      c("souhait", "Un petit mot pour moi",
         centre("<i>Belle année à nous ! Une journée après l'autre, et chaque petit pas compte.</i>"), { dOffice: true }),
     ] },
   ],
 
   lettre: [
     { titre: "Ce que le mot explique", options: [
-      c("rythme", "À quel rythme le cahier rentre à la maison", "à quel rythme le cahier rentre à la maison",
+      c("rythme", "À quel rythme le cahier rentre à la maison",
         (i) => ligne(`Le « ${i.titre.trim() || "cahier"} » vous sera remis à chaque fin de période.`), { dOffice: true }),
-      c("contenu", "Ce qu'on y trouve", "ce que le cahier contient",
+      c("contenu", "Ce qu'on y trouve",
         ligne("Vous y trouverez les travaux de la période : les réussites comme les essais, qui font partie des apprentissages."),
         { dOffice: true }),
       c("traces", "Que la quantité d'écrit varie d'un élève à l'autre",
-        "que la quantité de traces écrites varie beaucoup d'un jeune à l'autre, et que les rituels ont été photocopiés pour donner tout de même une vue d'ensemble",
         ligne("La quantité de traces écrites varie beaucoup d'un jeune à l'autre : certains manipulent longuement sans pouvoir écrire, et laissent donc peu de traces. J'ai photocopié et collé la plupart des rituels pour que vous ayez tout de même une vue d'ensemble du travail proposé.")),
-      c("regarder", "Comment le regarder avec son enfant", "comment le regarder avec son enfant, en le laissant raconter",
+      c("regarder", "Comment le regarder avec son enfant",
         ligne("Regardez-le avec votre enfant : qu'il vous raconte ce qu'il a fait, ce qu'il a aimé, ce qui lui a demandé des efforts. C'est le meilleur moyen de valoriser son travail."),
         { dOffice: true }),
-      c("progres", "Qu'on y lit un chemin, pas une comparaison", "que ce cahier montre le chemin parcouru par l'enfant, et ne se compare à aucun autre",
+      c("progres", "Qu'on y lit un chemin, pas une comparaison",
         ligne("Ce cahier montre le chemin parcouru par votre enfant : il ne se compare à celui d'aucun autre.")),
     ] },
     { titre: "Ce que vous demandez aux familles", options: [
-      c("signer", "Signer le cahier", "de signer le cahier avant de le rendre",
+      c("signer", "Signer le cahier",
         ligne("Merci de le signer avant de le rendre.")),
-      c("rapporter", "Le rapporter après les vacances", "de le rapporter à la rentrée qui suit les vacances",
+      c("rapporter", "Le rapporter après les vacances",
         ligne("Merci de le rapporter à la rentrée qui suit les vacances.")),
-      c("mot", "Y écrire un mot si elles le souhaitent", "qu'elles peuvent y écrire un mot",
+      c("mot", "Y écrire un mot si elles le souhaitent",
         ligne("Vous pouvez y écrire un mot : je le lirai avec plaisir.")),
-      c("soigner", "En prendre soin, il sert toute l'année", "d'en prendre soin, puisqu'il sert toute l'année",
+      c("soigner", "En prendre soin, il sert toute l'année",
         ligne("Il sert toute l'année : prenez-en soin ensemble.")),
     ] },
     { titre: "Rester en lien", options: [
-      c("rdv", "Un rendez-vous est toujours possible", "qu'un rendez-vous est toujours possible",
+      c("rdv", "Un rendez-vous est toujours possible",
         ligne("Si vous souhaitez de plus amples informations, un rendez-vous est toujours possible."), { dOffice: true }),
-      c("liaison", "Passer par le cahier de liaison", "que le plus simple, pour me joindre, est un mot dans le cahier de liaison",
+      c("liaison", "Passer par le cahier de liaison",
         ligne("Pour me joindre, le plus simple reste un mot dans le cahier de liaison.")),
     ] },
   ],
@@ -418,27 +396,22 @@ export const GROUPES: Record<SorteGarde, GroupeGarde[]> = {
     ] },
     { titre: "L'esprit de la liste", options: [
       c("courte", "Liste courte : le reste est fourni par la classe",
-        "que la liste est volontairement courte, tout le reste étant fourni par la classe",
         ligne("Cette liste est volontairement courte : tout le reste est fourni par la classe."), { dOffice: true }),
-      c("reutiliser", "Réutiliser le matériel de l'an dernier", "de réutiliser le matériel de l'an dernier s'il est en bon état",
+      c("reutiliser", "Réutiliser le matériel de l'an dernier",
         ligne("Le matériel de l'an dernier peut resservir s'il est en bon état."), { dOffice: true }),
-      c("marquer", "Tout marquer au nom de l'enfant", "de marquer chaque objet au nom de l'enfant",
+      c("marquer", "Tout marquer au nom de l'enfant",
         ligne("Merci de marquer chaque objet au nom de votre enfant."), { dOffice: true }),
-      c("prix", "Éviter le matériel coûteux", "d'éviter le matériel coûteux ou de marque"),
-      c("poids", "Penser au poids du cartable", "de tenir compte du poids du cartable"),
+      c("prix", "Éviter le matériel coûteux", ligne("Inutile de choisir du matériel coûteux ou de marque : le plus simple convient très bien.")),
+      c("poids", "Penser au poids du cartable", ligne("Pensez au poids du cartable : évitez le matériel lourd ou en double.")),
       c("adapte", "Proposer d'adapter le matériel si besoin",
-        "qu'un matériel adapté est possible — crayon plus épais, ciseaux à ressort — et qu'il suffit d'en parler",
         ligne("Si votre enfant a besoin d'un matériel particulier — un crayon plus épais, des ciseaux à ressort —, parlez-m'en : nous verrons ensemble.")),
       c("difficulte", "Dire que l'on peut en parler si c'est difficile",
-        "que l'on peut m'en parler si cette liste pose une difficulté",
         ligne("Si cette liste pose une difficulté, dites-le moi : nous trouverons une solution, discrètement.")),
       c("renouveler", "Prévenir s'il faut renouveler en cours d'année",
-        "que je préviendrai s'il faut renouveler quelque chose en cours d'année",
         ligne("Le matériel s'use : je vous préviendrai s'il faut renouveler quelque chose en cours d'année.")),
-      c("couvrir", "Couvrir les livres prêtés", "de couvrir les manuels et les livres prêtés par l'école",
+      c("couvrir", "Couvrir les livres prêtés",
         ligne("Les manuels et les livres prêtés par l'école sont à couvrir.")),
       c("interdits", "Dire ce qui n'est pas accepté en classe",
-        "que les effaceurs, les correcteurs blancs, les règles souples et les stylos quatre couleurs ne sont pas acceptés",
         ligne("Merci d'éviter les effaceurs, les correcteurs blancs, les règles souples et les stylos quatre couleurs : ils gênent le geste plus qu'ils ne l'aident.")),
     ] },
   ],
@@ -512,7 +485,7 @@ const reglage = (i: InfosGarde, id: string, defaut: string) => (i.reglages ?? {}
 /**
  * La page de garde du cahier journal : la frise, le titre, l'année en grand,
  * l'établissement, le nom de l'enseignant, la citation exacte, les mots doux
- * (rédigés ici ou par l'IA), les périodes datées, la photo, les objectifs,
+ * (rédigés ici), les périodes datées, la photo, les objectifs,
  * les contacts. Rien que des balises que l'éditeur garde.
  */
 export function assemblerJournal(i: InfosGarde, motsDoux: string): string {
@@ -554,7 +527,7 @@ export function assemblerJournal(i: InfosGarde, motsDoux: string): string {
 const centreTitre = (html: string) => `<h2 style="text-align:center">${html}</h2>`;
 
 /**
- * Le corps écrit sans l'IA : les cases cochées, mises bout à bout.
+ * Le corps : les cases cochées, mises bout à bout.
  *
  * Une page de garde est une suite de lignes centrées ; un mot aux familles,
  * des paragraphes entre « Chères familles » et la formule de politesse ; une
@@ -582,74 +555,8 @@ export function corpsParDefaut(i: InfosGarde): string {
   return ligne("Chères familles,") + textes + ligne("Bien cordialement,");
 }
 
-/** Le document complet sans l'IA. */
+/** Le document complet. */
 export const modeleLocal = (i: InfosGarde) => assembler(i, corpsParDefaut(i));
-
-/** Ce que l'on demande au modèle : le corps, et rien d'autre. */
-export function consigneIA(i: InfosGarde): string {
-  const quoi = {
-    cahier: "la page de garde d'un cahier d'élève : quelques lignes centrées, dont une ligne « Nom de l'élève » à compléter à la main, et une phrase qui dit à quoi sert ce cahier",
-    journal: "les quelques mots qui ornent la page de garde de son propre cahier journal : seulement ce qui est demandé, en une ou deux lignes centrées chacun, chaleureux, sans date ni citation",
-    lettre: "un mot aux familles qui explique ce que contient ce cahier et comment le regarder avec leur enfant",
-    fournitures: "une liste de fournitures scolaires à acheter pour la rentrée, en une liste à puces précédée d'une phrase d'introduction",
-  }[i.sorte];
-  return [
-    `Tu aides un enseignant${i.structure ? ` spécialisé, en ${i.structure},` : ""} à rédiger, en français, ${quoi}.`,
-    "Ton bienveillant et simple, sans jargon, phrases courtes ; vouvoiement.",
-    "Traite tout ce qui t'est demandé, et rien d'autre : ce qui n'est pas dans la demande n'a pas sa place dans le document.",
-    "N'invente aucun fait : ni date, ni horaire, ni prix, ni numéro de téléphone, ni nom de personne ou d'établissement.",
-    "Écris seulement le corps du document, en HTML simple : <p>, <ul>, <li>, <b>, <i>. Pas de titre principal, pas de signature, pas de coordonnées, pas de balise <html> ni de bloc de code.",
-  ].join(" ");
-}
-
-/** L'en-tête de la liste des cases cochées, selon le document. */
-const ATTENDU: Record<SorteGarde, string> = {
-  cahier: "La page doit porter",
-  journal: "Écris seulement",
-  lettre: "Le mot doit dire",
-  fournitures: "Et il faut dire aux familles",
-};
-
-/** La demande elle-même : rien de nominatif sur les élèves n'y figure. */
-export function demandeIA(i: InfosGarde): string {
-  const lignes = [`Document : ${i.titre.trim() || SORTES.find((s) => s.id === i.sorte)!.titre}.`];
-  if (i.niveau.trim()) lignes.push(`Niveau des élèves : ${i.niveau.trim()}.`);
-  if (i.structure) lignes.push(`Contexte : ${i.structure}, élèves aux besoins très variés, beaucoup de manipulation.`);
-  // Ce qui s'écrit ici — dates, citation, cadres — ne se demande pas au modèle.
-  const choisies = cochees(i).filter((o) => !o.local);
-  const aLister = choisies.filter((o) => o.puce);
-  const consignes = choisies.filter((o) => !o.puce);
-  if (aLister.length) {
-    lignes.push("La liste doit contenir ces fournitures, et aucune autre :");
-    // La puce porte déjà le lignage et le format : on la reprend telle quelle,
-    // pour que le modèle n'aille pas en inventer d'autres.
-    for (const o of aLister) lignes.push(`- ${bas(puceDe(o, i))}`);
-  }
-  if (consignes.length) {
-    lignes.push(`${ATTENDU[i.sorte]} :`);
-    for (const o of consignes) lignes.push(`- ${o.demande}`);
-  }
-  if (i.precisions.trim()) lignes.push(`À prendre en compte : ${i.precisions.trim()}`);
-  return lignes.join("\n");
-}
-
-/**
- * La réponse du modèle, ramenée à du HTML simple : sans bloc de code, et avec
- * des paragraphes quand il a répondu en texte brut.
- */
-export function htmlDeLaReponse(reponse: string): string {
-  let t = (reponse ?? "").trim();
-  t = t.replace(/^```[a-z]*\s*\n?/i, "").replace(/\n?```$/i, "").trim();
-  t = t.replace(/<\/?(html|head|body)\b[^>]*>/gi, "").trim();
-  // Un titre principal reviendrait en double : l'en-tête le porte déjà.
-  t = t.replace(/<h1\b[^>]*>[\s\S]*?<\/h1>/gi, "").trim();
-  if (/<(p|ul|ol|h2|h3|table|div)\b/i.test(t)) return t;
-  return t.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
-    .map((p) => `<p>${echapper(p).replace(/\n/g, "<br>")}</p>`).join("");
-}
-
-/** L'IA a-t-elle quelque chose à écrire ? Pour un cahier journal sans devise ni souhait, non. */
-export const rienPourLIA = (i: InfosGarde) => cochees(i).every((o) => o.local);
 
 // ── Un exemplaire par élève ───────────────────────────────────────────────
 

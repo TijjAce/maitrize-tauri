@@ -70,16 +70,3 @@ describe.each(DISPOSITIFS.map((d) => [d.id, d] as const))("dispositif %s", (_id,
     }
   });
 });
-
-describe("champs communs", () => {
-  it("nomme identiquement les champs pré-remplissables", () => {
-    // Le bouton « Pré-remplir » cherche ces identifiants exacts : les
-    // renommer dans un seul dispositif casserait le pré-remplissage sans
-    // que rien ne le signale.
-    for (const d of DISPOSITIFS) {
-      const ids = champsDe(d).map((c) => c.id);
-      expect(ids, `${d.id} doit porter le champ « etablissement »`).toContain("etablissement");
-      expect(ids, `${d.id} doit porter le champ « anneeScolaire »`).toContain("anneeScolaire");
-    }
-  });
-});

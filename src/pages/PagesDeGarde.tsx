@@ -2,9 +2,9 @@
 // Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
 
 import React from "react";
-import { api, Eleve, Texte, newId, nowIso, texteErreur } from "../api";
-import { Empty, Field, Input, Modal, Select, Textarea, useAsync } from "../components/ui";
-import { toast, toastAnnulable } from "../components/Toaster";
+import { api, Eleve, Texte, newId, nowIso } from "../api";
+import { Empty, Field, Input, Modal, Select, useAsync } from "../components/ui";
+import { toastAnnulable } from "../components/Toaster";
 import { confirmer } from "../components/confirmer";
 import { openCtx } from "../components/ctxmenu";
 import { EditeurRiche } from "../components/EditeurRiche";
@@ -14,35 +14,30 @@ import { nettoyerHtml } from "../texteRiche";
 import { avecImages } from "../components/imagesTexte";
 import { EtiquettesDos } from "../components/EtiquettesDos";
 import {
-  assembler, basculer, choixParDefaut, CLE_META, cochees, consigneIA, demandeIA, DOSSIER_GARDE, estUnePageDeGarde, exemplaires, groupesDe,
-  htmlDeLaReponse, lireMeta, modeleLocal, optionsDe, pourDesEleves, REGLAGES, reglagesParDefaut, rienPourLIA, SORTES, SORTES_DU_CHOIX, STYLE_EXEMPLAIRES,
+  basculer, choixParDefaut, CLE_META, cochees, DOSSIER_GARDE, estUnePageDeGarde, exemplaires, groupesDe,
+  lireMeta, modeleLocal, optionsDe, pourDesEleves, REGLAGES, reglagesParDefaut, SORTES, SORTES_DU_CHOIX, STYLE_EXEMPLAIRES,
   type InfosGarde, type MetaGarde, type SorteGarde,
 } from "../pagesDeGarde";
-import { nomDeStructure, structureDe } from "../classe";
 import { chargerVacances, periodesDeLAnnee } from "../vacances";
 import { isoJour } from "../dates";
-import { pseudonymiserTout, restaurer } from "../confidentialite";
-import { nomsAMasquer } from "../nomsAMasquer";
 
 // ── Organisation → Pages de garde ─────────────────────────────────────────
 //
 // La première page d'un cahier, le mot qui l'accompagne et la liste des
 // fournitures : trois documents de rentrée que l'application prépare avec ce
-// qu'elle sait (établissement, enseignant, année), et que l'IA rédige si on
-// le lui demande. Chacun est un texte mis en forme, enregistré tout seul,
-// rangé hors du plan de travail.
+// qu'elle sait (établissement, enseignant, année). Chacun est un texte mis en
+// forme, enregistré tout seul, rangé hors du plan de travail.
 
 /** Les réglages qui remplissent l'en-tête et la signature ; les périodes de l'année, pour le cahier journal. */
 async function infosParDefaut(annee: string, sorte: SorteGarde): Promise<InfosGarde> {
   const r = await api.settingsAll().catch(() => ({} as Record<string, string>));
-  const structure = nomDeStructure(structureDe(r));
   const debut = Number(annee.slice(0, 4)) || new Date().getFullYear();
   const periodes = periodesDeLAnnee(await chargerVacances(isoJour(new Date())).catch(() => []), debut);
   return {
     sorte, titre: SORTES.find((s) => s.id === sorte)!.titre, annee,
     ecole: r.ecole ?? "", enseignant: r.enseignantNom ?? "", fonction: r.enseignantFonction ?? "",
     telephone: r["etab:telephone"] ?? "", niveau: r.niveauClasse ?? "",
-    structure, choix: choixParDefaut(sorte), reglages: reglagesParDefaut(sorte), precisions: "", periodes, eleves: [],
+    choix: choixParDefaut(sorte), reglages: reglagesParDefaut(sorte), periodes, eleves: [],
   };
 }
 
@@ -68,28 +63,9 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
     setNouvelle(await infosParDefaut(annee, sorte));
   };
 
-  /** Crée le document : le modèle tout de suite, le texte de l'IA si elle répond. */
-  const creer = async (i: InfosGarde, avecIA: boolean) => {
-    let contenu = modeleLocal(i);
-    // Un cahier journal sans devise ni souhait : tout s'écrit ici, l'IA n'a rien à rédiger.
-    if (avecIA && rienPourLIA(i)) {
-      avecIA = false;
-      toast("Rien à rédiger pour l'IA : les dates, la citation et les cadres s'écrivent tout seuls.", { icone: "ℹ️", duree: 6000 });
-    }
-    if (avecIA) {
-      try {
-        const modele = await api.modeleActif();
-        // Le titre et les précisions, écrits à la main, partent sans les noms connus.
-        const masque = pseudonymiserTout([demandeIA(i)], await nomsAMasquer());
-        const reponse = restaurer(await api.mistralChat(
-          [{ role: "system", content: consigneIA(i) }, { role: "user", content: masque.textes[0] }], modele), masque.table).texte;
-        const corps = htmlDeLaReponse(reponse);
-        if (corps) contenu = nettoyerHtml(assembler(i, corps));
-        else toast("L'IA n'a rien renvoyé : voici le modèle, à compléter.", { icone: "⚠️", duree: 6000 });
-      } catch (e) {
-        toast(`L'IA n'a pas répondu (${texteErreur(e)}). Le modèle est créé : à vous de l'ajuster.`, { icone: "⚠️", duree: 9000 });
-      }
-    }
+  /** Crée le document, tel que ses cases l'écrivent. */
+  const creer = async (i: InfosGarde) => {
+    const contenu = modeleLocal(i);
     const t: Texte = {
       id: newId(), titre: i.titre.trim() || SORTES.find((s) => s.id === i.sorte)!.titre, contenu,
       dossier: DOSSIER_GARDE, dateCreation: nowIso(), dateModification: nowIso(),
@@ -99,7 +75,6 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
     setNouvelle(null);
     reload();
     setChoisie(t.id);
-    if (avecIA && i.sorte !== "journal") toast("Relisez avant d'imprimer : ce document part aux familles.", { icone: "👀", duree: 7000 });
   };
 
   const dupliquer = async (p: Texte) => {
@@ -136,7 +111,7 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
         {pages.length === 0 && (
           <p style={{ fontSize: 13, color: "var(--text-2)" }}>
             La page de garde d'un cahier, le mot qui l'accompagne, la liste des fournitures :
-            l'application pose l'établissement, votre nom et l'année, l'IA peut écrire le reste.
+            l'application pose l'établissement, votre nom et l'année, vous cochez le reste.
           </p>
         )}
         {pages.map((p) => (
@@ -168,9 +143,7 @@ export function PagesDeGardeTab({ annee }: { annee: string }) {
 /**
  * Les cases à cocher : ce que le document doit contenir.
  *
- * Elles servent deux fois — elles composent le document écrit sans l'IA, et
- * elles forment la demande envoyée au modèle. On coche ce qu'on veut y lire
- * plutôt que de le décrire dans un champ libre, qui reste là pour le reste.
+ * Elles composent le document : on coche ce qu'on veut y lire, et on le retouche ensuite.
  */
 function CasesDuDocument({ infos, onChange }: { infos: InfosGarde; onChange: (i: InfosGarde) => void }) {
   const groupes = groupesDe(infos.sorte);
@@ -231,10 +204,10 @@ function PrecisionsDuDocument({ infos, onChange }: { infos: InfosGarde; onChange
 /** Ce qu'on demande avant d'écrire : la sorte, le nom du document, le contexte. */
 function NouveauDocument({ infos, onChange, onClose, onCreer }: {
   infos: InfosGarde; onChange: (i: InfosGarde) => void; onClose: () => void;
-  onCreer: (i: InfosGarde, avecIA: boolean) => Promise<void>;
+  onCreer: (i: InfosGarde) => Promise<void>;
 }) {
   const { data: eleves } = useAsync(elevesDeLaClasse, []);
-  const [occupe, setOccupe] = React.useState<"" | "modele" | "ia">("");
+  const [occupe, setOccupe] = React.useState(false);
   const sorte = SORTES.find((s) => s.id === infos.sorte)!;
   const changerDeSorte = (id: SorteGarde) => {
     if (id === infos.sorte) return;
@@ -244,19 +217,16 @@ function NouveauDocument({ infos, onChange, onClose, onCreer }: {
       titre: infos.titre === sorte.titre ? nouvelle.titre : infos.titre,
     });
   };
-  const lancer = async (avecIA: boolean) => {
-    setOccupe(avecIA ? "ia" : "modele");
-    try { await onCreer(infos, avecIA); } finally { setOccupe(""); }
+  const lancer = async () => {
+    setOccupe(true);
+    try { await onCreer(infos); } finally { setOccupe(false); }
   };
   return (
     <Modal titre={`${sorte.icone} Nouveau document`} onClose={onClose} large
       footer={<>
         <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn" disabled={!!occupe} onClick={() => { void lancer(false); }}>
-          {occupe === "modele" ? "Création…" : "Partir d'un modèle"}
-        </button>
-        <button className="btn primary" disabled={!!occupe} onClick={() => { void lancer(true); }}>
-          {occupe === "ia" ? "L'IA rédige…" : "✨ Rédiger avec l'IA"}
+        <button className="btn primary" disabled={occupe} onClick={() => { void lancer(); }}>
+          {occupe ? "Création…" : "Partir d'un modèle"}
         </button>
       </>}>
       <Field label="Sorte de document">
@@ -295,16 +265,10 @@ function NouveauDocument({ infos, onChange, onClose, onCreer }: {
             ? "Chaque élève coché a sa page de garde, son nom écrit sur la ligne à compléter."
             : "Chaque élève coché a son exemplaire, à son nom. Rien de coché : un document sans nom."} />
       )}
-      <Field label="À ajouter, en vos mots (facultatif)">
-        <Textarea value={infos.precisions} rows={2}
-          placeholder="ex. élèves non lecteurs, beaucoup de manipulation ; la piscine commence en janvier…"
-          onChange={(e) => onChange({ ...infos, precisions: e.target.value })} />
-      </Field>
       <div style={{ fontSize: 12.5, color: "var(--text-2)" }}>
         {infos.sorte === "journal" && !(infos.periodes ?? []).length && "Les dates des périodes viendront du calendrier des vacances dès qu'il sera chargé : en attendant, les mois. "}
         L'en-tête et la signature viennent de vos réglages : {infos.ecole || "établissement à renseigner"}
         {infos.enseignant ? ` · ${infos.enseignant}` : ""}{infos.telephone ? ` · ${infos.telephone}` : ""}.
-        L'IA n'écrit que le texte, et ne reçoit aucune information sur vos élèves.
       </div>
     </Modal>
   );
@@ -335,7 +299,7 @@ function ChoixDesEleves({ eleves, choisis, onChange, aide }: {
           <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
             <button className="btn ghost sm" onClick={() => onChange(liste.map((e) => e.id))}>Tous</button>
             <button className="btn ghost sm" onClick={() => onChange([])}>Aucun</button>
-            <span style={{ fontSize: 12, color: "var(--text-2)" }}>{aide} Les noms ne partent jamais vers l'IA.</span>
+            <span style={{ fontSize: 12, color: "var(--text-2)" }}>{aide}</span>
           </div>
         </>}
     </Field>

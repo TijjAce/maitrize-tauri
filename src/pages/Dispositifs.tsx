@@ -2,9 +2,8 @@
 // Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
 
 import React from "react";
-import { api, anneeScolaireActuelle, type Eleve, type DocumentEleve } from "../api";
+import { api, type Eleve, type DocumentEleve } from "../api";
 import { Field, Input, Select, Empty, useAsync } from "../components/ui";
-import { toast } from "../components/Toaster";
 import { printHTML, escapeHtml } from "../print";
 import { DISPOSITIFS, Champ } from "../data/dispositifs";
 import { PpiTab } from "./Ppi";
@@ -77,20 +76,6 @@ export function DispositifsTab({ dispositif }: { dispositif?: string } = {}) {
   };
 
   const eleve = eleves?.find((e) => e.id === eleveId);
-
-  const preRemplir = () => {
-    if (!dispo) return;
-    const auto: Valeurs = { ...vRef.current };
-    for (const s of dispo.sections) for (const c of s.champs) {
-      if (auto[c.id]) continue;
-      if (c.id === "etablissement") auto[c.id] = ecole;
-      if (c.id === "anneeScolaire") auto[c.id] = anneeScolaireActuelle();
-      if (c.id === "classe" && eleve?.niveau) auto[c.id] = eleve.niveau;
-    }
-    vRef.current = auto; setV(auto);
-    if (eleveId) api.documentEleveSet(eleveId, typeDoc, JSON.stringify(auto));
-    toast("Champs connus pré-remplis.", { icone: "✨" });
-  };
 
   const imprimer = () => {
     if (!dispo || !eleve) return;
@@ -173,7 +158,6 @@ export function DispositifsTab({ dispositif }: { dispositif?: string } = {}) {
             <input type="checkbox" checked={resume} onChange={(e) => setResume(e.target.checked)} />
             Résumé
           </label>
-          <button className="btn sm" onClick={preRemplir}>✨ Pré-remplir</button>
           <button className="btn primary sm" onClick={imprimer}>🖨 Imprimer</button>
         </>}
       </div>

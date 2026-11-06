@@ -3,8 +3,8 @@
 
 import { describe, it, expect } from "vitest";
 import {
-  assembler, auNomDe, basculer, choixParDefaut, CITATIONS, cochees, consigneIA, corpsParDefaut, dateEnLettres, demandeIA, entete, exemplaires, GROUPES,
-  groupesDe, htmlDeLaReponse, lireMeta, modeleLocal, optionsDe, pourDesEleves, puceDe, REGLAGES, reglagesParDefaut, rienPourLIA, signature,
+  assembler, auNomDe, basculer, choixParDefaut, CITATIONS, cochees, corpsParDefaut, dateEnLettres, entete, exemplaires, GROUPES,
+  groupesDe, lireMeta, modeleLocal, optionsDe, pourDesEleves, puceDe, REGLAGES, reglagesParDefaut, signature,
   SORTES, SORTES_DU_CHOIX, type InfosGarde, type SorteGarde,
 } from "./pagesDeGarde";
 import { nettoyerHtml } from "./texteRiche";
@@ -13,7 +13,7 @@ const infos = (p: Partial<InfosGarde> = {}): InfosGarde => {
   const tout = {
     sorte: "lettre" as SorteGarde, titre: "Cahier de classe", annee: "2026-2027", ecole: "IME <Perce-Neige>",
     enseignant: "Clément Titet", fonction: "Professeur des écoles spécialisé", telephone: "01 xx xx xx xx",
-    niveau: "", structure: "IME", choix: [] as string[], reglages: {} as Record<string, string>, precisions: "", ...p,
+    niveau: "", choix: [] as string[], reglages: {} as Record<string, string>, ...p,
   };
   return {
     ...tout,
@@ -40,7 +40,7 @@ describe("pages de garde", () => {
     expect(corpsParDefaut({ ...nu, sorte: "cahier", choix: ["enseignant"] })).toBe('<p style="text-align:center"><br></p>');
   });
 
-  it("propose un document présentable sans l'IA, que l'éditeur garde intact", () => {
+  it("propose un document présentable, que l'éditeur garde intact", () => {
     for (const sorte of ["cahier", "lettre", "fournitures"] as const) {
       const html = modeleLocal(infos({ sorte }));
       expect(html.length).toBeGreaterThan(80);
@@ -51,23 +51,6 @@ describe("pages de garde", () => {
     // Le mot aux familles peut parler des traces écrites qui varient : proposé à tous, coché par personne d'office.
     expect(corpsParDefaut(infos({ sorte: "lettre" }))).not.toContain("manipulent");
     expect(corpsParDefaut(infos({ sorte: "lettre", choix: [...choixParDefaut("lettre"), "traces"] }))).toContain("manipulent");
-  });
-
-  it("ne transmet au modèle que le document et le contexte, jamais d'élève", () => {
-    const d = demandeIA(infos({ sorte: "fournitures", niveau: "CE1", precisions: "budget serré" }));
-    expect(d).toContain("Niveau des élèves : CE1.");
-    expect(d).toContain("budget serré");
-    expect(d).not.toContain("Clément Titet");
-    expect(d).not.toContain("01 85");
-    expect(consigneIA(infos({ sorte: "fournitures" }))).toContain("ni prix");
-  });
-
-  it("ramène la réponse du modèle à du HTML simple", () => {
-    expect(htmlDeLaReponse("```html\n<p>Bonjour</p>\n```")).toBe("<p>Bonjour</p>");
-    expect(htmlDeLaReponse("<h1>Titre</h1><p>Texte</p>")).toBe("<p>Texte</p>");
-    expect(htmlDeLaReponse("Premier paragraphe.\n\nSecond <paragraphe>."))
-      .toBe("<p>Premier paragraphe.</p><p>Second &lt;paragraphe&gt;.</p>");
-    expect(htmlDeLaReponse("   ")).toBe("");
   });
 });
 
@@ -107,21 +90,13 @@ describe("les cases à cocher", () => {
     expect(reglagesParDefaut("fournitures")).toEqual({ lignage: "seyes" });
   });
 
-  it("dit la structure au modèle, et rien en classe ordinaire", () => {
-    expect(demandeIA(infos({ sorte: "lettre", structure: "SESSAD" }))).toContain("Contexte : SESSAD");
-    expect(consigneIA(infos({ sorte: "lettre", structure: "SESSAD" }))).toContain("spécialisé, en SESSAD");
-    expect(demandeIA(infos({ sorte: "lettre", structure: "" }))).not.toContain("Contexte :");
-    expect(consigneIA(infos({ sorte: "lettre", structure: "" }))).not.toContain("spécialisé");
-  });
-
-  it("reprend les cases dans la demande au modèle, liste et consignes séparées", () => {
-    const d = demandeIA(infos({ sorte: "fournitures", choix: ["trousse", "courte"] }));
-    expect(d).toContain("La liste doit contenir ces fournitures, et aucune autre :\n- une trousse");
-    expect(d).toContain("Et il faut dire aux familles :\n- que la liste est volontairement courte");
-    // Rien de coché : pas de liste vide dans la demande.
-    const rien = demandeIA(infos({ sorte: "lettre", choix: [] }));
-    expect(rien).not.toContain("Le mot doit dire");
-    expect(demandeIA(infos({ sorte: "lettre", choix: ["signer"] }))).toContain("Le mot doit dire :\n- de signer");
+  it("chaque case change le document : aucune ne parlait qu'à l'IA", () => {
+    for (const sorte of ["cahier", "lettre", "fournitures"] as const) {
+      const vide = modeleLocal(infos({ sorte, choix: [] }));
+      for (const o of optionsDe(sorte)) {
+        expect(modeleLocal(infos({ sorte, choix: [o.id] })), `${sorte} › ${o.id}`).not.toBe(vide);
+      }
+    }
   });
 
   it("garde un document propre quelles que soient les cases", () => {
@@ -138,7 +113,7 @@ describe("les cases à cocher", () => {
       const options = GROUPES[s.id].flatMap((g) => g.options);
       expect(new Set(options.map((o) => o.id)).size).toBe(options.length);
       expect(new Set(options.map((o) => o.libelle)).size).toBe(options.length);
-      for (const o of options) expect(o.demande.trim().length).toBeGreaterThan(3);
+      for (const o of options) expect(o.libelle.trim().length).toBeGreaterThan(3);
     }
   });
 
@@ -192,12 +167,6 @@ describe("les précisions sur les cahiers", () => {
     // Chaque réglage propose de ne rien préciser.
     for (const r of REGLAGES.fournitures!) expect(r.valeurs.some((v) => v.id === "" && v.texte === "")).toBe(true);
   });
-
-  it("transmet au modèle la puce précisée, pour qu'il n'invente pas de réglure", () => {
-    const d = demandeIA(avec({ lignage: "seyes", pages: "48" }, ["cahierPetit"]));
-    expect(d).toContain("- un cahier 17 × 22 cm, 48 pages, grands carreaux (Seyès)");
-    expect(consigneIA(infos({ sorte: "fournitures" }))).toContain("rien d'autre");
-  });
 });
 
 const PERIODES = [
@@ -249,18 +218,11 @@ describe("la page de garde de mon cahier journal", () => {
     expect(dateEnLettres("2027-02-19")).toBe("19 février");
   });
 
-  it("ne demande à l'IA que les mots doux : ni date, ni citation, ni nom", () => {
+  it("écrit les dates et la citation d'ici, autour de ce que les cases ajoutent", () => {
     const i = journal();
-    const d = demandeIA(i);
-    expect(d).toContain("Écris seulement :\n- un petit mot d'encouragement");
-    expect(d).not.toMatch(/septembre|Montaigne|Clément|périodes|citation/);
-    expect(consigneIA(i)).toContain("sans date ni citation");
-    // L'IA écrit le souhait ; les dates et la citation restent celles d'ici.
-    const avecIA = assembler(i, "<p style=\"text-align:center\">Une belle année s'ouvre.</p>");
-    expect(avecIA).toContain("Une belle année s'ouvre.");
-    expect(avecIA).toContain("du 1er septembre au 16 octobre");
-    expect(rienPourLIA(i)).toBe(false);
-    expect(rienPourLIA(journal({ choix: ["annee", "periodes", "citation"] }))).toBe(true);
+    const page = assembler(i, "<p style=\"text-align:center\">Une belle année s'ouvre.</p>");
+    expect(page).toContain("Une belle année s'ouvre.");
+    expect(page).toContain("du 1er septembre au 16 octobre");
   });
 });
 
@@ -287,11 +249,6 @@ describe("un document pour plusieurs élèves", () => {
     expect(pourDesEleves("journal")).toBe(false);
     expect(pourDesEleves("fournitures")).toBe(true);
     expect(pourDesEleves(undefined)).toBe(true);
-  });
-
-  it("ne transmet jamais les élèves cochés au modèle", () => {
-    const i = infos({ sorte: "fournitures", eleves: ["e1", "e2"] });
-    expect(demandeIA(i)).not.toMatch(/e1|e2|élèves coch/);
   });
 
   it("lit ce qu'il retient d'un document, même abîmé", () => {
