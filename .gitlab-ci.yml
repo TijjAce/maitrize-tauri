@@ -48,15 +48,14 @@ essais:
       - src-tauri/target
   script:
     - npx tsc --noEmit
-    # Ces machines sont bien plus lentes qu'un ordinateur de bureau : moins d'essais à la fois, plus de temps pour chacun.
-    - npm test -- --maxWorkers=2 --testTimeout=60000
+    # Ces machines sont bien plus lentes qu'un ordinateur de bureau : un seul fil d'essais, plus de temps pour chacun.
+    - npm test -- --maxWorkers=1 --testTimeout=60000
     - cargo test --manifest-path src-tauri/Cargo.toml
 
 # L'installeur Windows, compilé depuis Linux avec des outils libres (MinGW, NSIS).
 windows:
   extends: .machine
   stage: construction
-  needs: []
   timeout: 1h
   cache:
     key: windows-debian13

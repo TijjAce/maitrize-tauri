@@ -186,7 +186,7 @@ describe("une feuille de séquence se refait dans son atelier", () => {
     // Presque toutes les feuilles des séquences se refont : on en vérifie des centaines, dans une vingtaine d'ateliers.
     expect(verifiees).toBeGreaterThan(500);
     expect(ateliers.size).toBeGreaterThan(20);
-  }, 60_000);
+  }, 240_000);
 
   it("les jeux rattachés à la compétence aussi, à la classe de la séquence", () => {
     for (const atelier of ["cubes", "comparer", "nombres", "oie"]) {
@@ -221,5 +221,5 @@ describe("une fiche « En retard » se refait dans son atelier", () => {
       }
     }
     expect(verifiees).toBeGreaterThan(100);
-  }, 60_000);
+  }, 240_000);
 });
