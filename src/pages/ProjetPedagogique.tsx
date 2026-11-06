@@ -4,7 +4,6 @@
 import React from "react";
 import { api } from "../api";
 import { Field, Input, Textarea, useAsync } from "../components/ui";
-import { toast } from "../components/Toaster";
 import { printHTML, escapeHtml } from "../print";
 
 // ── Projet pédagogique ────────────────────────────────────────────────────
@@ -199,15 +198,6 @@ export function ProjetPedagogiqueTab({ annee }: { annee: string }) {
     saisir(champ.id, actuel.trim() ? `${actuel.trimEnd()}\n${besoin}` : besoin);
   };
 
-  const preRemplir = () => {
-    const auto = { ...vRef.current };
-    if (!auto.etablissement && ecole) auto.etablissement = ecole;
-    if (!auto.anneeScolaire) auto.anneeScolaire = annee;
-    vRef.current = auto; setV(auto);
-    api.settingSet(cle(annee), JSON.stringify(auto));
-    toast("Champs connus pré-remplis.", { icone: "✨" });
-  };
-
   const imprimer = () => {
     const corps = SECTIONS.map((s) => {
       const champs = s.champs
@@ -240,7 +230,6 @@ export function ProjetPedagogiqueTab({ annee }: { annee: string }) {
         </span>
         <div className="spacer" />
         <span style={{ fontSize: 12, color: "var(--text-2)" }}>{remplis}/{total} rubrique(s) remplie(s)</span>
-        <button className="btn sm" onClick={preRemplir}>✨ Pré-remplir</button>
         <button className="btn primary sm" onClick={imprimer}>🖨 Imprimer</button>
       </div>
 
