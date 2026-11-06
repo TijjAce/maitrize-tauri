@@ -18,8 +18,8 @@ CLE="$HOME/.ssh/forge_maitrize"
 NOM="Clément Titet"
 COURRIEL="19336-clementtitet@users.noreply.forge.apps.education.fr"
 COPIE="$HOME/Developer/maitrize/maitrize-forge.git"
-# Ce qui ne concerne que ce Mac.
-A_LAISSER=(.claude)
+# Ce qui ne concerne que ce Mac, et la construction signée, qui se fait sur GitHub.
+A_LAISSER=(.claude .github)
 
 avec_version=non
 premiere=non
