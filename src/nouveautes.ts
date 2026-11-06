@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Ce qui a changé, version par version.
 //
 // L'app se met à jour toute seule : rien ne dit ce qui a bougé, et les

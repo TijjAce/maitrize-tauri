@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Du micro au fichier, sans intermédiaire ───────────────────────────────
 //
 // L'enregistreur du navigateur (MediaRecorder) rend du WebM ou du MP4 selon

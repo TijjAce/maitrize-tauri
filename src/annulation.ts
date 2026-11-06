@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ⌘Z partout : défaire l'action qui vient d'être faite (demande de l'enseignant, octobre 2026).
 //
 // Plusieurs choses savent défaire leur dernier geste : la frappe dans un champ, que WebKit

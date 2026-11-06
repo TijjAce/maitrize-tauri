@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le zoom au pincement, comme sur la grille du planning.
 //
 // Le trackpad pince ; Safari et Chrome en font un événement wheel avec

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Le code de la lecture à voix haute : les signes et leurs couleurs ───────
 //
 // Comme le code de la phrase pour la grammaire (voir codeDeLaPhrase.ts) :

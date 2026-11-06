@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les supports d'une séance : un outil pour l'élève, un affichage, un jeu,
 // une évaluation ou un matériel du plan de travail, posés dans la séance
 // (demande de l'enseignant, octobre 2026) ; un outil pour l'enseignant aussi

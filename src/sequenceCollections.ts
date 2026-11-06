@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Une séquence pour construire des collections de cardinal donné, avec ses feuilles.
 //
 // Comme pour le calcul mental et la catégorisation : l'atelier fabrique le

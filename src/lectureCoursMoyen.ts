@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Lire avec fluidité, lire à voix haute avec expressivité : le cours moyen.
 //
 // Programme de français du cycle 3 (2025) : au CM1, « lire sans effort un

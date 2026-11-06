@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 """Compare, tableau par tableau, la colonne des objectifs lue sur l'image (OCR) et l'extraction."""
 import json, sys, re, difflib, unicodedata
 

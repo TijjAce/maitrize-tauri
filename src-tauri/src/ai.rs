@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Passerelle Assistant IA → API Mistral (en ligne, hébergée).
 //! La clé API est stockée dans la table `settings` (clé `mistralApiKey`).
 

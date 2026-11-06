@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Le Visibiléo : les pièces pour construire, avec la classe, la trace d'un récit ──
 //
 // Demande de l'enseignant (3 novembre 2026) : « ajoute des créateurs de

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // La numération du cycle 3 : les grands nombres et les nombres décimaux.
 //
 // Placer un nombre dans le tableau de numération, l'écrire en lettres, le

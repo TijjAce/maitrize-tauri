@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les pages de mes manuels, attachées à un créneau du cahier journal.
 //
 // Depuis un créneau, on choisit l'un de ses manuels (Adapter une fiche ›

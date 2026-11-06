@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Le format ouvert des tableaux (Open Board Format, « .obz »), dans les deux sens.
 //!
 //! Rust ne fait ici que l'archive : l'ouvrir en fichiers, ou la refaire de

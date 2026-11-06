@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les nombres au cours moyen : les entiers, les fractions, les décimaux.
 //
 // L'enseignant a demandé le cycle 3 (octobre 2026), comme le cycle 2 : chaque

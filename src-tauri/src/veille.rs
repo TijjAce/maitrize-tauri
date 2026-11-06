@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Voir la fenêtre se figer, et le dire — même si elle ne se réveille pas.
 //!
 //! Le battement de la fenêtre (voir `veille.ts`) ne peut rien noter tant

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'oral : les supports et les grilles des séquences d'oral, du CP au CE2.
 //
 // Programme de français du cycle 2 (2024), « Oral » : écouter pour

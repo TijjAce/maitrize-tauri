@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Catégoriser les mots : les jeux de la maternelle.
 //
 // « Organiser les mots en catégorie et en réseau » (programme de l'école

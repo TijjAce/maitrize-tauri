@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Export PDF du bilan de PPI (Projet Personnalisé Individualisé) — mode
 // IME/inclusion. Document A4 portrait à sections fluides (hauteurs
 // extensibles, saut de page automatique), destiné aux ESS, familles et MDPH.

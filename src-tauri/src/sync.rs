@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Le stockage compatible S3 que l'enseignant configure lui-même (un NAS, un
 //! hébergeur de son choix) : synchronisation entre ses ordinateurs, sauvegarde
 //! en ligne, et envois chiffrés de bout en bout entre amis.

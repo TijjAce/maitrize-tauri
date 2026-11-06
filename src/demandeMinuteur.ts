@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le minuteur visuel, demandé d'ailleurs que de son écran : la télécommande du téléphone le règle, le lance et
 // le passe en plein écran (voir telecommande.ts). La demande attend que l'écran du minuteur soit monté ; déjà
 // monté, il la reçoit par un événement.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import { describe, expect, it } from "vitest";
 import { BANQUES_APPOINT } from "./pictosAppoint";
 import { ETAPES_DU_LANCEMENT, PICTOS_PLUS_TARD, THEME_DE_DEPART, installationNeuve, installerPlusTardPossible, pictosInstalles, suiteDuLancement } from "./premierLancement";

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import React from "react";
 import { api } from "../api";
 import { CLE_NOTES_RAPIDES, EVT_NOTE_AJOUTEE, EVT_OUVRIR_NOTES, avecUnPointDePlus, type NoteAjoutee } from "../notesRapides";

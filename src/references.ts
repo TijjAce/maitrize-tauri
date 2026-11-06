@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les références d'une feuille : le programme, le livret, le guide, la page
 // d'où vient ce qu'elle fait faire.
 //

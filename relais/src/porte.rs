@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! La porte du relais, vue du téléphone : déposer, et lire le retour.
 //!
 //! Le téléphone entre dans le dossier du relais avec le compte de

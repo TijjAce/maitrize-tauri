@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Les maisons du tri, avec les mots du projet ───────────────────────────
 //
 // Le projet du moment donne ses mots et ses phrases aux ateliers. Le tri a

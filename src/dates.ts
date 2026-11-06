@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Manipulation des dates et des horaires, partagée par le planning,
 // l'organisation et le plan de salle.
 //

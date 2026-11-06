@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Banque de pictogrammes ARASAAC, stockée localement une fois pour toutes.
 //!
 //! Deux choix de conception structurent ce module.

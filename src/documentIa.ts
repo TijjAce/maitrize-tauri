@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'assistant fabrique des documents : une fiche, un mot aux familles, une
 // affiche, une grille — écrits en Markdown par le modèle, mis en page ici,
 // puis imprimés ou déposés sur le bureau en PDF.

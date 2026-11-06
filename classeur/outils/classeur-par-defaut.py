@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 """Le classeur complet, livré avec l'application.
 
 « Faut qu'il soit complété, le PODD, par défaut » (l'enseignant, 5 novembre

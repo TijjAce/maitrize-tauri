@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les quatre opérations au cours moyen : estimer, les parenthèses, le calcul posé.
 //
 // Le livret d'accompagnement du CM1 n'a, pour le calcul, que la séquence de

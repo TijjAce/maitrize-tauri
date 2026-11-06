@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les lignes que posent les boutons du prévu du cahier journal pour citer un
 // PDF du bureau (📄), une page de manuel (📖), une compétence (🎯) ou un
 // rituel (🔁). Ce qu'elles nomment n'est ni une séquence ni un jeu : le PDF

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le hasard qu'on peut rejouer : une graine, toujours la même suite.
 //
 // Un jeu tiré au sort doit se réimprimer à l'identique le lendemain ; c'est

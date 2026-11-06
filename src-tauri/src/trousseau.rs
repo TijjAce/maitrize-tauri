@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Le trousseau : les secrets de cet ordinateur, chiffrés dans la base.
 //!
 //! La base garde quelques secrets — la clé de l'IA, l'accès au stockage, la

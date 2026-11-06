@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Disposition libre du bureau du plan de travail, comme un vrai bureau : on
 // pose un dossier ou un document sur la case de son choix, il y reste.
 //

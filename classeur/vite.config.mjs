@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'interface du classeur. React, Vite et l'API de Tauri sont ceux du dépôt (../node_modules).
 // Le compagnon la construit parmi ses pages (voir ../compagnon/construire-iphone.sh).
 import react from "@vitejs/plugin-react";

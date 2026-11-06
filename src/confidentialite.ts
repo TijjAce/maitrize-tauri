@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Noms des élèves masqués avant tout envoi d'un texte libre à l'IA.
 //
 // Règle de l'application : aucune donnée nominative sur les élèves ne part

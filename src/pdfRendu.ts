@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Rendu d'une page de PDF en image, pour la donner à regarder au modèle.
 //
 // L'analyse d'une fiche demande de la voir : le texte extrait ne dit rien du

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import React from "react";
 import { api, Creneau, Eleve, teinteCreneau, newId, texteErreur, type Espace } from "../api";
 import { Field, Input, Select, Modal, Empty, Confirm, useAsync, EVT_DONNEES_DISTANTES, PageVisibleContext } from "../components/ui";

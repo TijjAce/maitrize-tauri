@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'appareil des pages d'un manuel : une photo, on ajuste, on garde.
 //
 // Le scanner de Notes (VisionKit) gardait toutes les pages en mémoire et ne

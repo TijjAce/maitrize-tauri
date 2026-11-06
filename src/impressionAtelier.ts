@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Ce qu'un atelier travaille, écrit en haut de ce qu'il imprime.
 //
 // Une feuille qui circule — classeur de l'élève, remplaçant, dossier, visite

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Synchronisation automatique, en tâche de fond.
 //
 // L'objectif est qu'il n'y ait plus rien à cliquer : on ferme le portable, on

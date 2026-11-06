@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'histoire et la géographie au cycle 2 : une séquence par thème.
 //
 // Une séquence part de la compétence qu'on choisit (voir

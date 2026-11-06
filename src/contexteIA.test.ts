@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import { describe, it, expect, vi } from "vitest";
 
 const reglages: Record<string, string | null> = { niveauClasse: "CE1", anneeCourante: "2026-2027" };

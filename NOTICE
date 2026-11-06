@@ -1,0 +1,42 @@
+Maitrize
+Copyright (C) 2026 Clément Titet
+
+Maitrize a été créé par Clément Titet, enseignant. C'est un logiciel libre : vous pouvez
+l'utiliser, l'étudier, le modifier et le partager selon les termes de la licence publique
+générale GNU Affero, version 3 ou toute version ultérieure (fichier LICENSE). Il est fourni
+sans aucune garantie.
+
+
+CONDITIONS SUPPLÉMENTAIRES (article 7 de la licence)
+
+Pour tout ce dont Clément Titet est l'auteur dans ce projet, ces conditions s'ajoutent à la
+licence, comme son article 7 le permet :
+
+1. Mention de l'auteur (article 7 b). Toute copie et toute version modifiée garde ce fichier,
+   les mentions d'auteur et de licence en tête des fichiers, et la mention
+   « Maitrize, créé par Clément Titet » dans les mentions légales que l'application affiche
+   (Réglages › Licences).
+
+2. Origine (article 7 c). Personne ne peut présenter ce travail, ou une version modifiée, comme
+   le sien ou comme celui d'un autre auteur. Une version modifiée se signale clairement comme
+   différente de l'originale.
+
+3. Nom et logo (article 7 e). La licence n'accorde aucun droit sur le nom « Maitrize » ni sur son
+   logo au titre du droit des marques. Une version modifiée porte un autre nom et un autre logo,
+   et garde la mention de l'article 1.
+
+
+CE QUI VIENT D'AUTRES AUTEURS
+
+Ce qui suit n'est pas sous la licence de Maitrize : chaque élément garde ses propres conditions.
+L'application en donne la liste complète et à jour dans Réglages › Licences.
+
+- Pictogrammes ARASAAC présents dans ce dépôt, seuls ou sur les vignettes des feuilles :
+  auteur Sergio Palao, origine ARASAAC (arasaac.org), licence CC BY-NC-SA 4.0, propriété du
+  Gouvernement d'Aragon (Espagne). Leur licence interdit l'usage commercial.
+- Police Marelle : police du ministère de l'Éducation nationale, licence SIL Open Font.
+- Photographies de paysages : Wikimedia Commons, chacune sous sa licence, avec son auteur.
+- Fonds de carte : Natural Earth, domaine public.
+- Programmes, guides et formulaires officiels : repris des textes officiels, avec leur source.
+- Bibliothèques embarquées : leurs licences sont relevées par outils/licences/notices.mjs à chaque
+  construction, et jointes à l'application. compagnon/public/jsQR.js : licence Apache 2.0.

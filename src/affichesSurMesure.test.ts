@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import { describe, expect, it } from "vitest";
 import { PIEGES_MINIMUM, casesDuPrenom, htmlEtiquettesPrenoms, lettresDuPrenom, lirePrenoms, reductionDuPrenom, styleEtiquettesPrenoms } from "./etiquettesPrenoms";
 import { GRILLE_DES_SIEGES, PETALES_DE_LA_PEUR, htmlFleur, htmlGrilleSemique, lireGrille, lirePetales, motEtDessin, placesDesPetales } from "./fleurLexicale";

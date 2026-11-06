@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les démarches de la numération au cycle 2, classe par classe.
 //
 // Une séquence part maintenant de la compétence qu'on choisit en la créant :

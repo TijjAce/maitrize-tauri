@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import { describe, expect, it } from "vitest";
 import { ADRESSE_DU_DIRECT, ADRESSE_DU_DIRECT_MONDIAL, ouvrirLeDirect, reechantillonner, versPcm16, type SocketDuDirect } from "./voxtralDirect";
 import { aLaSuite } from "./dicteeEnDirect";

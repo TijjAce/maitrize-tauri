@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Grammaire et conjugaison : les feuilles de l'étude de la langue du cycle 2.
 //
 // Programme de français du cycle 2 (2024), « Se repérer dans la phrase

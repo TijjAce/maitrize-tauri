@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Séquences citées dans le prévu du cahier journal : « séquence Organiser les
 // mots en réseau », ou la ligne posée par le bouton 📚 — « 📚 Organiser les
 // mots en réseau · séance 2 : Découverte du corpus ». La séquence citée

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import { TYPES_OBSERVATION } from "../api";
 
 // Couleur de chaque nature d'observation : on repère d'un coup d'œil un axe

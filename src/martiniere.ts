@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le calcul mental : un fait numérique, une procédure à la fois.
 //
 // Les programmes rangent le calcul mental en objectifs précis, classe par

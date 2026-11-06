@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Cahier journal : ce qui se reprend d'une semaine à l'autre, et ce qui part
 // au dossier d'un élève.
 //

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Essai de restauration : relire pour de vrai la dernière sauvegarde.
 //
 // Une sauvegarde jamais relue n'est pas une sauvegarde. Qu'elle soit vide,

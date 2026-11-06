@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // La conjugaison du cycle 2 : être et avoir, les verbes du 1er groupe, et
 // au CE2 les verbes irréguliers du 3e groupe que nomme le programme — faire,
 // aller, dire, venir, pouvoir, voir, vouloir, prendre —, au présent, à

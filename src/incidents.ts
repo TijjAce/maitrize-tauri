@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Ce que le journal d'incidents retient d'un échec qui se répète.
 //
 // Une matinée hors réseau écrivait une ligne par tentative : cinq cent

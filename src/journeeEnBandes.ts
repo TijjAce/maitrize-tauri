@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // La journée sur une seule page, en bandes (demande de l'enseignant, 31 octobre 2026).
 //
 // Chaque créneau qu'on imprime y est une bande : son déroulement tel que les

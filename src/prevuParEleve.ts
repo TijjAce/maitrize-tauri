@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Le prévu d'un créneau de groupe, élève par élève ──────────────────────
 //
 // Demandes de l'enseignant (2026-11-02) : « il faudrait sur le planning

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Découper un mot en graphèmes, pour savoir s'il se déchiffre.
 //
 // Une grille de fluence ne donne à lire que ce que la classe a appris : des

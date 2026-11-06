@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Les documents à montrer, séance par séance ────────────────────────────
 //
 // Pour les séquences d'histoire-géographie du cycle 2, des documents trouvés

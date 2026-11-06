@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Veille : ce qui fige ne dit rien de lui-même.
 //
 // Une erreur laisse une trace : on la voit dans le journal d'incidents. Une

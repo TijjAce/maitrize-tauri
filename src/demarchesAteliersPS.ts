@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Les ateliers de manipulation en petite section ────────────────────────
 //
 // L'enseignant l'a demandé (4 novembre 2026), avec le document d'Amandine

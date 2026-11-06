@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Ouvrir le sous-onglet d'une page, d'où qu'on soit.
 //
 // Les sous-onglets ne sont pas dans l'URL : on va à la page, puis on lui

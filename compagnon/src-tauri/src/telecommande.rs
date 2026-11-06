@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! La télécommande, côté téléphone : l'enseignant parle, et l'ordinateur — projeté au tableau — affiche.
 //!
 //! Le format, et ce qui protège quoi, sont dans `relais::telecommande`. Le téléphone lit dans le relais où joindre

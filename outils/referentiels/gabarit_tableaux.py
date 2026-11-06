@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 """Gabarit « tableaux » : Domaine → Niveau → Rubrique (→ sous-rubrique) → tableau Objectifs | Exemples.
 
 Le sommaire du document donne la suite exacte des titres ; on la suit dans l'ordre pour savoir

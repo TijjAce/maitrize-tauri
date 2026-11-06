@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Orthographe et dictées : les feuilles des dictées du CP au CE2, et celles
 // qui font mémoriser l'orthographe des mots.
 //

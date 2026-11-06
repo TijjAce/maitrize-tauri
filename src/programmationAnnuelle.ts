@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // La programmation de l'année, en classe : celle de la classe, puis celle de
 // chaque niveau d'une classe à plusieurs niveaux — « comme pour la
 // progression » (l'enseignant, octobre 2026). La programmation par élève

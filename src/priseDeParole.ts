@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── La voix se tait quand on prend la parole ──────────────────────────────
 //
 // « Il faut que quand je prenne la parole, la voix de synthèse se coupe et me

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Jeux cités : retrouver, dans un texte libre — le prévu du cahier journal, le
 // déroulement d'une séance —, les jeux de la ludothèque dont on parle, pour en
 // montrer la règle à l'écran et à l'impression.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'interrupteur du partage WiFi, partagé par la barre du haut et les Réglages.
 //
 // Le partage se lançait depuis les Réglages, et s'arrêtait tout seul quand on

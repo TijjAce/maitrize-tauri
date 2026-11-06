@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Le début d'année en problèmes, au CP et au CE1, et les problèmes à dire ─
 //
 // Les feuilles des séquences « Problèmes parties-tout : chercher le tout

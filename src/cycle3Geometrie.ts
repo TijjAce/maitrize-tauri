@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'espace et la géométrie au cours moyen : les droites, le cercle, les
 // figures usuelles, les constructions, la symétrie, les solides et leurs
 // patrons, les déplacements et les assemblages de cubes. Aucun livret

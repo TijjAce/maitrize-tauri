@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Supprimer, et pouvoir revenir en arrière : au bouton « Annuler » du bandeau, ou par ⌘Z tant
 // qu'il est là (voir annulation.ts). L'enseignant a supprimé une séance, fait ⌘Z, et elle n'est
 // pas revenue (octobre 2026) : la plupart des suppressions ne se défaisaient pas.

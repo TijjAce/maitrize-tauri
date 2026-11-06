@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'écriture cursive : des modèles, et des lignes à réglure pour écrire.
 //
 // Livret Français CP (Éduscol, 2025), séquence n° 2 « Apprendre à écrire en

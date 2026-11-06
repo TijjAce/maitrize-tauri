@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Réunions écoutées et résumées ─────────────────────────────────────────
 //
 // Une ESS dure une heure, on y parle vite, et l'on en ressort avec trois mots

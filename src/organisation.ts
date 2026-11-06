@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Quel emploi du temps remplit le planning d'un jour donné.
 //
 // Un seul emploi du temps par année, sous la clé de l'année (« 2026-2027 ») :

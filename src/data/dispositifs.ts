@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Schémas des dispositifs d'accompagnement (PAP, PAI, PPRE, PPS).
 //
 // Chaque dispositif est décrit en données plutôt qu'en code : un écran

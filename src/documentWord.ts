@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Un document de l'assistant en Word (.docx), pour le retoucher ailleurs.
 //
 // Un .docx est une archive de quelques fichiers XML : l'écran les écrit, et

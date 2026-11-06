@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les problèmes qui vont avec un calcul.
 //
 // Un fait ou une procédure de calcul se réinvestit dans des problèmes (la

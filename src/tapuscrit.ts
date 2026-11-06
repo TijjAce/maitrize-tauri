@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Le tapuscrit d'une séance : ses consignes en pictogrammes ─────────────
 //
 // Les consignes d'une séance s'écrivent à part du déroulement, une par ligne,

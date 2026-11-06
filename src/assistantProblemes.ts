@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'assistant de l'atelier Problèmes : on lui dit la feuille voulue, il règle l'atelier.
 //
 // « Essaye de faire un tchatbot ici » (l'enseignant, 5 novembre 2026, sur

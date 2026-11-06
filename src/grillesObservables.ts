@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les grilles d'observables des séquences (demande de l'enseignant, 31 octobre
 // 2026 : « dans évaluation sommative, il me faut des grilles d'observables pour
 // évaluer les élèves […], surtout pour le cycle 1 ; quand ils commencent à

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Couche d'accès au backend Rust via Tauri invoke. Types miroir des structs.
 import type { CadreDuMessage } from "./cadreDeSeance";
 import { invoke as invokeTauri } from "@tauri-apps/api/core";

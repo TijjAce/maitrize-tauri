@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── L'IA me teste sur les guides d'Éduscol ────────────────────────────────
 //
 // « À côté de ça, j'aimerais pouvoir avoir une IA qui me teste sur ma

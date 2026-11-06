@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Des sites de la Forge des communs numériques éducatifs : une liste de liens, rien de plus. « Lister les plus pertinents
 // dans l'app, mais juste un lien, rien n'est interprété » (demande de l'enseignant, 6 novembre 2026). Maitrize ne garde ni
 // n'exécute le code de ces sites ; un clic les ouvre dans le navigateur. Une sélection faite à la main et figée : aucune

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Convertit une feuille HTML en PDF avec la machinerie de l'application, sans
 //! ouvrir l'application : de quoi juger le rendu.
 //!

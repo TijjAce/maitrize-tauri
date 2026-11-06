@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le disque est-il chiffré ? Ce qu'on en dit à l'enseignant.
 //
 // Les dossiers des élèves vivent sur le disque de l'ordinateur. Chiffré

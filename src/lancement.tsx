@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'application elle-même : chargée à part, derrière la page de bienvenue (voir main.tsx et bienvenue.ts).
 import React from "react";
 import ReactDOM from "react-dom/client";

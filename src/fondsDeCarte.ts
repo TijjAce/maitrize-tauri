@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les fonds de carte de l'histoire-géographie du cours moyen : le planisphère,
 // l'Europe, la France et ses régions. Fichier fabriqué par
 // outils/fonds-de-carte.mjs à partir de Natural Earth (domaine public,

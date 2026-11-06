@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Le corpus se prépare tout seul ────────────────────────────────────────
 //
 // Les mots viennent de la banque ARASAAC installée sur cet ordinateur : ils

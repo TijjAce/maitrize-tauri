@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Devenir lecteur : le carnet de lecteur, les personnages, la mise en réseau, choisir un livre.
 //
 // Programme de français du cycle 2 (2024), « Devenir lecteur » : lire 5 à 10

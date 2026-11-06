@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le dossier dessiné du bureau et des onglets rangés comme lui.
 
 /** Couleur d'un dossier sans couleur choisie : le bleu doux d'un dossier ordinaire. */

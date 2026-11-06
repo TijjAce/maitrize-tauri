@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les exemples des générateurs de Fabriquer : ce que donne la feuille avant
 // qu'on ait rien choisi. Demande de l'enseignant (octobre 2026) : « je veux
 // qu'il y ait toujours un exemple de ce que ça donne à la fin », comme les

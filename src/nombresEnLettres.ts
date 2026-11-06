@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les nombres en lettres, jusqu'aux milliards : ce que les cartes des
 // nombres, les fractions, les cubes et la numération du cycle 3 écrivent.
 //

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── La fleur lexicale et la grille sémique ────────────────────────────────
 //
 // « Fais-les tous » (l'enseignant, 4 novembre 2026). Le guide « Pour

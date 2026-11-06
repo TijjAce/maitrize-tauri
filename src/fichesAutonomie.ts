@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // En retard : des fiches à faire seul, pour chaque élève de la journée.
 //
 // Le matin où rien n'est prêt, « En retard » (dans ⌘K) regarde les créneaux

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le calcul posé du cours moyen, et ce qui l'entoure.
 //
 // Programme de mathématiques du cycle 3 (2025), « Les quatre opérations » :

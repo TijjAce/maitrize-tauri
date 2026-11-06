@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Fiches de sons : lire, entendre, écrire un graphème.
 //
 // La progression suit l'ordre des méthodes syllabiques — voyelles d'abord,

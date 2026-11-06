@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Fabriquer une feuille pour une séance (demande de l'enseignant, octobre
 // 2026). Depuis la séance, « ✨ Fabriquer une feuille » ouvre les générateurs
 // de Fabriquer ; tant qu'on y travaille pour elle, la feuille qu'on enregistre

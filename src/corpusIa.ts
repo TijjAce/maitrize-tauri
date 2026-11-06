@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Un corpus proposé par l'IA, à partir du projet ────────────────────────
 //
 // Le projet est écrit — un titre, une phrase, des étapes — mais pas son

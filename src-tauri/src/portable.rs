@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Version portable : l'app desktop sert un instantané de données sur le
 //! réseau local (WiFi). Le téléphone l'ouvre dans son navigateur via un QR
 //! code. Rien ne transite par internet : tout reste sur le réseau local.

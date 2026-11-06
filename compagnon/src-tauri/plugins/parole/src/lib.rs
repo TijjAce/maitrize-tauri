@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! La voix du classeur, sur l'iPad et l'iPhone.
 //!
 //! La synthèse vocale de la page (celle de WebKit) se tait quand l'iPhone est

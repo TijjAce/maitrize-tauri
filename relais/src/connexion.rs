@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Se connecter au compte Nuage, depuis le téléphone.
 //!
 //! Le dossier du relais n'est ouvert qu'au compte de l'enseignant. Le

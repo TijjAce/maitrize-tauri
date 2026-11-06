@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Génère l'export « Synthèse des acquis fin GS » en reconstruisant le tableau
 // officiel (mise en page très proche du modèle national) avec printpdf, mais avec
 // des cellules d'observation qui s'agrandissent selon le texte et un saut de

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Ranger le bureau : dans quel ordre les icônes se posent.
 //
 // Le bureau garde la disposition qu'on lui donne à la main (voir

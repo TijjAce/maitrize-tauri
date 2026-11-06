@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Observer un élève, et en garder trace ─────────────────────────────────
 //
 // « On observe tout, donc on n'observe rien. » Un temps d'observation se

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import { describe, expect, it } from "vitest";
 import { CARTE_EXEMPLE, MOTS_A_SYLLABES, MOTS_EXEMPLE, motsDeLaCarte } from "./exemplesDesAteliers";
 import { REGLAGES_LOTO_SYLLABES, dominos, lignesIntrus, pairesQuiSenchainent, planchesLotoSyllabes } from "./jeuxSons";

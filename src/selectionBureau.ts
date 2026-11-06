@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Plusieurs éléments du bureau à la fois, comme sur un vrai bureau.
 //
 // Un clic choisit un élément ; ⌘ ou ⇧ en ajoute ou en retire un ; un

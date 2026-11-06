@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Le chiffrement du relais sur l'iPhone : CryptoKit, la bibliothèque d'Apple.
 //!
 //! Le paquet Swift de `swift/` fait le travail ; ce module le présente au

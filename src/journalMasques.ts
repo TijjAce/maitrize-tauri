@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Ce qu'on cite sans l'imprimer.
 //
 // Citer un jeu, une séquence ou un rituel dans le prévu montre sa règle ou

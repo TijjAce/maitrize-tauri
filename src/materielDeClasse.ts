@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Le matériel de la classe : ce que le papier ne remplace pas ───────────
 //
 // Fabriquer imprime beaucoup de matériel : des cubes à découper, des pièces

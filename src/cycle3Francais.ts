@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le français du cours moyen : la séquence d'une compétence du CM1 ou du CM2,
 // bâtie sur le programme de français du cycle 3 (2025) et ses exemples de
 // réussite. Rien quand le cours moyen n'a pas encore de séquence pour la

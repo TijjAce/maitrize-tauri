@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 # Signe un fichier pour Tauri (bundle.windows.signCommand) — l'application,
 # l'installeur, le désinstalleur — par ssign, avec la session qu'a ouverte
 # ssign-session.ps1. Le secret du code QR n'est pas là : seul le jeton de

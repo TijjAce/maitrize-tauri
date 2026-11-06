@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import React from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Modal } from "./ui";
@@ -36,8 +39,8 @@ export function Licences() {
       <h3 style={{ marginTop: 0 }}>📜 Licences</h3>
       <div style={{ color: "var(--text-2)", fontSize: 13, lineHeight: 1.55 }}>
         <p style={{ marginTop: 0 }}>
-          Maîtrize est un logiciel libre, distribué sous la licence {lien(AGPL, "GNU Affero GPL, version 3")} : vous pouvez
-          l'utiliser, l'étudier, le modifier et le partager selon ses termes. Son code source est public :{" "}
+          <b>Maitrize, créé par Clément Titet.</b> C'est un logiciel libre, distribué sous la licence {lien(AGPL, "GNU Affero GPL, version 3")} : vous pouvez
+          l'utiliser, l'étudier, le modifier et le partager selon ses termes et ceux de son fichier NOTICE. Son code source est public :{" "}
           {lien(SOURCE, "github.com/TijjAce/maitrize-tauri")}. Il est fourni sans garantie.
         </p>
         <p>

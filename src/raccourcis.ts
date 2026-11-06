@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les raccourcis clavier de Maitrize, tels que l'application les écoute
 // (demande de l'enseignant, octobre 2026 : les voir depuis ⌘K).
 //

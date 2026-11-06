@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // La bibliothèque des démarches (demande de l'enseignant, octobre 2026) : au lieu d'un menu où plus de trois cents
 // démarches défilaient en une liste, une bibliothèque, comme celle du coffre-fort de « Citer un passage ».
 //

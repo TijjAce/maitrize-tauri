@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Les lotos des sons : attaques, rimes, syllabes, phonèmes ───────────────
 //
 // L'enseignant les a demandés (31 octobre 2026), à côté du loto des

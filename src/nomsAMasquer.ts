@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les noms à masquer avant tout envoi à l'IA (voir `confidentialite`).
 //
 // Les élèves d'abord ; mais un compte rendu ou un bilan nomme aussi des

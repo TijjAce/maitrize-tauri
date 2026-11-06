@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le catalogue des ateliers de Fabriquer : leurs onglets, leurs familles, ce que chacun fabrique.
 //
 // Il vit à part de la page : d'autres écrans le lisent — la fiche d'une séquence nomme les ateliers où elle va piocher.

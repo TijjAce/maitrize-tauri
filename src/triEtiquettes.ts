@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les maisons du tri : des étiquettes à découper, et où les ranger.
 //
 // Être ou avoir, phrase ou pas une phrase, nom ou verbe : on apprend une

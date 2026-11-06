@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les vacances scolaires, demandées une fois par jour.
 //
 // La liste vient d'une API du ministère. Le planning la redemandait à chaque

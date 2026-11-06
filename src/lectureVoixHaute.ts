@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Lire à voix haute : des phrases à préparer, codées ou à coder, et la grille du binôme.
 //
 // Livrets Français CP (2025) et CE1 (2026), Éduscol, focus « Fluence et lecture

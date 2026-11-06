@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Une feuille HTML devient un PDF, sans passer par l'imprimante.
 //!
 //! Les feuilles de Fabriquer sont des pages HTML : c'est le navigateur qui

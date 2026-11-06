@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Où se range un atelier : le moment de la séquence qu'il sert ─────────
 //
 // Les phases d'une séquence d'apprentissage sont décrites de la même façon

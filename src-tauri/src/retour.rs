@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Revenir à un état passé de l'application.
 //!
 //! L'enseignant veut « revenir à un état précis de l'application avec tout

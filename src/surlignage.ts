@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Ce qui, dans le bilan, part dans les notes des élèves ─────────────────
 //
 // Les phrases qui nomment un élève vont dans ses notes (voir notesDuBilan.ts).

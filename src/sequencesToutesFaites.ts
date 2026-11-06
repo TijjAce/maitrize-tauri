@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Les séquences toutes faites de Fabriquer, d'après les déroulements ─────
 //
 // L'enseignant l'a demandé (octobre 2026) : les déroulements qu'on choisit en

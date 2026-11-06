@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Le bilan d'un créneau, jusqu'au dossier des élèves ────────────────────
 //
 // Ce que le bilan dit d'un élève — les phrases qui le nomment — va dans son

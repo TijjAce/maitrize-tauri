@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les jeux et le matériel de mathématiques que les livrets font fabriquer.
 //
 // Livret Mathématiques CP (2025) : passer d'une représentation du nombre à

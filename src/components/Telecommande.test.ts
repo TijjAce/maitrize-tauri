@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // La fenêtre de la télécommande, sans Tauri ni écran : l'API répond d'ici, et Mistral dit ce qu'on lui fait dire.

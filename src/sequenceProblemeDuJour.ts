@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // La période du problème du jour, en séquence : une séance par semaine,
 // reprise chaque jour, avec ses cartes et son matériel.
 //

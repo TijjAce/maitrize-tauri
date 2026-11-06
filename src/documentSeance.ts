@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le déroulement d'une séance, écrit comme un document (demande de
 // l'enseignant, octobre 2026) : des phases, chacune une carte avec son titre,
 // sa durée, son déroulement, la posture de l'enseignant et les champs qu'on

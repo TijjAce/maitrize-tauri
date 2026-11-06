@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // La consigne d'une feuille, réécrite par l'enseignant.
 //
 // Chaque atelier imprime sa consigne — « Compte les cubes et écris le

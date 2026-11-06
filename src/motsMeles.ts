@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les mots mêlés.
 //
 // Les mots de la semaine — ceux de la dictée, du thème, de la leçon — cachés

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Des prénoms donnés en France, pour reconnaître une personne que
 // l'application ne connaît pas : le frère d'un élève, une copine, un
 // voisin. La liste est écrite pour Maitrize — les prénoms les plus donnés

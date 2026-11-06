@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les manuels : des pages photographiées ou un PDF, les exercices que
 // l'enseignant y encadre, et le modèle simplifié qu'on en tire.
 //

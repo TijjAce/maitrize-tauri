@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les syllabes d'un mot, telles qu'on les scande en classe.
 //
 // Le guide « Pour préparer l'apprentissage de la lecture et de l'écriture à

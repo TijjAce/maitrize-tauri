@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les solides au cycle 2 : reconnaître, nommer, décrire, construire.
 //
 // Programme de mathématiques du cycle 2 (2024) : au CP, trier et classer des

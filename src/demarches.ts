@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les démarches d'enseignement : le cadre qu'une séquence reçoit à sa création.
 //
 // Une séquence neuve est une page blanche, et la page blanche fait perdre le

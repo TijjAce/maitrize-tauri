@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Démarrer en un clic (choisi par l'enseignant le 25 octobre 2026) : quelques départs tout prêts pour un atelier
 // à mots — des thèmes de la banque d'images adaptés à la classe, les mots du projet du moment, ses propres images.
 // D'abord une bande sous l'aperçu d'exemple ; depuis le 31 octobre 2026, la première question de l'assistant de

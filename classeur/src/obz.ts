@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Le format ouvert des tableaux (.obz), dans les deux sens ─────────────
 //
 // Le même que celui de Maitrize (tla_obz.rs) : un manifeste, un tableau

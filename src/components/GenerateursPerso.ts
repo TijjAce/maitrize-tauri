@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les générateurs de l'enseignant, gardés dans ses réglages (partagés entre
 // ses ordinateurs) ; et ce qu'on demande à l'IA pour en faire un, ou le
 // retoucher (voir generateursPerso.ts).

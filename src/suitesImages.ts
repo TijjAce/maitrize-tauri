@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Images séquentielles : remettre dans l'ordre une histoire, un geste, une recette.
 //
 // « S'approprier la notion de chronologie » (programme de l'école maternelle,

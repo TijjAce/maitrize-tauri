@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le bureau commun : empaqueter un dossier pour le déposer, le déballer chez soi.
 //
 // Un bureau commun est un dossier partagé par un service de stockage (Nuage,

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les grandeurs et leur mesure : longueurs, masses, contenances.
 //
 // Éduscol, « Grandeurs et mesures au cycle 2 » (ressources 2016) : construire

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Les consignes à la première personne ──────────────────────────────────
 //
 // Les sources s'accordent sur un point : une seule forme de consigne,

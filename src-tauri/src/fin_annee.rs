@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! La fin de l'année scolaire : garder une trace des élèves qui partent.
 //!
 //! Les élèves d'une année n'ont pas à rester dans Maitrize une fois partis :

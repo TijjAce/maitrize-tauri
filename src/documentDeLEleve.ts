@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Une réponse lente (l'IA met quelques secondes) se range chez l'élève pour qui
 // on l'a demandée. L'écran a pu changer d'élève entre-temps : la réponse
 // s'appliquait alors au document affiché — celui d'un autre élève — avec

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Une feuille enregistrée là où l'on veut : en PDF, pour l'imprimer ou
 // l'envoyer telle quelle, ou en Word (.docx), pour la retoucher ailleurs.
 // L'enseignant choisit le dossier et le nom ; rien ne se range sans lui.

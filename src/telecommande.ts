@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // La télécommande : l'enseignant parle à son téléphone, et le Mac — projeté au tableau — affiche.
 //
 // Le réseau, le chiffrement et la transcription sont côté Rust (telecommande.rs). Ici, la phrase entendue devient

@@ -1,4 +1,7 @@
-﻿# Ouvre la session de signature avant l'assemblage de Maitrize.
+﻿# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
+# Ouvre la session de signature avant l'assemblage de Maitrize.
 #
 # ssign (github.com/Le-Syl21/ssign, compilé depuis la révision relue, voir
 # release.yml) parle directement au service de signature de Certum, sans

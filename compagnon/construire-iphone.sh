@@ -1,4 +1,7 @@
 #!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 # Construit le compagnon pour iPhone et iPad, et rend un .ipa signé.
 #
 #   sh construire-iphone.sh                              pour le téléphone de l'enseignant

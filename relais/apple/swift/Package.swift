@@ -1,4 +1,7 @@
 // swift-tools-version:5.5
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import PackageDescription
 
 // Le chiffrement du relais sur l'iPhone, par CryptoKit. Voir Sources/Chiffre.swift.

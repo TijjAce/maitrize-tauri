@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import { describe, it, expect } from "vitest";
 import {
   CONSIGNE_ORALE, SANS_MOT_NOUVEAU_MS, SILENCE_APRES_LA_PHRASE_S, SILENCE_EN_SUSPENS_S, lecteurAuFil, morceauxALire, pretALire, questionFinie, texteALire,

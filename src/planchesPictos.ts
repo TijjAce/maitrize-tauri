@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Un même picto, de toutes les tailles.
 //
 // Le picto du classeur de communication ne se pose pas à la même taille que

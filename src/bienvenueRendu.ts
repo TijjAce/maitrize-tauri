@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── La page de bienvenue : son dessin ─────────────────────────────────────
 //
 // Une feuille blanche réglée comme un cahier, une soie de couleur qui coule doucement

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // La petite feuille à côté du texte de chaque carte de Fabriquer : « juste à côté du texte, un petit exemple de la feuille
 // qui va être créée, histoire de donner plus envie » (l'enseignant, 6 novembre 2026). Ce sont de vraies photos de la feuille
 // d'exemple de chaque atelier, prises dans l'atelier lui-même avec la vraie banque de pictos : rien n'est dessiné pour l'occasion.

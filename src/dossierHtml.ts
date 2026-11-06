@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le dossier d'un élève, mis en page : pour l'imprimer depuis l'onglet
 // Dossier, et pour l'exporter à la fin de l'année (voir `finDAnnee.ts`).
 //

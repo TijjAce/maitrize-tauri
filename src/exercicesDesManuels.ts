@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les exercices des manuels, hors de l'écran des manuels : les relire tous,
 // retrouver l'image d'une page, en découper un encadré. L'écran des manuels
 // s'en sert pour faire le modèle simplifié ; une séquence, pour poser dans

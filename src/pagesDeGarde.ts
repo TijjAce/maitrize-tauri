@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Pages de garde, mots aux familles et listes de fournitures.
 //
 // Trois documents que l'on refait chaque rentrée : la première page d'un

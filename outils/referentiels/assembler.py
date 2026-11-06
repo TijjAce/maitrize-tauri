@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 """Assemble les référentiels des cycles 2 et 3 à partir des extractions relues."""
 import json, re, unicodedata
 from collections import OrderedDict

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 """Programmes de sciences 2026 (PDF sans texte, lus par reconnaissance de caractères)."""
 import sys, json, re, unicodedata
 from lib import norm, nettoyer

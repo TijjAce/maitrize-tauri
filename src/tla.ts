@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Gabarits de tableaux de langage assisté : modèle et règles.
 //
 // La logique vit ici plutôt que dans l'écran, pour que les règles qui font la

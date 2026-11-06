@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Compile le paquet Swift (CryptoKit) et le lie, pour l'iPhone seulement :
 // ailleurs, le relais chiffre en Rust et ce paquet n'est jamais demandé.
 fn main() {

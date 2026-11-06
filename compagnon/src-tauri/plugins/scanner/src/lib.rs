@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Ce que la page du dictaphone ne sait pas faire seule, sur l'iPhone.
 //!
 //! **Les pages d'un manuel.** Une photo, et l'on ajuste aussitôt les coins de

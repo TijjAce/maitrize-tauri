@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Les supports de l'Assistant : ce que Fabriquer sait déjà faire ─────────
 //
 // « Le problème, c'est qu'il faudrait les supports de mes générateurs pour aider à

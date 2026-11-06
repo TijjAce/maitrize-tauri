@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'aperçu d'un loto, d'un jeu de mémoire, d'un imagier : leur PDF se
 // fabrique de l'autre côté (jeux_pdf.rs), et rien ne le montrait avant qu'on
 // l'ouvre. Cette page en HTML en reprend la géométrie — la page A4, ses

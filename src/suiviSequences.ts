@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Le suivi des séquences : ce que le cahier journal en dit ──────────────
 //
 // Une séquence démarrée, c'est une séquence dont une séance est passée en

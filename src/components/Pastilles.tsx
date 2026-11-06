@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import { PALETTE_CUBES } from "../cubesNumeration";
 
 /** Les couleurs possibles, en pastilles : celles des cubes, ou la palette qu'on donne. */

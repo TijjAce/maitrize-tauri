@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Impression / export PDF : écrit un document HTML autonome dans un iframe
 // caché puis déclenche l'impression système (→ « Enregistrer en PDF »).
 

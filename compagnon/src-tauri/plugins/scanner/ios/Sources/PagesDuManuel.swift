@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Ce que l'on fait d'une photo de page : trouver la page, la redresser, la
 // nettoyer, l'écrire.
 //

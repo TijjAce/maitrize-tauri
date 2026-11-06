@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! La télécommande : l'enseignant parle à son téléphone, et l'ordinateur — projeté au tableau — affiche.
 //!
 //! Ils se trouvent par le relais. À l'ouverture, l'ordinateur y laisse où le joindre sur le réseau local, et le

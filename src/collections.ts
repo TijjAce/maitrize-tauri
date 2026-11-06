@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Construire des collections de cardinal donné : le matériel de l'atelier.
 //
 // « Constituer une collection d'un cardinal donné » (programme de l'école

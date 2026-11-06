@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les rituels : ce qui revient chaque jour, écrit une fois.
 //
 // La date, l'appel, le mot du jour, le calcul mental : un rituel n'est pas

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Marquer les verbes des étiquettes, et ranger celles du projet, avec l'IA.
 //
 // Pour colorer le verbe, il faut le désigner : entourer d'astérisques le mot

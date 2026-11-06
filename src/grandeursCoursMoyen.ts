@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les grandeurs et mesures du cours moyen, d'après le programme de
 // mathématiques du cycle 3 (2025) et ses exemples de réussite (Éduscol, 2025).
 //

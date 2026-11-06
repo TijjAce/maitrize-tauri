@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le matériel de manipulation de la séance de découverte.
 //
 // « L'apprentissage de chaque famille s'appuie d'abord sur l'utilisation et

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les opérations posées, dans un quadrillage.
 //
 // Programme de mathématiques du cycle 2 (2024) et guide « Pour enseigner les

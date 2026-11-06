@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'assistant d'un projet de classe : on raconte le projet, il le monte.
 //
 // La fiche d'un projet réunissait tout à la fois — titre, phrase, mois,

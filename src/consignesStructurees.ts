@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Des consignes qu'on reconnaît d'un coup d'œil ─────────────────────────
 //
 // Une consigne écrite d'un seul tenant — « 1. Je lis le texte en silence,

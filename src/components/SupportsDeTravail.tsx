@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import React from "react";
 import { api, MATIERES, NIVEAUX_SCOLAIRES, nouvelEspace, nouvelOutil, type Espace, type Jeu, type MaterielItem, type OutilClasse, type Sequence } from "../api";
 import { EVT_MES_PICTOS, changerMonPicto, lireMesPictos, type MonPicto } from "../mesPictos";

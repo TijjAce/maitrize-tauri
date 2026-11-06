@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les séquences travaillées en profondeur, que le logo de Maitrize signale dans
 // le tableau des séquences toutes faites (demande de l'enseignant, 30 octobre
 // 2026 : « un petit logo Maitrize si tu as un peu plus bossé dessus »).

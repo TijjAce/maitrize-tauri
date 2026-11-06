@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les nombres du cours moyen : les exercices que le programme de 2025 et ses
 // exemples de réussite (Éduscol, « Exemples pour la mise en œuvre des
 // programmes », CM1 et CM2) demandent — les fractions plus grandes que 1, la

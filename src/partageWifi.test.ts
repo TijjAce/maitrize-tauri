@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'accord entre les deux écrans passe par un événement de fenêtre : il se
 // vérifie dans un navigateur, pas ici — les tests tournent sans DOM.
 import { describe, it, expect } from "vitest";

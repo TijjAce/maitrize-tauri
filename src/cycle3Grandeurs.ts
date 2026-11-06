@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les grandeurs et mesures au cours moyen : longueurs et périmètre, masses,
 // contenances, aires, angles, heure et durées. Aucun livret d'accompagnement
 // n'en propose de séquence : elles sont bâties, en le disant, sur le

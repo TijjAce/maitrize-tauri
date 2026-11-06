@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les générateurs de l'enseignant : des supports qu'il fait faire à l'IA de
 // Mistral, décrits en quelques phrases, puis qu'il retouche (demande de
 // l'enseignant, octobre 2026 : « que les utilisateurs puissent eux aussi

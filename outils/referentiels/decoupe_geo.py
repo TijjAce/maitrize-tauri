@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 """Découpage des objectifs du cycle 3 par la seule géométrie (écart vertical entre lignes), comparé à l'extraction."""
 import re, json, sys, unicodedata, difflib
 from lib import lire, norm

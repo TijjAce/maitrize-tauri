@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les photos d'un texte mis en forme : les coller, les afficher, les imprimer.
 //
 // Une photo collée est réduite (une photo de téléphone pèse plusieurs Mo),

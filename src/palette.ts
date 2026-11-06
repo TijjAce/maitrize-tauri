@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Ce que ⌘K met en tête ─────────────────────────────────────────────────
 //
 // Une palette se juge à sa première ligne. Deux défauts la rendaient pénible :

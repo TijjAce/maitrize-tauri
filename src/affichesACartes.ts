@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Les affiches à cartes ─────────────────────────────────────────────────
 //
 // « Cherche sur Éduscol et les guides les affichages qui peuvent être créés »,

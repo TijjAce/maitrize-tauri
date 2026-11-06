@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Les périodes que Maitrize propose, faute de texte ──────────────────────
 //
 // Ni le programme ni les textes d'Éduscol — livrets, guides, repères

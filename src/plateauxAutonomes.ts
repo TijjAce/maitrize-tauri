@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Les plateaux de manipulation, à faire seul ─────────────────────────────
 //
 // L'enseignant l'a demandé (4 novembre 2026) : « pour les PS il faut des

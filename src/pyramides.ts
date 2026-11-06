@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Pyramides et carrés magiques : du calcul réfléchi, à compléter.
 //
 // La pyramide additive : chaque brique est la somme des deux briques du

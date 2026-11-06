@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Glisser-déposer vers une zone précise de l'interface.
 //
 // Tauri propose son propre gestionnaire natif (`dragDropEnabled`), qui donne

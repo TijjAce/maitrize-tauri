@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Le tétraèdre des émotions ──────────────────────────────────────────────
 //
 // Demande de l'enseignant (3 novembre 2026) : « Faire tétraèdre des émotions

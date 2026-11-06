@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 """Affiche l'extraction d'un document pour relecture : python3 voir.py <config>"""
 import sys, json
 from gabarit_tableaux import sommaire, extraire, niveau_de

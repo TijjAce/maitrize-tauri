@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les réglages qu'on a laissés dans un atelier de Fabriquer — ses couleurs, ses
 // options, le graphème de la semaine —, gardés sur cet ordinateur (voir
 // useMemoire). Une séquence qui pioche une feuille dans l'atelier la fabrique

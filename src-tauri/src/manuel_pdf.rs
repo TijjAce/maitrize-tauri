@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Un manuel photographié, en PDF : ses pages à la suite, chacune sur une
 //! feuille A4 — en portrait ou en paysage, selon la photo —, pour l'imprimer,
 //! le ranger sur le bureau ou l'envoyer.

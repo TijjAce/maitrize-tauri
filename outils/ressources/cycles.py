@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 """Ressources des cycles 1, 2 et 3 (onglet Ressources → Documents Éduscol).
 
 Reconstruites le 13 septembre 2026 à partir des pages officielles :

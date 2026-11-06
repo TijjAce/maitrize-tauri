@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'organisation et la gestion de données, et les probabilités, au cours
 // moyen. Les probabilités suivent la séquence n° 3 des livrets
 // d'accompagnement du CM1 et du CM2 (Éduscol, 2026) : les bouteilles opaques

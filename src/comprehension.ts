@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Comprendre un texte : lire, revenir au texte, répondre.
 //
 // Programme de français du cycle 2 (2024), « Comprendre un texte » : dégager

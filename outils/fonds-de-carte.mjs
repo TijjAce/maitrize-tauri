@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Fabrique src/fondsDeCarte.ts : les fonds de carte de l'histoire-géographie
 // du cours moyen — le planisphère, l'Europe, la France et ses régions —, à
 // partir des données de Natural Earth (domaine public, naturalearthdata.com).

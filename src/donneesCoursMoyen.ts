@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'organisation et la gestion de données, et les probabilités, au cours
 // moyen, d'après le programme de mathématiques du cycle 3 (2025), ses
 // exemples de réussite (Éduscol, 2025) et la séquence n° 3 des livrets

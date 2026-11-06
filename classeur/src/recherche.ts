@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Chercher un picto, sur l'appareil ─────────────────────────────────────
 //
 // L'index des mots d'ARASAAC est embarqué (outils/index-arasaac.py) : la

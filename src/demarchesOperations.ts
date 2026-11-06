@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les quatre opérations au cycle 2 : des séquences bâties sur les guides.
 //
 // Les livrets d'accompagnement n'ont pas de séquence pour les opérations ;

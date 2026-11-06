@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Moteur de thème : applique Mode / Accent / Style d'interface aux variables
 // CSS, + charge les surcharges de couleurs de matière. Réglages persistés en DB.
 import { api, setMatiereOverrides, CLE_COULEURS_MATIERES } from "./api";

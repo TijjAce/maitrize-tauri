@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // CAA — communication alternative et augmentée : les consignes en pictogrammes.
 //
 // « Écris le nombre. » ne dit rien à qui ne lit pas encore, ou lit sans

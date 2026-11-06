@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import { describe, it, expect } from "vitest";
 import { reference, referencesDe, referencesEnAide, sansReferences } from "./references";
 import { consigneParDefaut, remplacerConsigne } from "./consigneAtelier";

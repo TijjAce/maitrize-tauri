@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // L'histoire et la géographie au cours moyen : les feuilles des séquences.
 //
 // Programme d'histoire-géographie du cycle 3 (BO n° 22 du 28 mai 2026,

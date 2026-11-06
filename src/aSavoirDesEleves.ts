@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // « À savoir » sur chaque élève, dans la feuille de la personne qui remplace.
 //
 // L'enseignant l'a demandé (31 octobre 2026) : un agent va chercher ce qu'on

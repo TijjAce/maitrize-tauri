@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 """L'index des pictos d'ARASAAC en français, embarqué dans le classeur.
 
 La recherche d'ARASAAC passe par son service en ligne, qui peut tomber (le

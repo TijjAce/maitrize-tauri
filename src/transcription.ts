@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Où la parole est transcrite ───────────────────────────────────────────
 //
 // Deux moteurs. En ligne, c'est Voxtral chez Mistral : de très bons

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Demander à un document du coffre-fort ─────────────────────────────────
 //
 // « Ajoute un bouton qui fait tourner Mistral Large sur le document de mon

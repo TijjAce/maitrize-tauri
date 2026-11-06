@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 //! Impression d'un tableau de langage assisté (TLA).
 //!
 //! Un TLA est l'exact contraire d'une planche de loto sur un point, et son

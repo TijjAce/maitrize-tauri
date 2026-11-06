@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les compétences qu'un atelier travaille — celles que l'enseignant choisit.
 //
 // On a d'abord essayé de les deviner à partir de mots-clés : « addition »

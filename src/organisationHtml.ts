@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les pages de l'organisation et du cahier journal, en HTML : celles qu'on
 // imprime depuis Organisation, et celles que la copie du travail range dans
 // le dossier « Maitrize » (voir copieDuTravail.ts). Une seule mise en page

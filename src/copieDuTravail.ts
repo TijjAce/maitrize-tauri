@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le reste du travail, dans le dossier « Maitrize », à côté du plan de travail.
 //
 // L'enseignant veut tout son travail dans un dossier sur le Bureau, lisible

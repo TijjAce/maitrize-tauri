@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Lire un fichier « .md » dans l'application : son texte, son titre.
 
 import { titreDuDocument } from "./documentIa";

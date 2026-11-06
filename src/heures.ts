@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Heures de la semaine : temps de classe, temps de réunion ou de formation.
 //
 // On compte le temps couvert, pas la somme des créneaux : deux groupes pris en

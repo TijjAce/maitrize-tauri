@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les thèmes d'histoire et de géographie du cours moyen, et ce que leurs
 // feuilles montrent (voir histoireGeoCoursMoyen.ts).
 //

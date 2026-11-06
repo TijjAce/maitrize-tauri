@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import { describe, expect, it, vi } from "vitest";
 
 // Les tests tournent sans navigateur : un localStorage de poche, vide — les réglages laissés sont ceux par défaut.

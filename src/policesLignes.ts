@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les variantes de Marelle qui tracent elles-mêmes la réglure Seyès, en couleur
 // (voir policesEcriture.ts) : chargées à part, après le démarrage — elles pèsent
 // plus d'un mégaoctet à elles quatre.

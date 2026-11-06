@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // La grammaire, l'orthographe grammaticale et la conjugaison du cours moyen.
 //
 // Les livrets d'accompagnement de français s'arrêtent au CE2 : ces séquences

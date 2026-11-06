@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import React from "react";
 import { STYLE_FEUILLE } from "../cartesImprimables";
 import { STYLE_GENERATEURS_PERSO, htmlGenerateurPerso, imagesDeLaRecette, type GenerateurPerso } from "../generateursPerso";

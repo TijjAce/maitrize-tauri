@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── La soustraction posée au CE1 : une séquence toute faite ────────────────
 //
 // L'enseignant l'a demandée (octobre 2026) : une séquence de soustraction

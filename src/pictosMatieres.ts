@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import { api, MATIERES, matiereDuDomaine, type Referentiel } from "./api";
 import type { Lexique } from "./caa";
 import type { RefPicto } from "./pictosAppoint";

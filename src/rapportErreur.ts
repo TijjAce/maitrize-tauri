@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Le rapport d'erreur, proposé quand un vrai bug survient.
 //
 // « Si un utilisateur a un bug, que l'erreur m'arrive sur contact@maitrize.com »

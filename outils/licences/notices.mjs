@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les licences des composants tiers, à joindre à l'application.
 //
 // Les licences MIT, BSD ou Apache des bibliothèques que l'application

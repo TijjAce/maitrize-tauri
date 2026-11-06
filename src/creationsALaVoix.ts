@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Créer à la voix, par la télécommande : une séquence, une séquence toute faite, une séance (voir telecommande.ts pour ce
 // qui est compris). Chaque création se demande d'abord sur le téléphone — « Créer la séquence « Les volcans » (CM1,
 // période 2) ? » — et ne se fait qu'après le « oui ». Puis elle s'affiche au tableau, et « Annule » la retire, comme ⌘Z,

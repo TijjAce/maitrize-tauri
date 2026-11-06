@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // La numération au CP, en manipulant : des billes et des calots, l'abaque à
 // deux tiges, la suite des nombres. Trois ateliers de Fabriquer — « Billes
 // et calots », « L'abaque », « La suite des nombres » —, jusqu'à 100, que le

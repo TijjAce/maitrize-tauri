@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // ── Les espaces de la classe dans le plan de classe ───────────────────────
 //
 // « Quand j'ajoute un nouvel espace de classe, il se met dans aménagement

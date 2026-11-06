@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 import json, re
 from lib import norm, nettoyer
 lignes = [norm(l) for l in open("../c3_eps_2026.txt", encoding="utf-8").read().split("\n")]

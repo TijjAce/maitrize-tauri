@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet.
+
 // Les familles d'addition : l'affichage du mur de la classe (demande de
 // l'enseignant, 2026-11-01, pour sa séance des nombres jusqu'à 9 : « crée un
 // affichage pour la famille d'addition du 7, 8 et 9 »).
