@@ -5,12 +5,12 @@
 // 2026, sur l'image d'un « welcome » de verre). Puis, le même jour : « c'est
 // encore pas mégafluide » ; « plus personnalisé, souligne avec deux barres rouges
 // le z, fais ça proprement » ; « oublie la toute première transition » ; « une
-// application créée par Clément Titet, Professeur des écoles », en petit.
+// application créée par Clemti, Professeur des écoles », en petit.
 //
 // Le titre s'écrit en cursive du ministère, en lettres de verre, sur une feuille
 // de cahier que recouvre une soie de couleur (voir bienvenueRendu.ts) ; le z se
-// souligne de deux traits rouges à la règle, comme un titre de cahier ; Clément
-// Titet signe dessous ; puis la page s'efface sur l'application.
+// souligne de deux traits rouges à la règle, comme un titre de cahier ; Clemti
+// signe dessous ; puis la page s'efface sur l'application.
 //
 // La fluidité tient à l'ordre des choses, parce qu'une image saccade dès que le
 // navigateur fait autre chose :
@@ -37,8 +37,8 @@ import { estInviteDuRelais } from "./relaisDev";
 import "./bienvenue.css";
 
 export const TITRE: [string, string] = ["Bienvenue", "sur Maitrize"];
-/** « Une application créée par Clément Titet, Professeur des écoles » : son nom en cursive, comme une signature. */
-export const CREDIT = ["Une application créée par", "Clément Titet", ", Professeur des écoles"] as const;
+/** « Une application créée par Clemti, Professeur des écoles » : son nom en cursive, comme une signature. */
+export const CREDIT = ["Une application créée par", "Clemti", ", Professeur des écoles"] as const;
 
 const POLICE = "Marelle Bienvenue";
 
