@@ -1,9 +1,10 @@
 /* La page de bienvenue, à chaque lancement (voir bienvenue.ts). */
 .bienvenue {
-  position: fixed; inset: 0; z-index: 2147483000; overflow: hidden; cursor: default;
+  position: fixed; inset: 0; z-index: 2147483000; overflow: hidden; cursor: pointer;
   -webkit-user-select: none; user-select: none; background: var(--bienvenue-page, #fff);
   will-change: opacity; transition: opacity .6s ease;
 }
+.bienvenue-passee { cursor: progress; }
 .bienvenue-fin { opacity: 0; pointer-events: none; }
 .bienvenue canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 /* Le titre, pour les lecteurs d'écran ; à l'écran seulement quand le verre ne peut pas se dessiner. */
@@ -14,6 +15,10 @@
 }
 .bienvenue-titre .z { border-bottom: .09em double #d4142e; padding-bottom: .7em; }
 .bienvenue-dessinee .bienvenue-titre { width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Sans le verre, le survol reste : le titre s'approche à peine. */
+.bienvenue:not(.bienvenue-dessinee) .bienvenue-titre { transition: transform .5s ease; }
+.bienvenue:not(.bienvenue-dessinee):hover .bienvenue-titre { transform: scale(1.025); }
+.bienvenue:not(.bienvenue-dessinee) .bienvenue-barre { display: none; }
 /* Les deux barres rouges sous le z, tirées à la règle : elles ne bougent que par la carte graphique, rien ne les saccade. */
 .bienvenue-barre {
   position: absolute; background: #d4142e; border-radius: 1.5px; box-shadow: 0 1px 2px rgba(90, 20, 60, .28);
@@ -30,6 +35,15 @@
 /* Le T majuscule s'ouvre par un grand crochet à gauche : sans ce resserrement, on lit « Clem Ti », deux mots. */
 .bienvenue-signature-t { margin-left: -.22em; }
 .bienvenue-signe .bienvenue-credit { opacity: 1; }
+/* Une fois les barres tirées, de quoi comprendre que la page attend ; le clic la fait taire tout de suite. */
+.bienvenue-invite {
+  position: absolute; left: 0; right: 0; top: 91.5%; margin: 0; text-align: center; color: var(--bienvenue-credit, #333);
+  font: 400 clamp(12.5px, 1.05vw, 15px) / 1 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; letter-spacing: .02em;
+  opacity: 0; will-change: opacity; transition: opacity .8s ease;
+}
+.bienvenue-regle .bienvenue-invite { opacity: .62; transition-delay: .9s; }
+.bienvenue-passee .bienvenue-invite { opacity: 0; transition-delay: 0s; transition-duration: .2s; }
 @media (prefers-reduced-motion: reduce) {
-  .bienvenue, .bienvenue-barre, .bienvenue-credit { transition-duration: .01s; transition-delay: 0s !important; }
+  .bienvenue, .bienvenue-barre, .bienvenue-credit, .bienvenue-invite { transition-duration: .01s; transition-delay: 0s !important; }
+  .bienvenue:not(.bienvenue-dessinee):hover .bienvenue-titre { transform: none; }
 }

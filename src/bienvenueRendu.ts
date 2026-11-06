@@ -237,7 +237,7 @@ const FRAGMENTS = `
 precision highp float;
 varying vec2 vUv;
 uniform float uT, uA, uPx, uEcriture, uAvecTexte;
-uniform vec4 uBoite;
+uniform vec4 uBoite, uSouris;
 uniform vec2 uRayon, uReglure;
 uniform sampler2D uRelief, uOmbre;
 
@@ -304,8 +304,15 @@ vec3 fond(vec2 uv, float t, float net) {
 float hasard(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 
 void main() {
-  vec2 uv = vec2(vUv.x, 1.0 - vUv.y);
+  vec2 page = vec2(vUv.x, 1.0 - vUv.y);
+  // Sous la souris, une goutte posée sur la feuille : ce qu'il y a dessous grossit, davantage quand elle bouge ;
+  // et une clarté douce autour d'elle. uSouris : où elle est, sa présence, son élan.
+  vec2 depuis = (page - uSouris.xy) * vec2(uA, 1.0);
+  float loin = dot(depuis, depuis);
+  float goutte = uSouris.z * exp(-loin / 0.036);
+  vec2 uv = page - (page - uSouris.xy) * goutte * (0.12 + 0.15 * uSouris.w);
   vec3 col = fond(uv, uT, 1.0);
+  col = mix(col, vec3(1.0), 0.36 * uSouris.z * exp(-loin / 0.016));
   if (uAvecTexte > 0.5) {
     vec2 ici = (uv - uBoite.xy) / uBoite.zw;
     if (ici.x > 0.0 && ici.x < 1.0 && ici.y > 0.0 && ici.y < 1.0) {
@@ -318,7 +325,7 @@ void main() {
       float venue = clamp((uEcriture - r.a) / VAGUE, 0.0, 1.0);
       if (venue > 0.0) {
         // Le trait naît fin, et s'arrondit.
-        float seuil = mix(0.86, ${SEUIL_DU_VERRE.toFixed(3)}, venue * venue * (3.0 - 2.0 * venue));
+        float seuil = mix(0.86, ${SEUIL_DU_VERRE.toFixed(3)}, venue * venue * (3.0 - 2.0 * venue)) - 0.05 * goutte;
         float bord = DERIVEE;
         float a = smoothstep(seuil - bord, seuil + bord, r.b);
         if (a > 0.0) {
@@ -336,6 +343,9 @@ void main() {
           float vif = pow(max(dot(n, normalize(vec3(-0.34, 0.58, 0.74))), 0.0), 46.0);
           float creux = pow(max(dot(n, normalize(vec3(0.20, -0.72, 0.66))), 0.0), 14.0);
           verre += vec3(1.0) * 0.95 * vif + ${enGlsl(PALETTE.creux)} * 0.26 * creux;
+          // Et la lumière de la souris, qui glisse le long du verre.
+          float suit = pow(max(dot(n, normalize(vec3(-depuis.x * 4.0, depuis.y * 4.0, 0.62))), 0.0), 38.0);
+          verre += vec3(1.0) * 0.9 * suit * goutte;
           col = mix(col, min(verre, vec3(1.0)), a);
         }
       }
@@ -350,6 +360,8 @@ void main() {
 export interface Rendu {
   /** Dessine une image : `temps` en secondes, `ecriture` de 0 à 1,06. */
   dessiner(temps: number, ecriture: number): void;
+  /** Où est la souris pour les prochaines images (en part de la fenêtre), sa présence et son élan, de 0 à 1. */
+  survoler(x: number, y: number, presence: number, elan: number): void;
   /** Attend que la carte graphique ait fini : la première image est la plus longue (elle prépare tout). */
   finir(): void;
   /** Pose le titre, une fois la police chargée. */
@@ -402,7 +414,7 @@ export function creerRendu(toile: HTMLCanvasElement): Rendu | null {
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
   const u = (nom: string) => gl.getUniformLocation(prog, nom);
   const uT = u("uT"), uA = u("uA"), uPx = u("uPx"), uEcriture = u("uEcriture"), uAvecTexte = u("uAvecTexte");
-  const uBoite = u("uBoite"), uRayon = u("uRayon"), uReglure = u("uReglure");
+  const uBoite = u("uBoite"), uRayon = u("uRayon"), uReglure = u("uReglure"), uSouris = u("uSouris");
   gl.uniform1i(u("uRelief"), 0);
   gl.uniform1i(u("uOmbre"), 1);
   gl.uniform1f(uAvecTexte, 0);
@@ -451,6 +463,7 @@ export function creerRendu(toile: HTMLCanvasElement): Rendu | null {
       gl.uniform1f(uEcriture, ecriture);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     },
+    survoler(x, y, presence, elan) { gl.uniform4f(uSouris, x, y, presence, elan); },
     finir() { gl.finish(); },
     liberer() {
       gl.getExtension("WEBGL_lose_context")?.loseContext();

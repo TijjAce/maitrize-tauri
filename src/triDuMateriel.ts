@@ -9,23 +9,6 @@
 
 import { FAMILLES_MATERIEL, MATERIEL_REEL, type FamilleMateriel, type Inventaire, type MaterielReel } from "./materielDeClasse";
 
-/**
- * Le matériel sans photographie montre un picto d'ARASAAC, choisi à l'œil (les photos de Commons ne montraient pas le
- * bon objet, voir photosMateriel.ts) ; les pictos viennent d'être installés, juste avant cette étape.
- */
-export const PICTOS_DU_MATERIEL: Record<string, number> = {
-  abaque: 36389, monnaie: 4630, calendrier: 3071, circuit: 25954, globe: 27798,
-  transvasement: 39073, pinces: 6178, fermetures: 6957, enfilage: 5454, decoupage: 2591,
-  toucher: 3293, sonsOdeurs: 2486, couleurs: 5968, taillesGigognes: 36379, formesModeles: 39129,
-  blocsLogiques: 38110, collectionsPinces: 8466, tracerDoigt: 15475, lettresMobiles: 3050,
-  marionnettesDoigts: 3282, imagesSons: 27659, dessinsGuides: 37872,
-};
-
-/** Si les pictos ont été remis à plus tard, faute de connexion. */
-export const EMOJI_DE_LA_FAMILLE: Record<FamilleMateriel, string> = {
-  nombres: "🔢", grandeurs: "⚖️", geometrie: "📐", temps: "⏳", sciences: "🔬", monde: "🌍", arts: "🎨", viePratique: "🫙", sens: "👐", ecrit: "✏️",
-};
-
 export const nomDeLaFamille = (f: FamilleMateriel): string => FAMILLES_MATERIEL.find((x) => x.id === f)?.libelle ?? "";
 
 /** Les cartes à trier, famille par famille : celles dont on n'a encore rien dit. */

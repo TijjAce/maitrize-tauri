@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" stroke-linejoin="round" stroke-linecap="round"><path d="M58 150 L88 78 H262 L292 150 Z" fill="#e9dcae" stroke="#111" stroke-width="9"/>
+<rect x="58" y="150" width="234" height="310" rx="8" fill="#f7eed0" stroke="#111" stroke-width="9"/>
+<rect x="84" y="232" width="182" height="116" rx="10" fill="#fff" stroke="#111" stroke-width="7"/>
+<text x="175" y="314" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="70" fill="#111">1 kg</text>
+<path d="M388 302 C430 268 482 304 476 372 C472 428 434 466 402 460 C392 458 384 458 374 460 C342 466 304 428 300 372 C294 304 346 268 388 302 Z" fill="#e3140d" stroke="#111" stroke-width="9"/>
+<path d="M332 348 C330 334 340 322 350 318" fill="none" stroke="#fff" stroke-width="10"/>
+<path d="M388 302 C386 284 390 268 398 254" fill="none" stroke="#a9692e" stroke-width="11"/>
+<path d="M398 272 C416 242 450 240 466 250 C452 284 420 292 398 272 Z" fill="#6cbe2e" stroke="#111" stroke-width="7"/></svg>

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FAMILLES_MATERIEL, MATERIEL_REEL, lireInventaire, ecrireInventaire } from "./materielDeClasse";
-import { PHOTOS_MATERIEL } from "./photosMateriel";
-import { EMOJI_DE_LA_FAMILLE, PICTOS_DU_MATERIEL, cartesATrier, dansLaClasse, decider, reprendre, sensDuGeste } from "./triDuMateriel";
+import { cartesATrier, dansLaClasse, decider, reprendre, sensDuGeste } from "./triDuMateriel";
 
 describe("le tri du matériel, carte par carte", () => {
   it("présente tout le catalogue, famille par famille", () => {
@@ -9,17 +8,6 @@ describe("le tri du matériel, carte par carte", () => {
     expect(cartes).toHaveLength(MATERIEL_REEL.length);
     const rangs = cartes.map((m) => FAMILLES_MATERIEL.findIndex((f) => f.id === m.famille));
     expect(rangs).toEqual([...rangs].sort((a, b) => a - b));
-  });
-
-  it("montre une image à chaque carte : une photo, ou un picto choisi, ou l'emoji de sa famille si les pictos attendent", () => {
-    const avecPhoto = new Set(PHOTOS_MATERIEL.map((p) => p.id));
-    for (const m of MATERIEL_REEL) {
-      expect(avecPhoto.has(m.id) || !!PICTOS_DU_MATERIEL[m.id], m.id).toBe(true);
-      expect(EMOJI_DE_LA_FAMILLE[m.famille], m.famille).toBeTruthy();
-    }
-    // Pas de picto pour rien : chaque entrée correspond à un matériel du catalogue.
-    const connus = new Set(MATERIEL_REEL.map((m) => m.id));
-    for (const id of Object.keys(PICTOS_DU_MATERIEL)) expect(connus.has(id), id).toBe(true);
   });
 
   it("ne reprend pas ce qui est déjà dit, oui ou non", () => {

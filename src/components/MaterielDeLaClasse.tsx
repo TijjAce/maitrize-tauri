@@ -1,7 +1,10 @@
 import React from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { createPortal } from "react-dom";
 import { api } from "../api";
-import { creditMateriel, photoDuMateriel } from "../photosMateriel";
+import { Aide } from "./Aide";
+import { CREDITS_PICTOGRAMMES } from "./Licences";
+import { PictoDuMateriel } from "./PictoDuMateriel";
+import { TriDuMateriel } from "./TriDuMateriel";
 import { Input, Modal } from "./ui";
 import { toast } from "./Toaster";
 import { nomDeLAtelier } from "../catalogueAteliers";
@@ -9,6 +12,7 @@ import {
   CLE_INVENTAIRE, EVT_INVENTAIRE, FAMILLES_MATERIEL, MATERIEL_REEL, ecrireInventaire, lireInventaire, materielDeLAtelier,
   type Inventaire, type MaterielReel,
 } from "../materielDeClasse";
+import { cartesATrier, dansLaClasse } from "../triDuMateriel";
 
 // ── Le matériel de la classe ───────────────────────────────────────────────
 //
@@ -40,28 +44,13 @@ const Irremplacable = ({ m }: { m: MaterielReel }) => (m.irremplacable
   ? <span className="materiel-reel-badge" title={m.irremplacable}>le papier ne le remplace pas</span>
   : null);
 
-/** Sa page sur Wikimedia Commons, dans le navigateur : l'original, son auteur, sa licence. */
-const ouvrirLaSource = (url: string) => { openUrl(url).catch(() => window.open(url, "_blank")); };
-
-/** La photo d'un matériel, en vignette ; un clic ouvre sa page d'origine. Rien s'il n'en a pas. */
-function PhotoDuMateriel({ id, taille }: { id: string; taille: number }) {
-  const p = photoDuMateriel(id);
-  if (!p) return null;
-  return (
-    <button type="button" className="materiel-photo" style={{ width: taille, height: taille }} onClick={() => ouvrirLaSource(p.page)}
-      title={`${p.titre}. ${creditMateriel(p)} Cliquer pour voir l'original.`}>
-      <img src={p.adresse} alt={p.titre} />
-    </button>
-  );
-}
-
 /** Une ligne du matériel, telle qu'une séquence ou un atelier la montre. */
 function LigneMateriel({ m, inv }: { m: MaterielReel; inv: Inventaire }) {
   const la = inv[m.id];
   return (
     <li className="materiel-reel-ligne">
       <span className={la?.a ? "materiel-reel-etat oui" : "materiel-reel-etat"}>{la?.a ? "✓" : "○"}</span>
-      <PhotoDuMateriel id={m.id} taille={44} />
+      <span className="materiel-picto"><PictoDuMateriel m={m} /></span>
       <span>
         <b>{m.nom}</b> <Irremplacable m={m} />
         <span className="meta" style={{ display: "block", fontSize: 12 }}>
@@ -122,49 +111,85 @@ export function MaterielDeLAtelier({ atelier }: { atelier: string }) {
   );
 }
 
-/** L'inventaire : tout le catalogue, par famille, à cocher, avec où c'est rangé. */
+/**
+ * Le tri d'un geste, par-dessus la liste : ce dont on n'a encore rien dit, carte par carte, comme au premier lancement
+ * (« il faut pouvoir retrouver la possibilité de swiper ici le matériel que je n'ai pas fait », 6 novembre 2026). La
+ * carte du parcours laisse les cartes partir au-delà de ses bords, ce que la fenêtre d'une liste couperait.
+ */
+function FenetreDuTri({ onFin }: { onFin: () => void }) {
+  const boite = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const avant = document.activeElement as HTMLElement | null;
+    boite.current?.focus();
+    const echap = (e: KeyboardEvent) => { if (e.key === "Escape") onFin(); };
+    window.addEventListener("keydown", echap);
+    return () => { window.removeEventListener("keydown", echap); avant?.focus?.(); };
+  }, [onFin]);
+  return createPortal(
+    <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onFin(); }}>
+      <div ref={boite} className="card premier-lancement-carte etape-materiel" role="dialog" aria-modal="true" aria-label="Trier le matériel" tabIndex={-1}>
+        <div className="premier-lancement-corps"><TriDuMateriel onSuite={onFin} /></div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+/** L'inventaire : tout le catalogue, par famille, à cocher, avec où c'est rangé ; ce qui justifie chaque objet est derrière son « ? ». */
 export function MaterielDeLaClasse({ onClose }: { onClose: () => void }) {
   const [inv, changer] = useInventaire();
+  const [tri, setTri] = React.useState(false);
+  const fermerLeTri = React.useCallback(() => setTri(false), []);
   const maj = (id: string, patch: Partial<{ a: boolean; lieu: string }>) =>
     changer({ ...inv, [id]: { a: inv[id]?.a ?? false, lieu: inv[id]?.lieu ?? "", ...patch } });
-  const possede = MATERIEL_REEL.filter((m) => inv[m.id]?.a).length;
+  const aTrier = cartesATrier(inv).length;
   return (
-    <Modal titre="🧰 Le matériel de la classe" onClose={onClose} large
-      footer={<button className="btn" onClick={onClose}>Fermer</button>}>
-      <p className="meta" style={{ fontSize: 13, lineHeight: 1.5, marginTop: 0 }}>
-        Le matériel réel que les programmes nomment. Cochez ce que votre classe possède, et dites où il est rangé :
-        les séances le rappellent — à sortir, ou à se procurer. {possede} sur {MATERIEL_REEL.length} dans la classe.
-      </p>
-      {FAMILLES_MATERIEL.map((f) => {
-        const liste = MATERIEL_REEL.filter((m) => m.famille === f.id);
-        if (!liste.length) return null;
-        return (
-          <section key={f.id} className="materiel-reel-famille">
-            <h4>{f.libelle}</h4>
-            {liste.map((m) => (
-              <div key={m.id} className="materiel-reel-fiche">
-                <PhotoDuMateriel id={m.id} taille={84} />
-                <label className="pb-coche">
-                  <input type="checkbox" checked={inv[m.id]?.a ?? false} onChange={(e) => maj(m.id, { a: e.target.checked })} />
-                  <span><b>{m.nom}</b></span>
-                </label>
-                <Irremplacable m={m} />
-                <div className="meta" style={{ fontSize: 12, lineHeight: 1.45, margin: "2px 0 0 26px" }}>
-                  {m.usage}{m.irremplacable ? ` ${m.irremplacable}` : ""}
-                  {m.imprime && <> Fabriquer en imprime {m.imprime.quoi} (atelier « {nomDeLAtelier(m.imprime.atelier)} »).</>}
-                  <span style={{ display: "block", opacity: .8 }}>📖 {m.source}</span>
-                  {photoDuMateriel(m.id) && <span className="materiel-credit">{creditMateriel(photoDuMateriel(m.id)!)}</span>}
+    <>
+      <Modal titre="🧰 Le matériel de la classe" onClose={onClose} large
+        footer={<>
+          {aTrier > 0 && <button className="btn primary" onClick={() => setTri(true)}>↔ Trier en balayant ({aTrier})</button>}
+          <button className="btn" onClick={onClose}>Fermer</button>
+        </>}>
+        <div className="materiel-reel-compte">
+          <span>{dansLaClasse(inv)} sur {MATERIEL_REEL.length} dans la classe</span>
+          <Aide titre="Le matériel de la classe" vers="droite">
+            <p>Le matériel réel que les programmes nomment. Cochez ce que votre classe possède, et dites où il est rangé : les séances le rappellent — à sortir, ou à se procurer.</p>
+            <p className="aide-source">Pictos : {CREDITS_PICTOGRAMMES[0].credit} ; ceux que la banque n'a pas sont dessinés pour Maitrize.</p>
+          </Aide>
+        </div>
+        {FAMILLES_MATERIEL.map((f) => {
+          const liste = MATERIEL_REEL.filter((m) => m.famille === f.id);
+          if (!liste.length) return null;
+          return (
+            <section key={f.id} className="materiel-reel-famille">
+              <h4>{f.libelle}</h4>
+              {liste.map((m) => (
+                <div key={m.id} className="materiel-reel-fiche">
+                  <label htmlFor={`materiel-${m.id}`} className="materiel-picto"><PictoDuMateriel m={m} /></label>
+                  <input id={`materiel-${m.id}`} type="checkbox" checked={inv[m.id]?.a ?? false} onChange={(e) => maj(m.id, { a: e.target.checked })} />
+                  <div className="materiel-reel-corps">
+                    <div className="materiel-reel-titre">
+                      <label htmlFor={`materiel-${m.id}`}><b>{m.nom}</b></label>{" "}
+                      <Irremplacable m={m} />{" "}
+                      <Aide titre={m.nom}>
+                        {m.irremplacable && <p>{m.irremplacable}</p>}
+                        {m.imprime && <p>Fabriquer en imprime {m.imprime.quoi} (atelier « {nomDeLAtelier(m.imprime.atelier)} »).</p>}
+                        <p className="aide-source">{m.source}</p>
+                      </Aide>
+                    </div>
+                    <div className="meta">{m.usage}</div>
+                    {inv[m.id]?.a && (
+                      <Input value={inv[m.id]?.lieu ?? ""} placeholder="Rangé où ? (ex. : armoire du fond, salle de sciences)"
+                        onChange={(e) => maj(m.id, { lieu: e.target.value })} aria-label={`Où est rangé : ${m.nom}`} />
+                    )}
+                  </div>
                 </div>
-                {inv[m.id]?.a && (
-                  <Input value={inv[m.id]?.lieu ?? ""} placeholder="Rangé où ? (ex. : armoire du fond, salle de sciences)"
-                    onChange={(e) => maj(m.id, { lieu: e.target.value })} style={{ margin: "4px 0 0 26px", width: "calc(100% - 26px)" }}
-                    aria-label={`Où est rangé : ${m.nom}`} />
-                )}
-              </div>
-            ))}
-          </section>
-        );
-      })}
-    </Modal>
+              ))}
+            </section>
+          );
+        })}
+      </Modal>
+      {tri && <FenetreDuTri onFin={fermerLeTri} />}
+    </>
   );
 }

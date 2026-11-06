@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" stroke-linejoin="round" stroke-linecap="round"><g transform="translate(122 264.0) scale(1.32)">
+<path d="M0 -150 C42 -150 66 -116 60 -84 C57 -64 50 -52 66 -28 C90 12 94 72 84 122 C78 146 42 150 0 150 C-42 150 -78 146 -84 122 C-94 72 -90 12 -66 -28 C-50 -52 -57 -64 -60 -84 C-66 -116 -42 -150 0 -150 Z" fill="#e3140d" stroke="#111" stroke-width="6.44"/>
+<ellipse cx="0" cy="-86" rx="40" ry="36" fill="#f9e3cf" stroke="#111" stroke-width="4.55"/>
+<circle cx="-14" cy="-92" r="5" fill="#111"/><circle cx="14" cy="-92" r="5" fill="#111"/>
+<circle cx="-24" cy="-76" r="7" fill="#f4a3a3"/><circle cx="24" cy="-76" r="7" fill="#f4a3a3"/>
+<path d="M-9 -72 Q0 -63 9 -72" fill="none" stroke="#111" stroke-width="3.41"/>
+<ellipse cx="0" cy="58" rx="56" ry="74" fill="#ffd500" stroke="#111" stroke-width="4.55"/>
+<circle cx="14.0" cy="58.0" r="10" fill="#ee6cb0"/><circle cx="4.3" cy="71.3" r="10" fill="#ee6cb0"/><circle cx="-11.3" cy="66.2" r="10" fill="#ee6cb0"/><circle cx="-11.3" cy="49.8" r="10" fill="#ee6cb0"/><circle cx="4.3" cy="44.7" r="10" fill="#ee6cb0"/><circle cx="0" cy="58" r="9" fill="#e3140d"/></g><g transform="translate(318 330.0) scale(0.88)">
+<path d="M0 -150 C42 -150 66 -116 60 -84 C57 -64 50 -52 66 -28 C90 12 94 72 84 122 C78 146 42 150 0 150 C-42 150 -78 146 -84 122 C-94 72 -90 12 -66 -28 C-50 -52 -57 -64 -60 -84 C-66 -116 -42 -150 0 -150 Z" fill="#3c9be0" stroke="#111" stroke-width="9.66"/>
+<ellipse cx="0" cy="-86" rx="40" ry="36" fill="#f9e3cf" stroke="#111" stroke-width="6.82"/>
+<circle cx="-14" cy="-92" r="5" fill="#111"/><circle cx="14" cy="-92" r="5" fill="#111"/>
+<circle cx="-24" cy="-76" r="7" fill="#f4a3a3"/><circle cx="24" cy="-76" r="7" fill="#f4a3a3"/>
+<path d="M-9 -72 Q0 -63 9 -72" fill="none" stroke="#111" stroke-width="5.11"/>
+<ellipse cx="0" cy="58" rx="56" ry="74" fill="#fff6c2" stroke="#111" stroke-width="6.82"/>
+<circle cx="14.0" cy="58.0" r="10" fill="#ee6cb0"/><circle cx="4.3" cy="71.3" r="10" fill="#ee6cb0"/><circle cx="-11.3" cy="66.2" r="10" fill="#ee6cb0"/><circle cx="-11.3" cy="49.8" r="10" fill="#ee6cb0"/><circle cx="4.3" cy="44.7" r="10" fill="#ee6cb0"/><circle cx="0" cy="58" r="9" fill="#e3140d"/></g><g transform="translate(440 381.0) scale(0.54)">
+<path d="M0 -150 C42 -150 66 -116 60 -84 C57 -64 50 -52 66 -28 C90 12 94 72 84 122 C78 146 42 150 0 150 C-42 150 -78 146 -84 122 C-94 72 -90 12 -66 -28 C-50 -52 -57 -64 -60 -84 C-66 -116 -42 -150 0 -150 Z" fill="#6cbe2e" stroke="#111" stroke-width="15.74"/>
+<ellipse cx="0" cy="-86" rx="40" ry="36" fill="#f9e3cf" stroke="#111" stroke-width="11.11"/>
+<circle cx="-14" cy="-92" r="5" fill="#111"/><circle cx="14" cy="-92" r="5" fill="#111"/>
+<circle cx="-24" cy="-76" r="7" fill="#f4a3a3"/><circle cx="24" cy="-76" r="7" fill="#f4a3a3"/>
+<path d="M-9 -72 Q0 -63 9 -72" fill="none" stroke="#111" stroke-width="8.33"/>
+<ellipse cx="0" cy="58" rx="56" ry="74" fill="#fff6c2" stroke="#111" stroke-width="11.11"/>
+<circle cx="14.0" cy="58.0" r="10" fill="#ee6cb0"/><circle cx="4.3" cy="71.3" r="10" fill="#ee6cb0"/><circle cx="-11.3" cy="66.2" r="10" fill="#ee6cb0"/><circle cx="-11.3" cy="49.8" r="10" fill="#ee6cb0"/><circle cx="4.3" cy="44.7" r="10" fill="#ee6cb0"/><circle cx="0" cy="58" r="9" fill="#e3140d"/></g></svg>

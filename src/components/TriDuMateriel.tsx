@@ -1,30 +1,19 @@
 import React from "react";
 import { api } from "../api";
 import { CLE_INVENTAIRE, EVT_INVENTAIRE, MATERIEL_REEL, ecrireInventaire, lireInventaire, type Inventaire, type MaterielReel } from "../materielDeClasse";
-import { creditMateriel, photoDuMateriel } from "../photosMateriel";
-import {
-  EMOJI_DE_LA_FAMILLE, PICTOS_DU_MATERIEL, SEUIL_DU_GESTE, cartesATrier, dansLaClasse, decider, nomDeLaFamille, reprendre, sensDuGeste,
-} from "../triDuMateriel";
+import { SEUIL_DU_GESTE, cartesATrier, dansLaClasse, decider, nomDeLaFamille, reprendre, sensDuGeste } from "../triDuMateriel";
+import { PictoDuMateriel } from "./PictoDuMateriel";
 
 // Le matériel de la classe, carte par carte : on la pousse à droite ou à gauche (à la souris, au doigt, à deux doigts
 // sur le pavé tactile), ou l'on touche ✓ et ✕, ou les flèches du clavier. Chaque décision s'enregistre aussitôt.
 
 interface Partante { cle: number; m: MaterielReel; sens: 1 | -1; dx: number; dy: number }
 
-/** L'image d'une carte : sa photo, sinon son picto, sinon l'emoji de sa famille. */
-function ImageDeLaCarte({ m, pictos }: { m: MaterielReel; pictos: Record<string, string> }) {
-  const photo = photoDuMateriel(m.id);
-  if (photo) return <img className="tri-photo" src={photo.adresse} alt={photo.titre} draggable={false} />;
-  if (pictos[m.id]) return <img className="tri-picto" src={pictos[m.id]} alt="" draggable={false} />;
-  return <span className="tri-emoji" aria-hidden="true">{EMOJI_DE_LA_FAMILLE[m.famille]}</span>;
-}
-
-function Carte({ m, pictos, oui, non }: { m: MaterielReel; pictos: Record<string, string>; oui?: number; non?: number }) {
-  const photo = photoDuMateriel(m.id);
+function Carte({ m, oui, non }: { m: MaterielReel; oui?: number; non?: number }) {
   return (
     <>
       <div className="tri-image">
-        <ImageDeLaCarte m={m} pictos={pictos} />
+        <PictoDuMateriel m={m} />
         <span className="tri-tampon oui" style={{ opacity: oui ?? 0 }}>Je l'ai</span>
         <span className="tri-tampon non" style={{ opacity: non ?? 0 }}>Je ne l'ai pas</span>
       </div>
@@ -32,7 +21,6 @@ function Carte({ m, pictos, oui, non }: { m: MaterielReel; pictos: Record<string
         <div className="tri-famille">{nomDeLaFamille(m.famille)}</div>
         <div className="tri-nom">{m.nom}</div>
         <div className="tri-usage">{m.usage}</div>
-        {photo && <div className="tri-credit">{creditMateriel(photo)}</div>}
       </div>
     </>
   );
@@ -46,7 +34,6 @@ export function TriDuMateriel({ onSuite }: { onSuite: () => void }) {
   const [possede, setPossede] = React.useState(0);
   const [glisse, setGlisse] = React.useState<{ dx: number; dy: number } | null>(null);
   const [partantes, setPartantes] = React.useState<Partante[]>([]);
-  const [pictos, setPictos] = React.useState<Record<string, string>>({});
   const compteur = React.useRef(0);
 
   React.useEffect(() => {
@@ -59,15 +46,6 @@ export function TriDuMateriel({ onSuite }: { onSuite: () => void }) {
     });
     return () => { vivant = false; };
   }, []);
-
-  // Les pictos des cartes qui arrivent, d'avance : la carte du dessous est déjà prête.
-  React.useEffect(() => {
-    for (const m of (cartes ?? []).slice(rang, rang + 4)) {
-      const id = PICTOS_DU_MATERIEL[m.id];
-      if (!id || pictos[m.id] || photoDuMateriel(m.id)) continue;
-      api.arasaacImage(id).then((b) => { setPictos((p) => ({ ...p, [m.id]: `data:image/png;base64,${b}` })); }).catch(() => {});
-    }
-  }, [cartes, rang]);
 
   const enregistrer = (inv: Inventaire) => {
     inventaire.current = inv;
@@ -165,19 +143,19 @@ export function TriDuMateriel({ onSuite }: { onSuite: () => void }) {
               const i = cartes.indexOf(m) - rang;
               return (
                 <div key={m.id} className="tri-carte dessous" aria-hidden="true" style={{ transform: `translateY(${i * 10 - part * 6}px) scale(${1 - i * 0.04 + part * 0.03})` }}>
-                  <Carte m={m} pictos={pictos} />
+                  <Carte m={m} />
                 </div>
               );
             })}
             <div key={haut.id} className={`tri-carte dessus${glisse ? " tenue" : ""}`} role="group" aria-label={haut.nom}
               onPointerDown={appui} onPointerMove={bouge} onPointerUp={lache} onPointerCancel={() => { depart.current = null; setGlisse(null); }}
               style={glisse ? { transform: `translate(${glisse.dx}px, ${glisse.dy * 0.35}px) rotate(${glisse.dx / 18}deg)` } : undefined}>
-              <Carte m={haut} pictos={pictos} oui={glisse && glisse.dx > 0 ? part : 0} non={glisse && glisse.dx < 0 ? part : 0} />
+              <Carte m={haut} oui={glisse && glisse.dx > 0 ? part : 0} non={glisse && glisse.dx < 0 ? part : 0} />
             </div>
             {partantes.map((p) => (
               <div key={p.cle} className="tri-carte partante" aria-hidden="true"
                 style={{ "--dx": `${p.dx}px`, "--dy": `${p.dy * 0.35}px`, "--r": `${p.dx / 18}deg`, "--sens": p.sens } as React.CSSProperties}>
-                <Carte m={p.m} pictos={pictos} oui={p.sens > 0 ? 1 : 0} non={p.sens < 0 ? 1 : 0} />
+                <Carte m={p.m} oui={p.sens > 0 ? 1 : 0} non={p.sens < 0 ? 1 : 0} />
               </div>
             ))}
           </div>

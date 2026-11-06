@@ -2,7 +2,6 @@ import React from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Modal } from "./ui";
 import { PHOTOS_PAYSAGES } from "../photosPaysages";
-import { PHOTOS_MATERIEL } from "../photosMateriel";
 
 // Ce que Maîtrize doit à d'autres : sa propre licence, celles des pictogrammes
 // qu'il télécharge, et le texte des licences des composants qu'il embarque
@@ -61,15 +60,8 @@ export function Licences() {
           ))}
         </ul>
         <p>
-          <b>Photographies du matériel de la classe</b>, venues de Wikimedia Commons et créditées sous chaque photo :
-        </p>
-        <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
-          {PHOTOS_MATERIEL.map((p) => (
-            <li key={p.id}>{p.titre} : {p.auteur}, {p.licence === "CC0" ? "domaine public (CC0)" : `licence ${p.licence}`} — {lien(p.page, "l'original")}.</li>
-          ))}
-        </ul>
-        <p>
-          <b>Fonds de carte</b> de l'histoire-géographie du cours moyen : {lien("https://www.naturalearthdata.com", "Natural Earth")}, domaine public.
+          <b>Pictos du matériel de la classe</b> : ceux que la banque ARASAAC n'a pas (abaque triangulaire, poupées gigognes, robot de sol…) sont dessinés pour Maitrize.
+          <br /><b>Fonds de carte</b> de l'histoire-géographie du cours moyen : {lien("https://www.naturalearthdata.com", "Natural Earth")}, domaine public.
           <br /><b>Transcription sur l'ordinateur</b> : modèles Whisper d'OpenAI, licence Apache 2.0, téléchargés depuis Hugging Face.
           <br /><b>Programmes et guides</b> : repris d'Éduscol et des textes officiels, avec leur source.
         </p>

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { ECRITURE_MS, TENUE_MS, avancementDeLEcriture, barresDuZ, estUnLancement, etatDeLaPage, tempsDuFond } from "./bienvenueDeroule";
+import {
+  ECRITURE_MS, PATIENCE_APRES_LE_CLIC_MS, SURVOL_AU_REPOS, avancementDeLEcriture, barresDuZ, estUnLancement, etatDeLaPage, suivreLaSouris, tempsDuFond, toucheQuiFaitEntrer,
+} from "./bienvenueDeroule";
 import { miseEnPage } from "./bienvenueRendu";
 
 const memoire = () => { const m = new Map<string, string>(); return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => { m.set(k, v); } }; };
@@ -42,28 +44,102 @@ describe("la page de bienvenue, à chaque lancement", () => {
     expect(tempsDuFond(ECRITURE_MS + 5000)).toBeCloseTo(tempsDuFond(ECRITURE_MS));
   });
 
-  const etat = (o: Partial<Parameters<typeof etatDeLaPage>[0]>) => etatDeLaPage({ ecoule: 0, debutEcriture: 100, appPrete: false, appPosee: false, passee: false, immobile: false, ...o });
+  const etat = (o: Partial<Parameters<typeof etatDeLaPage>[0]>) => etatDeLaPage({ ecoule: 0, debutEcriture: 100, appPrete: false, appPosee: false, passeeDepuis: null, immobile: false, ...o });
 
   it("ne charge l'application qu'une fois le titre écrit : rien ne le fait saccader", () => {
     expect(etat({ ecoule: 100 + ECRITURE_MS - 1 }).chargerLApp).toBe(false);
     expect(etat({ ecoule: 100 + ECRITURE_MS }).chargerLApp).toBe(true);
     // Toucher la page, ou une préparation qui n'aboutit pas : on n'attend pas.
-    expect(etat({ ecoule: 300, passee: true }).chargerLApp).toBe(true);
+    expect(etat({ ecoule: 300, passeeDepuis: 0 }).chargerLApp).toBe(true);
     expect(etat({ ecoule: 7000, debutEcriture: null }).chargerLApp).toBe(true);
     // Sans mouvement, rien à protéger.
     expect(etat({ ecoule: 110, immobile: true }).chargerLApp).toBe(true);
   });
 
-  it("ne s'efface que devant une application prête et posée, le titre vu ; toucher la fait partir dès que l'application est là", () => {
-    const fin = 100 + ECRITURE_MS + TENUE_MS;
-    expect(etat({ ecoule: fin, appPrete: true, appPosee: false }).partir).toBe(false);
-    expect(etat({ ecoule: fin - 1, appPrete: true, appPosee: true }).partir).toBe(false);
-    expect(etat({ ecoule: fin, appPrete: true, appPosee: true }).partir).toBe(true);
-    expect(etat({ ecoule: fin, appPrete: false, appPosee: false }).partir).toBe(false);
-    expect(etat({ ecoule: 500, passee: true, appPrete: false }).partir).toBe(false);
-    expect(etat({ ecoule: 500, passee: true, appPrete: true }).partir).toBe(true);
-    // Quoi qu'il arrive, elle s'en va.
-    expect(etat({ ecoule: 20_001, debutEcriture: null }).partir).toBe(true);
+  it("attend qu'on clique, sans limite, même l'application prête derrière elle", () => {
+    expect(etat({ ecoule: 100 + ECRITURE_MS + 60_000, appPrete: true, appPosee: true }).partir).toBe(false);
+    expect(etat({ ecoule: 3_600_000, appPrete: true, appPosee: true }).partir).toBe(false);
+    expect(etat({ ecoule: 3_600_000 }).partir).toBe(false);
+    expect(etat({ ecoule: 5000, passeeDepuis: 0, appPrete: true, appPosee: true }).partir).toBe(true);
+  });
+
+  it("après le clic, ne s'efface que devant une application prête et posée ; une application qui ne vient pas ne la retient pas", () => {
+    expect(etat({ ecoule: 500, passeeDepuis: 0 }).partir).toBe(false);
+    expect(etat({ ecoule: 500, passeeDepuis: 0, appPrete: true }).partir).toBe(false);
+    expect(etat({ ecoule: 500, passeeDepuis: 0, appPrete: true, appPosee: true }).partir).toBe(true);
+    expect(etat({ ecoule: 30_000, passeeDepuis: PATIENCE_APRES_LE_CLIC_MS }).partir).toBe(false);
+    expect(etat({ ecoule: 30_000, passeeDepuis: PATIENCE_APRES_LE_CLIC_MS + 1 }).partir).toBe(true);
+  });
+
+  it("fait entrer par une touche, sauf celles qui servent à autre chose", () => {
+    const touche = (key: string, o = {}) => toucheQuiFaitEntrer({ key, metaKey: false, ctrlKey: false, altKey: false, ...o });
+    expect(touche("Enter")).toBe(true);
+    expect(touche(" ")).toBe(true);
+    expect(touche("a")).toBe(true);
+    expect(touche("Shift")).toBe(false);
+    expect(touche("Tab")).toBe(false);
+    expect(touche("Tab", { metaKey: true })).toBe(false);
+    expect(touche("r", { metaKey: true })).toBe(false);
+    expect(touche("r", { ctrlKey: true })).toBe(false);
+  });
+});
+
+describe("la souris sur la page", () => {
+  const DT = 1000 / 60;
+  /** Jusqu'à ce que tout soit calme : combien d'images il a fallu, et où l'on en est. */
+  const jusquAuCalme = (depart: typeof SURVOL_AU_REPOS, cible: { x: number; y: number } | null) => {
+    let s = depart, images = 0;
+    for (; images < 600; images++) {
+      const suite = suivreLaSouris(s, cible, DT);
+      s = suite.survol;
+      if (suite.calme) break;
+    }
+    return { s, images };
+  };
+
+  it("fait naître la goutte sous la souris, sans venir d'ailleurs", () => {
+    const { survol } = suivreLaSouris({ ...SURVOL_AU_REPOS, x: 0.1, y: 0.1 }, { x: 0.8, y: 0.6 }, DT);
+    expect(survol.x).toBeCloseTo(0.8);
+    expect(survol.y).toBeCloseTo(0.6);
+    expect(survol.presence).toBeGreaterThan(0);
+    expect(survol.presence).toBeLessThan(0.2);
+  });
+
+  it("la suit avec un peu de retard, et s'y arrête", () => {
+    const sur = { x: 0.2, y: 0.2, presence: 1, elan: 0, temps: 0 };
+    const { survol } = suivreLaSouris(sur, { x: 0.8, y: 0.2 }, DT);
+    expect(survol.x).toBeGreaterThan(0.2);
+    expect(survol.x).toBeLessThan(0.5);
+    expect(survol.elan).toBeGreaterThan(0.1);
+    const { s, images } = jusquAuCalme(sur, { x: 0.8, y: 0.2 });
+    expect(images).toBeLessThan(300);
+    expect(s.x).toBe(0.8);
+    expect(s.elan).toBe(0);
+    expect(s.presence).toBe(1);
+  });
+
+  it("n'avance plus rien quand tout est calme : plus rien à dessiner", () => {
+    const { s } = jusquAuCalme({ x: 0.2, y: 0.2, presence: 1, elan: 0, temps: 0 }, { x: 0.8, y: 0.2 });
+    const { survol, calme } = suivreLaSouris(s, { x: 0.8, y: 0.2 }, DT);
+    expect(calme).toBe(true);
+    expect(survol).toEqual(s);
+  });
+
+  it("s'efface quand elle quitte la page, sans bouger de place", () => {
+    const { s } = jusquAuCalme({ x: 0.3, y: 0.4, presence: 1, elan: 0.5, temps: 0 }, null);
+    expect(s.presence).toBe(0);
+    expect(s.elan).toBe(0);
+    expect(s.x).toBe(0.3);
+    expect(s.y).toBe(0.4);
+  });
+
+  it("reste bornée, et une image en retard ne fait pas sauter la soie", () => {
+    let s = { x: 0, y: 0, presence: 1, elan: 0, temps: 0 };
+    for (let i = 0; i < 200; i++) s = suivreLaSouris(s, { x: i % 2, y: i % 2 }, DT).survol;
+    expect(s.elan).toBeLessThanOrEqual(1);
+    expect(s.presence).toBeLessThanOrEqual(1);
+    const apres = suivreLaSouris({ ...s, elan: 1 }, { x: s.x, y: s.y }, 60_000).survol;
+    expect(apres.temps - s.temps).toBeLessThan(0.12);
   });
 });
 
