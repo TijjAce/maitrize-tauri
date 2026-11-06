@@ -1523,6 +1523,18 @@ mark.surligne-eleve-nom { background: color-mix(in srgb, var(--eleve, var(--acce
 .atelier-quoi { font-size: 12.5px; color: var(--text-2); line-height: 1.5; }
 .atelier-besoin { font-size: 11px; color: var(--text-2); opacity: .8; margin-top: 4px; }
 .atelier-besoin::before { content: "▪ "; }
+/* La petite feuille à côté du texte : une page blanche, l'exemple en haut, quelle que soit sa longueur. */
+.ateliers:has(.atelier-avec-apercu) { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.atelier.atelier-avec-apercu { grid-template-columns: auto 1fr 72px; grid-template-rows: auto auto 1fr; }
+.atelier-avec-apercu .atelier-nom, .atelier-avec-apercu .atelier-quoi, .atelier-avec-apercu .atelier-besoin { grid-column: 2; }
+.atelier-apercu { grid-column: 3; grid-row: 1 / span 3; align-self: start; width: 72px; height: 102px; object-fit: contain; object-position: top;
+  background: #fff; border: 1px solid var(--border); border-radius: 3px; box-shadow: 0 1px 3px rgba(0, 0, 0, .14); }
+/* Celle d'un générateur de l'enseignant : la feuille elle-même, en réduction, à la largeur de l'aperçu d'un atelier. */
+.atelier-apercu-vif { display: block; overflow: hidden; }
+.atelier-apercu-page { display: block; width: 722px; padding: 16px; transform: scale(.0955); transform-origin: 0 0; pointer-events: none; }
+/* Un site de la Forge : hors de Maitrize, et il le dit. */
+.atelier.atelier-forge { grid-template-rows: auto auto 1fr; }
+.atelier-sortant { color: var(--text-2); font-weight: 400; }
 /* Une séquence toute faite, et non un support à fabriquer : sa carte a son propre fond, et le dit en toutes lettres. */
 .atelier.atelier-sequence { background: color-mix(in srgb, var(--panel) 80%, #0d9488);
   border-color: color-mix(in srgb, var(--border) 45%, #0d9488); }

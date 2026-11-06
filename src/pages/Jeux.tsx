@@ -1,5 +1,9 @@
 import React from "react";
 import { Aide } from "../components/Aide";
+import { CarteDeLaForge, CatalogueDeLaForge, PLIS_DE_LA_FORGE, SORTES_DE_FABRIQUER } from "../components/LaForge";
+import { ApercuDuGenerateur } from "../components/ApercuDuGenerateur";
+import { apercuDeLAtelier } from "../apercusDesAteliers";
+import { chercherDansLaForge } from "../ressourcesDeLaForge";
 import { listen } from "@tauri-apps/api/event";
 import { Page } from "../App";
 import { api, raccourci, EtatBanque, ImageFournie, PictoArasaac, OptionsJeu } from "../api";
@@ -204,16 +208,19 @@ const DIRE_LA_SORTE: Record<SorteDeFabrication, {
  * Le moment où il est rangé, l'étiquette de son groupe le dit ; le clic droit
  * le range dans un autre.
  */
-function CarteAtelier({ o, usage, creer, onOuvrir, onRanger }: {
+function CarteAtelier({ o, usage, creer, apercu, onOuvrir, onRanger }: {
   o: Outil; usage?: Usage; onOuvrir: () => void;
+  /** La petite feuille d'un générateur de l'enseignant, qui n'a pas de photo. */
+  apercu?: React.ReactNode;
   /** La carte qui crée un générateur, et non un atelier : elle se distingue des autres. */
   creer?: boolean;
   /** Ranger l'atelier dans un moment ; absent, le clic droit ne propose rien. */
   onRanger?: (usage: Usage) => void;
 }) {
   const besoin = [o.cycles, o.pictos ? "pictogrammes ARASAAC" : ""].filter(Boolean).join(" · ");
+  const photo = apercuDeLAtelier(o.id);
   return (
-    <div role="button" tabIndex={0} className={`atelier${o.sequence ? " atelier-sequence" : ""}${o.dossier ? " atelier-dossier" : ""}${creer ? " atelier-creer" : ""}`}
+    <div role="button" tabIndex={0} className={`atelier${o.sequence ? " atelier-sequence" : ""}${o.dossier ? " atelier-dossier" : ""}${creer ? " atelier-creer" : ""}${photo || apercu ? " atelier-avec-apercu" : ""}`}
       onClick={onOuvrir} title={o.dossier ? o.quoi : undefined}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOuvrir(); } }}
       onContextMenu={onRanger ? (e) => openCtx(e, USAGES.map((u) => ({
@@ -233,6 +240,7 @@ function CarteAtelier({ o, usage, creer, onOuvrir, onRanger }: {
           {besoin}
         </span>
       )}
+      {apercu ?? (photo && <img className="atelier-apercu" src={photo} alt="" loading="lazy" decoding="async" draggable={false} />)}
     </div>
   );
 }
@@ -267,6 +275,7 @@ function CartesDesGenerateurs({ generateurs, onOuvrir }: { generateurs: Generate
           <div className="ateliers-moment" title={`${u.quand} — ${u.aide}`}>{u.ico} {u.nom}</div>
           {liste.map((g) => (
             <CarteAtelier key={g.id} o={{ id: "perso", nom: g.nom, icone: g.icone, quoi: g.quoi || g.demande, cycles: g.classe || undefined }} usage={g.moment}
+              apercu={g.blocs.length > 0 ? <ApercuDuGenerateur g={g} /> : undefined}
               onOuvrir={() => onOuvrir(g)}
               onRanger={(m) => { if (m !== g.moment) void enregistrerGenerateur({ ...g, moment: m }); }} />
           ))}
@@ -335,7 +344,7 @@ export default function Jeux() {
   const plier = (cle: string, plie: boolean) => setPlis(plie ? [...new Set([...plis, cle])] : plis.filter((x) => x !== cle));
   // « Tout replier » vaut pour la lecture du moment : les familles et leurs domaines, ou les groupes de séquences.
   const sectionsLues = lecture === "sequences" ? ["sequences:ecole", "sequences:maternelle"]
-      : familles.flatMap((f) => [`famille:${f.id}`, ...(partiesDeLaFamille(f) ?? []).map((p) => `famille:${f.id}:${p.id}`)]);
+      : [...familles.flatMap((f) => [`famille:${f.id}`, ...(partiesDeLaFamille(f) ?? []).map((p) => `famille:${f.id}:${p.id}`)]), ...(vue === "support" ? PLIS_DE_LA_FORGE : [])];
   const toutPlie = sectionsLues.every((c) => plis.includes(c));
   const setOnglet = React.useCallback((o: Onglet | "") => {
     setOngletBrut(o);
@@ -395,6 +404,8 @@ export default function Jeux() {
   // Les générateurs de l'enseignant répondent aussi à la recherche : par leur titre, leur phrase, ce qu'il avait demandé.
   const plie = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const generateursTrouves = recherche.trim() ? generateurs.filter((g) => plie(`${g.nom} ${g.quoi} ${g.demande}`).includes(plie(recherche.trim()))) : [];
+  // Les sites de la Forge répondent aussi, à part : ils ne sont pas dans Maitrize.
+  const forgeTrouvee = recherche.trim() && vue === "support" ? chercherDansLaForge(recherche, SORTES_DE_FABRIQUER) : [];
 
   const boutonDuMateriel = (
     <button className="btn ghost sm" onClick={() => setInventaireOuvert(true)}
@@ -424,6 +435,12 @@ export default function Jeux() {
         </div>
         <button type="button" className="btn ghost sm" style={{ marginTop: 14 }} onClick={() => { setSorte("support"); setRangement("sequences"); }}
           title="À part des supports : des séquences prêtes, leurs séances et toutes leurs feuilles">📚 Séquences toutes faites</button>
+        <button type="button" className="btn ghost sm" style={{ marginTop: 14, marginLeft: 8 }}
+          onClick={() => {
+            setSorte("support"); setRangement("famille"); plier("forge", false);
+            window.setTimeout(() => document.getElementById("famille-forge")?.scrollIntoView({ block: "start" }), 120);
+          }}
+          title="Des sites libres d'enseignants, hors de Maitrize : ceux qui créent de vraies feuilles, ceux qui fonctionnent au tableau">🌐 Sur la Forge</button>
       </Page>
     );
   }
@@ -492,17 +509,23 @@ export default function Jeux() {
           ))
         ) : lecture === "competence" ? (
           <CatalogueParCompetence recherche={recherche} onOuvrir={setOnglet} onOuvrirGenerateur={(id) => ouvrirGenerateur(generateurs.find((g) => g.id === id) ?? null)} />
-        ) : recherche.trim() ? (
-          trouves.length || (generateursTrouves.length && vue === "support") ? (<>
+        ) : recherche.trim() ? (<>
+          {trouves.length || (generateursTrouves.length && vue === "support") ? (<>
             {trouves.length > 0 && cartes(trouves)}
             {generateursTrouves.length > 0 && vue === "support" && <div className="ateliers" style={{ marginTop: 12 }}><CartesDesGenerateurs generateurs={generateursTrouves} onOuvrir={ouvrirGenerateur} /></div>}
           </>) : trouvesAilleurs.length ? (<>
             <div className="meta" style={{ margin: "0 0 8px 2px" }}>{`${dire.aucun} ; ailleurs :`}</div>
             <div className="ateliers">{trouvesAilleurs.map(({ o, s }) => <CarteAtelier key={o.id} o={o} usage={usages[o.id]} onOuvrir={() => { setSorte(s); setOnglet(o.id); }} />)}</div>
-          </>) : (
+          </>) : forgeTrouvee.length ? null : (
             <Empty icone="🔍" titre={dire.aucun} sous={dire.essayez} />
-          )
-        ) : familles.map((f) => {
+          )}
+          {forgeTrouvee.length > 0 && (
+            <div className="ateliers" style={{ marginTop: 12 }}>
+              <div className="ateliers-moment">🌐 Sur la Forge</div>
+              {forgeTrouvee.map((r) => <CarteDeLaForge key={r.id} r={r} />)}
+            </div>
+          )}
+        </>) : (<>{familles.map((f) => {
           // Le français en trois parties, les mathématiques par domaine du programme ; chaque partie se plie aussi. Dans chacune, les ateliers vont par moment.
           const parties = partiesDeLaFamille(f);
           return (
@@ -524,6 +547,8 @@ export default function Jeux() {
             </section>
           );
         })}
+        {vue === "support" && <CatalogueDeLaForge plis={plis} plier={plier} />}
+        </>)}
       </Page>
     );
   }

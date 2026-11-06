@@ -62,6 +62,8 @@ export function Licences() {
         <p>
           <b>Pictos du matériel de la classe</b> : ceux que la banque ARASAAC n'a pas (abaque triangulaire, poupées gigognes, robot de sol…) sont dessinés pour Maitrize.
           <br /><b>Fiches de l'Assistant</b> : d'après la méthode M2PA (Ryckebusch, Carra et Cadalen, 2026), {lien("https://m2pa.forge.apps.education.fr", "m2pa.forge.apps.education.fr")}, reprise avec nos mots.
+          <br /><b>Vignettes de Fabriquer</b> : les photos des feuilles d'exemple, dont beaucoup montrent des pictogrammes ARASAAC, sous le crédit et la licence ci-dessus.
+          <br /><b>La Forge</b> (Ressources, Fabriquer) : de simples liens vers des sites qui restent à leurs auteurs, sous leur licence. Liste d'après {lien("https://ressourcerie.forge.apps.education.fr/", "la Ressourcerie")}, Licence Ouverte 2.0, lue le 6 novembre 2026.
           <br /><b>Fonds de carte</b> de l'histoire-géographie du cours moyen : {lien("https://www.naturalearthdata.com", "Natural Earth")}, domaine public.
           <br /><b>Transcription sur l'ordinateur</b> : modèles Whisper d'OpenAI, licence Apache 2.0, téléchargés depuis Hugging Face.
           <br /><b>Programmes et guides</b> : repris d'Éduscol et des textes officiels, avec leur source.

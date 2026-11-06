@@ -10,6 +10,8 @@ import { ProgrammesPourLeCoffre } from "../components/CiterCompetences";
 import { EVT_PDF_COFFRE } from "../components/CommandPalette";
 import { LivresDeReference } from "../components/LivresDeReference";
 import { QuizDesGuides } from "../components/QuizDesGuides";
+import { LaForge } from "../components/LaForge";
+import { RESSOURCES_DE_LA_FORGE } from "../ressourcesDeLaForge";
 import { LIVRES } from "../livresDeReference";
 import eduscol from "../data/eduscol.json";
 import videos from "../data/videos.json";
@@ -27,7 +29,7 @@ const ouvrir = (url: string) => { openUrl(url).catch(() => window.open(url, "_bl
  * enregistrerait une page HTML dans une liste de PDF.
  */
 const estPdf = (url: string) => /\.pdf($|\?)/i.test(url) || /\/download($|\?)/i.test(url);
-const TABS = ["docs", "academies", "lectures", "outils", "quiz", "videos", "coffre"] as const;
+const TABS = ["docs", "academies", "lectures", "outils", "forge", "quiz", "videos", "coffre"] as const;
 
 // Couleur stable par catégorie (documents & outils).
 const COULEUR_CAT: Record<string, string> = {
@@ -60,13 +62,14 @@ export default function Ressources() {
     return () => window.removeEventListener(EVT_PDF_COFFRE, ouvrirLePdf);
   }, []);
   return (
-    <Page titre="Ressources" sous="Éduscol, publications académiques, lectures à l'école, outils, quiz des guides, vidéothèque et coffre-fort de PDF">
+    <Page titre="Ressources" sous="Éduscol, publications académiques, lectures à l'école, outils, la Forge, quiz des guides, vidéothèque et coffre-fort de PDF">
       <div className="onglets">
         <button className={onglet === "docs" ? "active" : ""} onClick={() => setOnglet("docs")}>Documents Éduscol ({(eduscol as Doc[]).length})</button>
         <button className={onglet === "academies" ? "active" : ""} onClick={() => setOnglet("academies")}>Documents académiques ({(academies as Doc[]).length})</button>
         <button className={onglet === "lectures" ? "active" : ""} onClick={() => setOnglet("lectures")}
           title="Les albums et les livres des listes de référence d'Éduscol, cycles 1, 2 et 3">Lectures à l'école ({LIVRES.length})</button>
         <button className={onglet === "outils" ? "active" : ""} onClick={() => setOnglet("outils")}>Outils de l'enseignant ({(outils as Outil[]).length})</button>
+        <button className={onglet === "forge" ? "active" : ""} onClick={() => setOnglet("forge")}>La Forge ({RESSOURCES_DE_LA_FORGE.length})</button>
         <button className={onglet === "quiz" ? "active" : ""} onClick={() => setOnglet("quiz")}
           title="L'IA vous teste sur un guide d'Éduscol, d'après ses propres pages">Quiz des guides</button>
         <button className={onglet === "videos" ? "active" : ""} onClick={() => setOnglet("videos")}>Vidéothèque ({(videos as Vid[]).length})</button>
@@ -75,7 +78,7 @@ export default function Ressources() {
       {onglet === "docs" ? <Documents docs={eduscol as Doc[]} placeholder="Rechercher un document Éduscol…" />
         : onglet === "academies" ? <Documents docs={academies as Doc[]} placeholder="Rechercher un document, une rubrique, une académie…" />
         : onglet === "lectures" ? <LivresDeReference onDemande={() => nav("/assistant")} />
-        : onglet === "outils" ? <Outils /> : onglet === "quiz" ? <QuizDesGuides guides={eduscol as Doc[]} /> : onglet === "videos" ? <Videos />
+        : onglet === "outils" ? <Outils /> : onglet === "forge" ? <LaForge /> : onglet === "quiz" ? <QuizDesGuides guides={eduscol as Doc[]} /> : onglet === "videos" ? <Videos />
         : <CoffreFort demande={pdfDemande} demandeTraitee={() => setPdfDemande("")} />}
     </Page>
   );
