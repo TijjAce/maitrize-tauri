@@ -3,8 +3,8 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { AGENTS_COUPES, api, texteErreur, type DocumentCoffre, ChatMessage, Sequence, Seance, PiloteConversation, CYCLES, MATIERES, MODELES_MISTRAL, MODELE_DEFAUT, nouvelleSequence, nouvelleSeance, couleurPourMatiere, newId, nowIso } from "../api";
-import { Modal, Field, Input, Select, Demander, useAsync } from "../components/ui";
+import { AGENTS_COUPES, api, texteErreur, type DocumentCoffre, ChatMessage, Sequence, Seance, PiloteConversation, MODELES_MISTRAL, MODELE_DEFAUT, nouvelleSeance, newId, nowIso } from "../api";
+import { Modal, Field, Select, Demander, useAsync } from "../components/ui";
 import { construireContexteIA } from "../contexteIA";
 import { masquerSurLesEleves, nomsAMasquer, pourLaVoix } from "../nomsAMasquer";
 import { pseudonymiser, pseudonymiserTout, restaurer } from "../confidentialite";
@@ -75,7 +75,6 @@ export default function Assistant() {
   const [images, setImages] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [hasKey, setHasKey] = React.useState<boolean | null>(null);
-  const [showGen, setShowGen] = React.useState(false);
   const [showModif, setShowModif] = React.useState(false);
   const [showPictos, setShowPictos] = React.useState(false);
   const [showMemoire, setShowMemoire] = React.useState(false);
@@ -123,12 +122,6 @@ export default function Assistant() {
   const basculerContexte = () => {
     setContexteActif((v) => { const n = !v; api.settingSet("iaContexte", n ? "1" : "0"); return n; });
   };
-  // Action « Générer une séquence » déclenchée depuis la palette ⌘K.
-  React.useEffect(() => {
-    const h = () => setShowGen(true);
-    window.addEventListener("maitrize:generer-sequence", h);
-    return () => window.removeEventListener("maitrize:generer-sequence", h);
-  }, []);
 
   // Une question préparée ailleurs — un livre des listes de référence — vient
   // dans la zone de saisie, à la suite de ce qu'on avait commencé : on la
@@ -899,14 +892,12 @@ export default function Assistant() {
           title="Chercher un album ou un livre dans les listes de référence d'Éduscol (cycles 1, 2 et 3), et en parler à l'assistant">
           📚 Livres</button>
         <button className="btn sm" onClick={() => setShowModif(true)}>✏️ Modifier une séquence</button>
-        <button className="btn sm primary" onClick={() => setShowGen(true)}>✨ Générer une séquence</button>
       </div>
       {aRenommer && (
         <Demander titre="Renommer la conversation" label="Titre" valeur={aRenommer.titre}
           onClose={() => setARenommer(null)}
           onValider={(v) => { const c = aRenommer; setARenommer(null); appliquerRenommage(c, v); }} />
       )}
-      {showGen && <GenerateurSequence model={model} onClose={() => setShowGen(false)} />}
       {showModif && <ModifierSequence model={model} onClose={() => setShowModif(false)} />}
       {showPictos && <TrouverUnPicto onClose={() => setShowPictos(false)} />}
       {showMemoire && <MemoireAssistant onClose={() => setShowMemoire(false)} />}
@@ -1091,85 +1082,6 @@ function ChoixDeLaSequence({ onClose, onChoisir }: { onClose: () => void; onChoi
           {(sequences ?? []).map((s: Sequence) => <option key={s.id} value={s.id}>{s.titre || "Sans titre"} ({s.matiere}, P{s.periode})</option>)}
         </Select>
       </Field>
-    </Modal>
-  );
-}
-
-// ── Générateur de séquence (IA → vraies données) ───────────────────────────
-function GenerateurSequence({ model, onClose }: { model: string; onClose: () => void }) {
-  const nav = useNavigate();
-  const [sujet, setSujet] = React.useState("");
-  const [matiere, setMatiere] = React.useState("Français");
-  const [cycle, setCycle] = React.useState("Cycle 2");
-  const [niveau, setNiveau] = React.useState("CP");
-  const [nb, setNb] = React.useState(4);
-  const [busy, setBusy] = React.useState(false);
-  const [erreur, setErreur] = React.useState("");
-
-  const generer = async () => {
-    if (!sujet.trim()) return;
-    setBusy(true); setErreur("");
-    const prompt =
-      `Génère une séquence pédagogique pour le primaire français.\n` +
-      `Sujet : ${sujet}\nMatière : ${matiere}\nCycle : ${cycle}\nNiveau : ${niveau}\nNombre de séances : ${nb}\n\n` +
-      `Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :\n` +
-      `{"titre":"...","objectifs":"...","seances":[{"titre":"...","objectifs":"...","deroulement":"...","materiel":"...","duree":45}]}\n` +
-      `L'objectif de chaque séance commence par « ${DEBUT_OBJECTIF_SEANCE} » et dit ce qu'ils sauront faire. ` +
-      `Le déroulement doit être concret (phases, consignes). duree en minutes.`;
-    try {
-      const masque = pseudonymiser(prompt, await nomsAMasquer());
-      const rep = restaurer(await api.mistralChat(
-        [{ role: "system", content: "Tu génères des séquences pédagogiques. Tu réponds en JSON strict uniquement." },
-         { role: "user", content: masque.texte }],
-        model,
-      ), masque.table).texte;
-      const data = extraireJson(rep);
-      const seq = {
-        ...nouvelleSequence(),
-        titre: data.titre || sujet,
-        matiere, cycle,
-        objectifs: data.objectifs || "",
-        couleur: couleurPourMatiere(matiere),
-      };
-      await api.sequenceSave(seq);
-      const seances = Array.isArray(data.seances) ? data.seances : [];
-      for (let i = 0; i < seances.length; i++) {
-        const s = seances[i];
-        await api.seanceSave({
-          ...nouvelleSeance(seq.id, i + 1),
-          titre: s.titre || `Séance ${i + 1}`,
-          objectifs: s.objectifs || "",
-          deroulement: s.deroulement || "",
-          materiel: s.materiel || "",
-          duree: typeof s.duree === "number" ? s.duree : 45,
-        });
-      }
-      onClose();
-      nav(`/sequences/${seq.id}`);
-    } catch (e: any) {
-      setErreur("Échec : " + String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Modal titre="✨ Générer une séquence" onClose={onClose}
-      footer={<>
-        <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" disabled={busy || !sujet.trim()} onClick={generer}>{busy ? "Génération…" : "Générer"}</button>
-      </>}>
-      <Field label="Sujet / thème"><Input autoFocus placeholder="ex. Les fractions, Le cycle de l'eau…" value={sujet} onChange={(e) => setSujet(e.target.value)} /></Field>
-      <div className="row">
-        <Field label="Matière"><Select value={matiere} onChange={(e) => setMatiere(e.target.value)}>{MATIERES.map((m) => <option key={m}>{m}</option>)}</Select></Field>
-        <Field label="Cycle"><Select value={cycle} onChange={(e) => setCycle(e.target.value)}>{CYCLES.map((c) => <option key={c}>{c}</option>)}</Select></Field>
-      </div>
-      <div className="row">
-        <Field label="Niveau"><Input value={niveau} onChange={(e) => setNiveau(e.target.value)} /></Field>
-        <Field label="Nombre de séances"><Input type="number" min={1} max={12} value={nb} onChange={(e) => setNb(+e.target.value)} /></Field>
-      </div>
-      {erreur && <div style={{ color: "var(--danger)", fontSize: 13 }}>{erreur}</div>}
-      <p style={{ color: "var(--text-2)", fontSize: 12.5 }}>L'IA crée une vraie séquence avec ses séances, que vous pourrez ensuite modifier.</p>
     </Modal>
   );
 }

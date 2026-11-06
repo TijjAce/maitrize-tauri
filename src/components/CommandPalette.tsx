@@ -445,7 +445,6 @@ export function CommandPalette() {
   // Actions du natif portées (navigation, actions, réponses directes).
   const ACTIONS: Cmd[] = [
     { id: "a-newseq", ico: "➕", label: "Nouvelle séquence", sous: "Action · créer", famille: "action", run: goAction("/plan", "maitrize:nouvelle-sequence") },
-    { id: "a-genia", ico: "✨", label: "Générer une séquence (IA)", sous: "Action · assistant", famille: "action", run: goAction("/assistant", "maitrize:generer-sequence") },
     { id: "a-rituel", ico: "🔁", label: "Nouveau rituel", sous: "Action · cahier journal", famille: "action", run: goAction("/planning", EVT_NOUVEAU_RITUEL) },
     { id: "a-retard", ico: "⏰", label: "En retard : des fiches d'autonomie pour chaque élève", sous: "Action · planning · à son niveau, sur ses créneaux du jour, au cahier journal", famille: "action", run: goAction("/planning", EVT_EN_RETARD) },
     { id: "a-assist", ico: "🪄", label: "Ouvrir l'assistant IA", sous: "Action", famille: "action", run: goNav("/assistant") },

@@ -161,7 +161,6 @@ export default function Dashboard() {
           <h3 style={{ marginTop: 0 }}>⚡ Actions rapides</h3>
           <div style={{ display: "grid", gap: 8 }}>
             <button className="btn" onClick={() => action("/plan", "maitrize:nouvelle-sequence")}>➕ Nouvelle séquence</button>
-            <button className="btn" onClick={() => action("/assistant", "maitrize:generer-sequence")}>✨ Générer une séquence (IA)</button>
             <button className="btn" onClick={() => nav("/eleves")}>👧 Mes élèves</button>
             <button className="btn" onClick={() => window.dispatchEvent(new Event("maitrize:palette"))}>{raccourci("K")} Toutes les actions…</button>
           </div>

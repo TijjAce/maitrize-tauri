@@ -53,7 +53,7 @@ describe("le classement", () => {
   it("le titre exact d'une donnée passe devant une action vaguement proche", () => {
     // Le défaut d'avant : les actions passaient toujours en premier.
     const l = classer([
-      cmd("action", "Générer une séquence (IA)", "Action · assistant"),
+      cmd("action", "Nouvelle séquence", "Action · créer"),
       cmd("seq", "Les fractions", "Séquence", true),
     ], "les fractions");
     expect(l[0].id).toBe("seq");
