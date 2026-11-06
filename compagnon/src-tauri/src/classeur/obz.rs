@@ -7,7 +7,7 @@
 //! l'application, que l'app Fichiers montre : de là, il part par AirDrop vers
 //! l'ordinateur.
 
-use crate::stockage::ecrire_sur;
+use super::stockage::ecrire_sur;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use std::collections::HashMap;
 use std::io::{Cursor, Read, Write};

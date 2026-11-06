@@ -4,6 +4,7 @@ import { dupliquer, imagesDuClasseur, nouveauClasseur, type Classeur } from "./m
 import { depuisObz, versObz } from "./obz";
 import { enregistrerObz, garderClasseur, garderImage, lireImages, ouvrirObz, supprimerClasseur } from "./pont";
 import { Fenetre, annoncer, confirmer, saisir } from "./Fenetre";
+import { FenetreDesReglages, RoueDesReglages } from "./Reglages";
 
 // ── Mes classeurs ─────────────────────────────────────────────────────────
 //
@@ -29,6 +30,7 @@ const lireFichier = (f: File): Promise<string> => new Promise((ok, ko) => {
 export function Bibliotheque({ classeurs, onOuvrir, onRecharger }: {
   classeurs: Classeur[] | null; onOuvrir: (c: Classeur) => void; onRecharger: () => Promise<void>;
 }) {
+  const [reglages, setReglages] = React.useState(false);
   const [occupe, setOccupe] = React.useState(false);
   const [credits, setCredits] = React.useState(false);
   const [nouveau, setNouveau] = React.useState(false);
@@ -105,6 +107,7 @@ export function Bibliotheque({ classeurs, onOuvrir, onRecharger }: {
   return (
     <div className="bibliotheque">
       <div className="bibliotheque-tete">
+        <RoueDesReglages onClick={() => setReglages(true)} />
         <h1>Mes classeurs</h1>
         <span className="espace" />
         <button className="bouton" disabled={occupe} onClick={() => fichier.current?.click()}>Reprendre un classeur (.obz)</button>
@@ -113,6 +116,8 @@ export function Bibliotheque({ classeurs, onOuvrir, onRecharger }: {
         <input ref={fichier} type="file" accept=".obz,application/zip,application/octet-stream" hidden
           onChange={(e) => { void importer(e.target.files?.[0]); e.target.value = ""; }} />
       </div>
+
+      {reglages && <FenetreDesReglages onFermer={() => setReglages(false)} />}
 
       {classeurs === null ? null : classeurs.length === 0
         ? <p className="vide-bibliotheque">Aucun classeur sur cet appareil.</p>

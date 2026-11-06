@@ -1,7 +1,0 @@
-{
-  "$schema": "../gen/schemas/mobile-schema.json",
-  "identifier": "default",
-  "description": "Ce dont la page a besoin : ses commandes, et la voix de l'appareil.",
-  "windows": ["main"],
-  "permissions": ["core:default", "parole:default"]
-}

@@ -4,419 +4,64 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>Dictaphone — Maitrize</title>
+<title>Maitrize</title>
+<!--
+  L'entrée de l'application : « au lancement du compagnon pour la première fois,
+  choisir si on est en mode élève ou en mode enseignant » (l'enseignant, 6 novembre
+  2026). Le choix fait, cette page ne fait que mener à la bonne.
+-->
 <style>
- :root {
-   --bg:#f2f2f7; --card:#fff; --txt:#111827; --txt2:#6b7280; --txt3:#9ca3af;
-   --sep:rgba(17,24,39,.08); --champ:#f2f2f7; --barre:rgba(249,249,251,.94);
-   --rouge:#e5484d; --rouge-doux:rgba(229,72,77,.12);
-   --vert:#16a34a; --orange:#d97706; --orange-doux:rgba(217,119,6,.13);
-   --ombre:0 1px 2px rgba(17,24,39,.05), 0 6px 20px rgba(17,24,39,.06);
-   /* La couleur de l'application, au choix dans les réglages : l'indigo d'abord. Le texte et les fonds
-      d'accent ont leur teinte de jour et leur teinte de nuit. */
-   --acc:#6366f1; --acc-fonce:#4f46e5; --acc-clair:#818cf8; --acc-ombre:rgba(79,70,229,.38);
-   --acc-txt-jour:#4f46e5; --acc-txt-nuit:#a5b4fc; --acc-doux-jour:rgba(99,102,241,.12); --acc-doux-nuit:rgba(129,140,248,.16);
-   --acc-txt:var(--acc-txt-jour); --acc-doux:var(--acc-doux-jour);
- }
- :root[data-couleur="bleu"] { --acc:#2563eb; --acc-fonce:#1d4ed8; --acc-clair:#60a5fa; --acc-ombre:rgba(29,78,216,.36);
-   --acc-txt-jour:#1d4ed8; --acc-txt-nuit:#93c5fd; --acc-doux-jour:rgba(37,99,235,.12); --acc-doux-nuit:rgba(96,165,250,.16); }
- :root[data-couleur="sarcelle"] { --acc:#0f766e; --acc-fonce:#115e59; --acc-clair:#2dd4bf; --acc-ombre:rgba(17,94,89,.36);
-   --acc-txt-jour:#0f766e; --acc-txt-nuit:#5eead4; --acc-doux-jour:rgba(15,118,110,.12); --acc-doux-nuit:rgba(45,212,191,.16); }
- :root[data-couleur="vert"] { --acc:#047857; --acc-fonce:#065f46; --acc-clair:#34d399; --acc-ombre:rgba(6,95,70,.36);
-   --acc-txt-jour:#047857; --acc-txt-nuit:#6ee7b7; --acc-doux-jour:rgba(4,120,87,.12); --acc-doux-nuit:rgba(52,211,153,.16); }
- :root[data-couleur="violet"] { --acc:#9333ea; --acc-fonce:#7e22ce; --acc-clair:#c084fc; --acc-ombre:rgba(126,34,206,.36);
-   --acc-txt-jour:#7e22ce; --acc-txt-nuit:#d8b4fe; --acc-doux-jour:rgba(147,51,234,.12); --acc-doux-nuit:rgba(192,132,252,.16); }
- :root[data-couleur="rose"] { --acc:#db2777; --acc-fonce:#be185d; --acc-clair:#f472b6; --acc-ombre:rgba(190,24,93,.34);
-   --acc-txt-jour:#be185d; --acc-txt-nuit:#f9a8d4; --acc-doux-jour:rgba(219,39,119,.12); --acc-doux-nuit:rgba(244,114,182,.16); }
- :root[data-couleur="graphite"] { --acc:#475569; --acc-fonce:#334155; --acc-clair:#94a3b8; --acc-ombre:rgba(51,65,85,.34);
-   --acc-txt-jour:#334155; --acc-txt-nuit:#cbd5e1; --acc-doux-jour:rgba(71,85,105,.12); --acc-doux-nuit:rgba(148,163,184,.18); }
- /* Le thème sombre : celui du téléphone, à moins que les réglages n'en choisissent un. */
- @media (prefers-color-scheme: dark) {
-   :root:not([data-theme="clair"]) {
-     --bg:#0b0c10; --card:#17191f; --txt:#f3f4f6; --txt2:#9ca3af; --txt3:#6b7280;
-     --acc-txt:var(--acc-txt-nuit); --acc-doux:var(--acc-doux-nuit);
-     --sep:rgba(255,255,255,.08); --champ:#0f1116; --barre:rgba(18,19,24,.94);
-     --rouge-doux:rgba(229,72,77,.18); --orange-doux:rgba(217,119,6,.2);
-     --ombre:none;
-   }
- }
- :root[data-theme="sombre"] {
-   --bg:#0b0c10; --card:#17191f; --txt:#f3f4f6; --txt2:#9ca3af; --txt3:#6b7280;
-   --acc-txt:var(--acc-txt-nuit); --acc-doux:var(--acc-doux-nuit);
-   --sep:rgba(255,255,255,.08); --champ:#0f1116; --barre:rgba(18,19,24,.94);
-   --rouge-doux:rgba(229,72,77,.18); --orange-doux:rgba(217,119,6,.2);
-   --ombre:none;
- }
- * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
- [hidden] { display:none !important; }
- /* Pas de zoom, ni au pincement ni au double appui : l'écran est fait pour le pouce. */
- html { -webkit-text-size-adjust:100%; touch-action:manipulation; overflow-x:hidden; }
- body { touch-action:manipulation; overflow-x:hidden; }
- body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-   background:var(--bg); color:var(--txt); -webkit-font-smoothing:antialiased; }
- button { font-family:inherit; cursor:pointer; }
- button:disabled { opacity:.45; cursor:default; }
- .ic { width:20px; height:20px; flex:none; display:block; }
- .ic.petit { width:16px; height:16px; }
-
- /* L'en-tête : le nom, et par où partirait une dictée maintenant. */
- header { display:flex; align-items:center; justify-content:space-between; gap:12px;
-   padding:calc(12px + env(safe-area-inset-top)) 20px 4px; max-width:520px; margin:0 auto; }
- h1 { margin:0; font-size:30px; font-weight:800; letter-spacing:-.02em; }
- .liaison { display:inline-flex; align-items:center; gap:6px; padding:7px 12px; border-radius:99px;
-   background:var(--card); box-shadow:var(--ombre); font-size:13.5px; font-weight:600; color:var(--txt2); }
- .pt { width:8px; height:8px; border-radius:50%; flex:none; background:var(--txt3); display:inline-block; }
- .ok .pt, .pt.ok { background:var(--vert); }
- .loin .pt, .pt.loin { background:var(--orange); }
-
- main { padding:0 16px calc(96px + env(safe-area-inset-bottom)); max-width:520px; margin:0 auto; }
- main > .titre:first-child { margin-top:14px; }
- .intro { margin:8px 4px 0; font-size:14.5px; line-height:1.45; color:var(--txt2); }
-
- /* Les onglets, en bas, à la façon de l'iPhone : cachés pendant une dictée, une note, une photo à nommer. */
- .onglets { position:fixed; left:0; right:0; bottom:0; z-index:20; display:grid; grid-template-columns:repeat(5, 1fr);
-   padding:6px 6px calc(4px + env(safe-area-inset-bottom)); background:var(--barre); border-top:1px solid var(--sep);
-   -webkit-backdrop-filter:saturate(180%) blur(18px); backdrop-filter:saturate(180%) blur(18px); }
- .onglet { position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0; padding:4px 0 2px;
-   border:none; background:none; color:var(--txt3); font-size:11px; font-weight:600; }
- .onglet .ic { width:25px; height:25px; stroke-width:1.9; }
- .onglet .nom { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
- .onglet.on { color:var(--acc-txt); }
- .onglet .badge { position:absolute; top:0; left:calc(50% + 7px); min-width:18px; height:18px; padding:0 5px; border-radius:99px;
-   background:var(--rouge); color:#fff; font-size:11px; font-weight:700; line-height:18px; }
- .onglet .point { position:absolute; top:3px; left:calc(50% + 9px); width:9px; height:9px; border-radius:50%;
-   background:var(--vert); box-shadow:0 0 0 2px var(--barre); }
-
- /* Dicter : le geste de la journée, au milieu de l'écran. */
- .heros { display:flex; flex-direction:column; align-items:center; padding:12px 0 4px; }
- /* Le jour dont on parle : aujourd'hui, ou un autre — qui se voit de loin. */
- .jour { display:flex; align-items:center; gap:8px; width:100%; padding:6px; margin-bottom:14px;
-   border-radius:16px; background:var(--card); box-shadow:var(--ombre); }
- .jour.autre { background:var(--orange-doux); box-shadow:none; }
- .jour-fleche { width:42px; height:42px; border-radius:12px; border:none; display:grid; place-items:center; flex:none;
-   background:var(--champ); color:var(--txt); }
- .jour.autre .jour-fleche { background:var(--card); }
- .jour-texte { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:1px;
-   border:none; background:none; color:var(--txt); padding:0; font-family:inherit; }
- .jour-texte b { font-size:16.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
- .jour-texte span { font-size:13px; color:var(--txt2); }
- .jour.autre .jour-texte span { color:var(--orange); font-weight:600; }
- .pastille { display:inline-flex; align-items:center; gap:8px; max-width:100%; padding:10px 15px;
-   border:none; border-radius:99px; background:var(--card); box-shadow:var(--ombre); color:var(--txt);
-   font-size:15px; font-weight:600; margin:0; }
- .pastille > .ic:first-child { color:var(--acc-txt); }
- .pastille span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
- .pastille .petit { color:var(--txt3); }
- .pastille.muette { color:var(--txt2); font-weight:500; box-shadow:none; background:transparent; }
- .pastille.muette > .ic:first-child { color:var(--txt3); }
- .rond-cadre { position:relative; width:164px; height:164px; margin:30px 0 12px; }
- .rond { position:relative; width:164px; height:164px; border-radius:50%; border:none; display:grid;
-   place-items:center; color:#fff; background:linear-gradient(150deg, var(--acc-clair) 0%, var(--acc) 45%, var(--acc-fonce) 100%);
-   box-shadow:0 14px 34px var(--acc-ombre), inset 0 1px 0 rgba(255,255,255,.28);
-   transition:transform .12s ease; }
- .heros > .rond { margin:30px 0 12px; }
- .rond:active { transform:scale(.96); }
- .rond .ic { width:62px; height:62px; stroke-width:1.8; }
- .rond.rouge { background:linear-gradient(150deg, #f87171 0%, var(--rouge) 50%, #c2272d 100%);
-   box-shadow:0 14px 34px rgba(220,38,38,.35), inset 0 1px 0 rgba(255,255,255,.25); }
- .rond.rouge .ic { width:52px; height:52px; }
- /* Le halo suit la voix : on voit d'un coup d'œil que le micro entend. */
- .halo { position:absolute; inset:0; border-radius:50%; background:var(--rouge-doux);
-   transition:transform .1s linear; }
- .rond-legende { margin:0; font-size:17px; font-weight:700; }
- .chrono { margin:22px 0 0; font-size:58px; font-weight:700; letter-spacing:-.02em;
-   font-variant-numeric:tabular-nums; line-height:1; }
- .muet { margin:14px 0 0; color:var(--rouge); font-size:14.5px; font-weight:600; }
- .tuiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; margin-top:26px; }
- .tuile.seule { width:100%; margin-top:24px; }
- .tuile { display:flex; align-items:center; justify-content:center; gap:9px; padding:15px 12px;
-   border:none; border-radius:16px; background:var(--card); box-shadow:var(--ombre); color:var(--txt);
-   font-size:15.5px; font-weight:600; }
- .tuile .ic { color:var(--acc-txt); }
- label.tuile { cursor:pointer; text-align:center; }
- .lien-album { display:block; margin-top:12px; font-size:14px; color:var(--acc-txt); text-align:center; cursor:pointer; }
-
- /* Une photo pour Mes pictos : on la voit, on la nomme. */
- .photo-apercu { display:block; width:100%; max-height:42vh; object-fit:contain; border-radius:16px;
-   background:var(--card); box-shadow:var(--ombre); }
- .photo-nom { display:block; margin-top:12px; font-size:14px; font-weight:600; color:var(--txt2); }
- .photo-nom input { display:block; width:100%; margin-top:6px; padding:13px 14px; border:none; border-radius:14px;
-   background:var(--card); box-shadow:var(--ombre); color:var(--txt); font-family:inherit; font-size:17px; outline:none; }
- .photo-aide { margin:8px 2px 0; font-size:13px; color:var(--txt2); }
-
- /* Le cahier journal publié par l'ordinateur, et ses aides à montrer aux tablettes. */
- .cj { margin-top:10px; padding:14px 16px; }
- .cj-creneau { padding:10px 0; border-top:1px solid var(--sep); }
- .cj-creneau:first-of-type { border-top:none; }
- .cj-tete { display:flex; gap:8px; align-items:baseline; font-size:15.5px; }
- .cj-tete b { min-width:44px; }
- /* Onglet Tablettes : un créneau replié — son heure, sa matière, le bouton qui ouvre son envoi aux tablettes. */
- .cj-tete-tablettes { align-items:center; }
- .cj-tete-tablettes > span:first-of-type { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
- .cj-actif { display:flex; color:var(--acc); }
- /* Déplié, l'envoi d'un créneau prend toute la largeur : pas de colonne d'heure à suivre ici. */
- .cj-tete-tablettes ~ .cj-tab { margin-left:0; }
- .cj-seance { margin:3px 0 0 52px; font-size:13.5px; font-weight:600; color:var(--acc-txt); }
- .cj-texte { margin:4px 0 0 52px; font-size:14px; line-height:1.45; color:var(--txt); white-space:pre-wrap; }
- .cj-bilan { margin:4px 0 0 52px; font-size:13.5px; color:var(--txt2); }
- .cj-bilan .cj-texte { margin-left:0; color:var(--txt2); }
- .cj-aide { display:flex; align-items:center; gap:8px; margin:8px 0 0 52px; padding:8px 10px; border-radius:12px; background:var(--champ); }
- .cj-aide.on { background:var(--acc-doux); }
- .cj-aide-titre { flex:1; min-width:0; display:flex; gap:6px; align-items:center; font-size:14px; }
- .cj-aide-titre span { overflow:hidden; text-overflow:ellipsis; }
- .btn-mini { flex:none; border:none; border-radius:10px; padding:8px 12px; background:var(--acc); color:#fff; font-size:14px; font-weight:700; }
- .btn-mini.on { background:transparent; color:var(--acc-txt); }
- .cj-publie { margin:10px 2px 0; font-size:12.5px; color:var(--txt2); }
- /* Reporter au prochain cours de la même matière : le bouton discret du créneau, ses temps à décocher, ce qui est reporté. */
- .cj-tete .btn-mini.cj-reporter { margin-left:auto; align-self:center; padding:6px 10px; font-size:13.5px; background:transparent; color:var(--acc-txt); box-shadow:inset 0 0 0 1.5px var(--acc-doux); }
- .cj-report-temps { display:flex; align-items:center; gap:9px; margin-top:8px; font-size:14.5px; line-height:1.3; }
- .cj-report-temps input { flex:none; width:20px; height:20px; margin:0; accent-color:var(--acc); }
- .cj-report-ou { margin:8px 0 0; font-size:12.5px; color:var(--txt2); text-align:center; }
- .cj-reporte { display:flex; align-items:center; gap:5px; margin:4px 0 0 52px; font-size:13px; font-weight:600; color:var(--acc-txt); }
- /* Sous un créneau : ce qu'il envoie aux tablettes — son aide, le minuteur réglé sur l'ordinateur —, puis le temps qui reste. */
- .cj-tab { margin:8px 0 0 52px; padding:10px; border-radius:12px; background:var(--champ); }
- .cj-tab.on { background:var(--acc-doux); }
- .cj-tab-tete { display:flex; align-items:center; gap:6px; font-size:13.5px; font-weight:700; color:var(--acc-txt); }
- .cj-tab-tete > span:first-of-type { white-space:nowrap; }
- .cj-tab-plus { margin-left:auto; display:flex; align-items:center; gap:4px; font-weight:600; color:var(--txt2); white-space:nowrap; min-width:0; overflow:hidden; text-overflow:ellipsis; }
- /* La flèche qui reprend la séance du début, en haut à droite du créneau. */
- .icone-btn.cj-tab-reprendre { width:32px; height:32px; margin:-4px -2px -4px 6px; background:var(--card); color:var(--acc-txt); }
- .icone-btn.cj-tab-reprendre .ic { width:17px; height:17px; stroke-width:2.4; }
- .cj-tab-aide { display:flex; align-items:center; gap:6px; margin-top:6px; font-size:14px; min-width:0; }
- .cj-tab-aide span { overflow:hidden; text-overflow:ellipsis; }
- /* Plusieurs aides sous un créneau : le titre sur sa ligne, puis le minuteur et le bouton. */
- .cj-tab .cj-aide { margin:6px 0 0; background:var(--card); flex-wrap:wrap; row-gap:6px; }
- .cj-tab .cj-aide-titre { flex-basis:100%; }
- .cj-tab .cj-aide .btn-mini { margin-left:auto; }
- .cj-aide-duree { flex:none; display:flex; align-items:center; gap:3px; font-size:13px; font-weight:600; color:var(--txt2); white-space:nowrap; }
- .carte .cj-tab .btn-plein { margin-top:8px; padding:11px 12px; font-size:15px; }
- .carte .cj-tab .btn-doux { padding:11px 12px; font-size:15px; background:var(--card); }
- .cj-tab-reste { display:block; margin-top:4px; text-align:center; font-size:34px; font-weight:700; font-variant-numeric:tabular-nums; }
- .cj-tab-pause { display:block; text-align:center; font-size:13px; font-weight:600; color:var(--txt2); }
- .cj-tab .deux { margin-top:6px; }
- .cj-tab .lien-btn { display:block; margin:4px auto 0; font-size:14px; }
- /* Une tablette par élève : chacun sa ligne — sa tablette, où il en est, sa fiche suivante et son minuteur. */
- .cj-eleve { margin:6px 0 0; padding:8px 10px; border-radius:12px; background:var(--card); }
- .cj-eleve.on { box-shadow:inset 3px 0 0 var(--acc); }
- .cj-eleve-tete { display:flex; align-items:center; gap:8px; font-size:15px; }
- .cj-eleve-tete b { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
- .cj-eleve-choix { flex:none; max-width:60%; border:1px solid var(--sep); border-radius:9px; padding:6px 8px; background:var(--champ); color:var(--txt); font:inherit; font-size:14.5px; }
- .cj-eleve-place { margin-top:4px; font-size:13.5px; line-height:1.35; color:var(--txt2); }
- .cj-eleve-minuteur { display:flex; align-items:center; gap:6px; margin-top:4px; font-size:13px; color:var(--txt2); }
- .cj-eleve-minuteur b { font-size:20px; font-variant-numeric:tabular-nums; color:var(--txt); }
- .cj-eleve-minuteur .btn-mini { margin-left:auto; padding:6px 10px; }
- .carte .cj-tab .cj-eleve ~ .btn-doux { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; margin-top:6px; }
- .cj-eleve-envoi { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px; }
- .cj-eleve-suite { flex-basis:100%; font-size:14px; }
- .cj-eleve-envoi .btn-mini { margin-left:auto; }
- .cj-eleve-aide { margin:6px 0 0; font-size:13px; line-height:1.4; color:var(--txt2); }
- /* La roue du minuteur : on touche le temps qui reste, la liste s'ouvre en roue sur l'iPhone. */
- .roue { position:relative; display:inline-flex; align-items:center; gap:2px; padding:2px 6px 2px 8px; border-radius:10px; background:var(--champ); color:var(--txt); }
- .roue select { position:absolute; inset:0; width:100%; height:100%; opacity:0; font-size:16px; }
- .roue .ic { width:16px; height:16px; color:var(--txt2); }
- .roue-grande { display:flex; justify-content:center; width:max-content; margin:4px auto 0; padding:2px 10px 2px 14px; }
- .roue-grande .ic { width:22px; height:22px; }
- .cj-tab .roue-grande .cj-tab-reste { margin-top:0; }
- /* Les tablettes du portail : leur numéro, allumées ou non, leur élève. */
- .tablettes { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
- .tablette-numero { display:flex; align-items:center; gap:6px; padding:5px 10px 5px 5px; border-radius:999px; background:var(--champ); font-size:13.5px; color:var(--txt2); }
- .tablette-numero b { display:flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; background:var(--sep); color:var(--txt); font-size:13px; }
- .tablette-numero.allumee b { background:var(--acc); color:#fff; }
- .cj-tab .erreur-ligne { margin:8px 0 0; }
- .cj-tab-place { display:block; margin-top:4px; text-align:center; font-size:13px; font-weight:700; color:var(--acc-txt); }
- .cj-tab-etapes { margin-top:6px; }
- .cj-tab-etapes .cj-tab-place { flex:1; margin:0; }
- .carte .cj-tab .cj-tab-etapes .btn-mini { padding:8px 14px; }
- .cj-tab-etapes .btn-mini:disabled { opacity:.35; }
- .carte .cj-tab .btn-plein .cj-tab-suivante { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
- .cj-tab .lien-btn.cj-tab-deroule { display:flex; align-items:center; gap:6px; margin:6px 0 0; padding:4px 0; }
- .portail { padding:4px 0 12px; margin-bottom:6px; border-bottom:1px solid var(--sep); }
- .portail-qr { width:220px; height:220px; margin:0 auto 10px; background:#fff; border-radius:12px; padding:6px; }
- .portail-qr svg { width:100%; height:100%; display:block; }
- .portail-texte { display:flex; flex-direction:column; gap:3px; font-size:14px; text-align:center; }
- .portail-adresse { font-size:12.5px; color:var(--txt2); word-break:break-all; }
- .portail-aide { font-size:12.5px; color:var(--txt2); }
- .portail-alerte { display:flex; align-items:flex-start; justify-content:center; gap:6px; margin:2px 0; font-size:13px; font-weight:600; color:var(--orange); text-align:left; }
- .portail-alerte .ic { width:16px; height:16px; flex:none; margin-top:1px; }
- .carte > .portail { padding-bottom:0; margin-bottom:0; border-bottom:none; }
- .portail-bloc { margin-top:12px; padding:10px; border-radius:12px; background:var(--champ); }
- .portail-libelle { display:flex; align-items:center; gap:6px; font-size:14px; font-weight:600; margin-bottom:8px; }
- .minuteurs { display:flex; flex-wrap:wrap; gap:6px; }
- .minuteurs .btn-mini { padding:8px 10px; }
- .portail-reste { display:block; text-align:center; font-size:40px; font-variant-numeric:tabular-nums; }
- .minuteur-en-cours .deux { margin-top:6px; }
- .carte .portail-bloc .btn-doux { background:var(--card); }
- .portail-etape-texte { margin:8px 2px 0; font-size:14px; line-height:1.35; color:var(--txt2); }
- .bascule { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:3px; border-radius:10px; background:var(--card); }
- .bascule button { border:none; border-radius:8px; padding:8px 6px; background:transparent; color:var(--txt); font-size:13.5px; font-weight:600; }
- .bascule button.on { background:var(--acc); color:#fff; }
- .portail-etapes { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:8px; font-size:14px; }
- .portail-etapes .btn-mini:disabled { opacity:.35; }
- .portail-etapes .btn-mini { padding:8px 14px; }
- .portail-etapes .btn-mini .ic { stroke-width:2.6; }
- .carte-info.seule { margin:0 4px; }
-
- /* Les réglages : le code des tablettes, la couleur, le thème. */
- .confirmer-code { padding:14px 16px; }
- .confirmer-code p { margin:0; font-size:14.5px; font-weight:600; line-height:1.4; }
- .couleurs { display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; padding:14px 16px; }
- .pastille-couleur { width:38px; height:38px; padding:0; border:none; border-radius:50%; display:grid; place-items:center;
-   background:var(--teinte); color:#fff; }
- .pastille-couleur.on { box-shadow:0 0 0 3px var(--card), 0 0 0 5px var(--teinte); }
- .pastille-couleur .ic { width:20px; height:20px; stroke-width:2.6; }
- .bascule.trois { grid-template-columns:repeat(3, 1fr); padding:4px; border-radius:12px; box-shadow:var(--ombre); }
- .bascule.trois button { padding:10px 4px; font-size:14px; }
-
- /* Écrire plutôt que parler. */
- .note-carte { width:100%; margin-top:20px; }
- textarea { width:100%; min-height:150px; padding:14px; border:none; border-radius:16px; background:var(--card);
-   box-shadow:var(--ombre); color:var(--txt); font-family:inherit; font-size:16.5px; line-height:1.45; resize:none;
-   outline:none; display:block; }
- .deux { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
-
- .btn-plein, .btn-doux { display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
-   padding:15px 14px; border:none; border-radius:14px; font-size:16px; font-weight:700; }
- .btn-plein { background:var(--acc); color:#fff; }
- .btn-doux { background:var(--card); color:var(--txt); box-shadow:var(--ombre); }
- .groupe + .btn-plein, .groupe + .groupe, .btn-plein + .groupe { margin-top:12px; }
- .carte .btn-doux { background:var(--champ); box-shadow:none; }
- .carte .btn-plein + .btn-doux, .carte .vue + .btn-doux, .carte .erreur-ligne + .btn-doux { margin-top:10px; }
- label.btn-plein { cursor:pointer; }
- .btn-plein.inactif { opacity:.45; pointer-events:none; }
- .carte-wifi { margin-top:10px; padding:16px; }
- /* La télécommande du tableau : un grand bouton qu'on garde appuyé, ce que le Mac a compris, et ce qu'il a fait. */
- .carte-telecommande.reliee { display:flex; flex-direction:column; align-items:center; text-align:center; padding:20px 16px 14px; }
- .carte-telecommande .rond { width:132px; height:132px; margin:4px 0 12px; touch-action:none;
-   -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
- .carte-telecommande .rond .ic { width:50px; height:50px; }
- .carte-telecommande .rond:disabled { opacity:.6; }
- .tc-entendu { margin:10px 0 0; font-size:15px; color:var(--txt2); font-style:italic; overflow-wrap:anywhere; }
- .tc-fait { margin:6px 0 0; font-size:15.5px; font-weight:600; overflow-wrap:anywhere; }
- .tc-fait.rate { color:var(--rouge); }
- .tc-question { align-self:stretch; margin-top:12px; }
- .tc-question p { margin:0 0 10px; font-size:15.5px; font-weight:600; overflow-wrap:anywhere; }
- .tc-choix { display:flex; gap:8px; }
- .tc-choix > * { flex:1; }
- .carte .tc-choix > .btn-doux { margin-top:0; }
- .tc-ecrire { align-self:stretch; display:flex; gap:8px; margin-top:12px; }
- .tc-ecrire input { flex:1; min-width:0; font:inherit; font-size:16px; padding:10px 12px; border-radius:12px;
-   border:1px solid var(--sep); background:var(--champ); color:var(--txt); }
- .tc-ecrire .btn-plein { width:auto; padding:10px 16px; }
- .tc-liens { display:flex; flex-wrap:wrap; gap:6px 18px; justify-content:center; margin-top:12px; }
- /* « Que dire ? » : ce que le Mac comprend, rangé comme sa palette ; les phrases à toucher en pastilles. */
- .tc-aide { align-self:stretch; display:flex; flex-direction:column; gap:14px; margin-top:14px; padding-top:14px;
-   border-top:1px solid var(--sep); text-align:left; }
- .tc-groupe h4 { margin:0 0 7px; font-size:13px; font-weight:700; color:var(--txt2); }
- .tc-exemples { display:flex; flex-wrap:wrap; gap:6px; }
- .tc-exemple { font:inherit; font-size:14.5px; line-height:1.25; padding:8px 12px; border:none; border-radius:999px;
-   background:var(--acc-doux); color:var(--acc-txt); text-align:left; cursor:pointer; }
- .tc-exemple:active { transform:scale(.97); }
- .tc-exemple:disabled { opacity:.5; }
- .tc-forme { margin:0 0 4px; font-size:14.5px; color:var(--txt2); font-style:italic; overflow-wrap:anywhere; }
- .carte-info { display:flex; align-items:center; gap:8px; margin:12px 2px 0; font-size:14.5px; color:var(--txt2); }
- .carte-info .ic { width:18px; height:18px; color:var(--vert); }
- .lien-btn { border:none; background:none; color:var(--acc-txt); font-size:15px; font-weight:600;
-   padding:8px 2px; flex:none; }
- .lien-btn.rouge { color:var(--rouge); }
- /* Les pages du manuel gardées sur le téléphone, au pied de la carte du WiFi. */
- .pages-gardees { margin:14px 2px 0; padding-top:12px; border-top:1px solid var(--sep); }
- .pages-gardees p { display:flex; align-items:center; gap:8px; margin:0; font-size:14.5px; color:var(--txt2); }
- .pages-gardees p .ic { width:18px; height:18px; flex:none; color:var(--acc-txt); }
- .pages-gardees.confirmer p { color:var(--txt); font-weight:600; }
- .pages-gardees .pages-aide { margin-top:6px; font-size:13.5px; color:var(--txt3); }
- .pages-boutons { display:flex; flex-wrap:wrap; gap:6px 20px; margin-top:8px; }
- .pages-boutons:empty { display:none; }
-
- /* Ce qui vient de se passer : à lire en passant. */
- .bulle { display:flex; gap:10px; align-items:flex-start; margin:16px 0 0; padding:12px 14px; border-radius:14px;
-   background:var(--acc-doux); font-size:14.5px; line-height:1.45; }
- .bulle .ic { width:18px; height:18px; margin-top:1px; color:var(--acc-txt); }
- .bulle.alerte { background:var(--orange-doux); }
- .bulle.alerte .ic { color:var(--orange); }
- .bulle.erreur { background:var(--rouge-doux); }
- .bulle.erreur .ic { color:var(--rouge); }
-
- .titre { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:28px 4px 8px;
-   font-size:13px; font-weight:600; color:var(--txt2); text-transform:uppercase; letter-spacing:.06em; }
-
- /* Les listes, à la façon des réglages de l'iPhone. */
- .groupe { background:var(--card); border-radius:16px; box-shadow:var(--ombre); overflow:hidden; }
- .rang { position:relative; display:flex; align-items:center; gap:12px; width:100%; min-height:58px;
-   padding:10px 12px 10px 14px; border:none; background:transparent; color:var(--txt); text-align:left; font-size:15px; }
- .rang + .rang::before { content:""; position:absolute; top:0; left:62px; right:0; height:1px; background:var(--sep); }
- .ico { width:36px; height:36px; border-radius:10px; display:grid; place-items:center; flex:none;
-   background:var(--acc-doux); color:var(--acc-txt); }
- .ico .ic { width:18px; height:18px; }
- .rang-texte { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
- .rang-titre { font-size:15.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
- .rang-titre.accent { color:var(--acc-txt); }
- .rang-sous { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--txt2); min-width:0; }
- .coupe { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
- .icone-btn { width:40px; height:40px; border-radius:50%; border:none; display:grid; place-items:center; flex:none;
-   background:var(--champ); color:var(--txt); }
- .icone-btn .ic { width:17px; height:17px; }
- .icone-btn.danger { color:var(--rouge); }
- .vide-ok { color:var(--txt2); font-weight:500; }
- .vide-ok .ic { color:var(--vert); }
-
- /* Le choix du créneau, à la place de la pastille. */
- .choix { width:100%; }
- .choix-rang { display:flex; align-items:center; gap:14px; width:100%; min-height:52px; padding:12px 16px;
-   border:none; background:transparent; color:var(--txt); font-size:15.5px; text-align:left; position:relative; }
- .choix-rang + .choix-rang::before { content:""; position:absolute; top:0; left:16px; right:0; height:1px; background:var(--sep); }
- .choix-rang b { font-variant-numeric:tabular-nums; min-width:52px; color:var(--txt2); font-weight:600; }
- .choix-rang span { flex:1; }
- .choix-rang.on { color:var(--acc-txt); font-weight:700; }
- .choix-rang .ic { color:var(--acc-txt); }
-
- /* Les étapes pour relier le téléphone à l'ordinateur : où l'on en est, ce qui reste. */
-.etapes { list-style:none; margin:0 0 18px; padding:0; display:grid; gap:12px; counter-reset:etape; text-align:left; }
-.etapes li { counter-increment:etape; display:grid; grid-template-columns:28px 1fr; gap:10px; align-items:start;
-  font-size:14.5px; line-height:1.45; color:var(--txt2); }
-.etapes li::before { content:counter(etape); width:26px; height:26px; border-radius:50%; display:grid; place-items:center;
-  font-weight:700; font-size:13px; background:var(--champ); color:var(--txt2); }
-.etapes li.faite::before { content:""; background:var(--acc-doux) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 14px no-repeat; }
-.etapes li.ici { color:var(--txt); }
-.etapes li.ici::before { background:var(--acc); color:#fff; }
-.etapes .etape-ou { display:block; font-size:11.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--txt3); }
-.etapes li.ici .etape-ou { color:var(--acc-txt); }
-.etapes b { color:var(--txt); font-weight:600; }
-
-/* Relier : le QR code d'abord, un code collé sinon. */
- .carte { background:var(--card); border-radius:20px; box-shadow:var(--ombre); padding:24px 18px 18px; margin-top:12px; }
- .carte-tete { display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:20px; }
- .grand-ico { width:58px; height:58px; border-radius:18px; display:grid; place-items:center;
-   background:var(--acc-doux); color:var(--acc-txt); }
- .grand-ico .ic { width:28px; height:28px; }
- .carte-tete h3 { margin:0; font-size:20px; font-weight:700; letter-spacing:-.01em; }
- .carte-tete .sous { margin:-6px 0 0; font-size:15px; color:var(--txt2); text-align:center; overflow-wrap:anywhere; }
- .carte-tete .sous b { color:var(--txt); font-weight:600; }
- .vue { width:100%; aspect-ratio:1/1; border-radius:16px; object-fit:cover; background:#000; display:block; margin-bottom:10px; }
- .ou { display:flex; align-items:center; gap:12px; margin:18px 0 14px; color:var(--txt3); font-size:13.5px; }
- .ou::before, .ou::after { content:""; flex:1; height:1px; background:var(--sep); }
- input { width:100%; padding:14px; border:1px solid var(--sep); border-radius:12px; background:var(--champ);
-   color:var(--txt); font-family:inherit; font-size:16px; outline:none; }
- input:focus { border-color:var(--acc); }
- .erreur-ligne { margin:10px 0 0; color:var(--rouge); font-size:14px; }
- .centre { display:block; margin:12px auto 0; }
+ :root { --bg:#f2f2f7; --card:#fff; --txt:#111827; --txt2:#6b7280; --acc:#4f46e5; }
+ @media (prefers-color-scheme: dark) { :root { --bg:#000; --card:#1c1c1e; --txt:#f5f5f7; --txt2:#98989f; --acc:#818cf8; } }
+ html, body { height:100%; margin:0; background:var(--bg); color:var(--txt); font:17px/1.35 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+ main { box-sizing:border-box; min-height:100%; max-width:480px; margin:0 auto; display:flex; flex-direction:column; justify-content:center; gap:14px;
+   padding:max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
+ main[hidden] { display:none; }
+ h1 { margin:0 0 14px; font-size:27px; font-weight:700; text-align:center; }
+ button { display:flex; align-items:center; gap:16px; width:100%; min-height:96px; padding:16px 20px; border:0; border-radius:18px; background:var(--card); color:inherit;
+   font:inherit; text-align:left; cursor:pointer; -webkit-tap-highlight-color:transparent; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+ button:active { opacity:.7; }
+ svg { flex:none; width:44px; height:44px; fill:none; stroke:var(--acc); stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+ b { display:block; font-size:21px; font-weight:650; }
+ small { display:block; margin-top:2px; color:var(--txt2); font-size:15px; }
 </style>
-<script>
-  // La couleur et le thème des réglages, posés avant le premier dessin : pas d'éclair de l'autre thème.
-  try {
-    var racine = document.documentElement, theme = localStorage.getItem("dictaphone:theme") || "auto";
-    racine.dataset.couleur = localStorage.getItem("dictaphone:couleur") || "indigo";
-    racine.dataset.theme = theme;
-    if (theme !== "auto") document.querySelector('meta[name="color-scheme"]').content = theme === "sombre" ? "dark" : "light";
-  } catch (e) { /* sans stockage, les couleurs d'origine */ }
-</script>
 </head>
 <body>
-<header><h1 id="titre">Dictaphone</h1><span id="liaison" class="liaison" hidden></span></header>
-<main id="ecran"></main>
-<nav id="onglets" class="onglets" aria-label="Onglets" hidden></nav>
-<!-- jsQR (licence Apache-2.0, texte dans jsQR.LICENSE.txt) : le décodage du QR code, en local. Rien n'est téléchargé
-     au moment de scanner — l'application doit marcher sans réseau. -->
-<script src="./jsQR.js"></script>
-<script type="module" src="./dictaphone.js"></script>
+<main id="choix" hidden>
+  <h1>Qui utilise cet appareil ?</h1>
+  <button data-mode="enseignant">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="3.6"/><path d="M4.5 20.5c.6-4.2 3.6-6.6 7.5-6.6s6.9 2.4 7.5 6.6"/></svg>
+    <span><b>Enseignant</b><small>Cahier journal, dictées, tablettes</small></span>
+  </button>
+  <button data-mode="eleve">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>
+    <span><b>Élève</b><small>Classeur de communication</small></span>
+  </button>
+</main>
+<script>
+  const invoke = window.__TAURI__.core.invoke;
+  const PAGES = { enseignant: "enseignant.html", eleve: "classeur/index.html" };
+  (async () => {
+    let mode = "";
+    try { mode = (await invoke("mode_lire")).mode; } catch (e) { /* on le redemande */ }
+    if (!mode) {
+      // Un téléphone déjà relié à Nuage, d'avant ce choix : c'est celui de l'enseignant, on ne lui demande rien.
+      try {
+        if ((await invoke("relais_lire")).relie) {
+          await invoke("mode_choisir", { mode: "enseignant" });
+          mode = "enseignant";
+        }
+      } catch (e) { /* on le lui demande */ }
+    }
+    if (mode) { location.replace(PAGES[mode]); return; }
+    document.getElementById("choix").hidden = false;
+    document.querySelectorAll("[data-mode]").forEach((b) => {
+      b.onclick = async () => {
+        await invoke("mode_choisir", { mode: b.dataset.mode });
+        location.replace(PAGES[b.dataset.mode]);
+      };
+    });
+  })();
+</script>
 </body>
 </html>

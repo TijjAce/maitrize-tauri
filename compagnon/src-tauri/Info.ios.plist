@@ -1,18 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Ce que le dictaphone demande à l'iPhone, et pourquoi.
+  Ce que le compagnon demande à l'iPhone et à l'iPad, et pourquoi.
 
   Ce fichier est fusionné dans l'Info.plist par Tauri : il survit donc à une
   régénération du projet Xcode, ce que le plist généré, lui, ne ferait pas.
 
-  Trois autorisations, et pas une de plus. Le micro, évidemment. La caméra,
-  pour lire le QR code de l'ordinateur — ces vues-là sont analysées à la
-  volée et jetées — et pour photographier les pages d'un manuel quand
-  l'ordinateur les demande : celles-là restent sur le téléphone jusqu'à ce
-  qu'on les supprime. Et le réseau local, parce que l'envoi à l'ordinateur — et
-  la télécommande du tableau — se fait d'iPhone à Mac sur le WiFi de l'école — iOS le demande depuis sa
-  version 14, même pour une connexion directe par adresse IP.
+  Côté enseignant : le micro, évidemment. La caméra, pour lire le QR code de
+  l'ordinateur — ces vues-là sont analysées à la volée et jetées — et pour
+  photographier les pages d'un manuel quand l'ordinateur les demande :
+  celles-là restent sur le téléphone jusqu'à ce qu'on les supprime. Et le réseau
+  local, parce que l'envoi à l'ordinateur — et la télécommande du tableau — se
+  fait d'iPhone à Mac sur le WiFi de l'école — iOS le demande depuis sa version
+  14, même pour une connexion directe par adresse IP.
+
+  Côté élève, iOS ne demande que ce qui sert, au moment où cela sert : jamais le
+  micro. La caméra, pour lire le QR code de l'enseignant et photographier un
+  objet pour en faire une case ; les photos, par le sélecteur d'iOS ; le réseau
+  local, pour recevoir ce que le téléphone de l'enseignant montre.
+
+  Les Documents de l'application se montrent dans l'app Fichiers : c'est là
+  qu'un classeur exporté se pose, et de là qu'il part par AirDrop vers
+  l'ordinateur.
 
   Le nom sous l'icône est celui de l'App Store : « MaitrizeV2 Compagnon ».
 
@@ -37,8 +46,14 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Pour enregistrer ce que vous dictez en classe, et ce que vous dites à votre ordinateur quand vous le pilotez. Le son part scellé vers lui : lui seul peut l'ouvrir.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Pour lire le QR code affiché par votre ordinateur, photographier les pages d'un manuel qu'il vous demande, et prendre les photos que vous rangez dans Mes pictos. Les pages restent sur le téléphone jusqu'à ce que vous les supprimiez ; les photos partent scellées vers votre ordinateur.</string>
+	<string>Pour lire le QR code affiché par votre ordinateur, photographier les pages d'un manuel qu'il vous demande, et prendre les photos que vous rangez dans Mes pictos. Les pages restent sur le téléphone jusqu'à ce que vous les supprimiez ; les photos partent scellées vers votre ordinateur. Pour un élève : lire le QR code de l'enseignant, et photographier un objet pour en faire une case de son classeur, qui reste sur l'appareil.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Pour choisir une photo et en faire une case du classeur. Elle reste sur l'appareil.</string>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Pour répondre à votre ordinateur et le piloter à la voix sur le même WiFi, et montrer les aides à la tâche aux tablettes de vos élèves, sur le même réseau que le téléphone.</string>
+	<string>Pour répondre à votre ordinateur et le piloter à la voix sur le même WiFi, et montrer les aides à la tâche aux tablettes de vos élèves, sur le même réseau que le téléphone. Sur la tablette d'un élève : recevoir ce que le téléphone de l'enseignant lui montre.</string>
 </dict>
 </plist>

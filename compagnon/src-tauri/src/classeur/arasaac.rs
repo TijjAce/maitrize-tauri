@@ -6,7 +6,7 @@
 //! licence Creative Commons BY-NC-SA : l'application le dit dans ses crédits,
 //! et chaque image exportée le porte.
 
-use crate::stockage::{data_url, dossier_images, ecrire_sur};
+use super::stockage::{data_url, dossier_images, ecrire_sur};
 use tauri::{AppHandle, Runtime};
 
 #[derive(serde::Serialize)]

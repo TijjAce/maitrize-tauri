@@ -4,34 +4,45 @@ import { Bibliotheque } from "./Bibliotheque";
 import { Ecran } from "./Ecran";
 import { poserAuPremierLancement } from "./classeurComplet";
 import { Annonces, Questions, annoncer } from "./Fenetre";
-import type { Classeur } from "./modele";
-import { listerClasseurs } from "./pont";
+import { classeurAOuvrir, type Classeur } from "./modele";
+import { dansLApplication, listerClasseurs } from "./pont";
 import "./styles.css";
+
+const CLE_DERNIER = "classeur:dernier";
+const lireDernier = (): string | null => { try { return localStorage.getItem(CLE_DERNIER); } catch { return null; } };
 
 function Application() {
   const [classeurs, setClasseurs] = React.useState<Classeur[] | null>(null);
   const [ouvert, setOuvert] = React.useState<Classeur | null>(null);
-  const recharger = React.useCallback(async () => { setClasseurs(await listerClasseurs()); }, []);
+  const ouvrir = React.useCallback((c: Classeur) => {
+    try { localStorage.setItem(CLE_DERNIER, c.id); } catch { /* sans mémoire, le dernier modifié s'ouvrira */ }
+    setOuvert(c);
+  }, []);
+  const recharger = React.useCallback(async () => {
+    const liste = await listerClasseurs();
+    setClasseurs(liste);
+    return liste;
+  }, []);
   React.useEffect(() => {
     // Au premier lancement, la liste attend le classeur complet (quelques secondes, le temps de recopier ses pictos).
     void (async () => {
-      const deja = await listerClasseurs();
+      let liste = await listerClasseurs();
       try {
-        if (await poserAuPremierLancement(deja)) {
-          await recharger();
-          return;
-        }
+        if (await poserAuPremierLancement(liste)) liste = await listerClasseurs();
       } catch (e) {
         annoncer(`Le classeur complet n'a pas pu être posé : ${String((e as Error)?.message ?? e)}`);
       }
-      setClasseurs(deja);
+      setClasseurs(liste);
+      // « En mode élève, par défaut, il y a le classeur qui se lance » (l'enseignant, 6 novembre 2026).
+      const aOuvrir = dansLApplication() ? classeurAOuvrir(liste, lireDernier()) : null;
+      if (aOuvrir) setOuvert(aOuvrir);
     })();
-  }, [recharger]);
+  }, []);
   return (
     <>
       {ouvert
         ? <Ecran key={ouvert.id} depart={ouvert} onFermer={() => { setOuvert(null); void recharger(); }} />
-        : <Bibliotheque classeurs={classeurs} onOuvrir={setOuvert} onRecharger={recharger} />}
+        : <Bibliotheque classeurs={classeurs} onOuvrir={ouvrir} onRecharger={async () => { await recharger(); }} />}
       <Questions />
       <Annonces />
     </>

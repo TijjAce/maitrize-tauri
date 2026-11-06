@@ -25,6 +25,22 @@ const memoire = {
 };
 const CLE_ESSAI = "classeur:essai:";
 
+// ── L'usage de l'appareil ─────────────────────────────────────
+//
+// Le classeur est le côté élève du compagnon : la roue mène au mode classe, ou
+// passe l'appareil côté enseignant, qui demande Nuage (voir mode.rs).
+
+/** Le mode classe : ce que le téléphone de l'enseignant montre. Au prochain lancement, le classeur s'ouvre de nouveau. */
+export function allerEnClasse(): void {
+  if (enTauri()) location.replace("../classe.html");
+}
+
+export async function passerEnEnseignant(): Promise<void> {
+  if (!enTauri()) return;
+  await appeler("mode_choisir", { mode: "enseignant" });
+  location.replace("../enseignant.html");
+}
+
 // ── Les classeurs ──────────────────────────────────────────────────────────
 
 export async function listerClasseurs(): Promise<Classeur[]> {

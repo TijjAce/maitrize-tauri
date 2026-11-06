@@ -43,6 +43,8 @@ let vocaux = [], envoiEnCours = false, souci = "";
  */
 const SANS_RELAIS = { relie: false, connecte: false, serveur: "", compte: "" };
 let relais = SANS_RELAIS, nuage = null;
+/** On demande à passer côté élève : la question s'affiche, connecté à Nuage. */
+let passageEleve = false;
 /** La connexion au compte Nuage : en cours, et ce qui l'a empêchée. */
 let connexionEnCours = false, connexionSouci = "";
 /** Ce qui vient de partir par Nuage : on le dit, pour qu'on ne le cherche pas sur l'ordinateur tout de suite. */
@@ -1844,7 +1846,7 @@ function etapesPourRelier() {
   const etapes = [
     ["Sur l'ordinateur", "Dans Maitrize : <b>Réglages › Téléphone</b>. Choisissez votre compte Nuage, puis <b>Relier le téléphone</b>."],
     ["Sur l'ordinateur", "Cliquez sur <b>QR code du téléphone</b> : il s'affiche à l'écran."],
-    ["Sur ce téléphone", "Onglet Réglages : <b>Scanner le QR code</b>, et visez celui de l'ordinateur."],
+    ["Sur ce téléphone", "<b>Scanner le QR code</b>, et visez celui de l'ordinateur."],
     ["Sur ce téléphone", "<b>Se connecter</b> : la page de Nuage s'ouvre. Entrez votre compte, puis acceptez."],
   ];
   return `<ol class="etapes" aria-label="Relier le téléphone à l'ordinateur">${etapes.map(([ou, quoi], i) => {
@@ -2225,6 +2227,8 @@ function reglageDuCode() {
 function ongletReglages() {
   const nom = (COULEURS.find((c) => c.id === couleur) || COULEURS[0]).nom;
   return `
+    <p class="titre">Cet appareil</p>
+    ${carteDuMode()}
     <p class="titre">Nuage</p>
     ${!relais.relie ? carteNuage() : !relais.connecte ? carteConnexion() : lienNuage()}
     <p class="titre">Tablettes</p>
@@ -2239,6 +2243,46 @@ function ongletReglages() {
     <div class="bascule trois" role="group" aria-label="Thème">
       ${THEMES.map((t) => `<button class="${t.id === theme ? "on" : ""}" data-choix-theme="${t.id}" aria-pressed="${t.id === theme}">${t.nom}</button>`).join("")}
     </div>`;
+}
+
+/**
+ * Le mode de l'appareil. Connecté à Nuage, un appareil qui passe côté élève le
+ * dit d'abord : la roue du mode élève ramènerait à ses données, ce qui ne doit
+ * pas arriver sur la tablette d'un élève.
+ */
+function carteDuMode() {
+  if (!passageEleve) {
+    return `<div class="groupe"><div class="rang">
+      <span class="rang-texte"><span class="rang-titre">Mode enseignant</span></span>
+      <button class="lien-btn" id="passer-eleve">Passer en mode élève</button>
+    </div></div>`;
+  }
+  return `<div class="carte">
+    <p class="carte-info mode-question"><span>Sur la tablette d'un élève, déconnectez-vous de Nuage d'abord : sinon, sa roue ramènerait à vos données.</span></p>
+    <div class="mode-choix">
+      <button class="btn-plein" id="passer-eleve-deconnecter">Se déconnecter, puis passer</button>
+      <button class="btn-doux" id="passer-eleve-garder">Passer sans se déconnecter</button>
+      <button class="btn-doux" id="passer-eleve-annuler">Annuler</button>
+    </div>
+  </div>`;
+}
+
+/** L'appareil passe côté élève : son classeur s'ouvre. */
+async function passerEnModeEleve(seDeconnecter) {
+  fermerCamera();
+  if (seDeconnecter) { try { await invoke("relais_oublier"); } catch (e) { /* déjà oublié */ } }
+  try { await invoke("portail_fermer"); } catch (e) { /* déjà fermé */ }
+  await invoke("mode_choisir", { mode: "eleve" });
+  location.replace("classeur/index.html");
+}
+
+/** Le mode enseignant ne s'ouvre qu'avec Nuage : c'est lui qui donne accès aux données de la classe. */
+const sansNuage = () => !relais.relie || !relais.connecte;
+
+/** L'écran tant que Nuage manque : le relier, puis s'y connecter. Rien d'autre ne s'ouvre, sauf le mode élève. */
+function ecranDeConnexion() {
+  return `${!relais.relie ? carteNuage() : carteConnexion()}
+    <button class="btn-doux passer-eleve" id="passer-eleve">Cet appareil est celui d'un élève</button>`;
 }
 
 /** La vue de la caméra, quand elle lit un QR code pour cette carte. */
@@ -2385,9 +2429,12 @@ function rendre() {
   // Pendant qu'on dicte, qu'on écrit ou qu'on nomme une photo, on ne quitte pas l'onglet : la barre se cache.
   const occupe = !!ctx || ecrit || !!photoPrise;
 
+  // Sans Nuage, le mode enseignant ne montre que la connexion ; on ne coupe jamais une dictée ou une note en cours.
+  const ferme = sansNuage() && !occupe;
+
   // En tête, le nom de l'onglet, et l'état de Nuage : c'est par lui que partent les dictées.
   const titre = document.getElementById("titre");
-  if (titre) titre.textContent = (ONGLETS.find((o) => o.id === onglet) || ONGLETS[0]).titre;
+  if (titre) titre.textContent = ferme ? "Connexion à Nuage" : (ONGLETS.find((o) => o.id === onglet) || ONGLETS[0]).titre;
   const tete = document.getElementById("liaison");
   if (tete) {
     const e = etatDeNuage();
@@ -2396,7 +2443,8 @@ function rendre() {
     tete.innerHTML = `${icone("nuage", "petit")}<span class="pt"></span>${echapper(e.texte)}`;
   }
 
-  el.innerHTML = onglet === "notes" ? ongletNotes()
+  el.innerHTML = ferme ? ecranDeConnexion()
+    : onglet === "notes" ? ongletNotes()
     : onglet === "tablettes" ? ongletTablettes()
     : onglet === "wifi" ? ongletWifi()
     : onglet === "reglages" ? ongletReglages()
@@ -2404,7 +2452,7 @@ function rendre() {
 
   const barre = document.getElementById("onglets");
   if (barre) {
-    barre.hidden = occupe;
+    barre.hidden = occupe || ferme;
     barre.innerHTML = ONGLETS.map(boutonDOnglet).join("");
     barre.querySelectorAll("[data-onglet]").forEach((b) => { b.onclick = () => allerA(b.dataset.onglet); });
   }
@@ -2414,6 +2462,14 @@ function rendre() {
   clic("stop", () => { void arreter(); });
   clic("envoyer", () => { void envoyerTout(onglet === "notes" ? versLesNotesRapides : versLeJournal); });
   clic("aller-reglages", () => { allerA("reglages"); });
+  clic("passer-eleve", () => {
+    if (sansNuage()) { void passerEnModeEleve(false); return; }
+    passageEleve = true;
+    rendre();
+  });
+  clic("passer-eleve-deconnecter", () => { void passerEnModeEleve(true); });
+  clic("passer-eleve-garder", () => { void passerEnModeEleve(false); });
+  clic("passer-eleve-annuler", () => { passageEleve = false; rendre(); });
   el.querySelectorAll("[data-choix-couleur]").forEach((b) => {
     b.onclick = () => { couleur = b.dataset.choixCouleur; garderReglage("couleur", couleur); appliquerApparence(); rendre(); };
   });

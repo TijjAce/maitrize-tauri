@@ -1,5 +1,9 @@
-//! Le dictaphone de classe : enregistrer, garder, déposer — et montrer les
-//! aides à la tâche aux tablettes des élèves.
+//! Le compagnon de Maitrize : une seule application, deux usages (voir `mode`).
+//!
+//! Côté enseignant, le dictaphone de classe : enregistrer, garder, déposer —
+//! et montrer les aides à la tâche aux tablettes des élèves. Côté élève, son
+//! classeur de communication (voir `classeur`), et ce que le téléphone de
+//! l'enseignant lui envoie en classe.
 //!
 //! Ce que le téléphone dépose, il ne peut pas le relire : c'est scellé pour
 //! l'ordinateur. Ce qu'il reçoit — l'emploi du temps, et le cahier journal
@@ -14,11 +18,15 @@
 //! un WiFi, ou par un dossier de Nuage quand ils ne sont pas ensemble — scellé
 //! alors pour l'ordinateur, que le téléphone lui-même ne peut pas rouvrir.
 
+mod classeur;
 mod commandes;
+mod mode;
 mod portail;
 mod telecommande;
 
+use classeur::{arasaac::*, obz::*, stockage::*};
 use commandes::*;
+use mode::*;
 use portail::*;
 use telecommande::*;
 
@@ -31,7 +39,27 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         // L'appareil des pages d'un manuel, et la page de connexion à Nuage.
         .plugin(tauri_plugin_scanner::init())
+        // La voix du classeur, même en mode silencieux.
+        .plugin(tauri_plugin_parole::init())
         .invoke_handler(tauri::generate_handler![
+            // Qui se sert de l'appareil : l'enseignant ou l'élève.
+            mode_lire,
+            mode_choisir,
+            // Le mode classe de l'élève : ce que le téléphone de l'enseignant lui montre.
+            classe_relier,
+            classe_oublier,
+            classe_page,
+            classe_lire,
+            // Le classeur de communication de l'élève.
+            classeurs_lister,
+            classeur_ecrire,
+            classeur_supprimer,
+            images_lire,
+            image_ecrire,
+            arasaac_chercher,
+            arasaac_prendre,
+            obz_ouvrir,
+            obz_enregistrer,
             vocal_garder,
             vocaux_liste,
             vocal_lire,

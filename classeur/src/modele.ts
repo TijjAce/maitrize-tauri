@@ -302,6 +302,10 @@ export function pictoDeLaPage(c: Classeur, pageId: string): string | undefined {
     ?? p.cases.find((k) => k?.image)?.image;
 }
 
+/** Le classeur qui s'ouvre de lui-même côté élève : le dernier ouvert, sinon le dernier modifié (la liste est triée ainsi). */
+export const classeurAOuvrir = (classeurs: Classeur[], dernier: string | null): Classeur | null =>
+  classeurs.find((c) => c.id === dernier) ?? classeurs[0] ?? null;
+
 export function dupliquer(c: Classeur, nom: string, maintenant = new Date().toISOString()): Classeur {
   const copie = JSON.parse(JSON.stringify(c)) as Classeur; // structuredClone n'arrive qu'avec iOS 15.4
   return { ...copie, id: nouvelId(), nom, creeLe: maintenant, modifieLe: maintenant };

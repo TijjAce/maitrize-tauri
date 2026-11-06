@@ -1,5 +1,5 @@
 #!/bin/sh
-# Construit le dictaphone pour iPhone, et rend un .ipa signé.
+# Construit le compagnon pour iPhone et iPad, et rend un .ipa signé.
 #
 #   sh construire-iphone.sh                              pour le téléphone de l'enseignant
 #   EXPORT=app-store-connect sh construire-iphone.sh     pour l'App Store
@@ -18,6 +18,9 @@
 set -e
 cd "$(dirname "$0")"
 
+# Le classeur de l'élève, construit parmi les pages de l'application (le dépôt ne le garde pas deux fois).
+../node_modules/.bin/vite build --config ../classeur/vite.config.mjs --outDir ../compagnon/public/classeur --emptyOutDir
+
 # rustup fournit les cibles iOS, et vit dans ~/.cargo — que `sh` ne connaît
 # pas si le script est lancé autrement que depuis un terminal ouvert.
 if [ -f "$HOME/.cargo/env" ]; then
@@ -28,11 +31,10 @@ fi
 # ce qui suit : on le remet à chaque construction.
 #  - Les icônes du « Z », dans le catalogue d'images : le projet gardait
 #    celles de Tauri par défaut.
-#  - L'iPhone seul : l'écran est fait pour le pouce, pas pour l'iPad, qui
-#    peut toujours l'ouvrir comme une application d'iPhone.
+#  - L'iPhone et l'iPad : le classeur d'un élève se lit d'abord sur une tablette.
 APPLE=src-tauri/gen/apple
 cp src-tauri/icons/ios/*.png "$APPLE/Assets.xcassets/AppIcon.appiconset/"
-sed -i '' 's/TARGETED_DEVICE_FAMILY = "1,2";/TARGETED_DEVICE_FAMILY = 1;/' "$APPLE"/*.xcodeproj/project.pbxproj
+sed -i '' 's/TARGETED_DEVICE_FAMILY = 1;/TARGETED_DEVICE_FAMILY = "1,2";/' "$APPLE"/*.xcodeproj/project.pbxproj
 #  - Le manifeste de confidentialité, que l'App Store exige, parmi les
 #    ressources de l'application : à côté de l'écran de lancement.
 cp src-tauri/PrivacyInfo.xcprivacy "$APPLE/"

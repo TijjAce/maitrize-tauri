@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Mode classe</title>
+<!--
+  Le mode classe de l'élève : « un compagnon enseignant peut envoyer sur le même
+  WiFi au compagnon de l'élève en mode classe » (l'enseignant, 6 novembre 2026).
+  Dedans, la page même des tablettes (voir portail.rs), dont ce qu'elle demande
+  passe ici, puis par Rust (voir mode.rs). Le QR code se lit une fois.
+-->
+<style>
+ :root { --bg:#f2f2f7; --card:#fff; --txt:#111827; --txt2:#6b7280; --acc:#4f46e5; --rouge:#d92d20; }
+ @media (prefers-color-scheme: dark) { :root { --bg:#000; --card:#1c1c1e; --txt:#f5f5f7; --txt2:#98989f; --acc:#818cf8; --rouge:#ff6961; } }
+ html, body { height:100%; margin:0; background:var(--bg); color:var(--txt); font:17px/1.35 -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+ [hidden] { display:none !important; }
+ #portail { position:fixed; inset:0; width:100%; height:100%; border:0; background:#fff; }
+ #scan { box-sizing:border-box; min-height:100%; max-width:520px; margin:0 auto; display:flex; flex-direction:column; justify-content:center; gap:14px;
+   padding:max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
+ h1 { margin:0; font-size:27px; font-weight:700; text-align:center; }
+ #scan p { margin:0; text-align:center; color:var(--txt2); }
+ #scan p.souci { color:var(--rouge); }
+ video { width:100%; aspect-ratio:1; object-fit:cover; border-radius:18px; background:#000; }
+ .bouton { display:block; width:100%; min-height:56px; padding:12px 18px; border:0; border-radius:14px; background:var(--card); color:inherit; font:inherit; font-size:18px;
+   text-align:left; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+ .bouton.plein { background:var(--acc); color:#fff; text-align:center; font-weight:600; }
+ #roue { position:fixed; z-index:20; top:max(8px, env(safe-area-inset-top)); left:max(8px, env(safe-area-inset-left)); width:46px; height:46px; padding:9px; border:1px solid rgba(0,0,0,.14);
+   border-radius:50%; background:rgba(255,255,255,.88); color:#374151; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+ #roue svg { display:block; width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+ #voile { position:fixed; z-index:30; inset:0; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(20,24,36,.45); }
+ .feuille { box-sizing:border-box; width:min(420px, 100%); padding:18px; border-radius:20px; background:var(--bg); display:grid; gap:10px; }
+ .feuille h2 { margin:0 0 4px; font-size:21px; }
+</style>
+</head>
+<body>
+<iframe id="portail" title="Ce que montre l'enseignant" hidden></iframe>
+<main id="scan" hidden>
+  <h1>Mode classe</h1>
+  <p>Scanne le QR code de l'onglet Tablettes, sur le téléphone de l'enseignant.</p>
+  <video id="vue" playsinline autoplay muted hidden></video>
+  <button class="bouton plein" id="lire">Scanner le QR code</button>
+  <p class="souci" id="souci" hidden></p>
+</main>
+<button id="roue" aria-label="Réglages">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.17V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-2.82-1.17l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0-1.17-2.82H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.17-2.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 2.82-1.17V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 2.82 1.17l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0 1.17 2.82H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+</button>
+<div id="voile" hidden>
+  <div class="feuille" role="dialog" aria-modal="true" aria-label="Réglages">
+    <h2>Réglages</h2>
+    <button class="bouton" id="vers-classeur">Classeur</button>
+    <button class="bouton" id="vers-scan">Scanner le QR code</button>
+    <button class="bouton" id="vers-enseignant">Mode enseignant</button>
+    <button class="bouton" id="fermer">Fermer</button>
+  </div>
+</div>
+<!-- jsQR (licence Apache-2.0, texte dans jsQR.LICENSE.txt) : le décodage du QR code, en local. -->
+<script src="./jsQR.js"></script>
+<script type="module">
+  const invoke = window.__TAURI__.core.invoke;
+  const $ = (id) => document.getElementById(id);
+  let camera = null, lecture = null, veille = null;
+
+  // Ce que la page des tablettes demande : par Rust, qui connaît le jeton (voir mode.rs).
+  window.classeLire = async (chemin) => {
+    const r = await invoke("classe_lire", { chemin });
+    // Le code du portail a changé : plus rien ne s'affiche tant qu'on ne l'a pas relu.
+    if (r.statut === 403) montrerLeScan("Le code du téléphone a changé : scanne le nouveau QR code.");
+    return { ok: r.statut >= 200 && r.statut < 300, status: r.statut, json: async () => JSON.parse(r.corps), text: async () => r.corps };
+  };
+
+  function fermerLaCamera() {
+    if (lecture) { clearInterval(lecture); lecture = null; }
+    if (camera) { camera.getTracks().forEach((t) => t.stop()); camera = null; }
+    $("vue").hidden = true;
+    $("lire").hidden = false;
+  }
+
+  function direSouci(texte) {
+    $("souci").textContent = texte;
+    $("souci").hidden = !texte;
+  }
+
+  function montrerLeScan(souci = "") {
+    fermerLaCamera();
+    $("portail").hidden = true;
+    $("portail").removeAttribute("srcdoc");
+    $("scan").hidden = false;
+    direSouci(souci);
+  }
+
+  // L'écran reste allumé : l'enseignant peut montrer quelque chose à tout moment.
+  async function garderLEcranAllume() {
+    try { if (navigator.wakeLock) veille = await navigator.wakeLock.request("screen"); } catch (e) { veille = null; }
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && !$("portail").hidden) void garderLEcranAllume();
+  });
+
+  async function ouvrirLePortail() {
+    fermerLaCamera();
+    $("scan").hidden = true;
+    $("portail").hidden = false;
+    $("portail").srcdoc = await invoke("classe_page");
+    void garderLEcranAllume();
+  }
+
+  async function lireLeQrCode() {
+    direSouci("");
+    try {
+      camera = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+    } catch (e) {
+      direSouci("La caméra n'est pas accessible.");
+      return;
+    }
+    const video = $("vue");
+    $("lire").hidden = true;
+    video.hidden = false;
+    video.srcObject = camera;
+    try { await video.play(); } catch (e) { /* la lecture démarrera d'elle-même */ }
+    const toile = document.createElement("canvas");
+    const pinceau = toile.getContext("2d", { willReadFrequently: true });
+    let enCours = false;
+    lecture = setInterval(async () => {
+      if (enCours || !video.videoWidth) return;
+      toile.width = video.videoWidth;
+      toile.height = video.videoHeight;
+      pinceau.drawImage(video, 0, 0, toile.width, toile.height);
+      const vue = pinceau.getImageData(0, 0, toile.width, toile.height);
+      const trouve = window.jsQR ? window.jsQR(vue.data, vue.width, vue.height) : null;
+      if (!trouve || !trouve.data) return;
+      enCours = true;
+      try {
+        await invoke("classe_relier", { code: trouve.data });
+        await ouvrirLePortail();
+      } catch (e) {
+        direSouci(String(e));
+      }
+      enCours = false;
+    }, 220);
+  }
+
+  $("lire").onclick = () => { void lireLeQrCode(); };
+  $("roue").onclick = () => { $("voile").hidden = false; };
+  $("fermer").onclick = () => { $("voile").hidden = true; };
+  $("voile").onclick = (e) => { if (e.target === $("voile")) $("voile").hidden = true; };
+  $("vers-classeur").onclick = () => { fermerLaCamera(); location.replace("classeur/index.html"); };
+  $("vers-scan").onclick = () => { $("voile").hidden = true; montrerLeScan(); void lireLeQrCode(); };
+  $("vers-enseignant").onclick = async () => {
+    fermerLaCamera();
+    await invoke("mode_choisir", { mode: "enseignant" });
+    location.replace("enseignant.html");
+  };
+
+  try {
+    if ((await invoke("mode_lire")).portailRelie) await ouvrirLePortail();
+    else montrerLeScan();
+  } catch (e) {
+    montrerLeScan(String(e));
+  }
+</script>
+</body>
+</html>

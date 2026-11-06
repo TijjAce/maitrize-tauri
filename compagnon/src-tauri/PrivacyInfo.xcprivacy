@@ -3,9 +3,11 @@
 <!--
   Le manifeste de confidentialité que l'App Store exige.
 
-  Le dictaphone ne suit personne et ne collecte rien : ce qu'il envoie est
-  scellé pour l'ordinateur de l'enseignant, que ni Maitrize ni personne
-  d'autre ne peut rouvrir.
+  Le compagnon ne suit personne et ne collecte rien. Côté enseignant, ce qu'il
+  envoie est scellé pour l'ordinateur de l'enseignant, que ni Maitrize ni
+  personne d'autre ne peut rouvrir. Côté élève, les classeurs, leurs images et
+  leurs photos restent sur l'appareil ; seule la recherche d'un picto peut
+  demander à ARASAAC une image, sans rien dire de l'élève.
 
   Il déclare les API « à raison requise » que le binaire appelle — Rust,
   Tao et WebKit compris :

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  ajouterPage, ajouterPageSuivante, ajouterSectionApres, casesPerdues, changerSuite, changerTaille, deplacerSection, ditDeLaCase, ditEnTouchant, dupliquer, formeDeLaCase,
+  ajouterPage, ajouterPageSuivante, ajouterSectionApres, casesPerdues, changerSuite, classeurAOuvrir, changerTaille, deplacerSection, ditDeLaCase, ditEnTouchant, dupliquer, formeDeLaCase,
   fairePageDAccueil, fairePageDesCategories, imagesDuClasseur, lireClasseur, nouveauClasseur, nouvellePage, numeroDePage, ordreDesPages,
   pageVoisine, poserCase, redimensionner, sectionsDe, supprimerPage, texteDeLaPhrase, type Case, type Classeur,
 } from "./modele";
@@ -85,6 +85,14 @@ describe("le classeur de communication (demande de l'enseignant, 5 novembre 2026
     expect(relu.accueil).toBe(relu.pages[0].id);
     expect(lireClasseur("{pas du json")).toBeNull();
     expect(lireClasseur({ id: "x", pages: [] })).toBeNull();
+  });
+
+  it("côté élève, le dernier ouvert s'ouvre de lui-même, sinon le dernier modifié, en tête de liste", () => {
+    const a = nouveauClasseur("A", 2, 2), b = nouveauClasseur("B", 2, 2);
+    expect(classeurAOuvrir([a, b], b.id)?.nom).toBe("B");
+    expect(classeurAOuvrir([a, b], "disparu")?.nom).toBe("A");
+    expect(classeurAOuvrir([a, b], null)?.nom).toBe("A");
+    expect(classeurAOuvrir([], null)).toBeNull();
   });
 
   it("liste ses images une fois, et se duplique sous un autre identifiant", () => {

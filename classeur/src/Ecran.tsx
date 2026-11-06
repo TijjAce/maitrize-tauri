@@ -9,6 +9,7 @@ import { FicheCase } from "./FicheCase";
 import { CATEGORIES_MAX, categoriesApres } from "./ensembles";
 import { FichePicto } from "./FichePicto";
 import { Fenetre, annoncer, confirmer, saisir } from "./Fenetre";
+import { FenetreDesReglages, RoueDesReglages } from "./Reglages";
 
 // ── Le classeur ouvert ────────────────────────────────────────────────────
 //
@@ -58,6 +59,7 @@ function useLargeur(): number {
 const classeDuMot = (mot: string) => (Math.max(0, ...mot.split(/[\s'’-]+/).map((m) => m.length)) >= 9 ? "mot long" : "mot");
 
 export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Classeur) => void }) {
+  const [reglages, setReglages] = React.useState(false);
   const [c, setC] = React.useState(depart);
   const [images, setImages] = React.useState<Record<string, string>>({});
   const [mode, setMode] = React.useState<"parler" | "modifier">("parler");
@@ -250,7 +252,7 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
   return (
     <div className={`ecran${enModif ? " en-modif" : ""}`}>
       <div className="barre-haut">
-        <button className="bouton" onClick={() => { void fermer(); }} aria-label="Mes classeurs">‹<span className="large-seulement"> Classeurs</span></button>
+        <RoueDesReglages onClick={() => setReglages(true)} />
         <div ref={phraseRef} className="phrase" role="button" tabIndex={0} aria-label="Redire la phrase" onClick={direLaPhrase}>
           {phrase.length === 0 ? <span className="discret">{enModif ? c.nom : " "}</span> : phrase.map((m, i) => (
             <span key={i} className="mot-dit">
@@ -421,6 +423,11 @@ export function Ecran({ depart, onFermer }: { depart: Classeur; onFermer: (c: Cl
         <FicheCase classeur={c} page={page} valeur={page.cases[fiche] ?? null} images={images}
           onImage={(id, donnees) => setImages((i) => ({ ...i, [id]: donnees }))}
           onPoser={(k, nouvelle) => poser(fiche, k, nouvelle)} onFermer={() => setFiche(null)} />
+      )}
+
+      {reglages && (
+        <FenetreDesReglages onFermer={() => setReglages(false)} onMesClasseurs={() => { void fermer(); }}
+          avantDePartir={async () => { await garderClasseur(c).catch(() => {}); await garde.current; }} />
       )}
     </div>
   );

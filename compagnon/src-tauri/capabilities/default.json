@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/mobile-schema.json",
   "identifier": "default",
-  "description": "Ce dont la page a besoin : rien que les commandes du dictaphone.",
+  "description": "Ce dont les pages ont besoin : leurs commandes, l'appareil des pages et la voix du classeur.",
   "windows": ["main"],
-  "permissions": ["core:default", "scanner:default"]
+  "permissions": ["core:default", "scanner:default", "parole:default"]
 }

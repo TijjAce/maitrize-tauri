@@ -369,7 +369,7 @@ fn jeton() -> String {
 }
 
 /// Un jeton bien formé : huit signes du tirage.
-fn jeton_valide(j: &str) -> bool {
+pub(crate) fn jeton_valide(j: &str) -> bool {
     j.len() == 8 && j.bytes().all(|o| SIGNES.contains(&o))
 }
 
