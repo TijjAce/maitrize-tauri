@@ -14,7 +14,7 @@ type Nav = (to: string) => void;
 const CYCLES: Record<string, string> = { PS: "Cycle 1", MS: "Cycle 1", GS: "Cycle 1", CP: "Cycle 2", CE1: "Cycle 2", CE2: "Cycle 2", CM1: "Cycle 3", CM2: "Cycle 3" };
 
 /** La période du jour, d'après les vacances de la zone ; la première, faute de mieux. */
-async function periodeDuMoment(): Promise<number> {
+export async function periodeDuMoment(): Promise<number> {
   const { chargerVacances, periodeDuJour } = await import("./vacances");
   const jour = nowIso().slice(0, 10);
   const vacances = await chargerVacances(jour).catch(() => []);

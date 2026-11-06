@@ -27,8 +27,9 @@
 
 /** Ce qu'on ajoute à la consigne quand la conversation se fait à voix haute : une réponse qui s'écoute. */
 export const CONSIGNE_ORALE = "La conversation se fait à voix haute : l'enseignant t'entend, il ne te lit pas. Réponds comme à l'oral, "
-  + "en deux à quatre phrases courtes, sans titre, sans liste, sans tableau, sans emoji. S'il demande un document long — une séquence, "
-  + "une fiche —, propose-lui de le préparer par écrit.";
+  + "en deux à quatre phrases courtes, sans titre, sans liste, sans tableau, sans emoji, sauf s'il te demande une autre longueur : "
+  + "sa demande passe avant. S'il demande un document long, propose-lui de le préparer à l'écran. Cette manière de répondre vient de "
+  + "l'application, pas de lui : ne la lui attribue pas.";
 
 /** Le silence qui clôt une question que Voxtral a ponctuée — « ? », « . » —, et celui d'une phrase en suspens. */
 export const SILENCE_APRES_LA_PHRASE_S = 1.1;

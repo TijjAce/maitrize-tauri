@@ -39,6 +39,12 @@ import { lireNiveaux } from "../classe";
 import { consigneDeLAssistant, extraitsPourLAssistant, programmesPourLaDemande } from "../consigneAssistant";
 import { blocDeMemoire, chargerMemoire, defaireChangements, direLesChangements, memoireCoupee, retenirDuMessage, souvenirsPourLaQuestion } from "../memoireAssistant";
 import { MemoireAssistant } from "../components/MemoireAssistant";
+import {
+  DEMANDE_DE_REDACTION, FICHE_PRETE, TOURS_DE_QUESTIONS_MAX, consigneDeLaFiche, consigneDesQuestions, conversationDuCadre, demandeDeRetouche, ficheEnMarkdown,
+  lireLesQuestions, messageDesQuestions, parleAMistral, questionDeConfirmation, redigerLaFiche, seancesDeLaFiche, sequenceDeLaFiche, tourDuCadre, type SorteDePreparation, type TourDuCadre,
+} from "../cadreDeSeance";
+import { CLE_INVENTAIRE, MATERIEL_REEL, lireInventaire } from "../materielDeClasse";
+import { periodeDuMoment } from "../creationsALaVoix";
 
 // Extrait un objet JSON d'une réponse IA (tolère du texte autour).
 function extraireJson(rep: string): any {
@@ -352,7 +358,7 @@ export default function Assistant() {
     const l = lecture.current;
     if (!l || provisoire.current || (oral !== "reponse" && oral !== "lecture") || messages.length < attendue.current) return;
     const derniere = messages[messages.length - 1];
-    if (derniere?.role === "assistant") l.suivre(derniere.content, !loading);
+    if (derniere?.role === "assistant") l.suivre(derniere.dit ?? derniere.content, !loading);
   }, [oral, loading, messages]);
 
   // L'écran qui se ferme se tait.
@@ -443,9 +449,13 @@ export default function Assistant() {
     const contenu = (texte ?? input).trim();
     const jointes = images;
     if ((!contenu && !jointes.length) || loading) return;
-    const suite: ChatMessage[] = [...messages, { role: "user", content: contenu, ...(jointes.length ? { images: jointes } : {}) }];
+    // Une séance ou une séquence demandée : le cadre prend la main (voir cadreDeSeance.ts) ; ni sur le web, ni sur un document, ni sur une image.
+    const tour: TourDuCadre = surLeWeb || documentChoisi || jointes.length ? { genre: "normal" } : tourDuCadre(messages, contenu);
+    const riendAjouter = (tour.genre === "decline" || tour.genre === "cadrer") && tour.seule;
+    const suite: ChatMessage[] = [...messages, { role: "user", content: contenu, ...(jointes.length ? { images: jointes } : {}), ...(riendAjouter ? { cadre: { etape: "reponse" } } : {}) }];
     setMessages(suite); setInput(""); setImages([]); setLoading(true); setRechercheProposee(null);
     colleEnBas.current = true; setDetache(false);
+    if (tour.genre !== "normal" && tour.genre !== "decline") { await conduireLeCadre(tour, suite, contenu, riendAjouter); return; }
     let cleanup = () => {};
 
     // Recherche web : l'agent Mistral interroge le web puis répond en citant
@@ -517,7 +527,7 @@ export default function Assistant() {
       }
       // Le document se lit ici — une fois : textesDesPdf.ts garde ses pages — ; ses passages qui parlent de la
       // question partent avec elle, après les deux derniers échanges.
-      let aEnvoyer = suite;
+      let aEnvoyer = suite.filter(parleAMistral);
       let pagesDuDocument: PageLue[] = [];
       if (doc) {
         setMessages([...suite, { role: "assistant", content: `_📖 Lecture de « ${doc.nom} »…_` }]);
@@ -608,6 +618,115 @@ export default function Assistant() {
     }
   };
   envoyerRef.current = envoyer;
+
+  /**
+   * Un tour de la préparation d'une séance ou d'une séquence : la confirmation, les questions, la rédaction, la retouche
+   * (voir cadreDeSeance.ts). Tout part masqué, comme le reste de la conversation. À voix haute, seul `dit` se lit : il ne
+   * fait que s'allonger, la voix reprend là où elle en était.
+   */
+  const conduireLeCadre = async (tour: Exclude<TourDuCadre, { genre: "normal" | "decline" }>, suite: ChatMessage[], contenu: string, riendAjouter: boolean) => {
+    const finir = (m: ChatMessage) => {
+      const final = [...suite, m];
+      arret.current = null;
+      setMessages(final); setLoading(false); void sauvegarderConv(final);
+    };
+    if (tour.genre === "confirmer") {
+      finir({ role: "assistant", content: questionDeConfirmation(tour.sorte), cadre: { etape: "confirmation", sorte: tour.sorte } });
+      void retenir(contenu);
+      return;
+    }
+    if (tour.genre === "abandon") { finir({ role: "assistant", content: "D'accord, on laisse cela de côté." }); return; }
+    provisoire.current = false;
+    let arretee = false;
+    arret.current = () => { arretee = true; finir({ role: "assistant", content: "_⏹ Arrêté._", dit: "" }); };
+    const attente = (texte: string, dit: string) => { if (!arretee) setMessages([...suite, { role: "assistant", content: `_${texte}_`, dit }]); };
+    const sorte: SorteDePreparation = tour.sorte;
+    const nom = sorte === "sequence" ? "la séquence" : "la séance";
+    const avantLaFiche = tour.genre === "retoucher" ? "Je reprends la fiche." : "Je m'y mets, cela prend une minute.";
+    try {
+      attente(tour.genre === "retoucher" ? "Je reprends la fiche…" : "Je relis votre demande…", "");
+      const demande = conversationDuCadre(suite).filter((m) => m.role === "user").slice(-4).map((m) => m.content).join(" ");
+      const [ctx, trouvailles, souvenirs, inventaire] = await Promise.all([
+        contexteActif ? construireContexteIA() : Promise.resolve(""),
+        Promise.all([api.referentielsList(), contexteActif ? api.settingGet("niveauClasse") : Promise.resolve(null)])
+          .then(([refs, niveau]) => programmesPourLaDemande(refs, demande, lireNiveaux(niveau))).catch(() => []),
+        memoireCoupee().then((coupee) => (coupee ? [] : chargerMemoire())).catch(() => []),
+        contexteActif ? api.settingGet(CLE_INVENTAIRE).catch(() => null) : Promise.resolve(null),
+      ]);
+      const inv = lireInventaire(inventaire);
+      const materiel = MATERIEL_REEL.filter((m) => inv[m.id]?.a).map((m) => `- ${m.nom}`).join("\n");
+      const conv = conversationDuCadre(suite);
+      const fiche = tour.genre === "retoucher" ? JSON.stringify(tour.fiche) : "";
+      const masque = await masquerSurLesEleves([blocDeMemoire(souvenirsPourLaQuestion(souvenirs, demande)), ctx, fiche, ...conv.map((m) => m.content)]);
+      const [memoire, contexte, ficheMasquee, ...textes] = masque.textes;
+      const echanges = conv.map((m, i) => ({ role: m.role, content: textes[i] ?? m.content }));
+      const rendre = (t: string) => restaurer(t, masque.table).texte;
+      const entrees = { contexte, memoire, materiel };
+      if (tour.genre === "cadrer") {
+        const q = lireLesQuestions(await api.mistralChat([{ role: "system", content: consigneDesQuestions(sorte, tour.tour, entrees) }, ...echanges], model, true), rendre);
+        if (arretee) return;
+        if (q.questions.length) {
+          const texte = messageDesQuestions(q);
+          finir({ role: "assistant", content: texte, dit: [q.compris, ...q.questions].join(" "), cadre: { etape: "questions", sorte, tour: tour.tour } });
+          if (!riendAjouter) void retenir(contenu);
+          return;
+        }
+      }
+      attente(tour.genre === "retoucher" ? "Je reprends la fiche…" : `Je rédige ${nom}, cela prend une minute…`, avantLaFiche);
+      const systeme = { role: "system" as const, content: consigneDeLaFiche(sorte, { ...entrees, programmes: extraitsPourLAssistant(trouvailles) }) };
+      const r = await redigerLaFiche({
+        sorte, rendre, permis: trouvailles.map((t) => t.texte),
+        messages: tour.genre === "retoucher"
+          ? [systeme, { role: "user", content: demandeDeRetouche(ficheMasquee, textes[textes.length - 1] ?? contenu) }]
+          : [systeme, ...echanges, { role: "user", content: DEMANDE_DE_REDACTION }],
+        appeler: (messages) => api.mistralChat(messages, model, true),
+        surCorrection: () => attente("Je relis et je corrige…", avantLaFiche),
+      });
+      if (arretee) return;
+      if ("reponse" in r) { finir({ role: "assistant", content: r.reponse, dit: `${avantLaFiche} ${r.reponse}` }); return; }
+      finir({
+        role: "assistant", content: ficheEnMarkdown(r.fiche, sorte), dit: `${avantLaFiche} ${FICHE_PRETE}`,
+        cadre: { etape: "fiche", sorte, fiche: r.fiche, notes: r.notes },
+      });
+      if (!riendAjouter) void retenir(contenu);
+    } catch (e) {
+      if (arretee) return;
+      // La fiche n'est pas venue : le prochain message, ou le bouton, relance la rédaction.
+      finir({ role: "assistant", content: `⚠️ ${texteErreur(e)}`, dit: `${avantLaFiche} Cela n'a pas marché, la raison est à l'écran.`, cadre: { etape: "questions", sorte, tour: TOURS_DE_QUESTIONS_MAX } });
+    }
+  };
+
+  // Une fiche retouchée remplace la précédente : seule la dernière peut devenir une vraie séquence.
+  const indiceDeLaDerniereFiche = messages.map((m) => m.cadre?.etape === "fiche").lastIndexOf(true);
+  // La fiche devient une vraie séquence, ou une séance de plus dans une séquence qui existe ; la fiche entière, en PDF, dans le matériel de sa première séance.
+  const [aPlacer, setAPlacer] = React.useState<number | null>(null);
+  const creerLaFiche = async (i: number, cible: string | null) => {
+    const m = messages[i];
+    if (m?.cadre?.etape !== "fiche") return;
+    const { fiche, sorte } = m.cadre;
+    try {
+      const sequence = cible ? null : sequenceDeLaFiche(fiche, await periodeDuMoment());
+      if (sequence) await api.sequenceSave(sequence);
+      const sequenceId = sequence?.id ?? cible!;
+      const avant = sequence ? [] : await api.seancesList(sequenceId).catch(() => []);
+      const seances = seancesDeLaFiche(fiche, sequenceId, Math.max(0, ...avant.map((s) => s.numero)) + 1);
+      for (const s of seances) await api.seanceSave(s);
+      const titre = `Fiche : ${fiche.titre}`;
+      try {
+        const pdf = await api.feuilleEnPdf(documentImprimable(titre, feuilleDeLaReponse(m).corps, STYLE_DOCUMENT_IA));
+        const depose = await deposerSurLeBureau("assistant", titre, pdf);
+        await api.materielSave({ ...depose, seanceId: seances[0].id, sequenceId });
+      } catch (e) { toast(`La séquence est créée, mais pas le PDF de la fiche : ${texteErreur(e)}`, { icone: "⚠️", duree: 7000 }); }
+      const suite = messages.map((x, j) => (j === i && x.cadre?.etape === "fiche" ? { ...x, cadre: { ...x.cadre, creee: { sequenceId, seanceId: seances[0].id } } } : x));
+      setMessages(suite);
+      void sauvegarderConv(suite);
+      toastAnnulable(sorte === "sequence" ? `Séquence « ${fiche.titre} » créée.` : `Séance « ${fiche.titre} » créée.`, async () => {
+        if (sequence) await api.sequenceDelete(sequence.id);
+        else for (const s of seances) await api.seanceDelete(s.id);
+      }, "📚");
+      nav(sorte === "sequence" ? `/sequences/${sequenceId}` : `/seances/${seances[0].id}`);
+    } catch (e) { toast("Rien n'a été créé : " + texteErreur(e), { icone: "⚠️", duree: 8000 }); }
+  };
 
   /**
    * Ce que l'enseignant vient de dire et qui mérite d'être retenu, relu en arrière-plan après la réponse (voir
@@ -766,8 +885,35 @@ export default function Assistant() {
                 <button type="button" className="btn ghost sm" onClick={() => setRechercheProposee(null)}>Non merci</button>
               </div>
             )}
+            {/* Le cadre d'une séance ou d'une séquence : oui ou non, rédiger sans attendre ; à voix haute, ces réponses se disent. */}
+            {m.cadre?.etape === "confirmation" && i === messages.length - 1 && !loading && oral === "non" && (
+              <div className="msg-actions" role="group" aria-label={questionDeConfirmation(m.cadre.sorte)}>
+                <button type="button" className="btn primary sm" onClick={() => { void envoyer("Oui"); }}>Oui</button>
+                <button type="button" className="btn ghost sm" onClick={() => { void envoyer("Non"); }}>Non</button>
+              </div>
+            )}
+            {m.cadre?.etape === "questions" && i === messages.length - 1 && !loading && oral === "non" && (
+              <div className="msg-actions">
+                <button type="button" className="btn ghost sm" onClick={() => { void envoyer("Rédige maintenant"); }}>Rédiger sans attendre</button>
+              </div>
+            )}
+            {m.cadre?.etape === "fiche" && m.cadre.notes.length > 0 && <p className="meta" style={{ fontSize: 12, margin: "6px 0 0" }}>{m.cadre.notes.join(" ")}</p>}
+            {m.cadre?.etape === "fiche" && i === indiceDeLaDerniereFiche && !loading && (
+              <div className="msg-actions">
+                {(() => {
+                  const c = m.cadre;
+                  if (c.creee) {
+                    const { sequenceId, seanceId } = c.creee;
+                    return <button type="button" className="btn sm" onClick={() => nav(c.sorte === "sequence" ? `/sequences/${sequenceId}` : `/seances/${seanceId}`)}>{c.sorte === "sequence" ? "📚 Ouvrir la séquence" : "📚 Ouvrir la séance"}</button>;
+                  }
+                  return c.sorte === "sequence"
+                    ? <button type="button" className="btn primary sm" onClick={() => { void creerLaFiche(i, null); }}>📥 Créer la séquence dans Maitrize</button>
+                    : <button type="button" className="btn primary sm" onClick={() => setAPlacer(i)}>📥 Créer la séance dans Maitrize</button>;
+                })()}
+              </div>
+            )}
             {/* Une réponse finie devient une feuille : imprimée, ou en PDF sur le bureau. */}
-            {m.role === "assistant" && m.content.trim() && !(loading && i === messages.length - 1) && !m.content.startsWith("⚠️") && (
+            {m.role === "assistant" && m.content.trim() && !(loading && i === messages.length - 1) && !m.content.startsWith("⚠️") && (!m.cadre || m.cadre.etape === "fiche") && (
               <div className="msg-actions">
                 <button type="button" className="btn ghost sm" onClick={() => setARetoucher(i)}
                   title="Effacer un passage, aérer un tableau, changer la taille du texte — puis imprimer ou exporter">✏️ Retoucher{m.mise ? " (retouchée)" : ""}</button>
@@ -843,12 +989,35 @@ export default function Assistant() {
         <ChoixDuDocument onClose={() => setChoixDuDocument(false)}
           onChoisir={(d) => { setDocumentChoisi(d); setChoixDuDocument(false); setTimeout(() => saisie.current?.focus(), 50); }} />
       )}
+      {aPlacer !== null && (
+        <ChoixDeLaSequence onClose={() => setAPlacer(null)} onChoisir={(cible) => { const i = aPlacer; setAPlacer(null); void creerLaFiche(i, cible); }} />
+      )}
       {aRetoucher !== null && messages[aRetoucher] && (
         <MiseEnPageReponse markdown={messages[aRetoucher].content} mise={messages[aRetoucher].mise}
           onFermer={() => setARetoucher(null)} onGarder={(html) => garderRetouche(aRetoucher, html)} onBureau={feuilleSurLeBureau} />
       )}
       </div>
     </div>
+  );
+}
+
+// ── La séance de la fiche : dans quelle séquence ───────────────────────────
+function ChoixDeLaSequence({ onClose, onChoisir }: { onClose: () => void; onChoisir: (sequenceId: string | null) => void }) {
+  const { data: sequences } = useAsync(() => api.sequencesList(), []);
+  const [cible, setCible] = React.useState("");
+  return (
+    <Modal titre="📥 Créer la séance" onClose={onClose}
+      footer={<>
+        <button className="btn" onClick={onClose}>Annuler</button>
+        <button className="btn primary" onClick={() => onChoisir(cible || null)}>Créer</button>
+      </>}>
+      <Field label="Dans quelle séquence ?">
+        <Select autoFocus value={cible} onChange={(e) => setCible(e.target.value)}>
+          <option value="">Une nouvelle séquence</option>
+          {(sequences ?? []).map((s: Sequence) => <option key={s.id} value={s.id}>{s.titre || "Sans titre"} ({s.matiere}, P{s.periode})</option>)}
+        </Select>
+      </Field>
+    </Modal>
   );
 }
 

@@ -1,4 +1,5 @@
 // Couche d'accès au backend Rust via Tauri invoke. Types miroir des structs.
+import type { CadreDuMessage } from "./cadreDeSeance";
 import { invoke as invokeTauri } from "@tauri-apps/api/core";
 import { pendant } from "./calculEnCours";
 import { noterEchec, noterSucces, type EtatIncidents } from "./incidents";
@@ -362,6 +363,10 @@ export interface ChatMessage {
   mise?: string;
   /** Les images collées dans le message (⌘V), en adresses data: ; elles partent avec lui (voir imagesDeLAssistant.ts). */
   images?: string[];
+  /** Où en est la préparation d'une séance ou d'une séquence (voir cadreDeSeance.ts) ; ne part jamais chez Mistral. */
+  cadre?: CadreDuMessage;
+  /** Ce que la voix lit à la place du texte, à voix haute : une fiche ne se lit pas. */
+  dit?: string;
 }
 export interface ResultatRecherche {
   kind: string; id: string; titre: string; sousTitre: string;
