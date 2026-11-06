@@ -40,6 +40,7 @@ import { photoDuJeu, type PhotoDeJeu } from "./supportsDeTravail";
 import type { RefPicto } from "./pictosAppoint";
 import { jeuxCites } from "./jeuxCites";
 import { pdfsCites } from "./materielAImprimer";
+import { sansLesNoms } from "./confidentialite";
 import { eleveDeLaFiche, lirePdfs, titreSansLEleve } from "./materielSeance";
 import { lireFabrication, MINUTEUR_MAX } from "./modifierFeuille";
 import { elevesDesParties, prevuDeLEleve, prevuSansTetes } from "./prevuParEleve";
@@ -366,6 +367,19 @@ export function pasDeLEleve(
   const sien = { ...c, prevu: prevuDeLEleve(c.prevu ?? "", prenom, parties) };
   const pas = pasDuDeroulement(sien, seance, fiches, domaineDeSeance, prenom, sequences, seances, jeux, photos, manuels);
   return pas.length ? pas : carteSeule(sien);
+}
+
+/**
+ * Ce que voit une tablette ne nomme personne (voir portail.rs, côté téléphone).
+ * Un créneau s'intitule parfois des prénoms de son groupe, et sa carte seule le
+ * reprendrait ; les pages passent en clair sur le réseau de la classe.
+ */
+export function pasSansPrenoms(pas: PasDuDeroulement[], noms: string[]): PasDuDeroulement[] {
+  return pas.map(({ eleve: _eleve, ...p }) => {
+    const domaine = p.domaine ? sansLesNoms(p.domaine, noms) : "";
+    const { domaine: _ancien, ...sansDomaine } = p;
+    return { ...sansDomaine, texte: sansLesNoms(p.texte, noms) || "Créneau", matiere: sansLesNoms(p.matiere, noms), ...(domaine ? { domaine } : {}) };
+  });
 }
 
 /** La clé du déroulement d'un créneau : la publication la remplace par l'empreinte de sa page. */
@@ -749,7 +763,7 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
         const pas = eleve && parties.includes(eleve)
           ? pasDeLEleve(c, eleve, parties, seance, fiches, domaine, sequences, seances, jeux, photos, manuels)
           : pasDuDeroulement(lu, seance, fiches, domaine, eleve, sequences, seances, jeux, photos, manuels);
-        deroulements.push({ cle, pas });
+        deroulements.push({ cle, pas: pasSansPrenoms(pas, lesEleves.map((e) => e.nom)) });
       }
     }
     // Un picto de matière ou de domaine choisi, une matière détaillée ou non : les déroulements changent, ils repartent.
@@ -761,12 +775,12 @@ export async function publierLeJournal(maintenant = new Date()): Promise<void> {
     const aides: AideAPublier[] = [];
     for (const m of materiel.filter((x) => cites.has(x.id))) {
       const html = await pageDeLAide(m).catch(() => null);
-      if (html) aides.push({ cle: m.id, titre: titrePourLesTablettes(m), html });
+      if (html) aides.push({ cle: m.id, titre: sansLesNoms(titrePourLesTablettes(m), lesEleves.map((e) => e.nom)) || "Fiche", html });
     }
     // Les séances qu'« En retard » a posées pour un élève : chacune sa page, une fois.
     for (const x of seances.filter((s) => cites.has(cleDeLaSeance(s.id)))) {
       const html = await pageDeLaSeance(x, materiel).catch(() => null);
-      if (html) aides.push({ cle: cleDeLaSeance(x.id), titre: x.titre, html });
+      if (html) aides.push({ cle: cleDeLaSeance(x.id), titre: sansLesNoms(x.titre, lesEleves.map((e) => e.nom)) || "Séance", html });
     }
     for (const { cle, pas } of deroulements) {
       const html = await pageDuDeroulement(pas).catch(() => null);

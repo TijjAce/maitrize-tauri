@@ -5,6 +5,7 @@ import {
   aidesDuCreneau, cleDuDeroulement, cleDuDeroulementDe, dureeDuMinuteur, estUneAide, estUneFicheDEleve, fichesDuCreneau, journalDes, joursPublies, minuteurDuCreneau, MINUTEURS_DES_TABLETTES,
   domaineDeLaSeance, pasDeLEleve, pasDuDeroulement,
   pageDeLaConsigne, signatureDuJournal, titreDeLAide, titrePourLesTablettes, type ManuelDuDeroulement,
+  carteSeule, pasSansPrenoms,
 } from "./journalTelephone";
 
 const creneau = (id: string, date: string, p: Partial<Creneau> = {}): Creneau => ({
@@ -19,6 +20,21 @@ const materiel = (id: string, titre: string, seanceId: string | null, atelier: s
   id, titre, descriptionMateriel: "", competenceId: "", competenceTitre: "", domaineTitre: "", sousDomaineTitre: "", cycle: "",
   imagesJson: "[]", pdfsJson: "[]", dateCreation: "", seanceId, sequenceId: "q1", dossier: "", videosJson: "[]", coffreJson: "[]",
   fabricationJson: JSON.stringify({ atelier, memoires: {} }),
+});
+
+describe("ce que voit une tablette ne nomme personne", () => {
+  it("une carte qui ne disait que des prénoms devient « Créneau » ; ailleurs, le prénom s'en va seul", () => {
+    const noms = ["Barnabé", "Nils"];
+    expect(pasSansPrenoms(carteSeule({ prevu: "", matiere: "Barnabé Nils" }), noms)).toEqual([{ texte: "Créneau", matiere: "" }]);
+    expect(pasSansPrenoms([{ texte: "Lecture Barnabé", matiere: "Français — Nils", domaine: "Lecture Barnabé", eleve: "Nils" }], noms))
+      .toEqual([{ texte: "Lecture", matiere: "Français", domaine: "Lecture" }]);
+    expect(pasSansPrenoms([{ texte: "Le jeu de l'oie", matiere: "Maths", fiche: true }], noms)).toEqual([{ texte: "Le jeu de l'oie", matiere: "Maths", fiche: true }]);
+  });
+
+  it("la publication passe par là", () => {
+    const source = Object.values(import.meta.glob("./journalTelephone.ts", { query: "?raw", import: "default", eager: true }) as Record<string, string>)[0];
+    expect(source).toContain("deroulements.push({ cle, pas: pasSansPrenoms(pas,");
+  });
 });
 
 describe("le cahier journal pour le téléphone", () => {

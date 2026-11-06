@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nomsDansUnTexte, pseudonymiser, pseudonymiserTout, restaurer } from "./confidentialite";
+import { nomsDansUnTexte, pseudonymiser, pseudonymiserTout, restaurer, sansLesNoms } from "./confidentialite";
 
 const eleves = ["Amandine Martin", "Léo Dubois-Durand", "Rose Petit"];
 
@@ -54,6 +54,21 @@ describe("pseudonymiser", () => {
   it("un texte décomposé (accents en deux caractères) est masqué comme les autres", () => {
     const decompose = "Léo a lu.";
     expect(pseudonymiser(decompose, eleves).texte).toBe("[P1] a lu.");
+  });
+});
+
+describe("sansLesNoms", () => {
+  it("retire les noms pour de bon, et ce qui les accompagnait", () => {
+    expect(sansLesNoms("Barnabé Nils", ["Barnabé", "Nils"])).toBe("");
+    expect(sansLesNoms("Lecture — Barnabé, mardi", ["Barnabé"])).toBe("Lecture — mardi");
+    expect(sansLesNoms("Le cahier d'Barnabé", ["Barnabé"])).toBe("Le cahier");
+    expect(sansLesNoms("Lire avec BARNABÉ.", ["Barnabé"])).toBe("Lire avec.");
+  });
+
+  it("ne touche ni un mot courant, ni un mot voisin, ni un texte sans nom", () => {
+    expect(sansLesNoms("Une rose  rouge", ["Rose"])).toBe("Une rose  rouge");
+    expect(sansLesNoms("Il sera là", ["Sara"])).toBe("Il sera là");
+    expect(sansLesNoms("Sera-t-il là ?", ["Sara"])).toBe("Sera-t-il là ?");
   });
 });
 

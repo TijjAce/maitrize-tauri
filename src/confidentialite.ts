@@ -247,6 +247,26 @@ export function pseudonymiser(texte: string, noms: string[], options: OptionsMas
   };
 }
 
+/**
+ * Un court texte sans les noms connus, retirés pour de bon, et la ponctuation qui
+ * les accompagnait : pour ce qui s'affiche ailleurs, sans retour possible, comme
+ * une carte sur la tablette d'un élève. Les formes exactes seulement : une faute
+ * supposée ferait sauter un vrai mot. Vide s'il ne disait que des noms.
+ */
+export function sansLesNoms(texte: string, noms: string[]): string {
+  let sortie = texte.normalize("NFC");
+  for (const v of [...new Set(noms.flatMap(formes))].sort((a, b) => b.length - a.length)) {
+    for (const p of occurrences(sortie, v).reverse()) sortie = sortie.slice(0, p) + sortie.slice(p + v.length);
+  }
+  if (sortie === texte.normalize("NFC")) return sortie;
+  return sortie
+    .replace(/(^|[ \t])[dDlL]['’](?=[ \t,.;:!?]|$)/g, "$1")
+    .replace(/([—–-])[ \t]*,/g, "$1")
+    .replace(/[ \t]+([,.;:!?])/g, "$1")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/^[ \t,;:—–-]+|[ \t,;:—–-]+$/g, "");
+}
+
 /** Ce qui sépare les textes masqués ensemble : aucun nom ne le contient. */
 const SEPARE = "\u0000";
 
