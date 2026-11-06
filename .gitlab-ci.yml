@@ -60,7 +60,8 @@ essais:
 windows:
   extends: .machine
   stage: construction
-  timeout: 1h
+  # Le maximum des machines de la Forge : partagées, elles peuvent mettre plus d'une heure.
+  timeout: 2h
   cache:
     key: windows-debian13
     paths:
