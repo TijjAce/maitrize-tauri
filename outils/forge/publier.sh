@@ -37,6 +37,14 @@ depot=$(git rev-parse --show-toplevel)
 version=$(sed -nE 's/^ *"version": "([^"]+)".*/\1/p' "$depot/src-tauri/tauri.conf.json" | head -1)
 [ -n "$version" ] || { echo "Version introuvable dans tauri.conf.json." >&2; exit 1; }
 
+# Les notes de la version se lisent dans CHANGELOG.md, tel que HEAD le contient.
+if [ "$avec_version" = oui ] && ! git -C "$depot" show HEAD:CHANGELOG.md | grep -qx "## $version"; then
+  echo "CHANGELOG.md n'a pas de partie $version : lancer outils/forge/journal-des-versions.mjs et committer." >&2
+  exit 1
+fi
+# Un fichier neuf sans mention d'auteur se signale, sans arrêter la publication.
+python3 -I "$depot/outils/forge/mention-auteur.py" --verifier || true
+
 # La clé attend dans le trousseau du Mac.
 ssh-add -l 2>/dev/null | grep -q "$(ssh-keygen -lf "$CLE.pub" | awk '{print $2}')" || ssh-add --apple-use-keychain "$CLE"
 export GIT_SSH_COMMAND="ssh -i $CLE -o IdentitiesOnly=yes"

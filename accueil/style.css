@@ -1,0 +1,230 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Clément Titet — voir LICENSE et NOTICE à la racine du projet. */
+
+/* La page d'accueil et le mode d'emploi : rien ne vient d'ailleurs, la police Marelle est à côté. */
+
+@font-face {
+  font-family: "Marelle";
+  src: url("polices/Marelle-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+
+:root {
+  --encre: #1f1d33;
+  --encre-douce: #514e6b;
+  --papier: #fdfcfe;
+  --fond-doux: #f4f2fb;
+  --carte: #ffffff;
+  --trait: #e3e0f0;
+  --accent: #5053d6;
+  --accent-fonce: #3f41b3;
+  --sur-accent: #ffffff;
+  --rouge: #d9483b;
+  --seyes-fin: #dcd7f5;
+  --seyes-fort: #a99be8;
+  --ombre: 0 10px 34px rgba(46, 38, 99, 0.16), 0 2px 6px rgba(46, 38, 99, 0.08);
+  --largeur: 1080px;
+  --u: 30px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --encre: #eeedf7;
+    --encre-douce: #b4b1cc;
+    --papier: #17162a;
+    --fond-doux: #201e36;
+    --carte: #24223c;
+    --trait: #38355a;
+    --accent: #8f92f5;
+    --accent-fonce: #a9abf8;
+    --sur-accent: #15142a;
+    --rouge: #f07366;
+    --seyes-fin: #2f2c4d;
+    --seyes-fort: #55509a;
+    --ombre: 0 10px 34px rgba(0, 0, 0, 0.45);
+  }
+}
+:root[data-theme="dark"] {
+  --encre: #eeedf7;
+  --encre-douce: #b4b1cc;
+  --papier: #17162a;
+  --fond-doux: #201e36;
+  --carte: #24223c;
+  --trait: #38355a;
+  --accent: #8f92f5;
+  --accent-fonce: #a9abf8;
+  --sur-accent: #15142a;
+  --rouge: #f07366;
+  --seyes-fin: #2f2c4d;
+  --seyes-fort: #55509a;
+  --ombre: 0 10px 34px rgba(0, 0, 0, 0.45);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--papier);
+  color: var(--encre);
+  font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+img { max-width: 100%; height: auto; display: block; }
+a { color: var(--accent-fonce); text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+h1, h2, h3 { line-height: 1.2; text-wrap: balance; }
+h2 { font-size: clamp(1.45rem, 3.2vw, 1.95rem); margin: 0 0 0.6rem; letter-spacing: -0.01em; }
+h3 { font-size: 1.12rem; margin: 0 0 0.3rem; }
+p { margin: 0 0 0.9rem; }
+
+.colonne { max-width: var(--largeur); margin: 0 auto; padding: 0 20px; }
+
+/* ——— La feuille de cahier : réglure Seyès, marge rouge ——— */
+.une {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--papier);
+  background-image:
+    repeating-linear-gradient(to bottom, transparent 0 calc(var(--u) * 4 - 2px), var(--seyes-fort) calc(var(--u) * 4 - 2px) calc(var(--u) * 4)),
+    repeating-linear-gradient(to bottom, transparent 0 calc(var(--u) - 1px), var(--seyes-fin) calc(var(--u) - 1px) var(--u));
+  background-size: 100% calc(var(--u) * 4), 100% var(--u);
+  height: calc(var(--u) * 8);
+  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent);
+  mask-image: linear-gradient(to bottom, #000 72%, transparent);
+}
+.une::before {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  left: max(20px, calc((100% - var(--largeur)) / 2 + 4px));
+  border-left: 2px solid var(--rouge);
+  opacity: 0.7;
+}
+.titre {
+  position: absolute;
+  margin: 0;
+  /* Marelle : la hauteur d'x vaut 0,48 de la taille, comme un interligne fin de la réglure. */
+  font: 400 calc(var(--u) / 0.48)/1 "Marelle", "Segoe Script", "Snell Roundhand", cursive;
+  left: max(44px, calc((100% - var(--largeur)) / 2 + 28px));
+  /* La ligne de base du titre tombe sur la deuxième ligne forte. */
+  top: calc(var(--u) * 4);
+  transform: translateY(var(--monte, -102%));
+  white-space: nowrap;
+}
+.titre .z { text-decoration: underline 3px var(--rouge); text-underline-offset: 0.03em; text-decoration-skip-ink: none; }
+
+.ouverture { position: relative; margin-top: calc(var(--u) * -1.5); padding-bottom: 8px; }
+.ouverture .accroche { font-size: clamp(1.25rem, 2.9vw, 1.65rem); line-height: 1.35; font-weight: 600; max-width: 34em; margin: 0 0 1.1rem; text-wrap: pretty; }
+
+.telecharger { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 0.7rem; }
+.bouton {
+  display: inline-flex; flex-direction: column; gap: 1px;
+  padding: 11px 22px;
+  background: var(--accent); color: var(--sur-accent);
+  border-radius: 12px; text-decoration: none; font-weight: 650;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.bouton:hover { background: var(--accent-fonce); transform: translateY(-1px); }
+.bouton small { font-weight: 450; font-size: 0.8rem; opacity: 0.92; }
+.bouton.second { background: var(--carte); color: var(--encre); box-shadow: inset 0 0 0 1px var(--trait); }
+.bouton.second:hover { background: var(--fond-doux); }
+.promesses { color: var(--encre-douce); font-size: 0.95rem; margin: 0; }
+
+.capture {
+  margin: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--ombre);
+  background: var(--carte);
+}
+.capture-une { margin-top: 30px; }
+figure.legendee { margin: 0; }
+figcaption { color: var(--encre-douce); font-size: 0.86rem; margin-top: 0.5rem; }
+
+/* ——— Ce qu'elle fait ——— */
+.partie { padding: 54px 0; }
+.partie.doux { background: var(--fond-doux); }
+.rangee { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 8fr); gap: 36px; align-items: center; }
+.rangee + .rangee { margin-top: 56px; }
+.rangee.inverse { grid-template-columns: minmax(0, 8fr) minmax(0, 5fr); }
+.rangee.inverse > :first-child { order: 2; }
+.rangee p:last-child { margin-bottom: 0; }
+
+.tel { display: flex; gap: 16px; justify-content: center; }
+.tel img { width: min(46%, 230px); border-radius: 22px; box-shadow: var(--ombre); }
+
+.cartes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 1.2rem; }
+.carte { background: var(--carte); border: 1px solid var(--trait); border-radius: 14px; padding: 16px 18px; }
+.carte p { margin: 0; color: var(--encre-douce); font-size: 0.95rem; }
+.cartes.trois { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.carte.large { grid-column: 1 / -1; }
+
+.fin { padding: 30px 0 44px; color: var(--encre-douce); font-size: 0.9rem; border-top: 1px solid var(--trait); }
+.fin p { margin: 0 0 0.5rem; }
+
+/* ——— Le mode d'emploi ——— */
+.tete { border-bottom: 1px solid var(--trait); }
+.tete .colonne { display: flex; align-items: center; gap: 14px; padding-top: 14px; padding-bottom: 14px; flex-wrap: wrap; }
+.tete .marque { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; color: var(--encre); text-decoration: none; }
+.tete .marque img { width: 34px; height: 34px; border-radius: 8px; }
+.tete .droite { margin-left: auto; display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.95rem; }
+
+.mode { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 44px; align-items: start; padding-top: 34px; padding-bottom: 60px; }
+.sommaire { position: sticky; top: 18px; max-height: calc(100vh - 36px); overflow: auto; font-size: 0.93rem; }
+.sommaire strong { display: block; margin-bottom: 0.4rem; }
+.sommaire ol { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+.sommaire li { counter-increment: s; }
+.sommaire a { display: block; padding: 4px 8px; border-radius: 7px; color: var(--encre-douce); text-decoration: none; }
+.sommaire a::before { content: counter(s) ". "; }
+.sommaire a:hover { background: var(--fond-doux); color: var(--encre); }
+
+.texte { min-width: 0; }
+.texte h1 { font-size: clamp(1.8rem, 4.5vw, 2.5rem); margin: 0 0 0.4rem; letter-spacing: -0.015em; }
+.texte .chapeau { font-size: 1.14rem; color: var(--encre-douce); margin-bottom: 1.8rem; }
+.texte section { padding-top: 26px; scroll-margin-top: 10px; }
+.texte section + section { margin-top: 18px; border-top: 1px solid var(--trait); }
+.texte h3 { margin-top: 1.3rem; }
+.texte ol, .texte ul { padding-left: 1.3em; margin: 0 0 1rem; }
+.texte li { margin-bottom: 0.4rem; }
+.texte li::marker { color: var(--accent); font-weight: 650; }
+.texte .capture { margin: 1rem 0 1.4rem; }
+kbd {
+  font: 600 0.82em/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--fond-doux); border: 1px solid var(--trait); border-bottom-width: 2px;
+  border-radius: 5px; padding: 2px 6px;
+}
+.note {
+  background: var(--fond-doux); border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0; padding: 11px 15px; margin: 0 0 1rem; font-size: 0.97rem;
+}
+.note p:last-child { margin-bottom: 0; }
+.table-defile { overflow-x: auto; margin: 0 0 1rem; }
+table { border-collapse: collapse; width: 100%; font-size: 0.96rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--trait); vertical-align: top; }
+th { font-weight: 650; }
+td:first-child { white-space: nowrap; font-weight: 600; }
+
+@media (max-width: 860px) {
+  .rangee, .rangee.inverse { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .rangee.inverse > :first-child { order: 0; }
+  .partie { padding: 40px 0; }
+  .mode { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-top: 22px; }
+  .sommaire { position: static; max-height: none; background: var(--fond-doux); border-radius: 12px; padding: 12px; }
+}
+@media (max-width: 520px) {
+  body { font-size: 16px; }
+  :root { --u: 20px; }
+  .colonne { padding: 0 16px; }
+  .bouton { width: 100%; }
+  td:first-child { white-space: normal; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .bouton { transition: none; }
+}
+@media print {
+  .sommaire, .tete .droite { display: none; }
+  .mode { display: block; }
+  .capture { box-shadow: none; border: 1px solid #ccc; }
+}
