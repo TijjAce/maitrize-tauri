@@ -11,23 +11,17 @@ import { api } from "./api";
 import { restaurer } from "./confidentialite";
 import { masquerSurLesEleves } from "./nomsAMasquer";
 
-export type Style = "reformuler" | "simple" | "professionnel" | "familles" | "notes" | "corriger";
+export type Style = "reformuler" | "notes" | "corriger";
 
+/** Ce que propose le menu sur un passage sélectionné ; « notes » sert à la synthèse d'un élève. */
 export const STYLES: { id: Style; libelle: string; aide: string }[] = [
   { id: "reformuler", libelle: "Reformuler", aide: "Plus clair et plus fluide, même ton" },
-  { id: "notes", libelle: "Rédiger mes notes", aide: "Des notes en vrac deviennent un texte suivi" },
-  { id: "professionnel", libelle: "Plus professionnel", aide: "Pour l’équipe, une réunion, un compte rendu" },
-  { id: "familles", libelle: "Pour les familles", aide: "Bienveillant, sans jargon" },
-  { id: "simple", libelle: "Plus simple", aide: "Phrases courtes, mots faciles" },
   { id: "corriger", libelle: "Corriger seulement", aide: "Orthographe et grammaire, sans rien reformuler" },
 ];
 
 const CONSIGNES: Record<Style, string> = {
   reformuler: "Reformule pour rendre le texte plus clair et plus fluide, en gardant le même registre et une longueur proche.",
   notes: "Le texte est une prise de notes : rédige-le en phrases complètes et bien enchaînées, sans ajouter aucun fait.",
-  professionnel: "Adopte un style professionnel, précis et objectif, adapté à un écrit destiné à une équipe pluridisciplinaire.",
-  familles: "Adopte un ton bienveillant, positif et respectueux, adapté à un message destiné à une famille, sans jargon.",
-  simple: "Rends le texte facile à lire : phrases courtes, mots simples, une idée par phrase.",
   corriger: "Corrige uniquement l'orthographe, la grammaire et la ponctuation. Ne change ni les formulations ni l'ordre des idées.",
 };
 

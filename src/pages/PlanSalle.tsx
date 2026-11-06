@@ -736,7 +736,7 @@ export function PlanSalleTab({ premiereFois = false, surDessin }: { premiereFois
               );
             })}
             <div className="spacer" />
-            {nonPlaces.length > 0 && places.length > 0 && <button className="btn sm" onClick={placerAuto}>✨ Placer automatiquement</button>}
+            {nonPlaces.length > 0 && places.length > 0 && <button className="btn sm" onClick={placerAuto}>Placer automatiquement</button>}
             {assis.length > 0 && <button className="btn ghost sm" onClick={viderPlan}>Vider le plan</button>}
             {places.length > 0 && (
               <button className="btn sm" aria-pressed={parEleve} onClick={() => { setParEleve((v) => !v); setArme(null); }}

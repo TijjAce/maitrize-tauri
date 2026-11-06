@@ -77,7 +77,7 @@ export const EditeurRiche = React.forwardRef<EditeurRicheHandle, {
   const derniere = React.useRef<Range | null>(null);
   const [vide, setVide] = React.useState(!valeur.trim());
   const [bulle, setBulle] = React.useState<{ haut: number; gauche: number } | null>(null);
-  const [menu, setMenu] = React.useState<null | "barre" | "bulle">(null);
+  const [menu, setMenu] = React.useState(false);
   const [enCours, setEnCours] = React.useState(false);
   const [proposition, setProposition] = React.useState<Proposition | null>(null);
   const [etats, setEtats] = React.useState<Record<string, boolean>>({});
@@ -140,7 +140,7 @@ export const EditeurRiche = React.forwardRef<EditeurRicheHandle, {
   React.useEffect(() => {
     const lire = () => {
       const sel = window.getSelection();
-      if (!sel || sel.rangeCount === 0 || !dansLaZone(sel.anchorNode)) { setBulle(null); setMenu((m) => (m === "bulle" ? null : m)); return; }
+      if (!sel || sel.rangeCount === 0 || !dansLaZone(sel.anchorNode)) { setBulle(null); setMenu(false); return; }
       const plage = sel.getRangeAt(0);
       derniere.current = plage.cloneRange();
       const nouveaux: Record<string, boolean> = {
@@ -150,7 +150,7 @@ export const EditeurRiche = React.forwardRef<EditeurRicheHandle, {
       };
       // Pas de nouveau rendu à chaque déplacement du curseur si rien n'a changé.
       setEtats((avant) => (Object.keys(nouveaux).every((k) => avant[k] === nouveaux[k]) ? avant : nouveaux));
-      if (sel.isCollapsed || !sel.toString().trim()) { setBulle(null); setMenu((m) => (m === "bulle" ? null : m)); return; }
+      if (sel.isCollapsed || !sel.toString().trim()) { setBulle(null); setMenu(false); return; }
       const r = plage.getBoundingClientRect();
       setBulle({ haut: Math.max(8, r.top - 46), gauche: Math.min(window.innerWidth - 220, Math.max(8, r.left + r.width / 2 - 70)) });
     };
@@ -189,7 +189,7 @@ export const EditeurRiche = React.forwardRef<EditeurRicheHandle, {
   }));
 
   const proposer = async (style: Style) => {
-    setMenu(null);
+    setMenu(false);
     const sel = window.getSelection();
     const plage = sel && sel.rangeCount > 0 && dansLaZone(sel.anchorNode) && !sel.isCollapsed ? sel.getRangeAt(0).cloneRange() : null;
     if (!plage) { toast("Sélectionnez d'abord le passage à reformuler.", { icone: "✍️" }); return; }
@@ -258,15 +258,8 @@ export const EditeurRiche = React.forwardRef<EditeurRicheHandle, {
         <Outil titre="Aligner à gauche" onClick={() => cmd("justifyLeft")}><Icone nom="gauche" /></Outil>
         <Outil titre="Centrer" onClick={() => cmd("justifyCenter")}><Icone nom="centre" /></Outil>
         <Outil titre="Effacer la mise en forme" onClick={() => cmd("removeFormat")}><Icone nom="effacer" /></Outil>
-        <span className="editeur-riche-sep" />
-        <div style={{ position: "relative" }}>
-          <button type="button" className="btn sm" onMouseDown={(e) => e.preventDefault()} disabled={enCours}
-            onClick={() => setMenu((m) => (m === "barre" ? null : "barre"))} title="Reformuler le passage sélectionné">
-            {enCours ? "✨ Reformulation…" : "✨ Reformuler la sélection ▾"}
-          </button>
-          {menu === "barre" && <MenuStyles onChoisir={proposer} />}
-        </div>
-        {outils}
+        {outils && <><span className="editeur-riche-sep" />{outils}</>}
+        {enCours && <span role="status" style={{ fontSize: 12.5 }}>✨ Reformulation…</span>}
         <span className="editeur-riche-mots">{mots} mot{mots > 1 ? "s" : ""}</span>
       </div>
 
@@ -324,8 +317,8 @@ export const EditeurRiche = React.forwardRef<EditeurRicheHandle, {
 
       {bulle && !enCours && (
         <div className="editeur-riche-bulle" style={{ top: bulle.haut, left: bulle.gauche }} onMouseDown={(e) => e.preventDefault()}>
-          <button type="button" className="btn primary sm" onClick={() => setMenu((m) => (m === "bulle" ? null : "bulle"))}>✨ Reformuler ▾</button>
-          {menu === "bulle" && <MenuStyles onChoisir={proposer} />}
+          <button type="button" className="btn primary sm" onClick={() => setMenu((m) => !m)}>✨ Reformuler ▾</button>
+          {menu && <MenuStyles onChoisir={proposer} />}
         </div>
       )}
     </div>

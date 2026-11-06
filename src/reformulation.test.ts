@@ -40,6 +40,10 @@ describe("consigne", () => {
     }
     expect(consigne("corriger")).toContain("uniquement l'orthographe");
   });
+  it("le menu d'un passage ne propose que de reformuler ou de corriger", () => {
+    expect(STYLES.map((s) => s.id)).toEqual(["reformuler", "corriger"]);
+    expect(consigne("notes")).toContain("prise de notes");
+  });
 });
 
 describe("nettoyerReponse", () => {
