@@ -46,6 +46,8 @@ export interface OptionsMasque {
   portee?: Portee;
   /** L'établissement — son nom, son adresse — : masqué partout, quelle que soit la portée. */
   lieux?: string[];
+  /** Ce que le masque a déjà repéré sur cet ordinateur (voir nomsAMasquer.ts) : reconnu à sa majuscule. */
+  reperes?: { noms: string[]; lieux: string[] };
 }
 
 const LETTRE = /[\p{L}\p{N}]/u;
@@ -54,7 +56,7 @@ const LETTRE = /[\p{L}\p{N}]/u;
 function plier(texte: string): string {
   let sortie = "";
   for (const c of texte) {
-    const p = c.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("fr");
+    const p = c === "’" ? "'" : c.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("fr");
     sortie += p.length === c.length ? p : c;
   }
   return sortie;
@@ -77,35 +79,93 @@ const MOTS_COURANTS = new Set([
   "faucon", "lion", "bon", "bonne", "joli", "doux", "gros", "court", "long",
 ]);
 
-/** Les formes sous lesquelles un élève peut être nommé : nom complet, puis chaque mot qui n'est pas une particule. */
+/**
+ * Les formes sous lesquelles un élève peut être nommé : nom complet, chaque mot
+ * qui n'est pas une particule, chaque partie d'un nom composé (« Zéphyrine » pour
+ * Marie-Zéphyrine), le nom d'un seul tenant (« Legoff » pour Le Goff), sans
+ * ligature (« Coelie » pour Cœlie).
+ */
 function formes(nom: string): string[] {
-  const propre = nom.trim().replace(/\s+/g, " ");
+  const propre = nom.normalize("NFC").replace(/[\u2010\u2011]/g, "-").replace(/\s+/g, " ").trim();
   if (!propre) return [];
   const lettres = (m: string) => m.replace(/[^\p{L}]/gu, "");
   const mots = propre.split(" ").filter((m) => lettres(m).length >= 2 && !PARTICULES.has(plier(lettres(m))));
-  return [propre, ...mots];
+  const parties = propre.split(/[ -]/).filter((m) => lettres(m).length >= 3 && !PARTICULES.has(plier(lettres(m))));
+  const dUnTenant = /[ -]/.test(propre) ? [propre.replace(/[ -]/g, "")] : [];
+  const toutes = [propre, ...mots, ...parties, ...dUnTenant];
+  const sansLigature = toutes.filter((f) => /[œæŒÆ]/.test(f))
+    .map((f) => f.replace(/œ/g, "oe").replace(/æ/g, "ae").replace(/Œ/g, "Oe").replace(/Æ/g, "Ae"));
+  return [...new Set([...toutes, ...sansLigature])];
 }
 
 /**
  * Toutes les occurrences de `mot` en mot entier, sans tenir compte des
  * majuscules ni des accents — sauf pour un mot courant, qui doit porter sa
- * majuscule : « Rose » est une élève, « rose » une couleur.
+ * majuscule : « Rose » est une élève, « rose » une couleur. `avecMajuscule`
+ * demande la même chose pour un autre mot. Un mot collé à un échappement (« \\n »
+ * d'un texte en JSON) reste un mot entier : le « n » n'en fait pas partie.
  */
-function occurrences(texte: string, mot: string): number[] {
+function occurrences(texte: string, mot: string, avecMajuscule = false): number[] {
   const res: number[] = [];
   const bas = plier(texte);
   const cible = plier(mot);
-  const courant = !cible.includes(" ") && MOTS_COURANTS.has(cible);
+  const courant = avecMajuscule || (!cible.includes(" ") && MOTS_COURANTS.has(cible));
   let i = bas.indexOf(cible);
   while (i >= 0) {
     const avant = i > 0 ? texte[i - 1] : "";
+    const echappe = i > 1 && texte[i - 2] === "\\" && "ntr".includes(avant);
     const apres = texte[i + cible.length] ?? "";
     const initiale = texte[i];
     const majuscule = initiale === initiale.toLocaleUpperCase("fr") && initiale !== initiale.toLocaleLowerCase("fr");
-    if (!LETTRE.test(avant) && !LETTRE.test(apres) && (!courant || majuscule)) res.push(i);
+    // « cahierOndine », « Ondine2 » : le nom s'y lit, le mot auquel il est collé n'y change rien.
+    const colle = majuscule && avant !== avant.toLocaleUpperCase("fr");
+    if ((!LETTRE.test(avant) || echappe || colle) && !/\p{L}/u.test(apres) && (!courant || majuscule)) res.push(i);
     i = bas.indexOf(cible, i + 1);
   }
   return res;
+}
+
+/** Combien de fautes séparent deux mots : une lettre en moins, en trop, changée, ou deux lettres inversées. */
+function fautes(a: string, b: string): number {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...new Array<number>(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[a.length][b.length];
+}
+
+/**
+ * Les mots du texte qui sont un nom connu mal écrit : une faute de frappe, une
+ * dictée mal comprise. Ils partent masqués eux aussi, avec leur majuscule, à
+ * une faute près, deux à partir de sept lettres. Un mot de trop ne coûte rien :
+ * il revient à la restauration.
+ */
+function nomsMalEcrits(texte: string, variantes: string[]): string[] {
+  const noms = variantes.map(plier).filter((v) => v.length >= 4 && !/[^\p{L}]/u.test(v) && !MOTS_COURANTS.has(v));
+  const exacts = new Set(noms);
+  const vus = new Map<string, boolean>();
+  const sortie = new Set<string>();
+  for (const m of texte.matchAll(/\p{Lu}\p{L}{3,}/gu)) {
+    const i = m.index!;
+    const avant = i > 0 ? texte[i - 1] : "";
+    if (LETTRE.test(avant) && !(i > 1 && texte[i - 2] === "\\" && "ntr".includes(avant))) continue;
+    const mot = m[0];
+    const p = plier(mot);
+    let proche = vus.get(p);
+    if (proche === undefined) {
+      proche = !exacts.has(p) && !PAS_DES_NOMS.has(p) && !MOTS_COURANTS.has(p) && noms.some((n) => {
+        const permis = n.length >= 7 ? 2 : 1;
+        return Math.abs(n.length - p.length) <= permis && fautes(n, p) <= permis;
+      });
+      vus.set(p, proche);
+    }
+    if (proche) sortie.add(mot);
+  }
+  return [...sortie];
 }
 
 /** Ce qui s'écrit avec une majuscule sans être le nom d'une personne : titres, fonctions, sigles. */
@@ -138,13 +198,20 @@ export function nomsDansUnTexte(texte: string): string[] {
 
 /** Remplace les noms des élèves par des marqueurs ; avec la portée « eleves », tout ce qui désigne quelqu'un. */
 export function pseudonymiser(texte: string, noms: string[], options: OptionsMasque = {}): { texte: string; table: Remplacement[] } {
-  const variantes = [...new Set(noms.flatMap(formes))].sort((a, b) => b.length - a.length);
-  const table: Remplacement[] = [];
-  const parOriginal = new Map<string, string>();
+  const connus = [...new Set(noms.flatMap(formes))];
   // Les lettres accentuées en un seul caractère : les positions du texte plié sont celles du texte.
   let sortie = texte.normalize("NFC");
+  const reperes = (options.reperes?.noms ?? []).flatMap(formes).filter((v) => {
+    const p = plier(v);
+    return p.replace(/[^\p{L}]/gu, "").length >= 3 && !connus.includes(v) && !PARTICULES.has(p) && !PAS_DES_NOMS.has(p) && !JAMAIS.has(p) && !MOTS_COURANTS.has(p);
+  });
+  // Un mot mal écrit ou déjà repéré n'est un nom qu'avec sa majuscule : « Sera » peut en être un, jamais « sera ».
+  const aLaMajuscule = new Set([...nomsMalEcrits(sortie, connus), ...reperes]);
+  const variantes = [...connus, ...aLaMajuscule].sort((a, b) => b.length - a.length);
+  const table: Remplacement[] = [];
+  const parOriginal = new Map<string, string>();
   for (const v of variantes) {
-    const pos = occurrences(sortie, v);
+    const pos = occurrences(sortie, v, aLaMajuscule.has(v));
     if (!pos.length) continue;
     // De la fin vers le début : les positions restent valables pendant le remplacement.
     for (const p of pos.reverse()) {
@@ -304,20 +371,23 @@ const LIENS = sansCasse([
   "orthophoniste", "psychologue", "psychomotricienne", "psychomotricien", "ergothérapeute", "ergotherapeute", "médecin", "medecin",
   "neuropédiatre", "neuropediatre", "pédopsychiatre", "pedopsychiatre", "pédiatre", "pediatre", "infirmière", "infirmiere", "infirmier",
   "référente", "referente", "référent", "referent", "maîtresse", "maitresse", "enseignante", "enseignant", "directrice", "directeur",
-  "assistante sociale", "assistant social", "chauffeur", "chauffeuse",
+  "assistante sociale", "assistant social", "chauffeur", "chauffeuse", "s['’]appelle", "appelée", "appelee", "appelé", "appele", "prénommée", "prenommee",
+  "prénommé", "prenomme", "surnommée", "surnommee", "surnommé", "surnomme",
 ].join("|"));
-const TITRES = `M\\.|MM\\.|Mr\\.?|Mme\\.?|Mmes|Mlle\\.?|Mlles|Me|Dr\\.?|Pr\\.?|${sansCasse("monsieur|madame|mademoiselle|docteur|professeur|maître|maitre")}`;
-const APRES_UN_LIEN = new RegExp(`(?:^|[^\\p{L}])(?:${LIENS})[ \\t]*,?[ \\t]+(${NOM})`, "gu");
+const TITRES = `M\\.?|MM\\.?|${sansCasse("mr|mme|mmes|mlle|mlles")}\\.?|Me|${sansCasse("dr|pr")}\\.?|${sansCasse("monsieur|madame|mademoiselle|docteur|professeur|maître|maitre")}`;
+const APRES_UN_LIEN = new RegExp(`(?:^|[^\\p{L}])(?:${LIENS})[ \\t]*[,:]?[ \\t]+(${NOM})`, "gu");
 const APRES_UN_TITRE = new RegExp(`(?:^|[^\\p{L}])(?:${TITRES})[ \\t]+(${NOM})`, "gu");
+/** Un titre abrégé, un nom noté à la va-vite : « mme roussel ». Pas ce qui se conjugue : « Mme est venue ». */
+const APRES_UN_TITRE_ABREGE = new RegExp(`(?:^|[^\\p{L}])${sansCasse("(?:mr|mme|mlle|dr)")}\\.?[ \\t]+(?!(?:est|sera|était|etait|a|ont|vont|va|qui|que|dit|pense|nous|vous|les|des|une|pour|dans|avec)[^\\p{L}])(\\p{Ll}[\\p{L}'’-]{2,})`, "gu");
 
 /** Un établissement, un service : le nom qui le suit est un lieu (« l'IME Les Tilleuls », « le CMP de Sarcelles »). */
-const STRUCTURES = new RegExp(`(?:^|[^\\p{L}])(?:${sansCasse("école|ecole|collège|college|lycée|lycee|crèche|creche|hôpital|hopital|clinique|foyer|institut|centre|groupe scolaire")}|IME|IMPro|IEM|SESSAD|ITEP|DITEP|CMPP|CMP|CAMSP|SAMSAH|ULIS|SEGPA|UEMA|UEEA)`
+const STRUCTURES = new RegExp(`(?:^|[^\\p{L}])(?:${sansCasse("école|ecole|collège|college|lycée|lycee|crèche|creche|hôpital|hopital|clinique|foyer|institut|centre|groupe scolaire")}|IME|IMPro|IEM|SESSAD|ITEP|DITEP|CMPP|CMP|CAMSP|SAMSAH|ULIS|SEGPA|UEMA|UEEA|CHRU|CHU|CH|MAS|FAM|CRA|EEAP|EHPAD|ESAT)`
   + `(?:[ \\t]+(?:maternelle|élémentaire|elementaire|primaire|publique|privée|privee|spécialisée?|specialisee?|médico-éducatif|medico-educatif))?`
   + `[ \\t]+(?:(?:de|du|des|la|le|les)[ \\t]+|d['’])?(${NOM})`, "gu");
 /** Où l'on habite, d'où l'on vient : le nom qui suit est un lieu (« il habite à Sarcelles », « née à Lyon »). */
 /** Le lieu de naissance, même après la date : « né le 12 mars 2017 à Sarcelles ». */
 const NE_A = new RegExp(`(?:^|[^\\p{L}])${sansCasse("née?s?")}[^.\\n\\u0000]{0,40}?[ \\t]+(?:à|a|au|en)[ \\t]+(${NOM})`, "gu");
-const DEMEURES = new RegExp(`(?:^|[^\\p{L}])${sansCasse("(?:habite|habitait|habitent|vit|vivait|vivent|réside|reside|résidait|residait|domiciliée?s?|née?s?|déménagée?s?|demenagee?s?|déménage|demenage|originaire|scolarisée?s?|scolarisee?s?|vient|venait|arrivée?s?|arrive)")}`
+const DEMEURES = new RegExp(`(?:^|[^\\p{L}])${sansCasse("(?:habite|habitait|habitent|vit|vivait|vivent|réside|reside|résidait|residait|domiciliée?s?|née?s?|déménagée?s?|demenagee?s?|déménager|demenager|déménage|demenage|hospitalisée?s?|hospitalisee?s?|opérée?s?|operee?s?|soignée?s?|soignee?s?|originaire|scolarisée?s?|scolarisee?s?|vient|venait|arrivée?s?|arrive)")}`
   + `[ \\t]+(?:à|a|au|aux|en|de|du|d['’]|dans|sur)[ \\t]*(${NOM})`, "gu");
 
 const MOIS = "janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre";
@@ -325,27 +395,38 @@ const DATES = [
   /\b\d{1,2}[/.-]\d{1,2}[/.-](?:\d{4}|\d{2})\b/gu,
   /\b\d{4}-\d{2}-\d{2}\b/gu,
   new RegExp(`\\b(?:1er|\\d{1,2})[ \\t]+(?:${sansCasse(MOIS)})(?:[ \\t]+\\d{4})?\\b`, "gu"),
+  // Le jour et le mois : « le 12/03 » — seulement après « le » : 12/20 est une note, 3/4 une fraction.
+  /\b[lL]e[ \t]+\d{1,2}\/\d{1,2}\b(?![/.-]\d)/gu,
+  // En toutes lettres, comme le dit une dictée : « le trois mars ».
+  new RegExp(`\\b${sansCasse("(?:premier|deux|trois|quatre|cinq|six|sept|huit|neuf|dix(?:[- ](?:sept|huit|neuf))?|onze|douze|treize|quatorze|quinze|seize|vingt(?:[- ](?:et[- ]un|deux|trois|quatre|cinq|six|sept|huit|neuf))?|trente(?:[- ]et[- ]un)?)")}[ \\t]+(?:${sansCasse(MOIS)})\\b`, "gu"),
 ];
-/** L'année de naissance : « né en 2017 ». */
-const NAISSANCE = new RegExp(`${sansCasse("(?:née?s?|naissance)")}[ \\t]+(?:en|:)?[ \\t]*(\\d{4})\\b`, "gu");
+/** L'année de naissance, et son mois : « né en 2017 », « née en mars 2017 ». */
+const NAISSANCE = new RegExp(`${sansCasse("(?:née?s?|naissance)")}[ \\t]+(?:en|:)?[ \\t]*((?:(?:${sansCasse(MOIS)})[ \\t]+)?\\d{4})\\b`, "gu");
 
 /** Une adresse : le numéro, la voie, et son nom à majuscules, particules comprises (« 12 bis, rue du Général de Gaulle »). */
 const PARTICULE_DE_RUE = `(?:(?:de|du|des|la|le|les)[ \\t]+|[dl]['’])*`;
 const ADRESSE = new RegExp(`\\b\\d{1,4}[ \\t]?(?:bis|ter)?,?[ \\t]+(?:${sansCasse("rue|avenue|av\\.|boulevard|bd|chemin|allée|allee|impasse|place|route|quai|cours|square|résidence|residence|lotissement|lieu-dit|hameau|voie|sentier|passage|cité|cite")})`
   + `[ \\t]+${PARTICULE_DE_RUE}${MOT_MAJ}(?:[ \\t-]+${PARTICULE_DE_RUE}${MOT_MAJ}){0,4}`, "gu");
+/** Une adresse notée à la va-vite, sans majuscule : « 12 rue des lilas ». Les seules voies qui ne sont pas aussi des mots du jour (« 3 cours de français »). */
+const ADRESSE_MINUSCULE = new RegExp(`\\b\\d{1,4}[ \\t]?(?:bis|ter)?,?[ \\t]+(?:${sansCasse("rue|avenue|boulevard|allée|allee|impasse|chemin|square")})[ \\t]+${PARTICULE_DE_RUE}\\p{L}[\\p{L}'’-]+`, "gu");
 const CODE_POSTAL = new RegExp(`\\b\\d{5}[ \\t]+${MOT_MAJ}(?:[ \\t-]+${MOT_MAJ}){0,3}(?:[ \\t]+${sansCasse("cedex")})?`, "gu");
 
+/** Un code postal seul : « 95200 ». */
+const CODE_POSTAL_SEUL = /\b\d{5}\b/gu;
+
 const COURRIEL = /[\p{L}\d._%+-]+@[\p{L}\d.-]+\.\p{L}{2,}/gu;
-const TELEPHONE = /(?:\+33|0033|\b0)[ \t.-]?[1-9](?:[ \t.-]?\d{2}){4}\b/gu;
+const TELEPHONE = /(?:(?:\+33|0033)[ \t.-]?(?:\(0\)[ \t.-]?)?|\b0[ \t.-]?)[1-9](?:[ \t.-]?\d{2}){4}\b/gu;
 /** L'INE (dix chiffres et une lettre, ou neuf et deux), le numéro de sécurité sociale, et tout long nombre. */
 const NUMEROS = [
-  /\b\d{9}[A-Za-z]{2}\b|\b\d{10}[A-Za-z]\b/gu,
+  /\b\d{3}[ \t]?\d{3}[ \t]?\d{3}[ \t]?[A-Za-z]{2}\b|\b\d{3}[ \t]?\d{3}[ \t]?\d{4}[ \t]?[A-Za-z]\b/gu,
   /\b[12][ \t]?\d{2}[ \t]?\d{2}[ \t]?(?:\d{2}|2[AB])[ \t]?\d{3}[ \t]?\d{3}(?:[ \t]?\d{2})?\b/gu,
   /\b\d{8,}\b/gu,
 ];
 
 /** Les diagnostics rares : leur catégorie suffit à Mistral, le nom précis désignerait l'enfant. */
-const SANTE: { re: RegExp; categorie: string }[] = [
+const SANTE: { re: RegExp; categorie: string; groupe?: number }[] = [
+  // Des noms qui ne désignent rien d'autre : avec ou sans « syndrome de », avec ou sans majuscule. Le groupe, parce que « Rett » n'est pas dans « Barrett ».
+  { re: new RegExp(`(?:^|[^\\p{L}])((?:${sansCasse("(?:syndrome|maladie|myopathie)")}[ \\t]+(?:de[ \\t]+|d['’][ \\t]*|du[ \\t]+)?)?${sansCasse("(?:rett|angelman|prader[- ]willi|noonan|smith[- ]magenis|cornelia de lange|duchenne|phelan[- ]mcdermid)")})(?![\\p{L}])`, "gu"), categorie: "un syndrome génétique rare", groupe: 1 },
   { re: new RegExp(`${sansCasse("trisomie")}[ \\t]*(?:13|18)\\b`, "gu"), categorie: "une anomalie chromosomique rare" },
   { re: new RegExp(`(?:${sansCasse("syndrome")}[ \\t]+(?:de[ \\t]+|d['’][ \\t]*|du[ \\t]+)?|${sansCasse("maladie")}[ \\t]+(?:de[ \\t]+|d['’][ \\t]*)?)?(?:X[ \\t-]?${sansCasse("fragile")})`, "gu"), categorie: "une maladie génétique rare" },
   { re: new RegExp(`(?:${sansCasse("microdélétion|microdeletion|délétion|deletion|duplication|translocation|microduplication")})[ \\t]+(?:\\d{1,2}|X|Y)[pq]?[\\d.]*(?:[ \\t]?[pq][\\d.]+)?`, "gu"), categorie: "une anomalie chromosomique rare" },
@@ -398,10 +479,13 @@ function prenomsInconnus(texte: string): { debut: number; fin: number; genre: Ge
   for (let k = 0; k < mots.length; k++) {
     let { i: debut, mot } = mots[k];
     // L'élision : « d'Emma », « l'Inès », « qu'Ali ».
-    const elide = /^((?:[dDlLjJmMnNsStTcC]|[qQ]u)['’])(.+)$/u.exec(mot);
+    const elide = /^((?:[dljmnstc]|qu|lorsqu|puisqu|quoiqu|jusqu)['’])(.+)$/iu.exec(mot);
     if (elide) { debut += elide[1].length; mot = elide[2]; }
     if (!estUnPrenom(mot)) continue;
     let fin = debut + mot.length;
+    // Le nom de famille en capitales, devant : « BERTHELOT Ombeline ».
+    const devant = mots[k - 1];
+    if (devant && /^[ \t]+$/.test(texte.slice(devant.i + devant.mot.length, debut)) && devant.mot === devant.mot.toLocaleUpperCase("fr") && suitLeNom(devant.mot, " ")) debut = devant.i;
     // Le nom qui suit, séparé par des espaces seulement : deux mots au plus, avec sa particule.
     let j = k + 1;
     for (let ajoutes = 0; j < mots.length && ajoutes < 2; ajoutes++) {
@@ -419,11 +503,50 @@ function prenomsInconnus(texte: string): { debut: number; fin: number; genre: Ge
   return res;
 }
 
-/** Les lieux de l'établissement, et chacune de leurs parties : « 12 rue des Lilas, 95200 Sarcelles » se masque aussi par morceaux. */
-function lieuxConnus(texte: string, lieux: string[]): { debut: number; fin: number; genre: Genre }[] {
+/** Ce qui suit un prénom sans être un nom, même écrit avec une majuscule : « Amandine Et Léo ». */
+const PAS_UN_NOM_DE_FAMILLE = new Set([
+  "et", "ou", "mais", "donc", "or", "ni", "car", "elle", "il", "on", "nous", "vous", "ils", "elles", "je", "tu", "le", "la", "les", "un", "une", "des", "du", "de", "au", "aux",
+  "ce", "cet", "cette", "ces", "son", "sa", "ses", "mon", "ma", "mes", "qui", "que", "quand", "puis", "alors", "avec", "sans", "pour", "dans", "sur", "sous", "est", "a", "va",
+  "fait", "lit", "bien", "tres",
+]);
+
+/**
+ * Le nom de famille collé à un prénom connu : « Amandine Dupont » ou « DUPONT
+ * Amandine » partaient en « [P1] Dupont » et « DUPONT [P1] », le prénom seul masqué.
+ */
+function nomsAutourDesMarqueurs(texte: string): { debut: number; fin: number; genre: Genre }[] {
+  const res: { debut: number; fin: number; genre: Genre }[] = [];
+  for (const m of texte.matchAll(new RegExp(`\\[P\\d+\\][ \\t]+(${MOT_MAJ})`, "gu"))) {
+    if (PAS_UN_NOM_DE_FAMILLE.has(plier(m[1])) || !suitLeNom(m[1], texte.charAt(m.index! + m[0].length))) continue;
+    const debut = m.index! + m[0].length - m[1].length;
+    res.push({ debut, fin: debut + m[1].length, genre: "personne" });
+  }
+  for (const m of texte.matchAll(new RegExp(`([${MAJ}][${MAJ}'’-]{2,})[ \\t]+\\[P\\d+\\]`, "gu"))) {
+    if (LETTRE.test(texte.charAt(m.index! - 1)) || !suitLeNom(m[1], " ")) continue;
+    res.push({ debut: m.index!, fin: m.index! + m[1].length, genre: "personne" });
+  }
+  return res;
+}
+
+/** Ce qui, dans le nom d'un lieu, ne désigne aucun endroit en particulier. */
+const MOTS_DES_LIEUX = new Set([
+  "ecole", "institut", "centre", "college", "lycee", "avenue", "boulevard", "route", "place", "allee", "chemin", "impasse", "residence", "saint", "sainte",
+  "medico", "educatif", "educative", "primaire", "maternelle", "elementaire", "groupe", "scolaire", "cedex", "foyer", "maison", "france", "quartier", "hameau", "square",
+]);
+
+/**
+ * Les lieux de l'établissement, et chacune de leurs parties : « 12 rue des Lilas,
+ * 95200 Sarcelles » se masque aussi par morceaux. Sur les élèves, ses noms propres
+ * aussi : « sortie à Sarcelles », « aux Tilleuls ».
+ */
+function lieuxConnus(texte: string, lieux: string[], eleves: boolean, reperes: string[]): { debut: number; fin: number; genre: Genre }[] {
   const parties = [...new Set(lieux.flatMap((l) => [l, ...l.split(/[\n,;]+/)]).map((l) => l.trim().replace(/\s+/g, " ")).filter((l) => l.replace(/[^\p{L}\d]/gu, "").length >= 4))]
     .sort((a, b) => b.length - a.length);
-  return parties.flatMap((l) => occurrences(texte, l).map((debut) => ({ debut, fin: debut + l.length, genre: "lieu" as Genre })));
+  const entiers = parties.flatMap((l) => occurrences(texte, l).map((debut) => ({ debut, fin: debut + l.length, genre: "lieu" as Genre })));
+  if (!eleves) return entiers;
+  const propres = [...new Set([...lieux, ...reperes].flatMap((l) => l.normalize("NFC").match(/\p{Lu}[\p{L}'’-]{3,}/gu) ?? []))]
+    .filter((m) => { const p = plier(m); return !MOTS_DES_LIEUX.has(p) && !PAS_DES_NOMS.has(p) && !JAMAIS.has(p); });
+  return [...entiers, ...propres.flatMap((m) => occurrences(texte, m, true).map((debut) => ({ debut, fin: debut + m.length, genre: "lieu" as Genre })))];
 }
 
 /** Tout ce qui reste à masquer, détecteur après détecteur : chacun voit les marqueurs posés par les précédents. */
@@ -431,16 +554,18 @@ function masquerLeReste(texte: string, options: OptionsMasque, poser: Poser, tab
   const eleves = options.portee === "eleves";
   let t = texte;
   const etape = (passages: { debut: number; fin: number; genre: Genre; categorie?: string }[]) => { t = remplacerPassages(t, passages, poser); };
-  etape(lieuxConnus(t, options.lieux ?? []));
+  etape(lieuxConnus(t, options.lieux ?? [], eleves, options.reperes?.lieux ?? []));
   etape([...passagesDe(t, COURRIEL, "contact"), ...passagesDe(t, TELEPHONE, "contact")]);
-  if (eleves) etape(SANTE.flatMap((s) => passagesDe(t, s.re, "sante", () => s.categorie)));
+  if (eleves) etape(SANTE.flatMap((s) => passagesDe(t, s.re, "sante", () => s.categorie, s.groupe)));
   etape(NUMEROS.flatMap((re) => passagesDe(t, re, "numero")));
   if (!eleves) return t;
   etape([...DATES.flatMap((re) => passagesDe(t, re, "date")), ...passagesDe(t, NAISSANCE, "date", undefined, 1)]);
-  etape([...passagesDe(t, ADRESSE, "lieu"), ...passagesDe(t, CODE_POSTAL, "lieu")]);
+  etape([...passagesDe(t, ADRESSE, "lieu"), ...passagesDe(t, ADRESSE_MINUSCULE, "lieu"), ...passagesDe(t, CODE_POSTAL, "lieu")]);
+  etape(passagesDe(t, CODE_POSTAL_SEUL, "lieu"));
   etape([...passagesDe(t, STRUCTURES, "lieu", undefined, 1), ...passagesDe(t, DEMEURES, "lieu", undefined, 1), ...passagesDe(t, NE_A, "lieu", undefined, 1)]);
-  etape([...passagesDe(t, APRES_UN_LIEN, "personne", undefined, 1), ...passagesDe(t, APRES_UN_TITRE, "personne", undefined, 1)]);
+  etape([...passagesDe(t, APRES_UN_LIEN, "personne", undefined, 1), ...passagesDe(t, APRES_UN_TITRE, "personne", undefined, 1), ...passagesDe(t, APRES_UN_TITRE_ABREGE, "personne", undefined, 1)]);
   etape(prenomsInconnus(t));
+  etape(nomsAutourDesMarqueurs(t));
   return partoutAilleurs(t, table);
 }
 

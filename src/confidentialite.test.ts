@@ -142,6 +142,74 @@ describe("un texte sur les élèves part sans rien qui désigne quelqu'un (« an
     expect(restaurer("Rien.", table).absents).toEqual(["Kylian"]);
   });
 
+  it("masque un nom connu mal écrit, à une faute près, deux à partir de sept lettres, et le rend à la restauration", () => {
+    const { texte, table } = pseudonymiser("Nisl a lu, puis Matilde a écrit. Nilss aussi.", ["Nils", "Mathilda"]);
+    expect(texte).toBe("[P1] a lu, puis [P2] a écrit. [P3] aussi.");
+    expect(restaurer(texte, table).texte).toBe("Nisl a lu, puis Matilde a écrit. Nilss aussi.");
+  });
+
+  it("ne prend pour une faute ni un mot sans majuscule, ni un mot trop loin, ni le voisin d'un mot courant", () => {
+    expect(pseudonymiser("Il sera là, avec Nolis.", ["Sara", "Nils"]).texte).toBe("Il sera là, avec Nolis.");
+    // Un mot de trop se masque sans dommage : il revient tel quel.
+    const trop = pseudonymiser("Sera-t-il là ? Il sera là.", ["Sara"]);
+    expect(trop.texte).toBe("[P1]-t-il là ? Il sera là.");
+    expect(restaurer(trop.texte, trop.table).texte).toBe("Sera-t-il là ? Il sera là.");
+    expect(pseudonymiser("Roses rouges.", ["Rose"]).texte).toBe("Roses rouges.");
+    expect(pseudonymiser("Tous les Mardis.", ["Mardie"]).texte).toBe("Tous les [P1].");
+    expect(pseudonymiser("Mardi matin.", ["Mardie"]).texte).toBe("Mardi matin.");
+  });
+
+  it("reconnaît un nom connu écrit autrement : composé, d'un seul tenant, sans ligature, décomposé, collé", () => {
+    const m = (t: string, noms: string[]) => pseudonymiser(t, noms).texte;
+    expect(m("Zéphyrine lit.", ["Marie-Zéphyrine"])).toBe("[P1] lit.");
+    expect(m("Mariezéphyrine lit.", ["Marie-Zéphyrine"])).toBe("[P1] lit.");
+    expect(m("Marie\u2011Zéphyrine lit.", ["Marie-Zéphyrine"])).not.toContain("Zéphyrine");
+    expect(m("N’Zébi lit.", ["N'Zébi"])).toBe("[P1] lit.");
+    expect(m("Coelie lit.", ["Cœlie"])).toBe("[P1] lit.");
+    expect(m("Legoff lit.", ["Le Goff"])).toBe("[P1] lit.");
+    expect(m("Mélusine lit.", ["Me\u0301lusine"])).toBe("[P1] lit.");
+    expect(m("Ondine2 et cahierOndine.pdf", ["Ondine"])).toBe("[P1]2 et cahier[P1].pdf");
+  });
+
+  it("masque le nom de famille collé à un prénom connu", () => {
+    const m = (t: string) => pseudonymiser(t, ["Amandine"], { portee: "eleves" }).texte;
+    expect(m("Amandine Roussel lit.")).toBe("[P1] [P2] lit.");
+    expect(m("ROUSSEL Amandine lit.")).toBe("[P1] [P2] lit.");
+    // Ni un mois, ni un jour, ni un sigle, ni une phrase qui commence.
+    expect(m("Amandine Lundi, Amandine IME. Amandine. Elle lit.")).toBe("[P1] Lundi, [P1] IME. [P1]. Elle lit.");
+  });
+
+  it("voit les personnes qu'on note à la va-vite", () => {
+    const m = (t: string) => pseudonymiser(t, [], { portee: "eleves" }).texte;
+    expect(m("Frère : Thaddée vient.")).toBe("Frère : [P1] vient.");
+    expect(m("Mère : ROUSSEL Ysaline.")).toBe("Mère : [P1].");
+    expect(m("Une fille qui s'appelle Thaddée.")).toBe("Une fille qui s'appelle [P1].");
+    expect(m("M Roussel vient. MME BOILEAU aussi.")).toBe("M [P1] vient. MME [P2] aussi.");
+    expect(m("Vu avec mme roussel.")).toBe("Vu avec mme [P1].");
+    expect(m("Mme est venue.")).toBe("Mme est venue.");
+    expect(m("Il lit lorsqu'Emma écrit. QU'EMMA écrive.")).toBe("Il lit lorsqu'[P1] écrit. QU'[P1] écrive.");
+    expect(m("BERTHELOT Emma lit.")).toBe("[P1] lit.");
+  });
+
+  it("voit les lieux, les dates et les numéros écrits autrement", () => {
+    const m = (t: string, lieux: string[] = []) => pseudonymiser(t, [], { portee: "eleves", lieux }).texte;
+    expect(m("Il vient de déménager à Sarcelles.")).toBe("Il vient de déménager à [Lieu 1].");
+    expect(m("Il est hospitalisé à Necker.")).toBe("Il est hospitalisé à [Lieu 1].");
+    expect(m("Vu au CHU de Nice, au MAS du Parc et au CRA de Reims.")).toBe("Vu au CHU de [Lieu 1], au MAS du [Lieu 2] et au CRA de [Lieu 3].");
+    expect(m("Il habite 12 rue des lilas, code 95200.")).toBe("Il habite [Lieu 1], code [Lieu 2].");
+    expect(m("3 cours de français, 2 places.")).toBe("3 cours de français, 2 places.");
+    expect(m("Sortie à Sarcelles, retour aux Tilleuls.", ["IME Les Tilleuls", "95200 Sarcelles"])).toBe("Sortie à [Lieu 1], retour aux [Lieu 2].");
+    expect(m("Née en mars 2017, vue le 12/03, puis le trois mars. Note : 12/20, 3/4 de la classe.")).toBe("Née en [Date 1], vue [Date 2], puis le [Date 3]. Note : 12/20, 3/4 de la classe.");
+    expect(m("Tél. +33 (0)6 12 34 56 78, INE 123 456 789 AB.")).toBe("Tél. [Contact 1], INE [Numéro 1].");
+    expect(m("Le syndrome de rett, un Angelman, et Duchenne. Mme Barrett.")).toBe("Le [Santé 1 : un syndrome génétique rare], un [Santé 2 : un syndrome génétique rare], et [Santé 3 : un syndrome génétique rare]. Mme [P1].");
+  });
+
+  it("voit un nom collé à l'échappement d'un texte en JSON", () => {
+    const { texte } = pseudonymiser(JSON.stringify({ note: "Bilan\nAmandine lit\tLéo écrit\nAmandin relit" }), eleves);
+    for (const mot of ["Amandin", "Léo"]) expect(texte).not.toContain(mot);
+    expect(texte).toBe('{"note":"Bilan\\n[P1] lit\\t[P2] écrit\\n[P3] relit"}');
+  });
+
   it("laisse un texte de classe tel qu'il est : les personnages d'une histoire, les dates d'une leçon", () => {
     expect(pseudonymiserTout(["Pierre et le loup ; le 14 juillet 1789, la Bastille."], ["Octave Martin"]).textes[0])
       .toBe("Pierre et le loup ; le 14 juillet 1789, la Bastille.");
