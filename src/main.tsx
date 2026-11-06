@@ -1,43 +1,12 @@
 // Le relais de développement, avant tout le reste : dans le navigateur d'un autre ordinateur, le pont vers le Mac
 // doit être là avant la première demande (voir relaisDev.ts). Rien dans l'application publiée.
 import "./relaisDev";
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { HashRouter } from "react-router-dom";
-import App from "./App";
-import "./theme.css";
-import { journal } from "./api";
-import { estUnBug, proposerLeRapport } from "./rapportErreur";
-import { installerAnnulation } from "./annulation";
-import { chargerLesLignes, poserSurLaPage } from "./policesEcriture";
+import { accueillir } from "./bienvenue";
 
-// Filet global : une erreur de rendu ou une promesse rejetée laisse une trace
-// sur le disque, faute de console dans la fenêtre de l'application ; un vrai
-// bug propose en plus d'en envoyer le rapport à l'éditeur, d'un clic.
-window.addEventListener("error", (e) => {
-  const message = `${e.message} @ ${e.filename?.split("/").pop()}:${e.lineno}`;
-  journal(`ERREUR ${message}`);
-  proposerLeRapport(message);
+// La page de bienvenue d'abord ; l'application se charge quand le titre est écrit, pour ne pas le faire saccader (voir bienvenue.ts).
+accueillir(({ appPrete }) => {
+  void import("./lancement").then(({ lancer }) => { lancer(appPrete); }).catch((e) => {
+    console.error(e);
+    appPrete();
+  });
 });
-window.addEventListener("unhandledrejection", (e) => {
-  journal(`PROMESSE REJETÉE ${String((e.reason as Error)?.message ?? e.reason)}`);
-  if (estUnBug(e.reason)) proposerLeRapport((e.reason as Error).message);
-});
-
-// ⌘Z, un seul écouteur pour toute l'application (voir annulation.ts).
-installerAnnulation();
-
-// La police cursive choisie, pour les aperçus des feuilles (voir policesEcriture.ts) ; ses
-// variantes à lignes Seyès, lourdes, un peu après le démarrage.
-poserSurLaPage();
-setTimeout(() => { void chargerLesLignes(); }, 1500);
-
-// La vérification des mises à jour est gérée par <UpdateBanner /> (dans App) :
-// téléchargement silencieux puis pastille « Relancer pour mettre à jour ».
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <HashRouter>
-      <App />
-    </HashRouter>
-  </React.StrictMode>
-);

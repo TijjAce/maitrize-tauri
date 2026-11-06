@@ -99,6 +99,17 @@ pub fn run() {
             veille::surveiller(app.handle().clone());
             // L'état de l'application, heure par heure : de quoi revenir en arrière.
             instantanes::surveiller(app.handle().clone());
+            // La fenêtre s'ouvre cachée : la page de bienvenue la montre quand sa première image est prête, pour
+            // qu'on ne voie ni fond provisoire ni fondu (voir src/bienvenue.ts). Si la page n'y arrive pas, elle se
+            // montre quand même.
+            let pour_la_fenetre = app.handle().clone();
+            std::thread::spawn(move || {
+                use tauri::Manager;
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                if let Some(f) = pour_la_fenetre.get_webview_window("main") {
+                    let _ = f.show();
+                }
+            });
             // Le ménage de la base attend que la fenêtre soit là.
             let pour_le_menage = app.handle().clone();
             tauri::async_runtime::spawn(async move {

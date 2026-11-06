@@ -1,0 +1,33 @@
+/* La page de bienvenue, à chaque lancement (voir bienvenue.ts). */
+.bienvenue {
+  position: fixed; inset: 0; z-index: 2147483000; overflow: hidden; cursor: default;
+  -webkit-user-select: none; user-select: none; background: var(--bienvenue-page, #fff);
+  will-change: opacity; transition: opacity .6s ease;
+}
+.bienvenue-fin { opacity: 0; pointer-events: none; }
+.bienvenue canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* Le titre, pour les lecteurs d'écran ; à l'écran seulement quand le verre ne peut pas se dessiner. */
+.bienvenue-titre {
+  position: absolute; left: 0; right: 0; top: 30%; margin: 0; padding: 0 5vw; text-align: center;
+  font-family: "Marelle Bienvenue", "Snell Roundhand", cursive; font-weight: 400; color: var(--bienvenue-signature, #555);
+  font-size: clamp(44px, 7.4vw, 104px); line-height: 1.5;
+}
+.bienvenue-titre .z { border-bottom: .09em double #d4142e; padding-bottom: .7em; }
+.bienvenue-dessinee .bienvenue-titre { width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Les deux barres rouges sous le z, tirées à la règle : elles ne bougent que par la carte graphique, rien ne les saccade. */
+.bienvenue-barre {
+  position: absolute; background: #d4142e; border-radius: 1.5px; box-shadow: 0 1px 2px rgba(90, 20, 60, .28);
+  transform: scaleX(0); transform-origin: left center; will-change: transform; transition: transform .3s cubic-bezier(.3, .1, .3, 1);
+}
+.bienvenue-regle .bienvenue-barre { transform: none; }
+.bienvenue-barre + .bienvenue-barre { transition-delay: .24s; }
+.bienvenue-credit {
+  position: absolute; left: 0; right: 0; margin: 0; text-align: center; color: var(--bienvenue-credit, #333);
+  font: 500 clamp(14.5px, 1.3vw, 18px) / 1 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; letter-spacing: .01em;
+  opacity: 0; will-change: opacity; transition: opacity .7s ease;
+}
+.bienvenue-signature { font-family: "Marelle Bienvenue", "Snell Roundhand", cursive; font-weight: 400; font-size: 1.75em; letter-spacing: 0; color: var(--bienvenue-signature, #555); margin: 0 .04em 0 .24em; }
+.bienvenue-signe .bienvenue-credit { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .bienvenue, .bienvenue-barre, .bienvenue-credit { transition-duration: .01s; transition-delay: 0s !important; }
+}
