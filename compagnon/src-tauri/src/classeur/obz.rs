@@ -39,7 +39,7 @@ pub(crate) fn ouvrir(octets: &[u8]) -> Result<Fichiers, String> {
         if total > TAILLE_MAX {
             return Err("Ce classeur est trop lourd pour être ouvert.".into());
         }
-        let nom = fichier.name().trim_start_matches("./").to_string();
+        let nom = fichier.name().map_err(|e| e.to_string())?.trim_start_matches("./").to_string();
         let mut octets = Vec::new();
         fichier.read_to_end(&mut octets).map_err(|e| e.to_string())?;
         let minuscule = nom.to_lowercase();
@@ -104,6 +104,25 @@ pub async fn obz_enregistrer<R: Runtime>(app: AppHandle<R>, nom: String, fichier
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn une_archive_qui_ment_sur_sa_taille_est_refusee() {
+        // 201 Mo de zéros, que le répertoire de l'archive annonce comme 1 octet : zip refuse d'en lire plus.
+        let mut octets = Vec::new();
+        {
+            let mut z = zip::ZipWriter::new(Cursor::new(&mut octets));
+            let reglages = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+            z.start_file("bombe.json", reglages).unwrap();
+            let bloc = vec![0u8; 1024 * 1024];
+            for _ in 0..201 {
+                z.write_all(&bloc).unwrap();
+            }
+            z.finish().unwrap();
+        }
+        let debut = octets.windows(4).rposition(|f| f == b"PK\x01\x02").unwrap();
+        octets[debut + 24..debut + 28].copy_from_slice(&1u32.to_le_bytes());
+        assert!(ouvrir(&octets).is_err());
+    }
 
     #[test]
     fn une_archive_refaite_se_rouvre_a_l_identique() {

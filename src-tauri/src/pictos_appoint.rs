@@ -182,7 +182,7 @@ pub fn extraire(s: &Source, zip: &[u8], dossier: &Path) -> Result<Vec<Entree>, S
         if f.is_dir() {
             continue;
         }
-        let nom = f.name().to_string();
+        let nom = f.name().map_err(|e| format!("Archive illisible : {e}"))?.to_string();
         if !nom.to_lowercase().ends_with(".png") {
             continue;
         }

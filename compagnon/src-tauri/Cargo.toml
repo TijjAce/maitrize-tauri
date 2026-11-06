@@ -41,7 +41,7 @@ tauri-plugin-scanner = { path = "plugins/scanner" }
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 # Le classeur de communication, côté élève : le format ouvert des tableaux (.obz), une archive comme celle que
 # Maitrize écrit. Sa compression : le moteur écrit en Rust, sans quoi flate2 refuse de compiler pour l'iPhone.
-zip = { version = "8.6", default-features = false, features = ["deflate-flate2"] }
+zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 # La voix de l'appareil, même en mode silencieux : écrite ici, dans `plugins/`.
 tauri-plugin-parole = { path = "plugins/parole" }
