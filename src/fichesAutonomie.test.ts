@@ -172,7 +172,7 @@ describe("la journée", () => {
 
   it("le prénom à la façon d'un prénom ; le PDF garde le titre de la feuille, sans l'élève ni le jour", () => {
     expect(prenomEcrit("ELIOT")).toBe("Eliot");
-    expect(prenomEcrit("jean-luc")).toBe("Jean-Luc");
+    expect(prenomEcrit("paul-henri")).toBe("Paul-Henri");
     expect(prenomEcrit("ALOïS")).toBe("Aloïs");
     expect(titreSansLEleve("Mots mêlés — Eliot, 7 oct.", "Eliot")).toBe("Mots mêlés");
     expect(titreSansLEleve("Lire l'heure — pile et demie — Jean-Luc, 7 oct. (2)", "Jean-Luc")).toBe("Lire l'heure — pile et demie");

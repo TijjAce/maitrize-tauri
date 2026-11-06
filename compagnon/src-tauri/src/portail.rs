@@ -1299,8 +1299,8 @@ mod tests {
         {
             let mut e = etat.lock().unwrap();
             let v = e.version_neuve();
-            let fiche_de_jean = AideAEnvoyer { id: "f1".into(), titre: "Les pyramides de nombres".into(), html: "<body><p>Je complète.</p></body>".into(), etapes: Vec::new() };
-            envoyer(e.ecran_pour(Some(1)), "c1".into(), Some(fiche_de_jean), 600, None, false, maintenant_ms(), v);
+            let fiche_a_envoyer = AideAEnvoyer { id: "f1".into(), titre: "Les pyramides de nombres".into(), html: "<body><p>Je complète.</p></body>".into(), etapes: Vec::new() };
+            envoyer(e.ecran_pour(Some(1)), "c1".into(), Some(fiche_a_envoyer), 600, None, false, maintenant_ms(), v);
         }
         let (_, json) = demander("/etat?t=jeton123&tab=k3x9q2");
         assert!(json.contains("\"montree\":\"Les pyramides de nombres\"") && json.contains("\"duree\":600"), "{json}");
