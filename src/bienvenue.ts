@@ -5,11 +5,11 @@
 // 2026, sur l'image d'un « welcome » de verre). Puis, le même jour : « c'est
 // encore pas mégafluide » ; « plus personnalisé, souligne avec deux barres rouges
 // le z, fais ça proprement » ; « oublie la toute première transition » ; « une
-// application créée par Clemti, Professeur des écoles », en petit.
+// application créée par ClemTi, Professeur des écoles », en petit.
 //
 // Le titre s'écrit en cursive du ministère, en lettres de verre, sur une feuille
 // de cahier que recouvre une soie de couleur (voir bienvenueRendu.ts) ; le z se
-// souligne de deux traits rouges à la règle, comme un titre de cahier ; Clemti
+// souligne de deux traits rouges à la règle, comme un titre de cahier ; ClemTi
 // signe dessous ; puis la page s'efface sur l'application.
 //
 // La fluidité tient à l'ordre des choses, parce qu'une image saccade dès que le
@@ -37,8 +37,8 @@ import { estInviteDuRelais } from "./relaisDev";
 import "./bienvenue.css";
 
 export const TITRE: [string, string] = ["Bienvenue", "sur Maitrize"];
-/** « Une application créée par Clemti, Professeur des écoles » : son nom en cursive, comme une signature. */
-export const CREDIT = ["Une application créée par", "Clemti", ", Professeur des écoles"] as const;
+/** « Une application créée par ClemTi, Professeur des écoles » : son nom en cursive, comme une signature, coupé pour resserrer le T. */
+export const CREDIT = ["Une application créée par", "Clem", "Ti", ", Professeur des écoles"] as const;
 
 const POLICE = "Marelle Bienvenue";
 
@@ -91,7 +91,9 @@ function ouvrirLaPage(charger: (b: Bienvenue) => void) {
   barre2.setAttribute("aria-hidden", "true");
   const credit = document.createElement("p");
   credit.className = "bienvenue-credit";
-  credit.append(CREDIT[0], Object.assign(document.createElement("span"), { className: "bienvenue-signature", textContent: CREDIT[1] }), CREDIT[2]);
+  const signature = Object.assign(document.createElement("span"), { className: "bienvenue-signature", textContent: CREDIT[1] });
+  signature.append(Object.assign(document.createElement("span"), { className: "bienvenue-signature-t", textContent: CREDIT[2] }));
+  credit.append(CREDIT[0], signature, CREDIT[3]);
   credit.style.top = "78%";
   page.append(toile, titre, barre1, barre2, credit);
   document.body.appendChild(page);

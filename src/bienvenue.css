@@ -27,6 +27,8 @@
   opacity: 0; will-change: opacity; transition: opacity .7s ease;
 }
 .bienvenue-signature { font-family: "Marelle Bienvenue", "Snell Roundhand", cursive; font-weight: 400; font-size: 1.75em; letter-spacing: 0; color: var(--bienvenue-signature, #555); margin: 0 .04em 0 .24em; }
+/* Le T majuscule s'ouvre par un grand crochet à gauche : sans ce resserrement, on lit « Clem Ti », deux mots. */
+.bienvenue-signature-t { margin-left: -.22em; }
 .bienvenue-signe .bienvenue-credit { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   .bienvenue, .bienvenue-barre, .bienvenue-credit { transition-duration: .01s; transition-delay: 0s !important; }
