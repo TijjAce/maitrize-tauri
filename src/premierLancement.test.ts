@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BANQUES_APPOINT } from "./pictosAppoint";
-import { ETAPES_DU_LANCEMENT, PICTOS_PLUS_TARD, installerPlusTardPossible, pictosInstalles, suiteDuLancement } from "./premierLancement";
+import { ETAPES_DU_LANCEMENT, PICTOS_PLUS_TARD, THEME_DE_DEPART, installationNeuve, installerPlusTardPossible, pictosInstalles, suiteDuLancement } from "./premierLancement";
 
 describe("le premier lancement (« juste après avoir accepté les conditions d'utilisation »)", () => {
   it("se montre à une installation neuve, une seule fois ; une installation d'avant ne le voit pas", () => {
@@ -12,7 +12,7 @@ describe("le premier lancement (« juste après avoir accepté les conditions d'
   });
 
   it("dans l'ordre demandé : les pictogrammes, la clé, l'emploi du temps", () => {
-    expect(ETAPES_DU_LANCEMENT.map((e) => e.id)).toEqual(["pictos", "cle", "edt"]);
+    expect(ETAPES_DU_LANCEMENT.map((e) => e.id)).toEqual(["pictos", "cle", "materiel", "salle", "edt"]);
   });
 
   it("on ne passe les pictogrammes qu'avec ARASAAC et toutes les banques d'appoint", () => {
@@ -38,5 +38,18 @@ describe("le premier lancement (« juste après avoir accepté les conditions d'
     expect(suiteDuLancement("2026-11-05T10:00:00.000Z", "1", "")).toBe("rien");
     // Une installation neuve commence toujours par le parcours entier.
     expect(suiteDuLancement(null, null, PICTOS_PLUS_TARD)).toBe("montrer");
+  });
+
+  it("une installation neuve s'ouvre en rose, Aurore, Vitré ; une installation d'avant garde ce qu'elle a", () => {
+    expect(THEME_DE_DEPART).toEqual({ apparence: "aurore", accent: "pink", styleInterface: "vitre" });
+    expect(installationNeuve({})).toBe(true);
+    expect(installationNeuve({ cgu: "{}" })).toBe(true);
+    // Déjà passée par le premier lancement, ou par l'accueil d'avant, même sans avoir choisi d'apparence.
+    expect(installationNeuve({ premierLancement: "2026-11-05" })).toBe(false);
+    expect(installationNeuve({ onboardingVu: "1" })).toBe(false);
+    // Une apparence déjà choisie n'est jamais remplacée.
+    expect(installationNeuve({ apparence: "sombre" })).toBe(false);
+    expect(installationNeuve({ accent: "teal" })).toBe(false);
+    expect(installationNeuve({ styleInterface: "epure" })).toBe(false);
   });
 });

@@ -2,6 +2,7 @@
 // CSS, + charge les surcharges de couleurs de matière. Réglages persistés en DB.
 import { api, setMatiereOverrides, CLE_COULEURS_MATIERES } from "./api";
 import { EVT_DONNEES_DISTANTES } from "./components/ui";
+import { THEME_DE_DEPART, installationNeuve } from "./premierLancement";
 
 export const MODES = [
   { id: "clair", label: "Clair" },
@@ -112,7 +113,12 @@ export function applyTheme(s: Record<string, string>) {
 /** Charge tous les réglages au démarrage et applique thème + couleurs matières. */
 export async function bootTheme() {
   try {
-    const s = await api.settingsAll();
+    let s = await api.settingsAll();
+    // Une installation neuve s'ouvre en rose, Aurore, Vitré (ces réglages restent propres à chaque ordinateur).
+    if (installationNeuve(s)) {
+      s = { ...s, ...THEME_DE_DEPART };
+      for (const [cle, valeur] of Object.entries(THEME_DE_DEPART)) void api.settingSet(cle, valeur).catch(() => {});
+    }
     applyTheme(s);
     try { setMatiereOverrides(JSON.parse(s[CLE_COULEURS_MATIERES] || "{}")); } catch { /* ignore */ }
   } catch { /* ignore */ }

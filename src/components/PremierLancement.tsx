@@ -10,12 +10,15 @@ import {
 } from "../premierLancement";
 import { texteTelechargement, type Telechargement } from "./ChoixPictoConsigne";
 import { EntrainementACouper } from "./EntrainementMistral";
+import { TriDuMateriel } from "./TriDuMateriel";
+import { PlanSalleTab } from "../pages/PlanSalle";
 import { Field, Input, ouvrirOnglet } from "./ui";
 
 // Le premier lancement, juste après les conditions d'utilisation : les
 // pictogrammes (obligatoires ; hors connexion, ils peuvent attendre le
-// lancement suivant), la clé Mistral (facultative), puis l'emploi du temps,
-// par où commencer (voir premierLancement.ts).
+// lancement suivant), la clé Mistral (facultative), le matériel de la classe à
+// trier d'un geste, le plan de classe à dessiner, puis l'emploi du temps, par
+// où commencer (voir premierLancement.ts).
 
 export function PremierLancement() {
   const nav = useNavigate();
@@ -64,7 +67,7 @@ export function PremierLancement() {
   const rang = ETAPES_DU_LANCEMENT.findIndex((e) => e.id === etape);
   return (
     <div className="premier-lancement" role="dialog" aria-modal="true" aria-labelledby="premier-lancement-titre">
-      <div className="card premier-lancement-carte">
+      <div className={`card premier-lancement-carte etape-${etape}`}>
         <div className="premier-lancement-tete">
           <img src={logo} alt="" />
           <div>
@@ -82,11 +85,27 @@ export function PremierLancement() {
         </div>
         <div className="premier-lancement-corps">
           {etape === "pictos" && <EtapePictos onSuite={pictosFaits} onPlusTard={pictosPlusTard} />}
-          {etape === "cle" && <EtapeCle onSuite={() => setEtape("edt")} />}
+          {etape === "cle" && <EtapeCle onSuite={() => setEtape("materiel")} />}
+          {etape === "materiel" && <TriDuMateriel onSuite={() => setEtape("salle")} />}
+          {etape === "salle" && <EtapeSalle onSuite={() => setEtape("edt")} />}
           {etape === "edt" && <EtapeEmploiDuTemps onCommencer={() => { void finir(true); }} onPlusTard={() => { void finir(false); }} />}
         </div>
       </div>
     </div>
+  );
+}
+
+/** Le plan de classe : on part d'une disposition, ou de rien, et l'on déplace, ajoute, redimensionne. */
+function EtapeSalle({ onSuite }: { onSuite: () => void }) {
+  const [dessinee, setDessinee] = React.useState(false);
+  return (
+    <>
+      <h2>Le plan de votre classe</h2>
+      <PlanSalleTab premiereFois surDessin={setDessinee} />
+      <div className="premier-lancement-boutons">
+        <button className={dessinee ? "btn primary" : "btn"} onClick={onSuite}>{dessinee ? "Continuer" : "Plus tard"}</button>
+      </div>
+    </>
   );
 }
 

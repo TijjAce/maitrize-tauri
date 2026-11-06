@@ -233,7 +233,11 @@ function Avatar({ eleve, photo, taille }: { eleve: Eleve; photo?: string; taille
   );
 }
 
-export function PlanSalleTab() {
+/**
+ * `premiereFois` : à la première connexion, seulement dessiner la salle — pas de jour, pas de placement, pas encore
+ * d'élèves ; `surDessin` dit si une salle existe.
+ */
+export function PlanSalleTab({ premiereFois = false, surDessin }: { premiereFois?: boolean; surDessin?: (oui: boolean) => void } = {}) {
   const { data: eleves } = useAsync(() => api.elevesList(), []);
   const photos = usePhotos(eleves ?? []);
 
@@ -266,6 +270,7 @@ export function PlanSalleTab() {
   const creneau = creneaux[Math.min(idx, Math.max(0, creneaux.length - 1))];
 
   const [profils, setProfils] = React.useState<Profil[]>([]);
+  React.useEffect(() => { surDessin?.(profils.length > 0); }, [profils.length]);
   // Les espaces de la classe (l'armoire, le coin lecture…) : chacun a sa place dans le plan ; null tant qu'on ne les connaît pas.
   const [espaces, setEspaces] = React.useState<Espace[] | null>(null);
   // Agencement retenu pour un créneau, puis pour sa matière : la « Scolarité »
@@ -277,7 +282,7 @@ export function PlanSalleTab() {
   // mardi retrouve le placement de celle de lundi) sans rien réenregistrer.
   const [plans, setPlans] = React.useState<Record<string, Plan>>({});
   const [plansMatiere, setPlansMatiere] = React.useState<Record<string, Plan>>({});
-  const [mode, setMode] = React.useState<"placement" | "amenagement">("placement");
+  const [mode, setMode] = React.useState<"placement" | "amenagement">(premiereFois ? "amenagement" : "placement");
   const [choix, setChoix] = React.useState<ElemSalle | null>(null);
   const [selId, setSelId] = React.useState<string | null>(null);
   const [arme, setArme] = React.useState<string | null>(null);
@@ -539,7 +544,7 @@ export function PlanSalleTab() {
     };
     persistProfils([...profilsRef.current, p]);
     choisirProfil(p.id);
-    toast(modele ? `Agencement « ${modele.nom} » créé.` : "Agencement vide créé.", { icone: "🪑" });
+    if (!premiereFois) toast(modele ? `Agencement « ${modele.nom} » créé.` : "Agencement vide créé.", { icone: "🪑" });
   };
 
   /** Copie l'agencement courant : point de départ pour une variante. */
@@ -656,23 +661,43 @@ export function PlanSalleTab() {
 
   if (!charge) return <div />;
 
+  // La première fois : d'où partir, en grand plutôt que dans un menu.
+  if (premiereFois && profils.length === 0) {
+    return (
+      <div className="plan-depart">
+        {AGENCEMENTS.map((a) => (
+          <button key={a.id} className="plan-depart-choix" onClick={() => creerProfil(a)}>
+            <span className="plan-depart-ico" aria-hidden="true">{a.ico}</span><b>{a.nom}</b><span>{a.sous}</span>
+          </button>
+        ))}
+        <button className="plan-depart-choix" onClick={() => creerProfil()}>
+          <span className="plan-depart-ico" aria-hidden="true">✏️</span><b>Une salle vide</b><span>Je la dessine moi-même</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="toolbar" style={{ flexWrap: "wrap" }}>
-        <button className="btn sm" onClick={() => decalerJour(-1)} aria-label="Jour précédent">←</button>
-        <b style={{ minWidth: 180, textAlign: "center", textTransform: "capitalize" }}>{fmtJour(jour)}</b>
-        <button className="btn sm" onClick={() => decalerJour(1)} aria-label="Jour suivant">→</button>
-        {!estAujourdhui && <button className="btn sm" onClick={() => { const d = new Date(); d.setHours(0, 0, 0, 0); setJour(d); }}>Aujourd'hui</button>}
+        {!premiereFois && <>
+          <button className="btn sm" onClick={() => decalerJour(-1)} aria-label="Jour précédent">←</button>
+          <b style={{ minWidth: 180, textAlign: "center", textTransform: "capitalize" }}>{fmtJour(jour)}</b>
+          <button className="btn sm" onClick={() => decalerJour(1)} aria-label="Jour suivant">→</button>
+          {!estAujourdhui && <button className="btn sm" onClick={() => { const d = new Date(); d.setHours(0, 0, 0, 0); setJour(d); }}>Aujourd'hui</button>}
+        </>}
         <div className="spacer" />
-        <div className="seg">
-          <button className={mode === "placement" ? "active" : ""} onClick={() => { setMode("placement"); setSelId(null); }}>Placement</button>
-          <button className={mode === "amenagement" ? "active" : ""} onClick={() => { setMode("amenagement"); setArme(null); }}>Aménagement</button>
-        </div>
-        <button className="btn sm" onClick={imprimer} disabled={!creneau}>🖨 Imprimer</button>
+        {!premiereFois && <>
+          <div className="seg">
+            <button className={mode === "placement" ? "active" : ""} onClick={() => { setMode("placement"); setSelId(null); }}>Placement</button>
+            <button className={mode === "amenagement" ? "active" : ""} onClick={() => { setMode("amenagement"); setArme(null); }}>Aménagement</button>
+          </div>
+          <button className="btn sm" onClick={imprimer} disabled={!creneau}>🖨 Imprimer</button>
+        </>}
         <BarreProfils profils={profils} profilId={profilId} creneau={creneau}
           onChoisir={choisirProfil} onCreer={creerProfil} onDupliquer={dupliquerProfil}
           onRenommer={() => profil && setRenommer(profil)} onSupprimer={() => profil && setSupprProfil(profil)} />
-        {creneaux.length > 1 && <button className="btn sm" onClick={imprimerJournee}>🖨 La journée</button>}
+        {!premiereFois && creneaux.length > 1 && <button className="btn sm" onClick={imprimerJournee}>🖨 La journée</button>}
       </div>
 
       {mode === "placement" && (
@@ -798,7 +823,7 @@ export function PlanSalleTab() {
         </div>
       )}
 
-      {visibles.length === 0 ? (
+      {visibles.length === 0 && !(mode === "amenagement" && profil) ? (
         <Empty icone="🪑" titre={profils.length === 0 ? "Aucun agencement" : `« ${profil?.nom} » est vide`}
           sous={profils.length === 0
             ? "Créez une salle depuis le bouton « ✨ Créer une salle » : îlots, frontal, en U ou coin regroupement."

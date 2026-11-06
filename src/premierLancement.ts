@@ -6,11 +6,16 @@
 // rentrer sa clé API. Puis il est invité à débuter par la création de son
 // emploi du temps » (l'enseignant, 5 novembre 2026).
 //
-// Trois étapes, en plein écran, après la porte des conditions d'utilisation
-// (voir components/PremierLancement.tsx). Le parcours remplace les
-// diapositives d'accueil d'avant (réglage « onboardingVu ») : une
-// installation qui les avait déjà vues ne le voit pas, elle n'a rien à
-// installer de nouveau.
+// Puis, le lendemain : « Pour commencer ensuite, après les pictos et la clé, une
+// sorte de Tinder, swipe right and left, du matériel. Et la possibilité de
+// dessiner son plan de classe. Ensuite l'application s'ouvre avec le thème rose
+// Aurore Vitré » (voir triDuMateriel.ts, et `THEME_DE_DEPART`). L'invitation à
+// faire son emploi du temps reste la dernière étape : elle ouvre l'application.
+//
+// En plein écran, après la porte des conditions d'utilisation (voir
+// components/PremierLancement.tsx). Le parcours remplace les diapositives
+// d'accueil d'avant (réglage « onboardingVu ») : une installation qui les avait
+// déjà vues ne le voit pas, elle n'a rien à installer de nouveau.
 //
 // Hors connexion, les pictogrammes peuvent attendre : « Installer plus tard »
 // (« oui ajoute "Installer plus tard" hors connexion », le même jour). Ils
@@ -38,14 +43,23 @@ export function suiteDuLancement(
 /** « Installer plus tard » ne se propose que sans connexion, ou quand un téléchargement vient d'échouer. */
 export const installerPlusTardPossible = (enLigne: boolean, erreur: boolean, enCours: boolean): boolean => !enCours && (!enLigne || erreur);
 
-export type EtapeDuLancement = "pictos" | "cle" | "edt";
+export type EtapeDuLancement = "pictos" | "cle" | "materiel" | "salle" | "edt";
 
 export const ETAPES_DU_LANCEMENT: { id: EtapeDuLancement; nom: string }[] = [
   { id: "pictos", nom: "Les pictogrammes" },
   { id: "cle", nom: "L'assistant IA" },
+  { id: "materiel", nom: "Le matériel" },
+  { id: "salle", nom: "Le plan de classe" },
   { id: "edt", nom: "L'emploi du temps" },
 ];
 
 /** Les pictogrammes sont là quand ARASAAC et chaque banque d'appoint attendue le sont : on ne passe pas sans eux. */
 export const pictosInstalles = (arasaac: boolean, appoint: { banque: string; installee: boolean }[], attendues: string[]): boolean =>
   arasaac && attendues.every((b) => appoint.some((e) => e.banque === b && e.installee));
+
+/** Une installation neuve s'ouvre en rose, Aurore, Vitré. Une installation d'avant garde ce qu'elle a, même sans rien avoir choisi. */
+export const THEME_DE_DEPART = { apparence: "aurore", accent: "pink", styleInterface: "vitre" };
+
+/** Rien n'a encore été fait sur cet ordinateur : ni le premier lancement, ni l'accueil d'avant, ni aucun choix d'apparence. */
+export const installationNeuve = (s: Record<string, string | undefined>): boolean =>
+  !s[CLE_PREMIER_LANCEMENT] && !s.onboardingVu && !s.apparence && !s.accent && !s.styleInterface;
