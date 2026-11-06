@@ -40,8 +40,9 @@ import { consigneDeLAssistant, extraitsPourLAssistant, programmesPourLaDemande }
 import { blocDeMemoire, chargerMemoire, defaireChangements, direLesChangements, memoireCoupee, retenirDuMessage, souvenirsPourLaQuestion } from "../memoireAssistant";
 import { MemoireAssistant } from "../components/MemoireAssistant";
 import {
-  DEMANDE_DE_REDACTION, FICHE_PRETE, TOURS_DE_QUESTIONS_MAX, consigneDeLaFiche, consigneDesQuestions, conversationDuCadre, demandeDeRetouche, ficheEnMarkdown,
-  lireLesQuestions, messageDesQuestions, parleAMistral, questionDeConfirmation, redigerLaFiche, seancesDeLaFiche, sequenceDeLaFiche, tourDuCadre, type SorteDePreparation, type TourDuCadre,
+  DEMANDE_DE_REDACTION, FICHE_PRETE, RECAP_A_VOIX_HAUTE, TOURS_DE_QUESTIONS_MAX, consigneDeLEntretien, consigneDeLaFiche, conversationDuCadre, demandeDeRetouche, ficheEnMarkdown,
+  lignesDuConnu, lireLEntretien, nonPrecise, parleAMistral, questionDeConfirmation, recapitulatif, redigerLaFiche, resumeDuConnu, seancesDeLaFiche, sequenceDeLaFiche, suiteDeLEntretien, tourDuCadre,
+  type ConnuDuCadre, type SorteDePreparation, type TourDuCadre,
 } from "../cadreDeSeance";
 import { CLE_INVENTAIRE, MATERIEL_REEL, lireInventaire } from "../materielDeClasse";
 import { periodeDuMoment } from "../creationsALaVoix";
@@ -644,8 +645,10 @@ export default function Assistant() {
     const nom = sorte === "sequence" ? "la séquence" : "la séance";
     const avantLaFiche = tour.genre === "retoucher" ? "Je reprends la fiche." : "Je m'y mets, cela prend une minute.";
     try {
-      attente(tour.genre === "retoucher" ? "Je reprends la fiche…" : "Je relis votre demande…", "");
-      const demande = conversationDuCadre(suite).filter((m) => m.role === "user").slice(-4).map((m) => m.content).join(" ");
+      attente(tour.genre === "retoucher" ? "Je reprends la fiche…" : "…", "");
+      // Les programmes qui parlent de ce qu'on sait déjà du sujet, puis de ce qu'il vient de dire.
+      const connuAvant: ConnuDuCadre = tour.genre === "retoucher" ? {} : tour.connu;
+      const demande = [connuAvant.niveau, connuAvant.matiere, connuAvant.sujet, connuAvant.objectif, ...conversationDuCadre(suite).filter((m) => m.role === "user").slice(-3).map((m) => m.content)].filter(Boolean).join(" ");
       const [ctx, trouvailles, souvenirs, inventaire] = await Promise.all([
         contexteActif ? construireContexteIA() : Promise.resolve(""),
         Promise.all([api.referentielsList(), contexteActif ? api.settingGet("niveauClasse") : Promise.resolve(null)])
@@ -657,25 +660,28 @@ export default function Assistant() {
       const materiel = MATERIEL_REEL.filter((m) => inv[m.id]?.a).map((m) => `- ${m.nom}`).join("\n");
       const conv = conversationDuCadre(suite);
       const fiche = tour.genre === "retoucher" ? JSON.stringify(tour.fiche) : "";
-      const masque = await masquerSurLesEleves([blocDeMemoire(souvenirsPourLaQuestion(souvenirs, demande)), ctx, fiche, ...conv.map((m) => m.content)]);
-      const [memoire, contexte, ficheMasquee, ...textes] = masque.textes;
+      const masque = await masquerSurLesEleves([blocDeMemoire(souvenirsPourLaQuestion(souvenirs, demande)), ctx, fiche, JSON.stringify(connuAvant), ...conv.map((m) => m.content)]);
+      const [memoire, contexte, ficheMasquee, connuMasque, ...textes] = masque.textes;
       const echanges = conv.map((m, i) => ({ role: m.role, content: textes[i] ?? m.content }));
       const rendre = (t: string) => restaurer(t, masque.table).texte;
+      const programmes = extraitsPourLAssistant(trouvailles);
       const entrees = { contexte, memoire, materiel };
       if (tour.genre === "cadrer") {
-        const q = lireLesQuestions(await api.mistralChat([{ role: "system", content: consigneDesQuestions(sorte, tour.tour, entrees) }, ...echanges], model, true), rendre);
+        const lu = lireLEntretien(await api.mistralChat([{ role: "system", content: consigneDeLEntretien(sorte, connuMasque, { ...entrees, programmes }) }, ...echanges], model, true), rendre);
         if (arretee) return;
-        if (q.questions.length) {
-          const texte = messageDesQuestions(q);
-          finir({ role: "assistant", content: texte, dit: [q.compris, ...q.questions].join(" "), cadre: { etape: "questions", sorte, tour: tour.tour } });
-          if (!riendAjouter) void retenir(contenu);
-          return;
-        }
+        const e = suiteDeLEntretien({ sorte, avant: tour.connu, posees: tour.posees, lu, conversation: suite });
+        finir(e.question
+          ? { role: "assistant", content: e.question, dit: e.question, cadre: { etape: "questions", sorte, tour: tour.tour, connu: e.connu, posees: e.posees } }
+          : { role: "assistant", content: recapitulatif(e.connu, sorte), dit: RECAP_A_VOIX_HAUTE, cadre: { etape: "recap", sorte, tour: tour.tour, connu: e.connu, posees: e.posees } });
+        if (!riendAjouter) void retenir(contenu);
+        return;
       }
       attente(tour.genre === "retoucher" ? "Je reprends la fiche…" : `Je rédige ${nom}, cela prend une minute…`, avantLaFiche);
-      const systeme = { role: "system" as const, content: consigneDeLaFiche(sorte, { ...entrees, programmes: extraitsPourLAssistant(trouvailles) }) };
+      let etabli = "";
+      try { etabli = lignesDuConnu(JSON.parse(connuMasque) as ConnuDuCadre, sorte).join("\n"); } catch { /* la conversation le dit aussi */ }
+      const systeme = { role: "system" as const, content: consigneDeLaFiche(sorte, { ...entrees, programmes, etabli }) };
       const r = await redigerLaFiche({
-        sorte, rendre, permis: trouvailles.map((t) => t.texte),
+        sorte, rendre, permis: trouvailles.map((t) => t.texte), connu: connuAvant,
         messages: tour.genre === "retoucher"
           ? [systeme, { role: "user", content: demandeDeRetouche(ficheMasquee, textes[textes.length - 1] ?? contenu) }]
           : [systeme, ...echanges, { role: "user", content: DEMANDE_DE_REDACTION }],
@@ -686,13 +692,13 @@ export default function Assistant() {
       if ("reponse" in r) { finir({ role: "assistant", content: r.reponse, dit: `${avantLaFiche} ${r.reponse}` }); return; }
       finir({
         role: "assistant", content: ficheEnMarkdown(r.fiche, sorte), dit: `${avantLaFiche} ${FICHE_PRETE}`,
-        cadre: { etape: "fiche", sorte, fiche: r.fiche, notes: r.notes },
+        cadre: { etape: "fiche", sorte, fiche: r.fiche, notes: [...r.notes, ...(tour.genre === "rediger" ? [nonPrecise(tour.connu, sorte)].filter((n): n is string => !!n) : [])] },
       });
       if (!riendAjouter) void retenir(contenu);
     } catch (e) {
       if (arretee) return;
       // La fiche n'est pas venue : le prochain message, ou le bouton, relance la rédaction.
-      finir({ role: "assistant", content: `⚠️ ${texteErreur(e)}`, dit: `${avantLaFiche} Cela n'a pas marché, la raison est à l'écran.`, cadre: { etape: "questions", sorte, tour: TOURS_DE_QUESTIONS_MAX } });
+      finir({ role: "assistant", content: `⚠️ ${texteErreur(e)}`, dit: `${avantLaFiche} Cela n'a pas marché, la raison est à l'écran.`, cadre: { etape: "questions", sorte, tour: TOURS_DE_QUESTIONS_MAX, connu: tour.genre === "retoucher" ? {} : tour.connu } });
     }
   };
 
@@ -892,9 +898,18 @@ export default function Assistant() {
                 <button type="button" className="btn ghost sm" onClick={() => { void envoyer("Non"); }}>Non</button>
               </div>
             )}
+            {/* Ce qui est noté, d'un coup d'œil : M2PA garde un récapitulatif en vue, « l'antidote à l'éclatement ». */}
+            {m.cadre?.etape === "questions" && m.cadre.connu && resumeDuConnu(m.cadre.connu) && i === messages.length - 1 && (
+              <p className="meta" style={{ fontSize: 12, margin: "6px 0 0" }}>Noté : {resumeDuConnu(m.cadre.connu)}</p>
+            )}
             {m.cadre?.etape === "questions" && i === messages.length - 1 && !loading && oral === "non" && (
               <div className="msg-actions">
                 <button type="button" className="btn ghost sm" onClick={() => { void envoyer("Rédige maintenant"); }}>Rédiger sans attendre</button>
+              </div>
+            )}
+            {m.cadre?.etape === "recap" && i === messages.length - 1 && !loading && oral === "non" && (
+              <div className="msg-actions">
+                <button type="button" className="btn primary sm" onClick={() => { void envoyer("Oui"); }}>Rédiger</button>
               </div>
             )}
             {m.cadre?.etape === "fiche" && m.cadre.notes.length > 0 && <p className="meta" style={{ fontSize: 12, margin: "6px 0 0" }}>{m.cadre.notes.join(" ")}</p>}
