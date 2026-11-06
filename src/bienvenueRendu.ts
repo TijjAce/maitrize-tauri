@@ -200,6 +200,10 @@ export interface Palette {
   verreSurFonce: Rvb; verreSurClair: Rvb; filtre: Rvb; bordSurFonce: Rvb; bordSurClair: Rvb; creux: Rvb;
   /** Le fond avant la première image, le crédit, la signature. */
   page: string; credit: string; signature: string;
+  /** L'écriture aux couleurs des bandes du Z, de haut en bas : elles remplacent le corps et le bord du verre. */
+  bandes?: Rvb[];
+  /** Les lignes du cahier, si la soie est trop claire pour les tracer de sa couleur. */
+  ligne?: Rvb;
 }
 
 /** « En rose et blanc », puis « un mauve », puis « orange pour voir » (l'enseignant, 6 novembre 2026). */
@@ -285,12 +289,29 @@ export const PALETTES = {
     verreSurFonce: [0.86, 0.98, 0.96], verreSurClair: [0.12, 0.62, 0.68], filtre: [0.88, 0.98, 0.97], bordSurFonce: [0.95, 1.0, 0.99], bordSurClair: [0.03, 0.30, 0.42], creux: [0.72, 0.96, 0.94],
     page: "#f4fdfa", credit: "#0f3f52", signature: "#0f6f86",
   },
+  // L'écriture aux bandes du Z, de l'orange au bleu, sur un bleu très clair et le papier crème.
+  bandesBleu: {
+    blanc: [0.992, 0.984, 0.955], nacre: [0.982, 0.970, 0.930], poudre: [0.89, 0.94, 0.98], teinte: [0.78, 0.88, 0.96], vif: [0.62, 0.79, 0.93], fonce: [0.50, 0.70, 0.88],
+    ombre: [0.70, 0.68, 0.68], fil: [1.0, 0.98, 0.92], clarteDuFil: [0.95, 0.88, 0.70], ligne: [0.52, 0.71, 0.87],
+    verreSurFonce: [0.235, 0.478, 0.714], verreSurClair: [0.235, 0.478, 0.714], filtre: [0.45, 0.45, 0.45], bordSurFonce: [0.235, 0.478, 0.714], bordSurClair: [0.235, 0.478, 0.714], creux: [1.0, 0.96, 0.86],
+    bandes: [[0.90, 0.50, 0.12], [0.86, 0.66, 0.16], [0.62, 0.70, 0.16], [0.24, 0.60, 0.24], [0.10, 0.50, 0.58], [0.12, 0.38, 0.78]],
+    page: "#faf6ea", credit: "#1d3a5f", signature: "#23589a",
+  },
 } satisfies Record<string, Palette>;
 
 /** Celle de la page ; le nom suffit pour en changer. */
-export const PALETTE = PALETTES.mielViolet;
+export const PALETTE: Palette = PALETTES.bandesBleu;
 
 const enGlsl = ([r, v, b]: Rvb) => `vec3(${r.toFixed(3)}, ${v.toFixed(3)}, ${b.toFixed(3)})`;
+
+/** La couleur de l'écriture selon sa hauteur dans le titre : une bande après l'autre, fondues. */
+const bandesEnGlsl = (bandes: Rvb[]) => {
+  const pas = 0.82 / (bandes.length - 1);
+  return bandes.slice(1).reduce((avant, couleur, i) => {
+    const debut = 0.10 + i * pas;
+    return `mix(${avant}, ${enGlsl(couleur)}, smoothstep(${debut.toFixed(3)}, ${(debut + pas).toFixed(3)}, ici.y))`;
+  }, enGlsl(bandes[0]));
+};
 
 const SOMMETS = `
 attribute vec2 aPos;
@@ -357,7 +378,7 @@ vec3 fond(vec2 uv, float t, float net) {
     float loin = abs(fract(k + 0.5) - 0.5) * uReglure.y;
     float rang = mod(floor(k + 0.5), 4.0);
     float trait = smoothstep(uPx * 1.6, 0.0, loin) * (rang < 0.5 ? 0.62 : 0.30);
-    col = mix(col, TEINTE, trait * uAvecTexte * smoothstep(0.012, 0.0, d));
+    col = mix(col, ${enGlsl(PALETTE.ligne ?? PALETTE.teinte)}, trait * uAvecTexte * smoothstep(0.012, 0.0, d));
     // Le fil de lumière du bord, et la clarté qu'il laisse dans la soie.
     float fil = max(uPx * 1.1, 0.0011);
     col += ${enGlsl(PALETTE.fil)} * 0.75 * exp(-d * d / (fil * fil));
@@ -396,9 +417,9 @@ void main() {
           // Le corps du verre, teinté. Son bord foncé sur le clair, clair sur le foncé, comme une vraie vitre.
           float clarte = dot(devie, vec3(0.3, 0.45, 0.25));
           float surLeClair = smoothstep(0.55, 0.85, clarte);
-          vec3 teinte = mix(${enGlsl(PALETTE.verreSurFonce)}, ${enGlsl(PALETTE.verreSurClair)}, surLeClair);
-          vec3 verre = mix(devie * ${enGlsl(PALETTE.filtre)}, teinte, mix(0.72, 0.62, surLeClair));
-          vec3 cercle = mix(${enGlsl(PALETTE.bordSurFonce)}, ${enGlsl(PALETTE.bordSurClair)}, surLeClair);
+          vec3 teinte = ${PALETTE.bandes ? bandesEnGlsl(PALETTE.bandes) : `mix(${enGlsl(PALETTE.verreSurFonce)}, ${enGlsl(PALETTE.verreSurClair)}, surLeClair)`};
+          vec3 verre = mix(devie * ${enGlsl(PALETTE.filtre)}, teinte, ${PALETTE.bandes ? "0.84" : "mix(0.72, 0.62, surLeClair)"});
+          vec3 cercle = ${PALETTE.bandes ? "teinte * 0.6" : `mix(${enGlsl(PALETTE.bordSurFonce)}, ${enGlsl(PALETTE.bordSurClair)}, surLeClair)`};
           verre = mix(verre, cercle, 0.82 * bordure);
           // La lumière : un reflet vif en haut à gauche, une lueur au creux du bas.
           float vif = pow(max(dot(n, normalize(vec3(-0.34, 0.58, 0.74))), 0.0), 46.0);
