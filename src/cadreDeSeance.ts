@@ -23,8 +23,9 @@
 //      le code : les huit besoins, les trois leviers, aucun diagnostic, aucune formule
 //      creuse, le nombre de phrases, et chaque attendu retrouvé dans les programmes
 //      (« il ne faut pas qu'il hallucine ») ; une correction est demandée, une seule ;
-//   4. la fiche s'affiche, s'exporte, devient une vraie séquence, et se retouche en le
-//      disant. Tout part masqué, comme le reste de l'Assistant (voir Assistant.tsx).
+//   4. la fiche s'affiche, s'exporte, devient une vraie séquence avec les feuilles de
+//      Fabriquer (voir supportsDeLAssistant.ts), et se retouche en le disant. Tout part
+//      masqué, comme le reste de l'Assistant (voir Assistant.tsx).
 //
 // Le parti pris de M2PA pour le socio-constructivisme n'est pas repris : l'enseignant
 // dit sa démarche, sinon l'Assistant en choisit une et la nomme.
@@ -36,13 +37,22 @@ import { normaliser } from "./competencesTravaillees";
 import { DEBUT_OBJECTIF_SEANCE } from "./demarches";
 import { CHAMP_POSTURE, ecrireSeance, tableauDuDocument } from "./documentSeance";
 import { CYCLE_DU_NIVEAU } from "./documentaliste";
+import type { AtelierPropose, ReferenceDeFeuille, SupportsDuSujet } from "./supportsDeLAssistant";
 
 export type SorteDePreparation = "seance" | "sequence";
 
 const NOM: Record<SorteDePreparation, string> = { seance: "séance", sequence: "séquence" };
 
 export interface PhaseDeLaFiche { temps: string; phase: string; enseignant: string; eleves: string; observable: string }
-export interface SeanceDeLaFiche { titre: string; duree: number; objectif: string; supports: string; phases: PhaseDeLaFiche[] }
+export interface SeanceDeLaFiche {
+  titre: string; duree: number; objectif: string; supports: string; phases: PhaseDeLaFiche[];
+  /** Les feuilles qu'un générateur de Fabriquer fabrique pour cette séance. */
+  feuilles?: ReferenceDeFeuille[];
+  /** Les ateliers que l'enseignant règle lui-même. */
+  ateliers?: { id: string; nom: string }[];
+  /** Une feuille qu'il faudrait, et que Fabriquer ne sait pas faire : on le dit plutôt que de l'inventer. */
+  aFabriquer?: string;
+}
 export interface AdaptationDeLaFiche {
   domaine: string; obstacle: string; manifestation: string; besoin: string; objectifVise: string; degre: string; adaptation: string; aide: string; vigilance: string;
 }
@@ -80,7 +90,13 @@ export type CadreDuMessage =
   | { etape: "questions"; sorte: SorteDePreparation; tour: number; connu?: ConnuDuCadre; posees?: Record<string, number> }
   /** Tout est là : « Si j'ai bien compris… Je rédige ? » */
   | { etape: "recap"; sorte: SorteDePreparation; tour: number; connu: ConnuDuCadre; posees: Record<string, number> }
-  | { etape: "fiche"; sorte: SorteDePreparation; fiche: FicheDeSeance; notes: string[]; creee?: { sequenceId: string; seanceId: string } };
+  | {
+    etape: "fiche"; sorte: SorteDePreparation; fiche: FicheDeSeance; notes: string[]; creee?: { sequenceId: string; seanceId: string };
+    /** Ce que l'entretien a établi : une retouche le respecte aussi. */
+    connu?: ConnuDuCadre;
+    /** Le tirage des feuilles : celles qu'on regarde sont celles qu'on crée. */
+    graine?: number;
+  };
 
 export const BESOINS_DU_NIVEAU_1 = [
   "Sécurisation", "Sens des apprentissages", "Sentiment de compétence", "Autonomie sociale",
@@ -157,11 +173,13 @@ export type TourDuCadre =
   | { genre: "abandon" }
   | { genre: "cadrer"; sorte: SorteDePreparation; tour: number; seule: boolean; connu: ConnuDuCadre; posees: Record<string, number> }
   | { genre: "rediger"; sorte: SorteDePreparation; connu: ConnuDuCadre }
-  | { genre: "retoucher"; sorte: SorteDePreparation; fiche: FicheDeSeance };
+  | { genre: "retoucher"; sorte: SorteDePreparation; fiche: FicheDeSeance; connu: ConnuDuCadre; graine?: number };
 
 /** La fiche d'un des derniers messages, s'il y en a une : c'est d'elle qu'on parle encore. */
-function ficheRecente(messages: ChatMessage[]): { sorte: SorteDePreparation; fiche: FicheDeSeance } | null {
-  for (const m of messages.slice(-4).reverse()) if (m.cadre?.etape === "fiche") return { sorte: m.cadre.sorte, fiche: m.cadre.fiche };
+function ficheRecente(messages: ChatMessage[]): { sorte: SorteDePreparation; fiche: FicheDeSeance; connu: ConnuDuCadre; graine?: number } | null {
+  for (const m of messages.slice(-4).reverse()) {
+    if (m.cadre?.etape === "fiche") return { sorte: m.cadre.sorte, fiche: m.cadre.fiche, connu: m.cadre.connu ?? {}, graine: m.cadre.graine };
+  }
   return null;
 }
 
@@ -252,7 +270,10 @@ const LE_FORMAT = (sorte: SorteDePreparation): string => `Réponds par un seul o
   "seances": [{
     "titre": "…", "duree": 45,
     "objectif": "${DEBUT_OBJECTIF_SEANCE} …",
-    "supports": "le matériel, séparé par des points-virgules",
+    "supports": "le matériel réel, séparé par des points-virgules",
+    "feuilles": ["F1"],
+    "ateliers": [],
+    "a_fabriquer": "",
     "phases": [{ "temps": "5 min", "phase": "le nom de la phase", "enseignant": "son geste, 2 phrases", "eleves": "ce qu'ils font, 1 phrase", "observable": "ce qu'on voit, 1 phrase" }]
   }],
   "vigilance": "le point didactique à surveiller, 2 phrases",
@@ -264,7 +285,8 @@ ${sorte === "seance"
     ? "\"seances\" a une seule entrée, de 4 à 8 phases."
     : "\"seances\" a autant d'entrées que l'enseignant en a demandé, de 4 à 6 s'il n'a rien dit, chacune de 3 à 6 phases."}
 "niveau1" a exactement ces huit besoins, dans cet ordre et sous ces libellés ; "niveau2", exactement ces trois leviers.
-"niveau3" : une entrée par élève signalé, qui reprend le besoin retenu ; si aucun n'est signalé, une seule, pour l'obstacle le plus prévisible dans cette tâche.`;
+"niveau3" : une entrée par élève signalé, qui reprend le besoin retenu ; si aucun n'est signalé, une seule, pour l'obstacle le plus prévisible dans cette tâche.
+Les feuilles : tu n'en rédiges aucune. Une feuille imprimée vient de la liste des feuilles que l'application sait fabriquer : mets son numéro dans "feuilles" (F1, F2…), à la séance où elle sert, et nomme-la dans les phases. "ateliers" : les identifiants des autres ateliers que l'enseignant réglera lui-même, s'ils servent. "a_fabriquer" : une feuille qui manquerait vraiment et qu'aucun atelier ne fait, en quelques mots ; sinon, vide. "supports" ne contient que du matériel réel, jamais une fiche.`;
 
 export interface EntreesDuCadre {
   /** Ce que l'entretien a établi, masqué : à respecter tel quel. */
@@ -277,6 +299,8 @@ export interface EntreesDuCadre {
   programmes?: string;
   /** Le matériel que la classe possède. */
   materiel?: string;
+  /** Ce que Fabriquer sait faire sur ce sujet (voir supportsDeLAssistant.ts). */
+  supports?: string;
 }
 
 const lesEntrees = (e: EntreesDuCadre): string => [
@@ -316,6 +340,7 @@ export function consigneDeLEntretien(sorte: SorteDePreparation, connuMasque: str
     `Ce qui est déjà établi :\n${connuMasque}`,
     lesEntrees(e),
     e.programmes?.trim() && `Attendus du programme officiel, tirés des référentiels de l'application, pour proposer l'objectif ; n'en invente aucun :\n${e.programmes.trim()}`,
+    e.supports?.trim() && `Ce que l'application sait déjà faire sur ce sujet. Pour la question du support, propose-le d'abord, par son nom (« L'application a déjà… : je pars de ça ? ») ; ne cite jamais les numéros :\n${e.supports.trim()}`,
   ].filter(Boolean).join("\n\n");
 }
 
@@ -327,6 +352,9 @@ export function consigneDeLaFiche(sorte: SorteDePreparation, e: EntreesDuCadre):
     e.etabli?.trim() && `Ce que l'enseignant a établi, à respecter tel quel, prérequis compris ; ce qui n'y est pas, ou « à choisir », choisis-le et nomme ton choix :\n${e.etabli.trim()}`,
     lesEntrees(e),
     e.programmes?.trim() && `Attendus du programme officiel, tirés des référentiels de l'application. Quand l'un d'eux sert, recopie-le mot pour mot dans "attendus" ; n'en invente aucun.\n${e.programmes.trim()}`,
+    e.supports?.trim()
+      ? `Ce que l'application sait déjà faire sur ce sujet. Si une de ses séquences convient, suis ses séances et prends leurs feuilles ; adapte-la à ce que l'enseignant a établi.\n${e.supports.trim()}`
+      : "L'application n'a pas de feuille à proposer sur ce sujet : \"feuilles\" reste vide.",
     LE_FORMAT(sorte),
   ].filter(Boolean).join("\n\n");
 }
@@ -335,7 +363,27 @@ export const DEMANDE_DE_REDACTION = "Rédige la fiche maintenant, en JSON.";
 
 /** Une fiche déjà rédigée, et ce que l'enseignant vient d'en dire. */
 export function demandeDeRetouche(ficheMasquee: string, dit: string): string {
-  return `Voici la fiche, en JSON :\n${ficheMasquee}\n\nL'enseignant dit : « ${dit} »\n\nS'il demande un changement, renvoie la fiche entière, changée seulement là où il le demande, au même format. Si c'est seulement une question, réponds par { "reponse": "ta réponse" }.`;
+  return `Voici la fiche, en JSON :\n${ficheMasquee}\n\nL'enseignant dit : « ${dit} »\n\nS'il demande un changement, renvoie la fiche entière, changée seulement là où il le demande, avec les mêmes clés. Si c'est seulement une question, réponds par { "reponse": "ta réponse" }.`;
+}
+
+/** La fiche relue, avec les clés que le modèle a reçues : sans cela, une retouche perdrait ce qu'il renvoie sous d'autres noms. */
+export function ficheAuFormat(f: FicheDeSeance, supports: Pick<SupportsDuSujet, "feuilles"> = { feuilles: [] }): Record<string, unknown> {
+  const refDe = (r: ReferenceDeFeuille) => supports.feuilles.find((x) => x.demarcheId === r.demarcheId && x.titre === r.titre)?.ref;
+  return {
+    titre: f.titre, niveau: f.niveau, matiere: f.matiere, demarche: f.demarche, notion: f.notion,
+    objectif_pedagogique: f.objectifPedagogique, objectif_apprentissage: f.objectifApprentissage, prerequis: f.prerequis,
+    obstacles_possibles: f.obstacles, criteres_reussite: f.criteres, attendus: f.attendus,
+    seances: f.seances.map((s) => ({
+      titre: s.titre, duree: s.duree, objectif: s.objectif, supports: s.supports,
+      feuilles: (s.feuilles ?? []).map(refDe).filter(Boolean), ateliers: (s.ateliers ?? []).map((a) => a.id), a_fabriquer: s.aFabriquer ?? "",
+      phases: s.phases,
+    })),
+    vigilance: f.vigilance, niveau1: f.niveau1, niveau2: f.niveau2,
+    niveau3: f.niveau3.map((a) => ({
+      domaine: a.domaine, obstacle: a.obstacle, manifestation: a.manifestation, besoin: a.besoin, objectif_vise: a.objectifVise,
+      degre: a.degre, adaptation: a.adaptation, aide: a.aide, vigilance: a.vigilance,
+    })),
+  };
 }
 
 // ── Ce que Mistral répond ─────────────────────────────────────────────
@@ -574,6 +622,9 @@ const DOMAINES = ["psychomoteur", "affectif", "social", "cognitif"];
 /** Ces mots-là se trouvent dans un objectif comme dans un obstacle : ils ne disent pas qu'on parle de la matière. */
 const MOTS_DE_TOUTE_TACHE = new Set(["objets", "eleve", "eleves", "seance", "sequence", "sauront", "capable", "collection", "collections", "difficulte", "difficultes", "manipuler", "tache", "taches", "activite"]);
 
+/** Pour le modèle seulement : s'il maintient qu'aucune ne sert, c'est peut-être vrai, et il n'y a rien à dire à l'enseignant. */
+const AUCUNE_FEUILLE_PRISE = "Aucune feuille de la liste n'est prise : mets dans \"feuilles\" les numéros de celles qui servent, à leur séance.";
+
 export interface FicheLue {
   fiche: FicheDeSeance;
   /** Ce qu'il faut demander à Mistral de corriger. */
@@ -593,9 +644,20 @@ function tempsDe(v: unknown): string {
  * La fiche relue : ce qui dépasse est coupé, les libellés remis, les attendus introuvables retirés ; ce que seul Mistral
  * peut corriger est listé. `permis` : le texte des attendus qu'on lui a donnés.
  */
-export function lireFiche(v: Record<string, unknown>, sorte: SorteDePreparation, permis: string[], connu: ConnuDuCadre = {}): FicheLue {
+export function lireFiche(
+  v: Record<string, unknown>, sorte: SorteDePreparation, permis: string[], connu: ConnuDuCadre = {}, supports: Pick<SupportsDuSujet, "feuilles" | "ateliers"> = { feuilles: [], ateliers: [] },
+): FicheLue {
   const problemes: string[] = [];
   const notes: string[] = [];
+  let inconnues = 0;
+  const feuillesDe = (x: unknown): ReferenceDeFeuille[] => {
+    const prises = (Array.isArray(x) ? x : []).map((r) => texteDe(r).toUpperCase().replace(/\s+/g, ""));
+    const trouvees = prises.map((ref) => supports.feuilles.find((f) => f.ref === ref));
+    inconnues += trouvees.filter((f) => !f).length;
+    return trouvees.filter((f): f is NonNullable<typeof f> => !!f).map(({ demarcheId, classe, periode, rang, atelier, titre }) => ({ demarcheId, classe, periode, rang, atelier, titre }));
+  };
+  const ateliersDe = (x: unknown): { id: string; nom: string }[] =>
+    (Array.isArray(x) ? x : []).map((id) => supports.ateliers.find((a: AtelierPropose) => a.id === texteDe(id))).filter((a): a is AtelierPropose => !!a).map((a) => ({ id: a.id, nom: a.nom }));
   const dureeDite = Number(dit(connu.duree).match(/\d+/)?.[0]) * (/\bh(?:eure)?s?\b/i.test(dit(connu.duree)) ? 60 : 1);
 
   const seances: SeanceDeLaFiche[] = listeDe(v.seances).map((s, i) => ({
@@ -604,6 +666,9 @@ export function lireFiche(v: Record<string, unknown>, sorte: SorteDePreparation,
     duree: dureeDite >= 5 ? Math.min(240, dureeDite) : Math.max(5, Math.min(240, Math.round(Number(s.duree)) || 45)),
     objectif: auPlus(texteDe(s.objectif), 2),
     supports: texteDe(s.supports),
+    feuilles: feuillesDe(s.feuilles),
+    ateliers: ateliersDe(s.ateliers),
+    aFabriquer: auPlus(texteDe(s.a_fabriquer), 1),
     phases: listeDe(s.phases).map((p) => ({
       temps: tempsDe(p.temps), phase: texteDe(p.phase),
       enseignant: auPlus(texteDe(p.enseignant), 2), eleves: auPlus(texteDe(p.eleves), 2), observable: auPlus(texteDe(p.observable), 1),
@@ -612,6 +677,9 @@ export function lireFiche(v: Record<string, unknown>, sorte: SorteDePreparation,
   if (!seances.length) problemes.push(`Il manque "seances" : la ${NOM[sorte]} n'a aucune séance.`);
   if (sorte === "sequence" && seances.length === 1) problemes.push("Une séquence a plusieurs séances : il n'y en a qu'une.");
   seances.forEach((s, i) => { if (!s.phases.length) problemes.push(`La séance ${i + 1} n'a aucune phase.`); });
+  if (inconnues) notes.push(inconnues > 1 ? `${inconnues} feuilles inconnues de Fabriquer retirées.` : "Une feuille inconnue de Fabriquer retirée.");
+  // Il a la liste sous les yeux : une fiche sans aucune feuille laisserait tout à fabriquer.
+  if (supports.feuilles.length && seances.length && !seances.some((s) => s.feuilles?.length)) problemes.push(AUCUNE_FEUILLE_PRISE);
   const nbDit = Number(dit(connu.nb_seances).match(/\d+/)?.[0]);
   if (sorte === "sequence" && nbDit > 0 && seances.length && seances.length !== nbDit) problemes.push(`L'enseignant a demandé ${nbDit} séances : il y en a ${seances.length}.`);
 
@@ -691,6 +759,8 @@ export async function redigerLaFiche(o: {
   rendre: (t: string) => string;
   /** Ce que l'entretien a établi : le nombre de séances, la durée, les élèves se vérifient. */
   connu?: ConnuDuCadre;
+  /** Ce que Fabriquer sait faire : les numéros des feuilles s'y retrouvent. */
+  supports?: Pick<SupportsDuSujet, "feuilles" | "ateliers">;
   surCorrection?: () => void;
 }): Promise<{ fiche: FicheDeSeance; notes: string[] } | { reponse: string }> {
   const lire = (rep: string): FicheLue | { reponse: string } | null => {
@@ -698,7 +768,7 @@ export async function redigerLaFiche(o: {
     if (!v) return null;
     const avecNoms = rendreAvecLesNoms(v, o.rendre) as Record<string, unknown>;
     if (typeof avecNoms.reponse === "string" && !Array.isArray(avecNoms.seances)) return { reponse: avecNoms.reponse };
-    const lue = lireFiche(avecNoms, o.sorte, o.permis, o.connu);
+    const lue = lireFiche(avecNoms, o.sorte, o.permis, o.connu, o.supports);
     // Un marqueur de personne : la fiche nomme un élève, et elle s'imprime, elle se partage.
     return /\[P\d+\]/.test(rep) ? { ...lue, problemes: [...lue.problemes, "La fiche nomme un élève : écris « un élève », sans prénom."] } : lue;
   };
@@ -719,7 +789,7 @@ export async function redigerLaFiche(o: {
   if (!finale || "reponse" in finale || !finale.fiche.seances.some((s) => s.phases.length)) {
     throw new Error(`la fiche n'a pas pu être rédigée (${NOM[o.sorte]} sans déroulé ou réponse illisible). Réessayez.`);
   }
-  return { fiche: finale.fiche, notes: [...finale.notes, ...finale.problemes] };
+  return { fiche: finale.fiche, notes: [...finale.notes, ...finale.problemes.filter((p) => p !== AUCUNE_FEUILLE_PRISE)] };
 }
 
 // ── Ce qu'on en fait ──────────────────────────────────────────────────
@@ -745,7 +815,12 @@ export function ficheEnMarkdown(f: FicheDeSeance, sorte: SorteDePreparation): st
   f.seances.forEach((s, i) => {
     parties.push(
       `## ${sorte === "sequence" ? `Séance ${i + 1} : ${s.titre}` : "Le déroulé"} (${s.duree} min)`,
-      [champ("Objectif", s.objectif), champ("Supports", s.supports)].filter(Boolean).join("\n\n"),
+      [
+        champ("Objectif", s.objectif), champ("Matériel", s.supports),
+        champ("Feuilles de Fabriquer", (s.feuilles ?? []).map((x) => x.titre).join(" ; ")),
+        champ("À régler dans Fabriquer", (s.ateliers ?? []).map((a) => a.nom).join(" ; ")),
+        champ("Feuille à fabriquer soi-même", s.aFabriquer ?? ""),
+      ].filter(Boolean).join("\n\n"),
       [entete(["Temps", "Phase", "L'enseignant", "Les élèves", "Ce qu'on observe"]), ...s.phases.map((p) => ligneDeTableau([p.temps, p.phase, p.enseignant, p.eleves, p.observable]))].join("\n"),
     );
   });
@@ -774,6 +849,18 @@ const CYCLES_DES_NIVEAUX: Record<number, string> = { 1: "Cycle 1", 2: "Cycle 2",
 export function matiereDeLaFiche(matiere: string): string {
   const m = normaliser(matiere);
   return MATIERES.find((x) => normaliser(x) === m) ?? MATIERES.find((x) => m && (normaliser(x).includes(m) || m.includes(normaliser(x)))) ?? "";
+}
+
+/** Toutes les feuilles de la fiche, une fois chacune. */
+export function feuillesDeLaFiche(f: FicheDeSeance): ReferenceDeFeuille[] {
+  const vues = new Set<string>();
+  return f.seances.flatMap((s) => s.feuilles ?? []).filter((r) => { const c = `${r.atelier}|${r.titre}`; if (vues.has(c)) return false; vues.add(c); return true; });
+}
+
+/** Tous les ateliers à régler de la fiche, une fois chacun. */
+export function ateliersDeLaFiche(f: FicheDeSeance): { id: string; nom: string }[] {
+  const vus = new Set<string>();
+  return f.seances.flatMap((s) => s.ateliers ?? []).filter((a) => { if (vus.has(a.id)) return false; vus.add(a.id); return true; });
 }
 
 /** La séquence qui accueille la fiche : le niveau s'il est connu de l'application, et de là le cycle. */

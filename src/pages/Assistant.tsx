@@ -27,6 +27,7 @@ import { ChoixDuDocument } from "../components/ChoixDuDocument";
 import { enregistrerEnPdf, enregistrerEnWord } from "../exportsDocument";
 import { MiseEnPageReponse } from "../components/MiseEnPageReponse";
 import { documentImprimable, printHTML } from "../print";
+import { nomDeLAtelier } from "../catalogueAteliers";
 import { BoutonBureau } from "../components/BoutonBureau";
 import { deposerSurLeBureau } from "../impressionAtelier";
 import { TrouverUnPicto } from "../components/TrouverUnPicto";
@@ -40,10 +41,13 @@ import { consigneDeLAssistant, extraitsPourLAssistant, programmesPourLaDemande }
 import { blocDeMemoire, chargerMemoire, defaireChangements, direLesChangements, memoireCoupee, retenirDuMessage, souvenirsPourLaQuestion } from "../memoireAssistant";
 import { MemoireAssistant } from "../components/MemoireAssistant";
 import {
-  DEMANDE_DE_REDACTION, FICHE_PRETE, RECAP_A_VOIX_HAUTE, TOURS_DE_QUESTIONS_MAX, consigneDeLEntretien, consigneDeLaFiche, conversationDuCadre, demandeDeRetouche, ficheEnMarkdown,
-  lignesDuConnu, lireLEntretien, nonPrecise, parleAMistral, questionDeConfirmation, recapitulatif, redigerLaFiche, resumeDuConnu, seancesDeLaFiche, sequenceDeLaFiche, suiteDeLEntretien, tourDuCadre,
+  DEMANDE_DE_REDACTION, FICHE_PRETE, RECAP_A_VOIX_HAUTE, TOURS_DE_QUESTIONS_MAX, ateliersDeLaFiche, consigneDeLEntretien, consigneDeLaFiche, conversationDuCadre, demandeDeRetouche, ficheAuFormat, ficheEnMarkdown,
+  feuillesDeLaFiche, lignesDuConnu, lireLEntretien, nonPrecise, parleAMistral, questionDeConfirmation, recapitulatif, redigerLaFiche, resumeDuConnu, seancesDeLaFiche, sequenceDeLaFiche, suiteDeLEntretien, tourDuCadre,
   type ConnuDuCadre, type SorteDePreparation, type TourDuCadre,
 } from "../cadreDeSeance";
+import { graineAuHasard } from "../hasard";
+import { ouvrirOnglet } from "../ongletDemande";
+import type { ReferenceDeFeuille } from "../supportsDeLAssistant";
 import { CLE_INVENTAIRE, MATERIEL_REEL, lireInventaire } from "../materielDeClasse";
 import { periodeDuMoment } from "../creationsALaVoix";
 
@@ -647,7 +651,7 @@ export default function Assistant() {
     try {
       attente(tour.genre === "retoucher" ? "Je reprends la fiche…" : "…", "");
       // Les programmes qui parlent de ce qu'on sait déjà du sujet, puis de ce qu'il vient de dire.
-      const connuAvant: ConnuDuCadre = tour.genre === "retoucher" ? {} : tour.connu;
+      const connuAvant: ConnuDuCadre = tour.connu;
       const demande = [connuAvant.niveau, connuAvant.matiere, connuAvant.sujet, connuAvant.objectif, ...conversationDuCadre(suite).filter((m) => m.role === "user").slice(-3).map((m) => m.content)].filter(Boolean).join(" ");
       const [ctx, trouvailles, souvenirs, inventaire] = await Promise.all([
         contexteActif ? construireContexteIA() : Promise.resolve(""),
@@ -659,7 +663,15 @@ export default function Assistant() {
       const inv = lireInventaire(inventaire);
       const materiel = MATERIEL_REEL.filter((m) => inv[m.id]?.a).map((m) => `- ${m.nom}`).join("\n");
       const conv = conversationDuCadre(suite);
-      const fiche = tour.genre === "retoucher" ? JSON.stringify(tour.fiche) : "";
+      // Ce que Fabriquer sait faire sur ce sujet : le modèle y choisit, le générateur fabrique (voir supportsDeLAssistant.ts).
+      const S = await import("../supportsDeLAssistant");
+      const periode = await periodeDuMoment();
+      const classe = S.classeDuNiveau(connuAvant.niveau) ?? S.classeDuNiveau(demande) ?? S.classeDuNiveau(contexteActif ? await api.settingGet("niveauClasse").catch(() => null) : null);
+      const supports = S.supportsDuSujet({
+        classe, matiere: connuAvant.matiere, periode, deja: tour.genre === "retoucher" ? feuillesDeLaFiche(tour.fiche) : [],
+        texte: [connuAvant.sujet, connuAvant.objectif, connuAvant.support, tour.genre === "retoucher" ? tour.fiche.titre : "", ...conv.filter((m) => m.role === "user").slice(-3).map((m) => m.content)].filter(Boolean).join(" "),
+      });
+      const fiche = tour.genre === "retoucher" ? JSON.stringify(ficheAuFormat(tour.fiche, supports)) : "";
       const masque = await masquerSurLesEleves([blocDeMemoire(souvenirsPourLaQuestion(souvenirs, demande)), ctx, fiche, JSON.stringify(connuAvant), ...conv.map((m) => m.content)]);
       const [memoire, contexte, ficheMasquee, connuMasque, ...textes] = masque.textes;
       const echanges = conv.map((m, i) => ({ role: m.role, content: textes[i] ?? m.content }));
@@ -667,7 +679,7 @@ export default function Assistant() {
       const programmes = extraitsPourLAssistant(trouvailles);
       const entrees = { contexte, memoire, materiel };
       if (tour.genre === "cadrer") {
-        const lu = lireLEntretien(await api.mistralChat([{ role: "system", content: consigneDeLEntretien(sorte, connuMasque, { ...entrees, programmes }) }, ...echanges], model, true), rendre);
+        const lu = lireLEntretien(await api.mistralChat([{ role: "system", content: consigneDeLEntretien(sorte, connuMasque, { ...entrees, programmes, supports: S.blocDesSupports(supports, false) }) }, ...echanges], model, true), rendre);
         if (arretee) return;
         const e = suiteDeLEntretien({ sorte, avant: tour.connu, posees: tour.posees, lu, conversation: suite });
         finir(e.question
@@ -679,9 +691,9 @@ export default function Assistant() {
       attente(tour.genre === "retoucher" ? "Je reprends la fiche…" : `Je rédige ${nom}, cela prend une minute…`, avantLaFiche);
       let etabli = "";
       try { etabli = lignesDuConnu(JSON.parse(connuMasque) as ConnuDuCadre, sorte).join("\n"); } catch { /* la conversation le dit aussi */ }
-      const systeme = { role: "system" as const, content: consigneDeLaFiche(sorte, { ...entrees, programmes, etabli }) };
+      const systeme = { role: "system" as const, content: consigneDeLaFiche(sorte, { ...entrees, programmes, etabli, supports: S.blocDesSupports(supports) }) };
       const r = await redigerLaFiche({
-        sorte, rendre, permis: trouvailles.map((t) => t.texte), connu: connuAvant,
+        sorte, rendre, permis: trouvailles.map((t) => t.texte), connu: connuAvant, supports,
         messages: tour.genre === "retoucher"
           ? [systeme, { role: "user", content: demandeDeRetouche(ficheMasquee, textes[textes.length - 1] ?? contenu) }]
           : [systeme, ...echanges, { role: "user", content: DEMANDE_DE_REDACTION }],
@@ -692,13 +704,16 @@ export default function Assistant() {
       if ("reponse" in r) { finir({ role: "assistant", content: r.reponse, dit: `${avantLaFiche} ${r.reponse}` }); return; }
       finir({
         role: "assistant", content: ficheEnMarkdown(r.fiche, sorte), dit: `${avantLaFiche} ${FICHE_PRETE}`,
-        cadre: { etape: "fiche", sorte, fiche: r.fiche, notes: [...r.notes, ...(tour.genre === "rediger" ? [nonPrecise(tour.connu, sorte)].filter((n): n is string => !!n) : [])] },
+        cadre: {
+          etape: "fiche", sorte, fiche: r.fiche, connu: connuAvant, graine: (tour.genre === "retoucher" ? tour.graine : undefined) ?? graineAuHasard(),
+          notes: [...r.notes, ...(tour.genre === "rediger" ? [nonPrecise(tour.connu, sorte)].filter((n): n is string => !!n) : [])],
+        },
       });
       if (!riendAjouter) void retenir(contenu);
     } catch (e) {
       if (arretee) return;
       // La fiche n'est pas venue : le prochain message, ou le bouton, relance la rédaction.
-      finir({ role: "assistant", content: `⚠️ ${texteErreur(e)}`, dit: `${avantLaFiche} Cela n'a pas marché, la raison est à l'écran.`, cadre: { etape: "questions", sorte, tour: TOURS_DE_QUESTIONS_MAX, connu: tour.genre === "retoucher" ? {} : tour.connu } });
+      finir({ role: "assistant", content: `⚠️ ${texteErreur(e)}`, dit: `${avantLaFiche} Cela n'a pas marché, la raison est à l'écran.`, cadre: { etape: "questions", sorte, tour: TOURS_DE_QUESTIONS_MAX, connu: tour.connu } });
     }
   };
 
@@ -706,17 +721,28 @@ export default function Assistant() {
   const indiceDeLaDerniereFiche = messages.map((m) => m.cadre?.etape === "fiche").lastIndexOf(true);
   // La fiche devient une vraie séquence, ou une séance de plus dans une séquence qui existe ; la fiche entière, en PDF, dans le matériel de sa première séance.
   const [aPlacer, setAPlacer] = React.useState<number | null>(null);
+  const [enCreation, setEnCreation] = React.useState<string | null>(null);
   const creerLaFiche = async (i: number, cible: string | null) => {
     const m = messages[i];
-    if (m?.cadre?.etape !== "fiche") return;
+    if (m?.cadre?.etape !== "fiche" || enCreation) return;
     const { fiche, sorte } = m.cadre;
+    setEnCreation("Création…");
     try {
-      const sequence = cible ? null : sequenceDeLaFiche(fiche, await periodeDuMoment());
+      const S = await import("../supportsDeLAssistant");
+      const competence = await S.competenceDesFeuilles(feuillesDeLaFiche(fiche));
+      const lien = competence ? { competences: JSON.stringify([competence]) } : {};
+      const sequence = cible ? null : { ...sequenceDeLaFiche(fiche, await periodeDuMoment()), ...lien, ...(competence ? { competenceVisee: JSON.stringify(competence) } : {}) };
       if (sequence) await api.sequenceSave(sequence);
       const sequenceId = sequence?.id ?? cible!;
       const avant = sequence ? [] : await api.seancesList(sequenceId).catch(() => []);
-      const seances = seancesDeLaFiche(fiche, sequenceId, Math.max(0, ...avant.map((s) => s.numero)) + 1);
+      const seances = seancesDeLaFiche(fiche, sequenceId, Math.max(0, ...avant.map((s) => s.numero)) + 1).map((s) => ({ ...s, ...lien }));
       for (const s of seances) await api.seanceSave(s);
+      // Les feuilles, par leurs générateurs, chacune dans sa séance : elles se rouvrent dans Fabriquer.
+      await S.poserLesFeuilles({
+        parSeance: fiche.seances.map((s) => s.feuilles ?? []), seances, sequenceId, graine: m.cadre.graine ?? graineAuHasard(), competence,
+        surProgres: (fait, total) => setEnCreation(`Feuille ${fait} sur ${total}…`),
+        surEchec: (t, e) => toast(`« ${t} » n'a pas pu être fabriquée : ${texteErreur(e)}`, { icone: "⚠️", duree: 7000 }),
+      });
       const titre = `Fiche : ${fiche.titre}`;
       try {
         const pdf = await api.feuilleEnPdf(documentImprimable(titre, feuilleDeLaReponse(m).corps, STYLE_DOCUMENT_IA));
@@ -732,6 +758,20 @@ export default function Assistant() {
       }, "📚");
       nav(sorte === "sequence" ? `/sequences/${sequenceId}` : `/seances/${seances[0].id}`);
     } catch (e) { toast("Rien n'a été créé : " + texteErreur(e), { icone: "⚠️", duree: 8000 }); }
+    finally { setEnCreation(null); }
+  };
+  /** Une feuille de la fiche, telle que le générateur la fabrique : on la voit avant de créer quoi que ce soit. */
+  const voirLaFeuille = async (r: ReferenceDeFeuille, graine: number | undefined) => {
+    try {
+      const f = await (await import("../supportsDeLAssistant")).fabriquerLaFeuille(r, graine ?? 1);
+      printHTML(f.titre, f.html, f.style);
+    } catch (e) { toast("Cette feuille ne s'est pas fabriquée : " + texteErreur(e), { icone: "⚠️", duree: 7000 }); }
+  };
+  /** Un atelier que l'enseignant règle lui-même : Fabriquer s'ouvre dessus. */
+  const ouvrirLAtelier = (id: string) => {
+    try { localStorage.setItem("fabriquer:onglet", id); } catch { /* stockage indisponible */ }
+    nav("/jeux");
+    setTimeout(() => ouvrirOnglet("jeux", id), 140);
   };
 
   /**
@@ -913,20 +953,36 @@ export default function Assistant() {
               </div>
             )}
             {m.cadre?.etape === "fiche" && m.cadre.notes.length > 0 && <p className="meta" style={{ fontSize: 12, margin: "6px 0 0" }}>{m.cadre.notes.join(" ")}</p>}
-            {m.cadre?.etape === "fiche" && i === indiceDeLaDerniereFiche && !loading && (
-              <div className="msg-actions">
-                {(() => {
-                  const c = m.cadre;
-                  if (c.creee) {
-                    const { sequenceId, seanceId } = c.creee;
-                    return <button type="button" className="btn sm" onClick={() => nav(c.sorte === "sequence" ? `/sequences/${sequenceId}` : `/seances/${seanceId}`)}>{c.sorte === "sequence" ? "📚 Ouvrir la séquence" : "📚 Ouvrir la séance"}</button>;
-                  }
-                  return c.sorte === "sequence"
-                    ? <button type="button" className="btn primary sm" onClick={() => { void creerLaFiche(i, null); }}>📥 Créer la séquence dans Maitrize</button>
-                    : <button type="button" className="btn primary sm" onClick={() => setAPlacer(i)}>📥 Créer la séance dans Maitrize</button>;
-                })()}
-              </div>
-            )}
+            {m.cadre?.etape === "fiche" && i === indiceDeLaDerniereFiche && !loading && (() => {
+              const c = m.cadre;
+              const feuilles = feuillesDeLaFiche(c.fiche);
+              const ateliers = ateliersDeLaFiche(c.fiche);
+              const avec = feuilles.length ? ` et ${feuilles.length > 1 ? `ses ${feuilles.length} feuilles` : "sa feuille"}` : "";
+              return (
+                <>
+                  {(feuilles.length > 0 || ateliers.length > 0) && (
+                    <div className="msg-actions" role="group" aria-label="Les supports de Fabriquer" style={{ flexWrap: "wrap" }}>
+                      {feuilles.map((r) => (
+                        <button key={`${r.atelier}|${r.titre}`} type="button" className="btn sm" title={`Voir cette feuille, telle que le générateur la fabrique (atelier ${nomDeLAtelier(r.atelier)})`}
+                          onClick={() => { void voirLaFeuille(r, c.graine); }}>👁 {r.titre}</button>
+                      ))}
+                      {ateliers.map((a) => (
+                        <button key={a.id} type="button" className="btn ghost sm" title="Ouvrir cet atelier dans Fabriquer, pour le régler" onClick={() => ouvrirLAtelier(a.id)}>{a.nom}</button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="msg-actions">
+                    {c.creee ? (
+                      <button type="button" className="btn sm" onClick={() => nav(c.sorte === "sequence" ? `/sequences/${c.creee!.sequenceId}` : `/seances/${c.creee!.seanceId}`)}>{c.sorte === "sequence" ? "📚 Ouvrir la séquence" : "📚 Ouvrir la séance"}</button>
+                    ) : (
+                      <button type="button" className="btn primary sm" disabled={!!enCreation} onClick={() => { if (c.sorte === "sequence") void creerLaFiche(i, null); else setAPlacer(i); }}>
+                        {enCreation ?? `📥 Créer la ${c.sorte === "sequence" ? "séquence" : "séance"}${avec} dans Maitrize`}
+                      </button>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
             {/* Une réponse finie devient une feuille : imprimée, ou en PDF sur le bureau. */}
             {m.role === "assistant" && m.content.trim() && !(loading && i === messages.length - 1) && !m.content.startsWith("⚠️") && (!m.cadre || m.cadre.etape === "fiche") && (
               <div className="msg-actions">

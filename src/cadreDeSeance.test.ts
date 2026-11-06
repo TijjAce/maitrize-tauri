@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ChatMessage } from "./api";
 import {
   A_CHOISIR, BESOINS_DU_NIVEAU_1, FICHE_PRETE, LA_METHODE, LEVIERS_DU_NIVEAU_2, TOURS_DE_QUESTIONS_MAX, auPlus, consigneDeLEntretien, consigneDeLaFiche, conversationDuCadre,
-  demandeDePreparation, ficheEnMarkdown, fusionnerLeConnu, lignesDuConnu, lireFiche, lireJson, lireLEntretien, matiereDeLaFiche, nonPrecise, parleAMistral, phrasesDe, prochaineQuestion, questionDeConfirmation, recapitulatif,
+  ateliersDeLaFiche, demandeDePreparation, demandeDeRetouche, ficheAuFormat, feuillesDeLaFiche, ficheEnMarkdown, fusionnerLeConnu, lignesDuConnu, lireFiche, lireJson, lireLEntretien, matiereDeLaFiche, nonPrecise, parleAMistral, phrasesDe, prochaineQuestion, questionDeConfirmation, recapitulatif,
   redigerLaFiche, relireLeConnu, reponseALaConfirmation, resumeDuConnu, seancesDeLaFiche, sequenceDeLaFiche, suiteDeLEntretien, tourDuCadre, type ConnuDuCadre, type FicheDeSeance,
 } from "./cadreDeSeance";
 import { CHAMP_POSTURE, champDe, lireSeance } from "./documentSeance";
@@ -464,6 +464,69 @@ describe("ce que Mistral répond", () => {
       appeler: async () => JSON.stringify(reponse({ niveau3: [{ obstacle: "Pour [P1], les étapes s'oublient.", adaptation: "Une carte." }] })),
     });
     expect("fiche" in r && r.fiche.niveau3[0].obstacle).toBe('Pour Sam "le grand", les étapes s\'oublient.');
+  });
+});
+
+describe("les feuilles de Fabriquer dans la fiche", () => {
+  const proposee = (ref: string, titre: string, atelier = "cubes", rang = 0) => ({ ref, titre, atelier, rang, demarcheId: "nombres", classe: "CP" as const, periode: 2, sequence: "Les nombres", seance: 0 });
+  const supports = { feuilles: [proposee("F1", "Grouper par dix"), proposee("F2", "Lire le nombre", "cubes", 1)], ateliers: [{ id: "memory", nom: "🃏 Jeu de mémoire", quoi: "Des paires" }] };
+  const avec = (a: unknown, b: unknown = [], o = {}) => ({ seances: [{ ...reponse().seances[0], feuilles: a, ateliers: b, ...o }, { ...reponse().seances[1], feuilles: [] }] });
+
+  it("retrouve les feuilles par leur numéro, et garde de quoi les refaire", () => {
+    const f = lireFiche(reponse(avec(["F2", "f1 "])), "sequence", PERMIS, {}, supports);
+    expect(f.problemes).toEqual([]);
+    expect(f.fiche.seances[0].feuilles).toEqual([
+      { demarcheId: "nombres", classe: "CP", periode: 2, rang: 1, atelier: "cubes", titre: "Lire le nombre" },
+      { demarcheId: "nombres", classe: "CP", periode: 2, rang: 0, atelier: "cubes", titre: "Grouper par dix" },
+    ]);
+    // Ce qui part avec la fiche ne porte pas le numéro de cette liste-ci : la prochaine ne sera pas la même.
+    expect(Object.keys(f.fiche.seances[0].feuilles![0])).not.toContain("ref");
+  });
+
+  it("retire une feuille inventée, et le dit", () => {
+    const f = lireFiche(reponse(avec(["F1", "F99", "ma fiche"])), "sequence", PERMIS, {}, supports);
+    expect(f.fiche.seances[0].feuilles).toHaveLength(1);
+    expect(f.notes.join()).toMatch(/2 feuilles inconnues de Fabriquer retirées/);
+  });
+
+  it("ne prend d'ateliers que ceux qu'on lui a montrés", () => {
+    const f = lireFiche(reponse(avec(["F1"], ["memory", "inconnu"])), "sequence", PERMIS, {}, supports);
+    expect(f.fiche.seances[0].ateliers).toEqual([{ id: "memory", nom: "🃏 Jeu de mémoire" }]);
+  });
+
+  it("insiste une fois s'il n'en prend aucune, sans ennuyer l'enseignant s'il maintient", async () => {
+    expect(lireFiche(reponse(avec([])), "sequence", PERMIS, {}, supports).problemes.join()).toMatch(/Aucune feuille de la liste/);
+    expect(lireFiche(reponse(avec([])), "sequence", PERMIS).problemes).toEqual([]);
+    let appels = 0;
+    const r = await redigerLaFiche({ sorte: "sequence", messages: [], permis: PERMIS, supports, rendre: (t) => t, appeler: async () => { appels++; return JSON.stringify(reponse(avec([]))); } });
+    expect(appels).toBe(2);
+    expect("notes" in r && r.notes).toEqual([]);
+  });
+
+  it("montre les feuilles dans la fiche, à leur séance, et dit ce qui manque", () => {
+    const { fiche } = lireFiche(reponse(avec(["F1", "F2"], ["memory"], { a_fabriquer: "Une frise des fractions." })), "sequence", PERMIS, {}, supports);
+    const md = ficheEnMarkdown(fiche, "sequence");
+    expect(md).toContain("**Feuilles de Fabriquer :** Grouper par dix ; Lire le nombre");
+    expect(md).toContain("**À régler dans Fabriquer :** 🃏 Jeu de mémoire");
+    expect(md).toContain("**Feuille à fabriquer soi-même :** Une frise des fractions.");
+    expect(md).toContain("**Matériel :** bandes de papier ; ciseaux");
+    expect(feuillesDeLaFiche(fiche).map((r) => r.titre)).toEqual(["Grouper par dix", "Lire le nombre"]);
+    expect(ateliersDeLaFiche(fiche).map((a) => a.id)).toEqual(["memory"]);
+  });
+
+  it("repasse à la retouche la fiche aux clés que le modèle connaît, numéros compris : rien ne se perd à l'aller-retour", () => {
+    const { fiche } = lireFiche(reponse(avec(["F1"], ["memory"])), "sequence", PERMIS, {}, supports);
+    const format = ficheAuFormat(fiche, supports);
+    expect(format).toMatchObject({ objectif_pedagogique: fiche.objectifPedagogique, obstacles_possibles: fiche.obstacles, criteres_reussite: fiche.criteres });
+    expect((format.seances as any[])[0]).toMatchObject({ feuilles: ["F1"], ateliers: ["memory"] });
+    expect((format.niveau3 as any[])[0].objectif_vise).toBe(fiche.niveau3[0].objectifVise);
+    expect(lireFiche(format, "sequence", PERMIS, {}, supports).fiche).toEqual(fiche);
+    expect(demandeDeRetouche(JSON.stringify(format), "mets 3 séances")).toMatch(/avec les mêmes clés/);
+  });
+
+  it("garde ce que l'entretien a établi et le tirage, pour une retouche", () => {
+    const m: ChatMessage = { role: "assistant", content: "# Fiche", cadre: { etape: "fiche", sorte: "sequence", fiche: fiche().fiche, notes: [], connu: { niveau: "CP" }, graine: 7 } };
+    expect(tourDuCadre([m], "mets 3 séances")).toMatchObject({ genre: "retoucher", connu: { niveau: "CP" }, graine: 7 });
   });
 });
 
