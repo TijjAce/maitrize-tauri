@@ -50,8 +50,9 @@ export function Licences() {
           {CREDITS_PICTOGRAMMES.map((c) => <li key={c.banque}><b>{c.banque}</b> : {c.credit}.</li>)}
         </ul>
         <p>
-          Ces licences interdisent l'usage commercial : les feuilles qui montrent ces pictogrammes se donnent, elles ne se
-          vendent pas ; une feuille qui en est tirée — un coloriage, une ombre — garde la même licence.
+          Ces licences ({lien("https://creativecommons.org/licenses/by-nc-sa/4.0/deed.fr", "CC BY-NC-SA 4.0")}, {lien("https://creativecommons.org/licenses/by-nc/2.0/be/deed.fr", "CC BY-NC 2.0 BE")}) interdisent
+          l'usage commercial : les feuilles qui montrent ces pictogrammes se donnent, elles ne se vendent pas ; une feuille
+          qui en est tirée — un coloriage, une ombre — garde la même licence.
         </p>
         <p>
           <b>Photographies de paysages</b> de l'atelier « Lire un paysage », venues de Wikimedia Commons et créditées sous

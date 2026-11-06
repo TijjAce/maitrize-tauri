@@ -29,13 +29,16 @@ licence, comme son article 7 le permet :
 CE QUI VIENT D'AUTRES AUTEURS
 
 Ce qui suit n'est pas sous la licence de Maitrize : chaque élément garde ses propres conditions.
-L'application en donne la liste complète et à jour dans Réglages › Licences.
+L'application en donne la liste complète et à jour dans Réglages › Licences ; le relevé de chaque
+image du dépôt est dans docs/droits-des-images.md.
 
-- Pictogrammes ARASAAC présents dans ce dépôt, seuls ou sur les vignettes des feuilles :
-  auteur Sergio Palao, origine ARASAAC (arasaac.org), licence CC BY-NC-SA 4.0, propriété du
-  Gouvernement d'Aragon (Espagne). Leur licence interdit l'usage commercial.
+- Pictogrammes ARASAAC présents dans ce dépôt (classeur/public/pictos, et réduits sur les vignettes
+  de src/assets/apercus et les captures d'accueil/images) : auteur Sergio Palao, origine ARASAAC
+  (arasaac.org), propriété du Gouvernement d'Aragon (Espagne), licence CC BY-NC-SA 4.0
+  (https://creativecommons.org/licenses/by-nc-sa/4.0/deed.fr). Leur licence interdit l'usage commercial.
 - Police Marelle : police du ministère de l'Éducation nationale, licence SIL Open Font.
-- Photographies de paysages : Wikimedia Commons, chacune sous sa licence, avec son auteur.
+- Photographies de paysages : Wikimedia Commons, réduites, chacune sous sa licence, avec son auteur
+  (docs/droits-des-images.md).
 - Fonds de carte : Natural Earth, domaine public.
 - Programmes, guides et formulaires officiels : repris des textes officiels, avec leur source.
 - Bibliothèques embarquées : leurs licences sont relevées par outils/licences/notices.mjs à chaque
