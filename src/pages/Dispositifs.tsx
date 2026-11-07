@@ -11,6 +11,8 @@ import { GevaScoTab } from "./GevaSco";
 import { useEleveDuDossier } from "../eleveDuDossier";
 import { ChampAmenagements, ChampAppuis } from "../components/ListeLpi";
 import { amenagementsVides, htmlDesAmenagements, htmlDesAppuis, lireAmenagements, lireAppuis } from "../listeLpi";
+import { ReportLpi } from "../components/ReportLpi";
+import { peutSeReporter } from "../reporterLpi";
 
 // ── Dispositifs d'accompagnement ──────────────────────────────────────────
 // Un seul écran pilote tous les plans (PPS, PAP, PAI, PPRE) à partir des
@@ -36,6 +38,7 @@ export function DispositifsTab({ dispositif }: { dispositif?: string } = {}) {
   // Impression : formulaire complet (à remplir à la main) ou résumé
   // ne reprenant que ce qui a été saisi.
   const [resume, setResume] = React.useState(false);
+  const [report, setReport] = React.useState(false);
 
   React.useEffect(() => { api.settingGet("ecole").then((x) => setEcole(x ?? "")); }, []);
 
@@ -171,9 +174,12 @@ export function DispositifsTab({ dispositif }: { dispositif?: string } = {}) {
             <input type="checkbox" checked={resume} onChange={(e) => setResume(e.target.checked)} />
             Résumé
           </label>
+          {peutSeReporter(dispoId) && <button className="btn sm" onClick={() => setReport(true)}>📋 Reporter dans le LPI</button>}
           <button className="btn primary sm" onClick={imprimer}>🖨 Imprimer</button>
         </>}
       </div>
+
+      {report && dispo && <ReportLpi dispoId={dispoId} nom={dispo.nom} valeurs={v} onClose={() => setReport(false)} />}
 
       <VueDEnsemble eleves={eleves ?? []} documents={documents ?? []} eleveId={eleveId} dispoId={dispoId}
         ouvrir={(eid, did) => { setEleveId(eid); setDispoId(did); }} />
