@@ -5,7 +5,7 @@
 //
 // ARASAAC ne dessine pas tous les verbes des consignes. Quand il en manque un,
 // on le cherche dans les consignes de François Bajard, puis dans Sclera — deux
-// banques d'usage libre en classe, que l'ordinateur télécharge depuis leur
+// banques à usage non commercial, que l'ordinateur télécharge depuis leur
 // site (voir pictos_appoint.rs). Un picto d'ARASAAC se désigne par son numéro ;
 // celui d'une banque d'appoint, par sa banque et son fichier :
 // « bajard:Colorie01.png », « sclera:compter.png ».

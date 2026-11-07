@@ -188,8 +188,8 @@ function EtapePictos({ onSuite, onPlusTard }: { onSuite: () => void; onPlusTard:
       <h2>Les pictogrammes</h2>
       <p>
         Les feuilles, les consignes et les tableaux de communication de Maitrize s'illustrent avec trois banques de
-        pictogrammes libres. Elles s'installent une fois sur cet ordinateur, puis tout fonctionne hors ligne : comptez
-        une dizaine de minutes.
+        pictogrammes sous licence Creative Commons, pour un usage non commercial. Elles s'installent une fois sur cet
+        ordinateur, puis tout fonctionne hors ligne : comptez une dizaine de minutes.
       </p>
       <ul className="premier-lancement-banques">
         {ligne("ARASAAC, 13 800 pictogrammes", "environ 330 Mo", !!arasaac?.installee,

@@ -5,7 +5,7 @@
 //
 // ARASAAC reste la banque de Maitrize, mais elle ne dessine pas tout ce que
 // disent les consignes de classe : « décompose », parfois « encadre » ou
-// « coche ». Deux banques d'usage libre en classe la complètent, dans cet
+// « coche ». Deux banques à usage non commercial la complètent, dans cet
 // ordre : les pictogrammes de consignes de François Bajard (36 images,
 // CC BY-NC-SA 4.0), puis Sclera (près de 12 000, CC BY-NC 2.0 BE).
 //
