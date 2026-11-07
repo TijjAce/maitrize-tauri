@@ -43,7 +43,8 @@ variables:
 essais:
   extends: .machine
   stage: essais
-  timeout: 1h
+  # Une première passe après une mise à jour : tout recompiler, puis enregistrer le cache, a pris 58 minutes.
+  timeout: 2h
   cache:
     key: essais-debian13
     paths:
