@@ -21,6 +21,29 @@ export interface Nouveaute {
 
 export const NOUVEAUTES: Nouveaute[] = [
   {
+    version: "1.6.45",
+    titre: "La liste officielle du LPI dans vos plans, un Assistant qui prépare une séquence en entretien, et une petite feuille sur chaque carte de Fabriquer",
+    points: [
+      { quoi: "La liste officielle du Livret de parcours inclusif (février 2026) dans le PAP, le PPRE et le PPS : 372 aménagements, points d'appui et difficultés, avec les mêmes onglets et les mêmes rubriques que le LPI. Ce que vous retenez se range en haut, et son ordre se choisit : seuls les premiers aménagements vont dans le PDF du LPI.", ou: "Élèves › Dispositifs" },
+      { quoi: "« 📋 Reporter dans le LPI » : le LPI n'importe rien, tout s'y refait à la main. Ce bouton ouvre ses étapes dans son ordre, avec ce qui se coche et ce qui se colle, un bouton par texte. Pour un PAP, un PPRE, un PPS ou un GEVA-Sco. Rien ne part tout seul, et aucun texte à coller ne porte le nom de l'élève.", ou: "Élèves › Dispositifs" },
+      { quoi: "GEVA-Sco : les commentaires des trois tableaux de la page 2 s'écrivent enfin, et arrivent sur le formulaire officiel. Chaque tableau a sa propre case « Autres ».", ou: "Élèves › Dispositifs" },
+      { quoi: "Demandez une séance ou une séquence à l'Assistant : il vous demande d'abord confirmation, puis mène un entretien, une question à la fois (le niveau, le sujet, l'objectif, le nombre de séances, la démarche…), et rédige une fiche d'après la méthode M2PA. La fiche se retouche en le disant, et devient une vraie séquence, ou une séance dans une séquence existante.", ou: "Assistant IA" },
+      { quoi: "Les supports de cette fiche viennent des ateliers de Fabriquer : chaque feuille se regarde avant de rien créer, et « Créer la séquence » range chacune dans sa séance. Ce qui manquerait est dit plutôt qu'inventé.", ou: "Assistant IA" },
+      { quoi: "« Générer une séquence » s'en va de la barre de l'Assistant, du tableau de bord et de ⌘K : une séquence se prépare en conversant. « Modifier une séquence » reste. Le micro de la dictée s'en va aussi ; reste 🗣, la conversation à voix haute, avec son avertissement : la voix part hors de l'Union européenne.", ou: "Assistant IA" },
+      { quoi: "Chaque carte de Fabriquer montre, à côté de son texte, une petite photo de sa feuille d'exemple ; un générateur fait avec l'IA montre sa feuille en réduction.", ou: "Fabriquer" },
+      { quoi: "La Forge des communs numériques éducatifs : 90 sites choisis à la main, faits par des enseignants, en simples liens qui ouvrent votre navigateur. Dans Fabriquer, ce qui crée de vraies feuilles est séparé de ce qui fonctionne au tableau ; dans Ressources, un onglet montre toute la sélection.", ou: "Fabriquer · Ressources › La Forge" },
+      { quoi: "Le bouton des séquences toutes faites n'est plus qu'au premier écran de Fabriquer.", ou: "Fabriquer" },
+      { quoi: "Le matériel de la classe : chaque objet a son picto à la place d'une photo, plus simple à reconnaître d'un coup d'œil. Ce qui le justifie passe derrière un « ? », et « Trier en balayant » rouvre le tri.", ou: "Fabriquer" },
+      { quoi: "La page de bienvenue attend votre clic, ou une touche, sans limite de temps." },
+      { quoi: "Ce qui part chez Mistral, relu envoi par envoi : « Modifier une séquence », « Trouver un projet », « Demander aux programmes » et la demande d'un générateur sont masqués comme un texte sur les élèves ; l'établissement l'est aussi dans les textes de préparation ; les mots d'un projet, les titres des maisons du tri et les demandes d'images du Visibiléo ne partent plus en clair. Sans la liste des élèves, ces envois ne partent plus du tout.", ou: "Réglages › IA" },
+      { quoi: "Un prénom qui est aussi un mot courant, écrit en minuscules dans une liste de prénoms, est masqué lui aussi. Rien ne part à l'étape où l'Assistant demande confirmation, et le compte rendu de réunion, fait au bouton, s'arrête pour « Voir ce qui part ».", ou: "Réglages › IA" },
+      { quoi: "Le menu d'un passage se réduit à Reformuler et Corriger, et le bouton de la barre s'en va : la bulle sur le passage suffit." },
+      { quoi: "« Rédiger avec l'IA » quitte la fenêtre Nouveau document, et « Pré-remplir » quitte le projet pédagogique, le PPRE, le PAP et les autres dispositifs : un document se compose par ses cases.", ou: "Organisation › Pages de garde · Élèves › Dispositifs" },
+      { quoi: "Sécurité : un fichier .obz piégé ne peut plus remplir la mémoire, et plusieurs briques de l'application sont mises à jour." },
+      { quoi: "L'auteur de Maitrize est rappelé dans les licences, avec les crédits des vignettes, des sites de la Forge et de la méthode M2PA.", ou: "Réglages › Licences" },
+    ],
+  },
+  {
     version: "1.6.44",
     titre: "Une page de bienvenue, une première connexion qui installe la classe, et des données d'élèves bien mieux protégées",
     points: [
