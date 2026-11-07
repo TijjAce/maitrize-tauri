@@ -8,6 +8,8 @@
 #   outils/forge/publier.sh --version   le même commit, plus l'étiquette signée de la version
 #                                       (celle de tauri.conf.json) : la Forge met alors en ligne
 #                                       le téléchargement de cette version
+#   outils/forge/publier.sh --windows   le même commit, et l'installeur Windows construit après les
+#                                       essais, sans passer par l'interface de la Forge
 #
 # Sur la Forge, le code a sa propre histoire : un commit par publication, signé. Le dossier de
 # travail, l'index et les autres branches n'y vont jamais : seul l'arbre de HEAD part.
@@ -22,11 +24,13 @@ COPIE="$HOME/Developer/maitrize/maitrize-forge.git"
 A_LAISSER=(.claude .github)
 
 avec_version=non
+avec_windows=non
 premiere=non
 essai=non
 for argument in "$@"; do
   case "$argument" in
     --version) avec_version=oui ;;
+    --windows) avec_windows=oui ;;
     --premiere) premiere=oui ;; # une seule fois : remplace tout ce que la Forge contient
     --essai) essai=oui ;; # prépare et signe tout, n'envoie rien
     *) echo "Argument inconnu : $argument" >&2; exit 2 ;;
@@ -87,6 +91,9 @@ fi
 message="Maitrize $version"
 if [ "$arbre_avant" = "$arbre" ]; then
   commit="$parent"
+elif [ "$avec_windows" = oui ]; then
+  # .gitlab-ci.yml reconnaît cette phrase.
+  commit=$(forge commit-tree -S "$arbre" ${parent:+-p "$parent"} -m "$message" -m "Construire aussi pour Windows.")
 else
   commit=$(forge commit-tree -S "$arbre" ${parent:+-p "$parent"} -m "$message")
 fi
