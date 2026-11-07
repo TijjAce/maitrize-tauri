@@ -14,9 +14,13 @@ export type Champ =
   | { t: "ligne"; id: string; label: string; large?: boolean }
   | { t: "zone"; id: string; label: string; min?: number }
   | { t: "grille"; id: string; label: string; colonnes: string[]; items: string[] }
-  | { t: "liste"; id: string; label: string; colonnes: string[]; lignes: number };
+  | { t: "liste"; id: string; label: string; colonnes: string[]; lignes: number }
+  // La liste officielle du LPI (data/amenagementsLPI.ts), voir components/ListeLpi.tsx.
+  | { t: "amenagements"; id: string; label: string }
+  | { t: "appuis"; id: string; label: string };
 
-export interface SectionD { titre: string; note?: string; champs: Champ[] }
+/** `repliee` : l'ancien formulaire, gardé pour ce qui y est déjà écrit ; replié tant qu'il est vide. */
+export interface SectionD { titre: string; note?: string; repliee?: boolean; champs: Champ[] }
 export interface Dispositif {
   id: string; nom: string; nomLong: string; sousTitre: string;
   reference?: string; sections: SectionD[];
@@ -50,7 +54,16 @@ const PAP: Dispositif = {
       ],
     },
     {
+      titre: "Analyse pédagogique",
+      champs: [{ t: "appuis", id: "lpiAppuis", label: "Points d'appui et difficultés" }],
+    },
+    {
+      titre: "Mise en œuvre pédagogique",
+      champs: [{ t: "amenagements", id: "lpiAmenagements", label: "Adaptations et aménagements" }],
+    },
+    {
       titre: "Maternelle — conduite de classe : points d'attention",
+      repliee: true,
       note: "Seuls les items indispensables à l'élève sont à cocher.",
       champs: [
         { t: "grille", id: "matOrga", label: "Organisation spatiale, temporelle et matérielle", colonnes: NIV_MAT, items: [
@@ -77,6 +90,7 @@ const PAP: Dispositif = {
     },
     {
       titre: "Élémentaire — adaptations et aménagements",
+      repliee: true,
       note: "Seuls les items indispensables à l'élève sont à cocher.",
       champs: [
         { t: "grille", id: "elemTransv", label: "Adaptations transversales", colonnes: NIV_ELEM, items: [
@@ -239,6 +253,7 @@ const PPRE: Dispositif = {
     {
       titre: "Constat",
       champs: [
+        { t: "appuis", id: "lpiAppuis", label: "Points d'appui et difficultés" },
         { t: "zone", id: "difficultes", label: "Difficultés constatées (domaines, évaluations à l'appui)", min: 100 },
         { t: "zone", id: "appuis", label: "Points d'appui de l'élève", min: 80 },
       ],
@@ -248,6 +263,7 @@ const PPRE: Dispositif = {
       champs: [
         { t: "liste", id: "objectifs", label: "Objectifs prioritaires", colonnes: ["Objectif", "Critère de réussite", "Échéance"], lignes: 4 },
         { t: "liste", id: "actions", label: "Aides mises en œuvre", colonnes: ["Action", "Qui intervient", "Quand / où"], lignes: 5 },
+        { t: "amenagements", id: "lpiAmenagements", label: "Adaptations et aménagements" },
         { t: "zone", id: "engagementEleve", label: "Ce que l'élève s'engage à faire", min: 70 },
         { t: "zone", id: "engagementFamille", label: "Ce que la famille s'engage à faire", min: 70 },
       ],
@@ -304,7 +320,8 @@ const PPS: Dispositif = {
     {
       titre: "Mise en œuvre pédagogique",
       champs: [
-        { t: "zone", id: "amenagements", label: "Aménagements et adaptations pédagogiques", min: 100 },
+        { t: "amenagements", id: "lpiAmenagements", label: "Aménagements et adaptations" },
+        { t: "zone", id: "amenagements", label: "Précisions sur les aménagements", min: 100 },
         { t: "liste", id: "objectifs", label: "Objectifs d'apprentissage prioritaires", colonnes: ["Domaine", "Objectif", "Échéance"], lignes: 5 },
         { t: "zone", id: "evaluations", label: "Adaptations des évaluations et des examens", min: 80 },
       ],

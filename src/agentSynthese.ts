@@ -18,6 +18,7 @@
 import { api, type Eleve, type ObservationEleve } from "./api";
 import { lireCompetences, TYPE_DOC_COMPETENCES } from "./competencesTravaillees";
 import { DISPOSITIFS } from "./data/dispositifs";
+import { lireAmenagements, lireAppuis, texteDesAmenagements, texteDesAppuis } from "./listeLpi";
 import { SECTIONS_SYNTHESE, brouillonDeSection, dansLaPeriode, indicesDeLEleve, type Section } from "./synthese";
 import {
   clesDeLEleve, ecritsDesObservations, ecritsDesReunions, ecritsDuJournal, redigerSyntheseSuivie, type Ecrit,
@@ -82,7 +83,7 @@ export function ecritsDesTempsDObservation(fiches: ObservationEleve[], eleveId: 
  * aménagements, objectifs, constat, bilan des aides. Ni le PAI (la santé), ni
  * l'identification, les besoins notés par le médecin, les signatures.
  */
-const SECTIONS_PEDAGOGIQUES = /adaptations|aménagements|conduite de classe|mise en œuvre pédagogique|objectifs|constat|bilan/i;
+const SECTIONS_PEDAGOGIQUES = /adaptations|aménagements|conduite de classe|analyse pédagogique|mise en œuvre pédagogique|objectifs|constat|bilan/i;
 
 export function texteDesPlans(docs: Record<string, string | null>): string {
   const morceaux: string[] = [];
@@ -99,6 +100,10 @@ export function texteDesPlans(docs: Record<string, string | null>): string {
         else if (c.t === "grille" && val && typeof val === "object") {
           const g = val as Record<string, boolean>;
           dit = c.items.filter((_, i) => c.colonnes.some((__, j) => g[`${i}:${j}`])).join(" ; ");
+        } else if (c.t === "amenagements") {
+          dit = texteDesAmenagements(lireAmenagements(val));
+        } else if (c.t === "appuis") {
+          dit = texteDesAppuis(lireAppuis(val));
         } else if (c.t === "liste" && Array.isArray(val)) {
           dit = (val as unknown[]).map((l) => (Array.isArray(l) ? l.map(texte).filter(Boolean).join(", ") : "")).filter(Boolean).join(" ; ");
         }

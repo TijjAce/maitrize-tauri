@@ -41,5 +41,8 @@ image du dépôt est dans docs/droits-des-images.md.
   (docs/droits-des-images.md).
 - Fonds de carte : Natural Earth, domaine public.
 - Programmes, guides et formulaires officiels : repris des textes officiels, avec leur source.
+- Liste d'aménagements pédagogiques, points d'appui et difficultés au sein du Livret de parcours
+  inclusif : ministère de l'Éducation nationale, février 2026, Éduscol, licence ouverte Etalab 2.0
+  (src/data/amenagementsLPI.ts).
 - Bibliothèques embarquées : leurs licences sont relevées par outils/licences/notices.mjs à chaque
   construction, et jointes à l'application. compagnon/public/jsQR.js : licence Apache 2.0.

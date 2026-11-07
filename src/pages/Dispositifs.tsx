@@ -5,10 +5,12 @@ import React from "react";
 import { api, type Eleve, type DocumentEleve } from "../api";
 import { Field, Input, Select, Empty, useAsync } from "../components/ui";
 import { printHTML, escapeHtml } from "../print";
-import { DISPOSITIFS, Champ } from "../data/dispositifs";
+import { DISPOSITIFS, Champ, type SectionD } from "../data/dispositifs";
 import { PpiTab } from "./Ppi";
 import { GevaScoTab } from "./GevaSco";
 import { useEleveDuDossier } from "../eleveDuDossier";
+import { ChampAmenagements, ChampAppuis } from "../components/ListeLpi";
+import { amenagementsVides, htmlDesAmenagements, htmlDesAppuis, lireAmenagements, lireAppuis } from "../listeLpi";
 
 // ── Dispositifs d'accompagnement ──────────────────────────────────────────
 // Un seul écran pilote tous les plans (PPS, PAP, PAI, PPRE) à partir des
@@ -84,6 +86,11 @@ export function DispositifsTab({ dispositif }: { dispositif?: string } = {}) {
     // pour transmettre ou archiver sans cases vides.
     const bloc = (c: Champ): string => {
       const val = v[c.id];
+      if (c.t === "amenagements") {
+        const liste = htmlDesAmenagements(lireAmenagements(val), escapeHtml);
+        return liste && `<div class="fl">${escapeHtml(c.label)}</div>${liste}`;
+      }
+      if (c.t === "appuis") return htmlDesAppuis(lireAppuis(val), escapeHtml);
       if (c.t === "ligne") {
         const rempli = (val ?? "").trim();
         if (!rempli && resume) return "";
@@ -114,7 +121,10 @@ export function DispositifsTab({ dispositif }: { dispositif?: string } = {}) {
       if (!lignes) return "";
       return `<div class="fl">${escapeHtml(c.label)}</div><table><tr>${c.colonnes.map((n) => `<th>${escapeHtml(n)}</th>`).join("")}</tr>${lignes}</table>`;
     };
+    // La liste du LPI remplace l'ancien formulaire : ses grilles vides ne s'impriment plus à côté.
+    const listeTenue = dispo.sections.some((s) => s.champs.some((c) => c.t === "amenagements" && !amenagementsVides(lireAmenagements(v[c.id]))));
     const corps = dispo.sections.map((s) => {
+      if (s.repliee && listeTenue && !sectionRemplie(s, v)) return "";
       const inner = s.champs.map(bloc).filter(Boolean).join("");
       if (!inner) return "";
       return `<h2>${escapeHtml(s.titre)}</h2>${s.note ? `<div class="note">${escapeHtml(s.note)}</div>` : ""}${inner}`;
@@ -130,6 +140,9 @@ export function DispositifsTab({ dispositif }: { dispositif?: string } = {}) {
          .note{color:#687087;font-size:11px;margin-bottom:4px}
          td.c,th.c{text-align:center;width:46px}
          .vide{display:inline-block;min-width:220px;border-bottom:1px dotted #8a8a8a}
+         .liste-lpi{margin:3px 0 8px;padding-left:22px}
+         .liste-lpi li{margin:2px 0}
+         .rubrique{color:#687087;font-size:11px}
        </style>${corps || "<p>Ce dispositif ne comporte aucune rubrique.</p>"}`);
   };
 
@@ -174,30 +187,68 @@ export function DispositifsTab({ dispositif }: { dispositif?: string } = {}) {
             </div>
           </div>
 
-          {dispo.sections.map((s) => (
-            <div key={s.titre} className="card" style={{ marginBottom: 14 }}>
-              <h3 style={{ marginTop: 0 }}>{s.titre}</h3>
-              {s.note && <div style={{ fontSize: 12, color: "var(--text-2)", margin: "-6px 0 10px" }}>{s.note}</div>}
-              {s.champs.map((c) => <ChampVue key={c.id} champ={c} valeur={v[c.id]}
-                onTexte={(x) => set(c.id, x)} onCoche={(i, j) => coche(c.id, i, j)}
-                onCellule={(l, col, x) => setCellule(c.id, l, col, x)} />)}
-            </div>
-          ))}
+          {dispo.sections.map((s) => {
+            const champs = s.champs.map((c) => <ChampVue key={`${eleveId}|${dispoId}|${c.id}`} champ={c} valeur={v[c.id]} niveauEleve={eleve.niveau}
+              onValeur={(x) => set(c.id, x)} onCoche={(i, j) => coche(c.id, i, j)}
+              onCellule={(l, col, x) => setCellule(c.id, l, col, x)} />);
+            if (s.repliee) {
+              return (
+                <SectionRepliee key={`${eleveId}|${dispoId}|${s.titre}`} titre={s.titre} note={s.note} remplie={sectionRemplie(s, v)}>
+                  {champs}
+                </SectionRepliee>
+              );
+            }
+            return (
+              <div key={s.titre} className="card" style={{ marginBottom: 14 }}>
+                <h3 style={{ marginTop: 0 }}>{s.titre}</h3>
+                {s.note && <div style={{ fontSize: 12, color: "var(--text-2)", margin: "-6px 0 10px" }}>{s.note}</div>}
+                {champs}
+              </div>
+            );
+          })}
         </>
       )}
     </>
   );
 }
 
-function ChampVue({ champ, valeur, onTexte, onCoche, onCellule }: {
-  champ: Champ; valeur: any;
-  onTexte: (v: string) => void; onCoche: (item: number, col: number) => void;
+/** Une section de l'ancien formulaire a-t-elle quelque chose d'écrit ? */
+function sectionRemplie(s: SectionD, v: Valeurs): boolean {
+  return s.champs.some((c) => Object.keys(v[c.id] ?? {}).length > 0);
+}
+
+/** L'ancien formulaire : replié tant qu'il est vide, ouvert dès qu'il contient quelque chose. */
+function SectionRepliee({ titre, note, remplie, children }: {
+  titre: string; note?: string; remplie: boolean; children: React.ReactNode;
+}) {
+  const [ouverte, setOuverte] = React.useState(remplie);
+  React.useEffect(() => { if (remplie) setOuverte(true); }, [remplie]);
+  return (
+    <details className="card" style={{ marginBottom: 14 }} open={ouverte} onToggle={(e) => setOuverte(e.currentTarget.open)}>
+      <summary style={{ cursor: "pointer", fontWeight: 600 }}>Formulaire de 2015 · {titre}</summary>
+      <div style={{ marginTop: 10 }}>
+        {note && <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 10 }}>{note}</div>}
+        {children}
+      </div>
+    </details>
+  );
+}
+
+function ChampVue({ champ, valeur, niveauEleve, onValeur, onCoche, onCellule }: {
+  champ: Champ; valeur: any; niveauEleve: string | undefined;
+  onValeur: (v: unknown) => void; onCoche: (item: number, col: number) => void;
   onCellule: (ligne: number, col: number, v: string) => void;
 }) {
+  if (champ.t === "amenagements") {
+    return <ChampAmenagements label={champ.label} valeur={valeur} niveauEleve={niveauEleve} onChange={onValeur} />;
+  }
+  if (champ.t === "appuis") {
+    return <ChampAppuis label={champ.label} valeur={valeur} onChange={onValeur} />;
+  }
   if (champ.t === "ligne") {
     return (
       <div style={{ maxWidth: champ.large ? "100%" : 420 }}>
-        <Field label={champ.label}><Input value={valeur ?? ""} onChange={(e) => onTexte(e.target.value)} /></Field>
+        <Field label={champ.label}><Input value={valeur ?? ""} onChange={(e) => onValeur(e.target.value)} /></Field>
       </div>
     );
   }
@@ -205,7 +256,7 @@ function ChampVue({ champ, valeur, onTexte, onCoche, onCellule }: {
     return (
       <Field label={champ.label}>
         <textarea className="textarea" style={{ minHeight: champ.min ?? 80 }} value={valeur ?? ""}
-          onChange={(e) => onTexte(e.target.value)} />
+          onChange={(e) => onValeur(e.target.value)} />
       </Field>
     );
   }
