@@ -11,15 +11,18 @@ import { AMENAGEMENTS_LPI, POINTS_ET_DIFFICULTES_LPI } from "./data/amenagements
 import { DISPOSITIFS, type Champ } from "./data/dispositifs";
 import { lireAmenagements, lireAppuis, type LigneRetenue } from "./listeLpi";
 
-/** Ce qui se colle : un champ de Maitrize, son texte. */
-export interface TexteAColler { libelle: string; texte: string }
+/** Ce qui se colle : un champ de Maitrize, son texte ; `max` : ce que la zone du LPI accepte. */
+export interface TexteAColler { libelle: string; texte: string; max?: number }
 /** Ce qui se coche : `rang` est la place choisie dans le plan, `precision` et `autre` se collent. */
 export interface LigneACocher { rang?: number; texte: string; precision?: string; autre?: boolean }
-/** Les cases d'une même rubrique du LPI : son chemin, « onglet › rubrique ». */
+/** Les cases d'une même rubrique du LPI : son chemin, « onglet › rubrique », vide si le bloc le dit déjà. */
 export interface GroupeACocher { chemin: string; lignes: LigneACocher[] }
+/** `titre` peut rester vide quand la partie de l'étape le dit déjà. */
 export interface BlocACocher { titre: string; groupes: GroupeACocher[]; alerte?: string }
 export interface EtapeDuReport {
   titre: string;
+  /** Une partie de l'étape, quand le LPI en a un sous-menu : les parties d'une étape se suivent. */
+  sous?: string;
   /** Ce que le LPI demande et que Maitrize n'a pas : à écrire là-bas. */
   aSaisir?: string;
   blocs: BlocACocher[];
@@ -171,6 +174,17 @@ export function etapesDuReport(dispoId: string, valeurs: Record<string, unknown>
 
 export const reportVide = (etapes: EtapeDuReport[]) => etapes.every((e) => !e.blocs.length && !e.textes.length);
 
+/** Le numéro de chaque étape du LPI : les parties d'une même étape partagent le leur. */
+export function numerosDesEtapes(etapes: EtapeDuReport[]): number[] {
+  let n = 0;
+  return etapes.map((e, i) => (i > 0 && etapes[i - 1].titre === e.titre ? n : ++n));
+}
+
+/** Un texte trop long pour sa zone : le dire avant qu'il soit collé. */
+export function tropLong(t: TexteAColler): string {
+  return t.max && t.texte.length > t.max ? `${t.texte.length} caractères : ${t.max} au plus dans le LPI.` : "";
+}
+
 /** Une ligne à cocher, en texte. */
 export function texteDeLaLigne(l: LigneACocher): string {
   const debut = l.rang ? `${l.rang}. ` : "- ";
@@ -180,15 +194,20 @@ export function texteDeLaLigne(l: LigneACocher): string {
 
 /** Un bloc à cocher en texte, rubrique par rubrique. */
 export function texteDuBloc(b: BlocACocher): string {
-  return [b.titre, ...b.groupes.flatMap((g) => [g.chemin, ...g.lignes.map(texteDeLaLigne)])].join("\n");
+  return [b.titre, ...b.groupes.flatMap((g) => [g.chemin, ...g.lignes.map(texteDeLaLigne)])].filter(Boolean).join("\n");
 }
 
 /** Tout le report en texte, étape par étape : de quoi le garder sous les yeux à côté du LPI. */
 export function texteDuReport(titre: string, etapes: EtapeDuReport[]): string {
+  const numeros = numerosDesEtapes(etapes);
+  const ecrites = new Set<number>();
   const morceaux = etapes.map((e, i) => {
     if (!e.blocs.length && !e.textes.length) return "";
+    const entete = ecrites.has(numeros[i]) ? [] : [`${numeros[i]}. ${e.titre}`];
+    ecrites.add(numeros[i]);
     const lignes = [
-      `${i + 1}. ${e.titre}`,
+      ...entete,
+      ...(e.sous ? [e.sous] : []),
       ...e.blocs.map(texteDuBloc),
       ...e.textes.map((t) => `${t.libelle} : ${t.texte}`),
     ];

@@ -6,7 +6,12 @@ import { api, newId, anneeScolaireActuelle } from "../api";
 import { Empty, useAsync } from "../components/ui";
 import { toast } from "../components/Toaster";
 import { isoJour } from "../dates";
-import { sansTrous } from "../gevasco";
+import {
+  CODES, DOMAINES, JOURS, TABLEAUX_GEVA, commentairesDuTableau, ligneCochee, poserCase, sansTrous,
+  type Activite, type Code, type GevaData, type Responsable, type TableauGeva,
+} from "../gevasco";
+import { etapesDuGeva, nomDuGeva, rappelDuGeva } from "../reporterGeva";
+import { ReportLpi } from "../components/ReportLpi";
 
 // ── GEVA-Sco — aide à la préparation ──────────────────────────────────────
 // Reprend la structure du support officiel (arrêté du 6 février 2015,
@@ -15,118 +20,6 @@ import { sansTrous } from "../gevasco";
 // des activités cotées A/B/C/D, bilan, perspectives, remarques, participants.
 // L'écran reproduit les pages du support ; l'impression remplit le vrai
 // formulaire interactif CNSA, qui reste modifiable dans un lecteur PDF.
-
-type Code = "" | "A" | "B" | "C" | "D" | "SO";
-const CODES: { k: Code; label: string; aide: string; couleur: string }[] = [
-  { k: "A", label: "A", aide: "Activité réalisée sans difficulté et seul", couleur: "#57b873" },
-  { k: "B", label: "B", aide: "Réalisée avec des difficultés ponctuelles et/ou une aide ponctuelle", couleur: "#9ac74f" },
-  { k: "C", label: "C", aide: "Réalisée avec des difficultés régulières et/ou une aide régulière (commentaires indispensables)", couleur: "#eb9e33" },
-  { k: "D", label: "D", aide: "Activité non réalisée (commentaires indispensables)", couleur: "#d64d4d" },
-  { k: "SO", label: "SO", aide: "Sans objet", couleur: "var(--text-2)" },
-];
-
-// Domaines et activités, dans l'ordre exact du support officiel (p. 4 et 5).
-const DOMAINES: { id: string; titre: string; activites: { id: string; label: string }[] }[] = [
-  {
-    id: "general", titre: "Tâches et exigences générales, relation avec autrui",
-    activites: [
-      { id: "g1", label: "S'orienter dans le temps" },
-      { id: "g2", label: "S'orienter dans l'espace" },
-      { id: "g3", label: "Fixer son attention" },
-      { id: "g4", label: "Mémoriser" },
-      { id: "g5", label: "Gérer sa sécurité" },
-      { id: "g6", label: "Respecter les règles de vie" },
-      { id: "g7", label: "Avoir des relations avec autrui conformes aux règles sociales" },
-      { id: "g8", label: "Maîtriser son comportement dans ses relations avec autrui" },
-    ],
-  },
-  {
-    id: "mobilite", titre: "Mobilité, manipulation",
-    activites: [
-      { id: "m1", label: "Faire ses transferts (ex. : du fauteuil roulant à la chaise dans la classe)" },
-      { id: "m2", label: "Se déplacer à l'intérieur, à l'extérieur (dans le cadre des activités scolaires)" },
-      { id: "m3", label: "Utiliser les transports en commun" },
-      { id: "m4", label: "Avoir des activités de motricité fine" },
-    ],
-  },
-  {
-    id: "entretien", titre: "Entretien personnel",
-    activites: [
-      { id: "e1", label: "Assurer l'élimination et utiliser les toilettes" },
-      { id: "e2", label: "S'habiller / se déshabiller" },
-      { id: "e3", label: "Prendre ses repas (manger, boire)" },
-      { id: "e4", label: "Prendre soin de sa santé" },
-    ],
-  },
-  {
-    id: "communication", titre: "Communication",
-    activites: [
-      { id: "c1", label: "Parler" },
-      { id: "c2", label: "Comprendre la parole en face à face" },
-      { id: "c3", label: "Comprendre une phrase simple" },
-      { id: "c4", label: "Produire et recevoir des messages non verbaux" },
-    ],
-  },
-  {
-    id: "scolarite", titre: "Tâches et exigences en relation avec la scolarité",
-    activites: [
-      { id: "s1", label: "Lire" },
-      { id: "s2", label: "Écrire" },
-      { id: "s3", label: "Calculer" },
-      { id: "s4", label: "Organiser son travail" },
-      { id: "s5", label: "Contrôler son travail" },
-      { id: "s6", label: "Accepter des consignes" },
-      { id: "s7", label: "Suivre des consignes" },
-      { id: "s8", label: "S'installer dans la classe" },
-      { id: "s9", label: "Utiliser des supports pédagogiques" },
-      { id: "s10", label: "Utiliser du matériel adapté à son handicap" },
-      { id: "s11", label: "Prendre des notes (quel que soit le support)" },
-      { id: "s12", label: "Participer à des sorties scolaires" },
-    ],
-  },
-];
-
-const LIGNES_PLANS = ["PAI", "Mesures éducatives", "Autres"];
-const LIGNES_ACCOMP = ["RASED", "SAPAD", "CNED", "Soins hospitaliers", "CAMPS / CMP / CMPP", "EMS", "SESSAD", "Soins en libéral", "Autres"];
-const LIGNES_MATERIEL = ["Aménagements et adaptations pédagogiques", "Outils de communication",
-  "Matériel informatique et audiovisuel", "Matériel déficience auditive", "Matériel déficience visuelle",
-  "Mobilier et petits matériels", "Transport", "Autres"];
-const JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
-
-interface Activite { code: Code; obstacles: string; appuis: string }
-interface Responsable {
-  id: string; civilite: "" | "Mme" | "M"; nom: string;
-  rue: string; cp: string; ville: string; tel: string; courriel: string;
-}
-interface GevaData {
-  type: "premiere" | "reexamen";
-  numDossier: string; anneeScolaire: string; dateReunion: string;
-  dateNaissance: string; adresse: string; cp: string; ville: string; tel: string; courriel: string;
-  representants: string;
-  responsables: Responsable[];
-  /** Cases à cocher des dispositifs (clé = libellé de ligne). */
-  coches: Record<string, boolean>;
-  referentNom: string; referentTel: string; referentCourriel: string;
-  etablissement: string; classe: string;
-  etabRue: string; etabCp: string; etabVille: string;
-  parcours: { id: string; annee: string; scolarisation: string }[];
-  plans: Record<string, string>;
-  accompagnements: Record<string, string>;
-  materiel: Record<string, string>;
-  niveauApprentissages: string;
-  acquisitions: "" | "atteintes" | "nonatteintes";
-  edt: Record<string, { matin: string; midi: string; apresmidi: string }>;
-  activites: Record<string, Activite>;
-  /** Cadres « obstacles » / « points d'appui », un par domaine (support officiel). */
-  cadres: Record<string, { obstacles: string; appuis: string }>;
-  accessibiliteBati: "" | "oui" | "non" | "partielle";
-  natureDifficultes: string;
-  evolutions: string;
-  bilanAmenagements: string; bilanDispositifs: string; bilanAideHumaine: string; bilanAccompagnements: string;
-  perspectives: string;
-  remarquesFamille: string; remarquesProfessionnels: string;
-  participants: { id: string; nom: string; fonction: string }[];
-}
 
 const responsableVide = (): Responsable => ({ id: newId(), civilite: "", nom: "", rue: "", cp: "", ville: "", tel: "", courriel: "" });
 const parcoursVide = () => ({ id: newId(), annee: "", scolarisation: "" });
@@ -181,7 +74,7 @@ const CHAMP_CADRE: Record<string, [string, string]> = {
   scolarite: ["Taches-et-exigences-relation-scolarite_Cadre1", "Taches-et-exigences-relation-scolarite_Cadre2"],
 };
 const CHAMP_COCHE: Record<string, string> = {
-  "PAI": "PAI", "Mesures éducatives": "Mesures-educatives", "Autres": "Autres-plan-ou-projet-formalises",
+  "PAI": "PAI", "Mesures éducatives": "Mesures-educatives",
   "RASED": "RASED", "SAPAD": "SAPAD", "CNED": "CNED", "Soins hospitaliers": "Soins-hospitaliers",
   "CAMPS / CMP / CMPP": "CAMPS", "EMS": "EMS", "SESSAD": "SESSAD", "Soins en libéral": "Soins-en-liberal",
   "Aménagements et adaptations pédagogiques": "Amenagements-et-adaptations-pedagogiques",
@@ -190,6 +83,12 @@ const CHAMP_COCHE: Record<string, string> = {
   "Matériel déficience auditive": "Materiel-deficience-auditive",
   "Matériel déficience visuelle": "Materiel-deficience-visuelle",
   "Mobilier et petits matériels": "Mobilier-et-petits-materiels", "Transport": "Transport",
+};
+// Chaque tableau du support a son cadre de commentaires et sa case « Autres ».
+const CHAMP_TABLEAU: Record<TableauGeva, { commentaires: string; autres: string }> = {
+  plans: { commentaires: "Plan-projets-formalises_Commentaires", autres: "Autres-plan-ou-projet-formalises" },
+  accompagnements: { commentaires: "Accompagnement-soins_Commentaires", autres: "Autres-accompagnements-et-soins" },
+  materiel: { commentaires: "Conditions-materielles_Commentaires", autres: "Autres-coditions-materielles" },
 };
 const JOUR_CHAMP: Record<string, string> = {
   Lundi: "Lundi", Mardi: "Mardi", Mercredi: "Mercredi", Jeudi: "Jeudi", Vendredi: "Vendredi", Samedi: "Samedi",
@@ -270,7 +169,6 @@ const STYLE_FEUILLE = `
 .gs-plain { width: 100%; border: none; background: transparent; font: inherit; font-size: 10.5px;
   color: #10305c; outline: none; padding: 1px 2px; }
 .gs-plain:focus { background: #f2fbfd; }
-.gs td textarea[readonly] { color: #444; cursor: default; }
 `;
 
 /** Le GEVA-Sco d'un élève : il s'ouvre parmi les dispositifs, qui choisissent l'élève (demande de l'enseignant, octobre 2026). */
@@ -281,6 +179,7 @@ export function GevaScoTab({ eleveId }: { eleveId: string }) {
   const [enseignantNom, setEnseignantNom] = React.useState("");
   const [zoom, setZoom] = React.useState(() => { const v = Number(localStorage.getItem("gevasco-zoom")); return v >= 0.5 && v <= 1.6 ? v : 0.85; });
   const [enCours, setEnCours] = React.useState(false);
+  const [report, setReport] = React.useState(false);
   // La barre d'action reste visible pendant le défilement, mais l'en-tête de
   // page est lui aussi collé en haut : sans décalage, il recouvre les boutons
   // et intercepte les clics. On mesure sa hauteur pour se placer dessous.
@@ -409,17 +308,13 @@ export function GevaScoTab({ eleveId }: { eleveId: string }) {
     });
 
     // Conditions actuelles : commentaires fusionnés + cases cochées
-    const fusion = (lignes: string[], vals: Record<string, string>) =>
-      lignes.filter((l) => (vals[l] ?? "").trim()).map((l) => `${l} : ${vals[l].trim()}`).join("\n");
-    T("Plan-projets-formalises_Commentaires", fusion(LIGNES_PLANS, d.plans));
-    T("Accompagnement-soins_Commentaires", fusion(LIGNES_ACCOMP, d.accompagnements));
-    T("Conditions-materielles_Commentaires", fusion(LIGNES_MATERIEL, d.materiel));
-    for (const [libelle, champ] of Object.entries(CHAMP_COCHE)) {
-      const rempli = (d.plans[libelle] ?? d.accompagnements[libelle] ?? d.materiel[libelle] ?? "").trim();
-      if (d.coches[libelle] || rempli) boutons.push([champ, "Oui"]);
+    for (const t of TABLEAUX_GEVA) {
+      T(CHAMP_TABLEAU[t.id].commentaires, commentairesDuTableau(t.lignes, d[t.id]));
+      for (const l of t.lignes) {
+        const champ = l === "Autres" ? CHAMP_TABLEAU[t.id].autres : CHAMP_COCHE[l];
+        if (champ && ligneCochee(d, t.id, l)) boutons.push([champ, "Oui"]);
+      }
     }
-    if (d.coches["Autres"] || (d.accompagnements["Autres"] ?? "").trim()) boutons.push(["Autres-accompagnements-et-soins", "Oui"]);
-    if ((d.materiel["Autres"] ?? "").trim()) boutons.push(["Autres-coditions-materielles", "Oui"]);
     T("Niveau-d-enseignement-dans-les-apprentissages", d.niveauApprentissages);
     // Les deux états portent des libellés longs : on les désigne par motif.
     if (d.acquisitions === "atteintes") boutons.push(["Scolarite", "~avec"]);
@@ -570,8 +465,11 @@ export function GevaScoTab({ eleveId }: { eleveId: string }) {
         <span style={{ fontSize: 12, minWidth: 38, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
         <button className="btn sm" onClick={() => majZoom(zoom + 0.1)} aria-label="Agrandir">+</button>
         <button className="btn sm" onClick={preRemplir}>✨ Pré-remplir</button>
+        <button className="btn sm" onClick={() => setReport(true)}>📋 Reporter dans le LPI</button>
         <button className="btn primary sm" onClick={imprimer} disabled={enCours}>{enCours ? "…" : "🖨 Imprimer"}</button>
       </div>
+
+      {report && <ReportLpi nom={nomDuGeva(d.type)} etapes={etapesDuGeva(d)} rappel={rappelDuGeva(d.type)} onClose={() => setReport(false)} />}
 
       <div className="gs" style={{ zoom }}>
         {/* ── Page 1 : identification ─────────────────────────────────── */}
@@ -684,26 +582,22 @@ export function GevaScoTab({ eleveId }: { eleveId: string }) {
         {/* ── Page 2 : conditions actuelles ───────────────────────────── */}
         <Feuille num="2/8" type={TYPE} nomEleve={eleve.nom}>
           <div style={{ fontWeight: 700, marginBottom: 6 }}>Conditions actuelles de scolarisation (accompagnement ou aide spécifique, conditions matérielles, décloisonnement, autres…)</div>
-          {([["Plan ou projets formalisés", LIGNES_PLANS, d.plans, "Commentaires (durée de mise en œuvre, effets…)"],
-             ["Accompagnement et soins", LIGNES_ACCOMP, d.accompagnements, "Commentaires, précisions"],
-             ["Conditions matérielles", LIGNES_MATERIEL, d.materiel, "Commentaires, précisions"]] as const).map(([titre, lignes, vals, entete]) => (
-            <table key={titre} style={{ marginBottom: 14 }}>
+          {TABLEAUX_GEVA.map((t) => (
+            <table key={t.id} style={{ marginBottom: 14 }}>
               <tbody>
-                <tr><th style={{ width: 240, textAlign: "left" }}>{titre}</th><th style={{ textAlign: "left" }}>{entete}</th></tr>
-                {lignes.map((l, i) => (
+                <tr><th style={{ width: 240, textAlign: "left" }}>{t.titre}</th><th style={{ textAlign: "left" }}>{t.entete}</th></tr>
+                {t.lignes.map((l) => (
                   <tr key={l}>
                     <td>
                       <label className="gs-case">
-                        <input type="checkbox" checked={d.coches[l] || !!(vals[l] ?? "").trim()}
-                          onChange={(e) => up({ coches: { ...d.coches, [l]: e.target.checked } })} />{l}
+                        <input type="checkbox" checked={ligneCochee(d, t.id, l)}
+                          onChange={(e) => up({ coches: poserCase(d.coches, t.id, l, e.target.checked) })} />{l}
                       </label>
                     </td>
-                    {i === 0 && <td rowSpan={lignes.length} style={{ padding: 0, verticalAlign: "top" }}>
-                      <textarea style={{ minHeight: lignes.length * 19 }}
-                        value={lignes.filter((x) => (vals[x] ?? "").trim()).map((x) => `${x} : ${vals[x]}`).join("\n")}
-                        onChange={() => {}} readOnly
-                        title="Renseignez le détail ligne par ligne dans le champ à droite de chaque dispositif" />
-                    </td>}
+                    <td>
+                      <input className="gs-plain" aria-label={`${t.titre}, ${l} : commentaire`} value={d[t.id]?.[l] ?? ""}
+                        onChange={(e) => up({ [t.id]: { ...dRef.current[t.id], [l]: e.target.value } })} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

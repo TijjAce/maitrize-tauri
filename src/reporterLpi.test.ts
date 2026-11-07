@@ -5,7 +5,7 @@ import { describe, it, expect } from "vitest";
 import { DISPOSITIFS } from "./data/dispositifs";
 import { AMENAGEMENTS_LPI, POINTS_ET_DIFFICULTES_LPI } from "./data/amenagementsLPI";
 import {
-  champsDesEtapes, etapesDuReport, peutSeReporter, reportVide, texteDeLaLigne, texteDuBloc, texteDuReport,
+  champsDesEtapes, etapesDuReport, numerosDesEtapes, peutSeReporter, reportVide, texteDeLaLigne, texteDuBloc, texteDuReport, tropLong,
 } from "./reporterLpi";
 
 const RUBRIQUE = AMENAGEMENTS_LPI.elementaire[0];
@@ -151,5 +151,35 @@ describe("le texte à garder sous les yeux", () => {
     expect(t).toContain("4. Mise en œuvre");
     expect(t).not.toContain("Informations préliminaires");
     expect(t).not.toContain("Analyse pédagogique");
+  });
+});
+
+describe("les parties d'une étape", () => {
+  const partie = (titre: string, sous: string, texte = "") => ({ titre, sous, blocs: [], textes: texte ? [{ libelle: sous, texte }] : [] });
+
+  it("partagent le numéro de leur étape", () => {
+    expect(numerosDesEtapes([partie("A", "a1"), partie("A", "a2"), partie("B", "b1"), partie("C", "c1"), partie("C", "c2")])).toEqual([1, 1, 2, 3, 3]);
+    expect(numerosDesEtapes(etapesDuReport("pap", {}))).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("n'écrivent le titre de l'étape qu'une fois, même si sa première partie est vide", () => {
+    const t = texteDuReport("Titre", [partie("A", "a1"), partie("A", "a2", "un"), partie("A", "a3", "deux"), partie("B", "b1", "trois")]);
+    expect(t).toBe("Titre\n\n1. A\na2\na2 : un\n\na3\na3 : deux\n\n2. B\nb1\nb1 : trois");
+  });
+
+  it("écrivent un bloc sans chemin quand son titre suffit", () => {
+    expect(texteDuBloc({ titre: "Cases", groupes: [{ chemin: "", lignes: [{ texte: "Une" }] }] })).toBe("Cases\n- Une");
+    expect(texteDuBloc({ titre: "", groupes: [{ chemin: "", lignes: [{ texte: "Une" }] }] })).toBe("- Une");
+  });
+});
+
+describe("la limite d'une zone du LPI", () => {
+  it("ne dit rien sans limite ou dans la limite", () => {
+    expect(tropLong({ libelle: "a", texte: "x".repeat(5000) })).toBe("");
+    expect(tropLong({ libelle: "a", texte: "xxx", max: 3 })).toBe("");
+  });
+
+  it("dit de combien de caractères il s'agit au-delà", () => {
+    expect(tropLong({ libelle: "a", texte: "xxxx", max: 3 })).toBe("4 caractères : 3 au plus dans le LPI.");
   });
 });

@@ -12,7 +12,7 @@ import { useEleveDuDossier } from "../eleveDuDossier";
 import { ChampAmenagements, ChampAppuis } from "../components/ListeLpi";
 import { amenagementsVides, htmlDesAmenagements, htmlDesAppuis, lireAmenagements, lireAppuis } from "../listeLpi";
 import { ReportLpi } from "../components/ReportLpi";
-import { peutSeReporter } from "../reporterLpi";
+import { etapesDuReport, peutSeReporter } from "../reporterLpi";
 
 // ── Dispositifs d'accompagnement ──────────────────────────────────────────
 // Un seul écran pilote tous les plans (PPS, PAP, PAI, PPRE) à partir des
@@ -179,7 +179,7 @@ export function DispositifsTab({ dispositif }: { dispositif?: string } = {}) {
         </>}
       </div>
 
-      {report && dispo && <ReportLpi dispoId={dispoId} nom={dispo.nom} valeurs={v} onClose={() => setReport(false)} />}
+      {report && dispo && <ReportLpi nom={dispo.nom} etapes={etapesDuReport(dispoId, v)} onClose={() => setReport(false)} />}
 
       <VueDEnsemble eleves={eleves ?? []} documents={documents ?? []} eleveId={eleveId} dispoId={dispoId}
         ouvrir={(eid, did) => { setEleveId(eid); setDispoId(did); }} />
